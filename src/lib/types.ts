@@ -16,6 +16,7 @@ export type Direction = "long" | "short";
 export interface Trade {
   id: string;
   accountId: string;
+  strategyId: string;
   symbol: string;
   direction: Direction;
   openedAt: string;
@@ -29,6 +30,37 @@ export interface Trade {
   screenshots: string[];
   source: "manual" | "webhook";
 }
+
+/** Cada estrategia gestiona su propio capital y su propio riesgo. */
+export interface Strategy {
+  id: string;
+  name: string;
+  initialCapital: number;
+  riskPct: number; // 0.03 = 3%
+  mainSymbol: string;
+  color: string;
+}
+
+/** Los retiros restan capital pero NO cuentan como pérdida operativa. */
+export interface Withdrawal {
+  id: string;
+  strategyId: string;
+  date: string;
+  amount: number;
+  reason?: string | undefined;
+}
+
+/** Valor por punto (referencia) de los futuros más habituales. */
+export const FUTURES_SPECS: { symbol: string; pointValue: number }[] = [
+  { symbol: "MNQ", pointValue: 2 },
+  { symbol: "MES", pointValue: 5 },
+  { symbol: "MGC", pointValue: 10 },
+  { symbol: "NQ", pointValue: 20 },
+  { symbol: "ES", pointValue: 50 },
+  { symbol: "GC", pointValue: 100 },
+  { symbol: "M2K", pointValue: 5 },
+  { symbol: "MYM", pointValue: 0.5 },
+];
 
 export const PROP_FIRMS = [
   "Apex Trader Funding",

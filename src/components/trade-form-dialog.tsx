@@ -28,9 +28,10 @@ import { cn } from "@/lib/utils";
 const nowLocal = () => new Date().toISOString().slice(0, 16);
 
 export function TradeFormDialog() {
-  const { accounts, addTrade } = useJournal();
+  const { accounts, strategies, addTrade } = useJournal();
   const [open, setOpen] = useState(false);
   const [accountId, setAccountId] = useState(accounts[0]?.id ?? "");
+  const [strategyId, setStrategyId] = useState(strategies[0]?.id ?? "");
   const [symbol, setSymbol] = useState("NQ1!");
   const [direction, setDirection] = useState<Direction>("long");
   const [openedAt, setOpenedAt] = useState(nowLocal());
@@ -63,6 +64,7 @@ export function TradeFormDialog() {
     }
     addTrade({
       accountId,
+      strategyId,
       symbol: symbol.toUpperCase(),
       direction,
       openedAt: new Date(openedAt).toISOString(),
@@ -111,6 +113,22 @@ export function TradeFormDialog() {
                 {accounts.map((a) => (
                   <SelectItem key={a.id} value={a.id}>
                     {a.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Estrategia</Label>
+            <Select value={strategyId} onValueChange={setStrategyId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Selecciona" />
+              </SelectTrigger>
+              <SelectContent>
+                {strategies.map((s) => (
+                  <SelectItem key={s.id} value={s.id}>
+                    {s.name}
                   </SelectItem>
                 ))}
               </SelectContent>

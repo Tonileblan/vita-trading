@@ -11,8 +11,11 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as CuentasRouteImport } from './routes/cuentas'
+import { Route as EscaladoRouteImport } from './routes/escalado'
+import { Route as EstrategiasRouteImport } from './routes/estrategias'
 import { Route as IntegracionesRouteImport } from './routes/integraciones'
 import { Route as OperacionesRouteImport } from './routes/operaciones'
+import { Route as RetirosRouteImport } from './routes/retiros'
 import { Route as ApiPublicTradesWebhookRouteImport } from './routes/api/public/trades.webhook'
 
 const IndexRoute = IndexRouteImport.update({
@@ -25,6 +28,16 @@ const CuentasRoute = CuentasRouteImport.update({
   path: '/cuentas',
   getParentRoute: () => rootRouteImport,
 } as any)
+const EscaladoRoute = EscaladoRouteImport.update({
+  id: '/escalado',
+  path: '/escalado',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EstrategiasRoute = EstrategiasRouteImport.update({
+  id: '/estrategias',
+  path: '/estrategias',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IntegracionesRoute = IntegracionesRouteImport.update({
   id: '/integraciones',
   path: '/integraciones',
@@ -33,6 +46,11 @@ const IntegracionesRoute = IntegracionesRouteImport.update({
 const OperacionesRoute = OperacionesRouteImport.update({
   id: '/operaciones',
   path: '/operaciones',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RetirosRoute = RetirosRouteImport.update({
+  id: '/retiros',
+  path: '/retiros',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiPublicTradesWebhookRoute = ApiPublicTradesWebhookRouteImport.update({
@@ -44,23 +62,32 @@ const ApiPublicTradesWebhookRoute = ApiPublicTradesWebhookRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/cuentas': typeof CuentasRoute
+  '/escalado': typeof EscaladoRoute
+  '/estrategias': typeof EstrategiasRoute
   '/integraciones': typeof IntegracionesRoute
   '/operaciones': typeof OperacionesRoute
+  '/retiros': typeof RetirosRoute
   '/api/public/trades/webhook': typeof ApiPublicTradesWebhookRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/cuentas': typeof CuentasRoute
+  '/escalado': typeof EscaladoRoute
+  '/estrategias': typeof EstrategiasRoute
   '/integraciones': typeof IntegracionesRoute
   '/operaciones': typeof OperacionesRoute
+  '/retiros': typeof RetirosRoute
   '/api/public/trades/webhook': typeof ApiPublicTradesWebhookRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/cuentas': typeof CuentasRoute
+  '/escalado': typeof EscaladoRoute
+  '/estrategias': typeof EstrategiasRoute
   '/integraciones': typeof IntegracionesRoute
   '/operaciones': typeof OperacionesRoute
+  '/retiros': typeof RetirosRoute
   '/api/public/trades/webhook': typeof ApiPublicTradesWebhookRoute
 }
 export interface FileRouteTypes {
@@ -68,30 +95,42 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/cuentas'
+    | '/escalado'
+    | '/estrategias'
     | '/integraciones'
     | '/operaciones'
+    | '/retiros'
     | '/api/public/trades/webhook'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/cuentas'
+    | '/escalado'
+    | '/estrategias'
     | '/integraciones'
     | '/operaciones'
+    | '/retiros'
     | '/api/public/trades/webhook'
   id:
     | '__root__'
     | '/'
     | '/cuentas'
+    | '/escalado'
+    | '/estrategias'
     | '/integraciones'
     | '/operaciones'
+    | '/retiros'
     | '/api/public/trades/webhook'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   CuentasRoute: typeof CuentasRoute
+  EscaladoRoute: typeof EscaladoRoute
+  EstrategiasRoute: typeof EstrategiasRoute
   IntegracionesRoute: typeof IntegracionesRoute
   OperacionesRoute: typeof OperacionesRoute
+  RetirosRoute: typeof RetirosRoute
   ApiPublicTradesWebhookRoute: typeof ApiPublicTradesWebhookRoute
 }
 
@@ -111,6 +150,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CuentasRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/escalado': {
+      id: '/escalado'
+      path: '/escalado'
+      fullPath: '/escalado'
+      preLoaderRoute: typeof EscaladoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/estrategias': {
+      id: '/estrategias'
+      path: '/estrategias'
+      fullPath: '/estrategias'
+      preLoaderRoute: typeof EstrategiasRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/integraciones': {
       id: '/integraciones'
       path: '/integraciones'
@@ -123,6 +176,13 @@ declare module '@tanstack/react-router' {
       path: '/operaciones'
       fullPath: '/operaciones'
       preLoaderRoute: typeof OperacionesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/retiros': {
+      id: '/retiros'
+      path: '/retiros'
+      fullPath: '/retiros'
+      preLoaderRoute: typeof RetirosRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/trades/webhook': {
@@ -138,8 +198,11 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CuentasRoute: CuentasRoute,
+  EscaladoRoute: EscaladoRoute,
+  EstrategiasRoute: EstrategiasRoute,
   IntegracionesRoute: IntegracionesRoute,
   OperacionesRoute: OperacionesRoute,
+  RetirosRoute: RetirosRoute,
   ApiPublicTradesWebhookRoute: ApiPublicTradesWebhookRoute,
 }
 export const routeTree = rootRouteImport

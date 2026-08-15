@@ -4,6 +4,9 @@ import {
   Wallet,
   ListOrdered,
   Webhook,
+  Layers,
+  Banknote,
+  TrendingUp,
   CandlestickChart,
 } from "lucide-react";
 import type { ReactNode } from "react";
@@ -13,7 +16,10 @@ import { AccountSidePanel } from "./account-side-panel";
 const nav = [
   { to: "/", label: "Overview", icon: LayoutDashboard },
   { to: "/cuentas", label: "Cuentas", icon: Wallet },
+  { to: "/estrategias", label: "Estrategias", icon: Layers },
   { to: "/operaciones", label: "Operaciones", icon: ListOrdered },
+  { to: "/retiros", label: "Retiros", icon: Banknote },
+  { to: "/escalado", label: "Escalado", icon: TrendingUp },
   { to: "/integraciones", label: "Integraciones", icon: Webhook },
 ];
 

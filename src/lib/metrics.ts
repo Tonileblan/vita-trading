@@ -103,3 +103,84 @@ export function filterByRange(trades: Trade[], range: "7d" | "30d" | "90d" | "al
 export function accountsStartBalance(accounts: Account[]) {
   return accounts.reduce((s, a) => s + a.initialBalance, 0);
 }
+
+import type { Strategy, Withdrawal } from "./types";
+
+export interface StrategyStats {
+  strategy: Strategy;
+  net: number;
+  withdrawn: number;
+  currentCapital: number;
+  trades: number;
+  winRate: number;
+  profitFactor: number;
+  returnPct: number;
+  expectancy: number;
+  riskPerTrade: number;
+}
+
+export function computeStrategyStats(
+  strategy: Strategy,
+  trades: Trade[],
+  withdrawals: Withdrawal[],
+): StrategyStats {
+  const own = trades.filter((t) => t.strategyId === strategy.id);
+  const m = computeMetrics(own);
+  const withdrawn = withdrawals
+    .filter((w) => w.strategyId === strategy.id)
+    .reduce((s, w) => s + w.amount, 0);
+  const currentCapital = strategy.initialCapital + m.totalPnl - withdrawn;
+  return {
+    strategy,
+    net: m.totalPnl,
+    withdrawn,
+    currentCapital,
+    trades: m.total,
+    winRate: m.winRate,
+    profitFactor: m.profitFactor,
+    returnPct: strategy.initialCapital ? (m.totalPnl / strategy.initialCapital) * 100 : 0,
+    expectancy: m.total ? m.totalPnl / m.total : 0,
+    riskPerTrade: currentCapital * strategy.riskPct,
+  };
+}
+
+const MONTHS = [
+  "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+  "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre",
+];
+
+export function monthlyNet(trades: Trade[], startCapital: number) {
+  const nets = new Array(12).fill(0) as number[];
+  for (const t of trades) {
+    const i = new Date(t.closedAt).getUTCMonth();
+    nets[i] = (nets[i] ?? 0) + t.pnl;
+  }
+  let acc = 0;
+  return nets.map((net, i) => {
+    acc += net;
+    return { month: MONTHS[i]!, net, acc, capital: startCapital + acc };
+  });
+}
+
+/** Plan de escalado: cuántos contratos soporta el capital manteniendo el % de riesgo. */
+export function scalingPlan(
+  capital: number,
+  riskPct: number,
+  stopPoints: number,
+  pointValue: number,
+  levels = 6,
+) {
+  const riskPerContract = stopPoints * pointValue;
+  const rows = [];
+  for (let contracts = 1; contracts <= levels; contracts++) {
+    const capitalNeeded = riskPerContract * contracts / riskPct;
+    rows.push({
+      contracts,
+      capitalNeeded,
+      riskAmount: riskPerContract * contracts,
+      unlocked: capital >= capitalNeeded,
+      missing: Math.max(0, capitalNeeded - capital),
+    });
+  }
+  return rows;
+}
