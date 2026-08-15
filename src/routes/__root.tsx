@@ -81,13 +81,13 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "TONITRADING — Bitácora de Trading" },
+      { title: "Vita-Trading — Bitácora de Trading" },
       {
         name: "description",
         content:
           "Bitácora de trading con métricas, curva de capital y gestión de cuentas de fondeo.",
       },
-      { property: "og:title", content: "TONITRADING — Bitácora de Trading" },
+      { property: "og:title", content: "Vita-Trading — Bitácora de Trading" },
       {
         property: "og:description",
         content: "Registra operaciones, analiza métricas y automatiza con webhooks.",

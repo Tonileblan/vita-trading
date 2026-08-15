@@ -18,13 +18,13 @@ import { cn } from "@/lib/utils";
 export const Route = createFileRoute("/_authenticated/panel")({
   head: () => ({
     meta: [
-      { title: "Overview — TONITRADING Journal" },
+      { title: "Overview — Vita-Trading Journal" },
       {
         name: "description",
         content:
           "Dashboard de bitácora de trading: win rate, PnL, profit factor y curva de capital por cuenta.",
       },
-      { property: "og:title", content: "Overview — TONITRADING Journal" },
+      { property: "og:title", content: "Overview — Vita-Trading Journal" },
       {
         property: "og:description",
         content: "Consolida tus cuentas de fondeo y personales en un único panel de métricas.",
