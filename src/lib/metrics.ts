@@ -112,6 +112,72 @@ export function accountBalance(account: Account, trades: Trade[]) {
   return account.initialBalance + accountPnl(trades, account.id);
 }
 
+export interface DrawdownStatus {
+  type: NonNullable<Account["drawdownType"]>;
+  label: string;
+  limit: number;
+  /** Balance mínimo permitido antes de romper la cuenta. */
+  floor: number;
+  /** Referencia sobre la que se calcula el suelo (inicial o máximo alcanzado). */
+  reference: number;
+  balance: number;
+  used: number;
+  remaining: number;
+  pct: number;
+  breached: boolean;
+}
+
+const DD_LABELS: Record<NonNullable<Account["drawdownType"]>, string> = {
+  static: "Estático",
+  trailing: "Dinámico (trailing)",
+  eod: "Dinámico a cierre (EOD)",
+};
+
+/** Calcula el estado de drawdown según el tipo configurado en la cuenta. */
+export function accountDrawdown(account: Account, trades: Trade[]): DrawdownStatus | null {
+  const limit = account.drawdownLimit ?? 0;
+  const type = account.drawdownType ?? "static";
+  if (!limit) return null;
+
+  const own = trades
+    .filter((t) => t.accountId === account.id)
+    .sort((a, b) => new Date(a.closedAt).getTime() - new Date(b.closedAt).getTime());
+
+  let running = account.initialBalance;
+  let peak = account.initialBalance;
+  const eodBalances = new Map<string, number>();
+  for (const t of own) {
+    running += t.pnl;
+    peak = Math.max(peak, running);
+    eodBalances.set(t.closedAt.slice(0, 10), running);
+  }
+  const balance = running;
+
+  let reference = account.initialBalance;
+  if (type === "trailing") reference = peak;
+  if (type === "eod") {
+    const days = [...eodBalances.entries()].sort(([a], [b]) => (a < b ? -1 : 1));
+    // el máximo de cierres diarios ya consolidados (excluye el día en curso)
+    const closed = days.slice(0, Math.max(0, days.length - 1)).map(([, v]) => v);
+    reference = Math.max(account.initialBalance, ...closed);
+  }
+
+  const floor = reference - limit;
+  const used = Math.max(0, reference - balance);
+  return {
+    type,
+    label: DD_LABELS[type],
+    limit,
+    floor,
+    reference,
+    balance,
+    used,
+    remaining: Math.max(0, balance - floor),
+    pct: Math.min(100, (used / limit) * 100),
+    breached: balance <= floor,
+  };
+}
+
 export function accountsStartBalance(accounts: Account[]) {
   return accounts.reduce((s, a) => s + a.initialBalance, 0);
 }
