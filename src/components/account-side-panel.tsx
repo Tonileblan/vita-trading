@@ -48,8 +48,9 @@ export function AccountSidePanel() {
               </div>
               <div className="mt-1 flex items-center justify-between">
                 <span className="num text-xs text-muted-foreground">
-                  {formatCurrency(acc.currentBalance)}
+                  {formatCurrency(balance)}
                 </span>
+
                 <span
                   className={cn(
                     "num text-xs font-semibold",
