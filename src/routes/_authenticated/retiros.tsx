@@ -134,21 +134,6 @@ function RetirosPage() {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>Estrategia</Label>
-              <Select value={strategyId} onValueChange={setStrategyId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecciona" />
-                </SelectTrigger>
-                <SelectContent>
-                  {strategies.map((s) => (
-                    <SelectItem key={s.id} value={s.id}>
-                      {s.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
               <Label>Fecha</Label>
               <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
             </div>
