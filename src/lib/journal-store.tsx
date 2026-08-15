@@ -338,6 +338,20 @@ export function JournalProvider({ children }: { children: ReactNode }) {
         if (error) throw error;
         await refresh();
       },
+      restoreDefaultStrategies: async () => {
+        const base = await ownerFields();
+        if (!base.user_id) return;
+        // Omite las estrategias por defecto que ya existan (por nombre) para no duplicar.
+        const existing = new Set(data.strategies.map((s) => s.name));
+        const rows = mockStrategies
+          .filter((s) => !existing.has(s.name))
+          .map((s) => ({ ...fromStrategy(s), ...base } as never));
+        if (rows.length > 0) {
+          const { error } = await supabase.from("strategies").insert(rows);
+          if (error) throw error;
+        }
+        await refresh();
+      },
     };
   }, [data, isLoading, selectedAccountIds, activeJournalId, setActiveJournalId, ownerFields, refresh]);
 
