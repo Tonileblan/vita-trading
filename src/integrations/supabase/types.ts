@@ -133,6 +133,7 @@ export type Database = {
           created_at: string
           display_name: string | null
           id: string
+          is_private: boolean
           updated_at: string
         }
         Insert: {
@@ -140,6 +141,7 @@ export type Database = {
           created_at?: string
           display_name?: string | null
           id: string
+          is_private?: boolean
           updated_at?: string
         }
         Update: {
@@ -147,6 +149,7 @@ export type Database = {
           created_at?: string
           display_name?: string | null
           id?: string
+          is_private?: boolean
           updated_at?: string
         }
         Relationships: []
@@ -404,6 +407,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_private_user: { Args: { _user_id: string }; Returns: boolean }
       is_supervisor: { Args: { _user_id: string }; Returns: boolean }
     }
     Enums: {
