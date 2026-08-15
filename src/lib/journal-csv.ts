@@ -14,6 +14,7 @@ export const FULL_COLUMNS = [
   "firma",
   "balance_inicial",
   "limite_drawdown",
+  "tipo_drawdown",
   "capital_inicial",
   "riesgo_pct",
   "simbolo_principal",
@@ -162,6 +163,7 @@ async function journalRows(j: Journal): Promise<CsvRow[]> {
       firma: a.firm ?? "",
       balance_inicial: a.initialBalance,
       limite_drawdown: a.drawdownLimit ?? "",
+      tipo_drawdown: a.drawdownType ?? "static",
     });
   }
   for (const s of data.strategies) {
@@ -416,6 +418,9 @@ export async function importJournalCsv(
           initial_balance: num(at(r, "balance_inicial")),
           current_balance: num(at(r, "balance_inicial")),
           drawdown_limit: at(r, "limite_drawdown") ? num(at(r, "limite_drawdown")) : null,
+          drawdown_type: ["static", "trailing", "eod"].includes(at(r, "tipo_drawdown"))
+            ? at(r, "tipo_drawdown")
+            : "static",
           currency: at(r, "moneda") || "USD",
         } as never)
         .select("id")
