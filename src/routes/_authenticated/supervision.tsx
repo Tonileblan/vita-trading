@@ -13,15 +13,29 @@ import type { Trade } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/supervision")({
+  beforeLoad: async () => {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) throw redirect({ to: "/auth" });
+    const { data: roles } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", user.id);
+    const list = (roles ?? []).map((r) => r.role as string);
+    if (!list.includes("admin") && !list.includes("supervisor")) {
+      throw redirect({ to: "/panel" });
+    }
+  },
   head: () => ({
     meta: [
-      { title: "Supervisión — Bitácora de Trading" },
+      { title: "Supervisión — Vita-Trading" },
       {
         name: "description",
         content:
           "Resumen de resultados de cada usuario y chat interno privado entre supervisor y trader.",
       },
-      { property: "og:title", content: "Supervisión — Bitácora de Trading" },
+      { property: "og:title", content: "Supervisión — Vita-Trading" },
       {
         property: "og:description",
         content: "Métricas por usuario y comentarios privados en un solo lugar.",
