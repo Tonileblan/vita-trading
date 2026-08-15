@@ -28,6 +28,9 @@ function toAccount(r: Row): Account {
     initialBalance: Number(r["initial_balance"] ?? 0),
     currentBalance: Number(r["current_balance"] ?? 0),
     drawdownLimit: r["drawdown_limit"] == null ? undefined : Number(r["drawdown_limit"]),
+    drawdownType: (["static", "trailing", "eod"].includes(String(r["drawdown_type"]))
+      ? String(r["drawdown_type"])
+      : "static") as Account["drawdownType"],
     currency: String(r["currency"] ?? "USD"),
   };
 }
@@ -40,6 +43,7 @@ function fromAccount(a: Partial<Omit<Account, "id">>): Row {
   if (a.initialBalance !== undefined) out["initial_balance"] = a.initialBalance;
   if (a.currentBalance !== undefined) out["current_balance"] = a.currentBalance;
   if (a.drawdownLimit !== undefined) out["drawdown_limit"] = a.drawdownLimit ?? null;
+  if (a.drawdownType !== undefined) out["drawdown_type"] = a.drawdownType ?? "static";
   if (a.currency !== undefined) out["currency"] = a.currency;
   return out;
 }
