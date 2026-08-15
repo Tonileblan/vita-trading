@@ -24,6 +24,7 @@ import {
 } from "@/lib/journals";
 import { useJournal } from "@/lib/journal-store";
 import { exportAllJournalsCsv, exportJournalCsv, importJournalCsv } from "@/lib/journal-csv";
+import { createExampleJournal } from "@/lib/example-journal";
 import { useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
 
