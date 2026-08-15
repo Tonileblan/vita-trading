@@ -333,6 +333,7 @@ export type Database = {
       }
       withdrawals: {
         Row: {
+          account_id: string | null
           amount: number
           created_at: string
           date: string
@@ -344,6 +345,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          account_id?: string | null
           amount?: number
           created_at?: string
           date?: string
@@ -355,6 +357,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          account_id?: string | null
           amount?: number
           created_at?: string
           date?: string
@@ -366,6 +369,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "withdrawals_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "withdrawals_journal_id_fkey"
             columns: ["journal_id"]
