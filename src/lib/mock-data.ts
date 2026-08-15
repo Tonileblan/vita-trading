@@ -1,4 +1,16 @@
-import type { Account, Trade } from "./types";
+import type { Account, Strategy, Trade, Withdrawal } from "./types";
+
+export const mockStrategies: Strategy[] = [
+  { id: "str-indices", name: "Método Índices", initialCapital: 10000, riskPct: 0.03, mainSymbol: "MNQ", color: "var(--brand)" },
+  { id: "str-fondeo", name: "Plan de Fondeo", initialCapital: 10000, riskPct: 0.03, mainSymbol: "MNQ", color: "var(--profit)" },
+  { id: "str-oro", name: "Sesión Oro", initialCapital: 10000, riskPct: 0.03, mainSymbol: "MGC", color: "var(--warning, #eab308)" },
+  { id: "str-asia", name: "Sesión Asia", initialCapital: 10000, riskPct: 0.025, mainSymbol: "MNQ", color: "var(--brand-soft)" },
+];
+
+export const mockWithdrawals: Withdrawal[] = [
+  { id: "wd-1", strategyId: "str-fondeo", date: "2026-06-05T00:00:00.000Z", amount: 1200, reason: "Payout mensual" },
+  { id: "wd-2", strategyId: "str-indices", date: "2026-07-02T00:00:00.000Z", amount: 800, reason: "Retiro de beneficios" },
+];
 
 export const mockAccounts: Account[] = [
   {
@@ -99,6 +111,7 @@ function buildTrades(): Trade[] {
     trades.push({
       id: `trd-${1000 + i}`,
       accountId: account.id,
+      strategyId: mockStrategies[i % mockStrategies.length]!.id,
       symbol,
       direction,
       openedAt,
