@@ -161,13 +161,17 @@ export function AppShell({
         </div>
       </header>
 
-      <main className="mx-auto max-w-4xl px-4 py-6">
-        <div className="mb-6 flex flex-wrap items-end justify-between gap-3 border-b border-border pb-4">
-          <div>
-            <h1 className="text-3xl leading-none">{title}</h1>
+      <main className="mx-auto max-w-4xl px-4 py-5 sm:py-6">
+        <div className="mb-5 flex flex-col gap-3 border-b border-border pb-4 sm:mb-6 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
+          <div className="min-w-0">
+            <h1 className="text-2xl leading-none sm:text-3xl">{title}</h1>
             {subtitle && <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p>}
           </div>
-          {actions && <div className="flex items-center gap-2">{actions}</div>}
+          {actions && (
+            <div className="flex flex-wrap items-center gap-2 [&>*]:flex-1 sm:[&>*]:flex-none">
+              {actions}
+            </div>
+          )}
         </div>
         <div className="space-y-6">{children}</div>
       </main>
