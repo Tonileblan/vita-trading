@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { Building2, Plus, User } from "lucide-react";
+import { Building2, Pencil, Plus, Trash2, User } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/select";
 import { useJournal } from "@/lib/journal-store";
 import { computeMetrics, formatCurrency } from "@/lib/metrics";
-import { PROP_FIRMS, type AccountType } from "@/lib/types";
+import { PROP_FIRMS, type Account, type AccountType } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/cuentas")({
@@ -45,45 +45,67 @@ export const Route = createFileRoute("/_authenticated/cuentas")({
   component: AccountsPage,
 });
 
-function NewAccountDialog() {
-  const { addAccount } = useJournal();
+function AccountDialog({ account, trigger }: { account?: Account; trigger: React.ReactNode }) {
+  const { addAccount, updateAccount, removeAccount } = useJournal();
+  const editing = Boolean(account);
   const [open, setOpen] = useState(false);
-  const [type, setType] = useState<AccountType>("funded");
-  const [name, setName] = useState("");
-  const [firm, setFirm] = useState(PROP_FIRMS[0]!);
-  const [initial, setInitial] = useState("50000");
-  const [current, setCurrent] = useState("50000");
-  const [dd, setDd] = useState("2500");
+  const [type, setType] = useState<AccountType>(account?.type ?? "funded");
+  const [name, setName] = useState(account?.name ?? "");
+  const [firm, setFirm] = useState(account?.firm ?? PROP_FIRMS[0]!);
+  const [initial, setInitial] = useState(String(account?.initialBalance ?? 50000));
+  const [current, setCurrent] = useState(String(account?.currentBalance ?? 50000));
+  const [dd, setDd] = useState(String(account?.drawdownLimit ?? 2500));
+
+  const onOpenChange = (v: boolean) => {
+    setOpen(v);
+    if (v && account) {
+      setType(account.type);
+      setName(account.name);
+      setFirm(account.firm ?? PROP_FIRMS[0]!);
+      setInitial(String(account.initialBalance));
+      setCurrent(String(account.currentBalance));
+      setDd(String(account.drawdownLimit ?? 0));
+    }
+  };
 
   const submit = () => {
     if (!name.trim()) {
       toast.error("Añade un nombre de cuenta");
       return;
     }
-    addAccount({
+    const payload = {
       name: name.trim(),
       type,
       firm: type === "funded" ? firm : undefined,
       initialBalance: Number(initial) || 0,
       currentBalance: Number(current) || Number(initial) || 0,
       drawdownLimit: type === "funded" ? Number(dd) || 0 : undefined,
-      currency: "USD",
-    });
-    toast.success("Cuenta creada");
+      currency: account?.currency ?? "USD",
+    };
+    if (account) {
+      updateAccount(account.id, payload);
+      toast.success("Cuenta actualizada");
+    } else {
+      addAccount(payload);
+      toast.success("Cuenta creada");
+      setName("");
+    }
     setOpen(false);
-    setName("");
+  };
+
+  const remove = () => {
+    if (!account) return;
+    removeAccount(account.id);
+    toast.success("Cuenta eliminada");
+    setOpen(false);
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button>
-          <Plus className="size-4" /> Nueva cuenta
-        </Button>
-      </DialogTrigger>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Crear cuenta</DialogTitle>
+          <DialogTitle>{editing ? "Editar cuenta" : "Crear cuenta"}</DialogTitle>
           <DialogDescription>Elige el tipo y define los parámetros de riesgo.</DialogDescription>
         </DialogHeader>
 
@@ -158,11 +180,20 @@ function NewAccountDialog() {
           )}
         </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={() => setOpen(false)}>
-            Cancelar
-          </Button>
-          <Button onClick={submit}>Crear cuenta</Button>
+        <DialogFooter className="sm:justify-between">
+          {editing ? (
+            <Button variant="destructive" onClick={remove}>
+              <Trash2 className="size-4" /> Eliminar
+            </Button>
+          ) : (
+            <span />
+          )}
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setOpen(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={submit}>{editing ? "Guardar cambios" : "Crear cuenta"}</Button>
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -191,14 +222,24 @@ function AccountsPage() {
               {acc.firm ?? "Cuenta personal"} · {acc.currency}
             </p>
           </div>
-          <span
-            className={cn(
-              "num rounded-md px-2 py-1 text-sm font-bold",
-              pnl >= 0 ? "bg-profit/15 text-profit" : "bg-loss/15 text-loss",
-            )}
-          >
-            {formatCurrency(pnl, true)}
-          </span>
+          <div className="flex items-center gap-2">
+            <span
+              className={cn(
+                "num rounded-md px-2 py-1 text-sm font-bold",
+                pnl >= 0 ? "bg-profit/15 text-profit" : "bg-loss/15 text-loss",
+              )}
+            >
+              {formatCurrency(pnl, true)}
+            </span>
+            <AccountDialog
+              account={acc}
+              trigger={
+                <Button variant="ghost" size="icon" aria-label={`Editar ${acc.name}`}>
+                  <Pencil className="size-4" />
+                </Button>
+              }
+            />
+          </div>
         </div>
 
         <div className="mt-4 grid grid-cols-3 gap-3 text-sm">
@@ -245,7 +286,15 @@ function AccountsPage() {
     <AppShell
       title="Gestión de Cuentas"
       subtitle="Cuentas de fondeo y personales"
-      actions={<NewAccountDialog />}
+      actions={
+        <AccountDialog
+          trigger={
+            <Button>
+              <Plus className="size-4" /> Nueva cuenta
+            </Button>
+          }
+        />
+      }
     >
       <div className="space-y-8">
         <section className="space-y-3">
