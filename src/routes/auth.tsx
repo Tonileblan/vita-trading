@@ -48,7 +48,10 @@ function AuthPage() {
     setBusy(true);
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     setBusy(false);
-    if (error) return toast.error(error.message);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
     navigate({ to: "/panel", replace: true });
   }
 
@@ -64,7 +67,10 @@ function AuthPage() {
       },
     });
     setBusy(false);
-    if (error) return toast.error(error.message);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
     if (!data.session) {
       setPendingConfirm(true);
       toast.success("Revisa tu correo para confirmar la cuenta");
@@ -80,7 +86,8 @@ function AuthPage() {
     });
     if (result.error) {
       setBusy(false);
-      return toast.error("No se pudo iniciar sesión con Google");
+      toast.error("No se pudo iniciar sesión con Google");
+      return;
     }
     if (result.redirected) return;
     navigate({ to: "/panel", replace: true });

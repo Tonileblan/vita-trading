@@ -9,6 +9,9 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
+import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedCuentasRouteImport } from './routes/_authenticated/cuentas'
 import { Route as AuthenticatedEscaladoRouteImport } from './routes/_authenticated/escalado'
 import { Route as AuthenticatedEstrategiasRouteImport } from './routes/_authenticated/estrategias'
@@ -18,43 +21,57 @@ import { Route as AuthenticatedPanelRouteImport } from './routes/_authenticated/
 import { Route as AuthenticatedRetirosRouteImport } from './routes/_authenticated/retiros'
 import { Route as ApiPublicTradesWebhookRouteImport } from './routes/api/public/trades.webhook'
 
-const AuthenticatedCuentasRoute = AuthenticatedCuentasRouteImport.update({
-  id: '/_authenticated/cuentas',
-  path: '/cuentas',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AuthenticatedEscaladoRoute = AuthenticatedEscaladoRouteImport.update({
-  id: '/_authenticated/escalado',
-  path: '/escalado',
+const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
+  id: '/_authenticated',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedCuentasRoute = AuthenticatedCuentasRouteImport.update({
+  id: '/cuentas',
+  path: '/cuentas',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedEscaladoRoute = AuthenticatedEscaladoRouteImport.update({
+  id: '/escalado',
+  path: '/escalado',
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedEstrategiasRoute =
   AuthenticatedEstrategiasRouteImport.update({
-    id: '/_authenticated/estrategias',
+    id: '/estrategias',
     path: '/estrategias',
-    getParentRoute: () => rootRouteImport,
+    getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedIntegracionesRoute =
   AuthenticatedIntegracionesRouteImport.update({
-    id: '/_authenticated/integraciones',
+    id: '/integraciones',
     path: '/integraciones',
-    getParentRoute: () => rootRouteImport,
+    getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedOperacionesRoute =
   AuthenticatedOperacionesRouteImport.update({
-    id: '/_authenticated/operaciones',
+    id: '/operaciones',
     path: '/operaciones',
-    getParentRoute: () => rootRouteImport,
+    getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedPanelRoute = AuthenticatedPanelRouteImport.update({
-  id: '/_authenticated/panel',
+  id: '/panel',
   path: '/panel',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedRetirosRoute = AuthenticatedRetirosRouteImport.update({
-  id: '/_authenticated/retiros',
+  id: '/retiros',
   path: '/retiros',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const ApiPublicTradesWebhookRoute = ApiPublicTradesWebhookRouteImport.update({
   id: '/api/public/trades/webhook',
@@ -63,6 +80,8 @@ const ApiPublicTradesWebhookRoute = ApiPublicTradesWebhookRouteImport.update({
 } as any)
 
 export interface FileRoutesByFullPath {
+  '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
   '/cuentas': typeof AuthenticatedCuentasRoute
   '/escalado': typeof AuthenticatedEscaladoRoute
   '/estrategias': typeof AuthenticatedEstrategiasRoute
@@ -73,6 +92,8 @@ export interface FileRoutesByFullPath {
   '/api/public/trades/webhook': typeof ApiPublicTradesWebhookRoute
 }
 export interface FileRoutesByTo {
+  '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
   '/cuentas': typeof AuthenticatedCuentasRoute
   '/escalado': typeof AuthenticatedEscaladoRoute
   '/estrategias': typeof AuthenticatedEstrategiasRoute
@@ -84,6 +105,9 @@ export interface FileRoutesByTo {
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
+  '/': typeof IndexRoute
+  '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
+  '/auth': typeof AuthRoute
   '/_authenticated/cuentas': typeof AuthenticatedCuentasRoute
   '/_authenticated/escalado': typeof AuthenticatedEscaladoRoute
   '/_authenticated/estrategias': typeof AuthenticatedEstrategiasRoute
@@ -96,6 +120,8 @@ export interface FileRoutesById {
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
+    | '/'
+    | '/auth'
     | '/cuentas'
     | '/escalado'
     | '/estrategias'
@@ -106,6 +132,8 @@ export interface FileRouteTypes {
     | '/api/public/trades/webhook'
   fileRoutesByTo: FileRoutesByTo
   to:
+    | '/'
+    | '/auth'
     | '/cuentas'
     | '/escalado'
     | '/estrategias'
@@ -116,6 +144,9 @@ export interface FileRouteTypes {
     | '/api/public/trades/webhook'
   id:
     | '__root__'
+    | '/'
+    | '/_authenticated'
+    | '/auth'
     | '/_authenticated/cuentas'
     | '/_authenticated/escalado'
     | '/_authenticated/estrategias'
@@ -127,66 +158,83 @@ export interface FileRouteTypes {
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-  AuthenticatedCuentasRoute: typeof AuthenticatedCuentasRoute
-  AuthenticatedEscaladoRoute: typeof AuthenticatedEscaladoRoute
-  AuthenticatedEstrategiasRoute: typeof AuthenticatedEstrategiasRoute
-  AuthenticatedIntegracionesRoute: typeof AuthenticatedIntegracionesRoute
-  AuthenticatedOperacionesRoute: typeof AuthenticatedOperacionesRoute
-  AuthenticatedPanelRoute: typeof AuthenticatedPanelRoute
-  AuthenticatedRetirosRoute: typeof AuthenticatedRetirosRoute
+  IndexRoute: typeof IndexRoute
+  AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
+  AuthRoute: typeof AuthRoute
   ApiPublicTradesWebhookRoute: typeof ApiPublicTradesWebhookRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated': {
+      id: '/_authenticated'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AuthenticatedRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authenticated/cuentas': {
       id: '/_authenticated/cuentas'
       path: '/cuentas'
       fullPath: '/cuentas'
       preLoaderRoute: typeof AuthenticatedCuentasRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/escalado': {
       id: '/_authenticated/escalado'
       path: '/escalado'
       fullPath: '/escalado'
       preLoaderRoute: typeof AuthenticatedEscaladoRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/estrategias': {
       id: '/_authenticated/estrategias'
       path: '/estrategias'
       fullPath: '/estrategias'
       preLoaderRoute: typeof AuthenticatedEstrategiasRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/integraciones': {
       id: '/_authenticated/integraciones'
       path: '/integraciones'
       fullPath: '/integraciones'
       preLoaderRoute: typeof AuthenticatedIntegracionesRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/operaciones': {
       id: '/_authenticated/operaciones'
       path: '/operaciones'
       fullPath: '/operaciones'
       preLoaderRoute: typeof AuthenticatedOperacionesRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/panel': {
       id: '/_authenticated/panel'
       path: '/panel'
       fullPath: '/panel'
       preLoaderRoute: typeof AuthenticatedPanelRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/retiros': {
       id: '/_authenticated/retiros'
       path: '/retiros'
       fullPath: '/retiros'
       preLoaderRoute: typeof AuthenticatedRetirosRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/api/public/trades/webhook': {
       id: '/api/public/trades/webhook'
@@ -198,7 +246,17 @@ declare module '@tanstack/react-router' {
   }
 }
 
-const rootRouteChildren: RootRouteChildren = {
+interface AuthenticatedRouteRouteChildren {
+  AuthenticatedCuentasRoute: typeof AuthenticatedCuentasRoute
+  AuthenticatedEscaladoRoute: typeof AuthenticatedEscaladoRoute
+  AuthenticatedEstrategiasRoute: typeof AuthenticatedEstrategiasRoute
+  AuthenticatedIntegracionesRoute: typeof AuthenticatedIntegracionesRoute
+  AuthenticatedOperacionesRoute: typeof AuthenticatedOperacionesRoute
+  AuthenticatedPanelRoute: typeof AuthenticatedPanelRoute
+  AuthenticatedRetirosRoute: typeof AuthenticatedRetirosRoute
+}
+
+const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedCuentasRoute: AuthenticatedCuentasRoute,
   AuthenticatedEscaladoRoute: AuthenticatedEscaladoRoute,
   AuthenticatedEstrategiasRoute: AuthenticatedEstrategiasRoute,
@@ -206,6 +264,15 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedOperacionesRoute: AuthenticatedOperacionesRoute,
   AuthenticatedPanelRoute: AuthenticatedPanelRoute,
   AuthenticatedRetirosRoute: AuthenticatedRetirosRoute,
+}
+
+const AuthenticatedRouteRouteWithChildren =
+  AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
+
+const rootRouteChildren: RootRouteChildren = {
+  IndexRoute: IndexRoute,
+  AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
+  AuthRoute: AuthRoute,
   ApiPublicTradesWebhookRoute: ApiPublicTradesWebhookRoute,
 }
 export const routeTree = rootRouteImport
