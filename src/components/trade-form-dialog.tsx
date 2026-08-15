@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ImagePlus, Plus, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -22,7 +22,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useJournal } from "@/lib/journal-store";
-import { STRATEGY_TAGS, type Direction } from "@/lib/types";
+import { type Direction } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 const nowLocal = () => new Date().toISOString().slice(0, 16);
@@ -40,7 +40,7 @@ export function TradeFormDialog() {
   const [exitPrice, setExitPrice] = useState("");
   const [size, setSize] = useState("1");
   const [pnl, setPnl] = useState("");
-  const [tags, setTags] = useState<string[]>(["ICT"]);
+  const [tags, setTags] = useState<string[]>([]);
   const [notes, setNotes] = useState("");
   const [shots, setShots] = useState<string[]>([]);
   const [dragging, setDragging] = useState(false);
