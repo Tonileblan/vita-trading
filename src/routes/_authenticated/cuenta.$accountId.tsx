@@ -11,7 +11,9 @@ import {
   accountPnl,
   buildEquityCurve,
   computeMetrics,
-  formatCurrency,, accountDrawdown } from "@/lib/metrics";
+  formatCurrency,
+  accountDrawdown,
+} from "@/lib/metrics";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/cuenta/$accountId")({
