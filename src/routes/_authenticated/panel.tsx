@@ -2,7 +2,6 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { EquityChart } from "@/components/equity-chart";
-import { CapitalSplit } from "@/components/capital-split";
 import { KpiCards } from "@/components/kpi-cards";
 import { TradeFormDialog } from "@/components/trade-form-dialog";
 import { TradesTable } from "@/components/trades-table";
