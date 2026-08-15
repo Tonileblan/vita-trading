@@ -4,6 +4,7 @@ import { Search } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { Input } from "@/components/ui/input";
 import { TradeFormDialog } from "@/components/trade-form-dialog";
+import { TradeImportDialog } from "@/components/trade-import-dialog";
 import { TradesTable } from "@/components/trades-table";
 import { useJournal } from "@/lib/journal-store";
 import { computeMetrics, formatCurrency } from "@/lib/metrics";
@@ -48,7 +49,12 @@ function TradesPage() {
     <AppShell
       title="Registro de Operaciones"
       subtitle={`${filtered.length} operaciones · PnL ${formatCurrency(m.totalPnl, true)}`}
-      actions={<TradeFormDialog />}
+      actions={
+        <div className="flex flex-wrap gap-2">
+          <TradeImportDialog />
+          <TradeFormDialog />
+        </div>
+      }
     >
       <div className="space-y-4">
         <div className="flex flex-wrap items-center gap-3">
