@@ -66,13 +66,24 @@ export function KpiCards({ metrics }: { metrics: Metrics }) {
         label="Racha actual"
         value={
           metrics.streak.type === "none"
-            ? "—"
-            : `${metrics.streak.count} ${metrics.streak.type === "win" ? "ganadas" : "perdidas"}`
+            ? "Sin racha"
+            : `${metrics.streak.count} ${
+                metrics.streak.type === "win"
+                  ? metrics.streak.count === 1
+                    ? "ganada"
+                    : "ganadas"
+                  : metrics.streak.count === 1
+                    ? "perdida"
+                    : "perdidas"
+              }`
         }
         sub={`Mejor ${formatCurrency(metrics.bestTrade)} · Peor ${formatCurrency(metrics.worstTrade)}`}
-        icon={metrics.streak.type === "win" ? Flame : Snowflake}
-        tone={metrics.streak.type === "win" ? "profit" : "loss"}
+        icon={metrics.streak.type === "loss" ? Snowflake : Flame}
+        {...(metrics.streak.type !== "none"
+          ? { tone: metrics.streak.type === "win" ? ("profit" as const) : ("loss" as const) }
+          : {})}
       />
+
     </div>
   );
 }
