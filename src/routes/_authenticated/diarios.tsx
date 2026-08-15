@@ -57,6 +57,20 @@ function JournalsPage() {
   const [importTarget, setImportTarget] = useState<Journal | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
 
+  async function handleExample() {
+    setBusyId("example");
+    try {
+      const created = await createExampleJournal();
+      await qc.invalidateQueries({ queryKey: ["journals"] });
+      setActiveJournalId(created.id);
+      toast.success(`Diario de ejemplo creado con datos de muestra`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "No se pudo crear el diario de ejemplo");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
   async function handleExport(j: Journal) {
     setBusyId(j.id);
     try {
