@@ -59,6 +59,7 @@
   --font-display: "Bebas Neue", ui-sans-serif, system-ui, sans-serif;
   --font-sans: "Barlow", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "Barlow", ui-sans-serif, system-ui, sans-serif;
+  --font-hand: "Caveat", ui-sans-serif, system-ui, cursive;
 }
 
 :root {
