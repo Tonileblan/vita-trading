@@ -100,9 +100,22 @@ export function filterByRange(trades: Trade[], range: "7d" | "30d" | "90d" | "al
   return trades.filter((t) => new Date(t.closedAt).getTime() >= cutoff);
 }
 
+/** PnL acumulado de las operaciones de una cuenta. */
+export function accountPnl(trades: Trade[], accountId: string) {
+  return trades
+    .filter((t) => t.accountId === accountId)
+    .reduce((s, t) => s + t.pnl, 0);
+}
+
+/** Balance real = balance inicial + suma de las operaciones registradas. */
+export function accountBalance(account: Account, trades: Trade[]) {
+  return account.initialBalance + accountPnl(trades, account.id);
+}
+
 export function accountsStartBalance(accounts: Account[]) {
   return accounts.reduce((s, a) => s + a.initialBalance, 0);
 }
+
 
 import type { Strategy, Withdrawal } from "./types";
 
