@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo } from "react";
-import { Pencil, Plus } from "lucide-react";
+import { Layers, Pencil, Plus } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { MarketHours } from "@/components/market-hours";
 import { StrategyDialog } from "@/components/strategy-dialog";
@@ -35,7 +35,7 @@ function pct(v: number) {
 }
 
 function EstrategiasPage() {
-  const { strategies, trades, withdrawals } = useJournal();
+  const { strategies, trades, withdrawals, restoreDefaultStrategies } = useJournal();
 
   const stats = useMemo(
     () => strategies.map((s) => computeStrategyStats(s, trades, withdrawals)),
