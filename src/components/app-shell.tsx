@@ -117,62 +117,51 @@ export function AppShell({
   const pathname = useRouterState({ select: (s) => s.location.pathname });
 
   return (
-    <div className="flex min-h-screen bg-background">
-      <aside className="hidden w-60 shrink-0 flex-col border-r border-sidebar-border bg-sidebar lg:flex">
-        <div className="flex items-center gap-2 px-5 py-5">
-          <CandlestickChart className="size-6 text-brand" />
-          <span className="font-display text-lg font-bold tracking-tight">Trading Journal</span>
-        </div>
-        <nav className="flex flex-col gap-1 px-3">
-          {nav.map((item) => {
-            const active = pathname.startsWith(item.to);
-            return (
-              <Link
-                key={item.to}
-                to={item.to}
-                className={cn(
-                  "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
-                  active
-                    ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                    : "text-muted-foreground hover:bg-sidebar-accent/60 hover:text-foreground",
-                )}
-              >
-                <item.icon className="size-4" />
-                {item.label}
-              </Link>
-            );
-          })}
-        </nav>
-        {showAccountPanel && <AccountSidePanel />}
-      </aside>
-
-      <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-20 flex flex-wrap items-center justify-between gap-3 border-b border-border bg-background/85 px-5 py-4 backdrop-blur">
-          <div>
-            <h1 className="text-xl font-bold">{title}</h1>
-            {subtitle && <p className="text-sm text-muted-foreground">{subtitle}</p>}
-          </div>
+    <div className="min-h-screen bg-background">
+      <header className="border-b border-border bg-card">
+        <div className="mx-auto flex max-w-4xl flex-wrap items-center justify-between gap-3 px-4 py-3">
+          <Link to="/panel" className="flex items-center gap-2">
+            <CandlestickChart className="size-5" />
+            <span className="font-display text-2xl leading-none tracking-wide">Bitácora</span>
+          </Link>
           <div className="flex items-center gap-2">
             <JournalSwitcher />
-            {actions}
             <UserMenu />
           </div>
-        </header>
+        </div>
+        <div className="border-t border-border">
+          <nav className="mx-auto flex max-w-4xl gap-1 overflow-x-auto px-4 py-2">
+            {nav.map((item) => {
+              const active = pathname.startsWith(item.to);
+              return (
+                <Link
+                  key={item.to}
+                  to={item.to}
+                  className={cn(
+                    "whitespace-nowrap rounded-sm px-3 py-1.5 font-display text-lg leading-none tracking-wide transition-colors",
+                    active
+                      ? "bg-foreground text-background"
+                      : "text-muted-foreground hover:bg-accent hover:text-foreground",
+                  )}
+                >
+                  {item.label}
+                </Link>
+              );
+            })}
+          </nav>
+        </div>
+      </header>
 
-        <nav className="flex gap-1 overflow-x-auto border-b border-border px-3 py-2 lg:hidden">
-          {nav.map((item) => (
-            <Link
-              key={item.to}
-              to={item.to}
-              className="whitespace-nowrap rounded-md px-3 py-1.5 text-sm text-muted-foreground [&.active]:bg-accent [&.active]:text-foreground"
-            >
-              {item.label}
-            </Link>
-          ))}
-        </nav>
-
-        <main className="flex-1 p-5">{children}</main>
-      </div>
+      <main className="mx-auto max-w-4xl px-4 py-6">
+        <div className="mb-6 flex flex-wrap items-end justify-between gap-3 border-b border-border pb-4">
+          <div>
+            <h1 className="text-3xl leading-none">{title}</h1>
+            {subtitle && <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p>}
+          </div>
+          {actions && <div className="flex items-center gap-2">{actions}</div>}
+        </div>
+        <div className="space-y-6">{children}</div>
+      </main>
     </div>
   );
 }
