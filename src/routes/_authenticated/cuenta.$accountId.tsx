@@ -12,6 +12,7 @@ import {
   buildEquityCurve,
   computeMetrics,
   formatCurrency,
+  accountDrawdown,
 } from "@/lib/metrics";
 import { cn } from "@/lib/utils";
 
@@ -61,10 +62,7 @@ function AccountDetail() {
 
   const pnl = accountPnl(trades, account.id);
   const balance = accountBalance(account, trades);
-  const ddUsed =
-    account.drawdownLimit && pnl < 0
-      ? Math.min(100, (Math.abs(pnl) / account.drawdownLimit) * 100)
-      : 0;
+  const dd = accountDrawdown(account, trades);
 
   const byStrategy = strategies
     .map((s) => {
@@ -119,19 +117,39 @@ function AccountDetail() {
           </div>
         </section>
 
-        {account.drawdownLimit ? (
-          <section className="panel p-4">
-            <div className="flex justify-between text-xs text-muted-foreground">
-              <span>Drawdown usado</span>
-              <span className="num">
-                {formatCurrency(Math.max(0, -pnl))} / {formatCurrency(account.drawdownLimit)}
+        {dd ? (
+          <section className="panel space-y-2 p-4">
+            <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
+              <span className="font-semibold">Drawdown · {dd.label}</span>
+              <span className="num text-muted-foreground">
+                {formatCurrency(dd.used)} / {formatCurrency(dd.limit)}
               </span>
             </div>
-            <div className="mt-1 h-2 overflow-hidden rounded-full bg-muted">
+            <div className="h-2 overflow-hidden rounded-full bg-muted">
               <div
-                className={cn("h-full", ddUsed > 70 ? "bg-loss" : "bg-brand")}
-                style={{ width: `${ddUsed}%` }}
+                className={cn("h-full", dd.pct > 70 ? "bg-loss" : "bg-brand")}
+                style={{ width: `${dd.pct}%` }}
               />
+            </div>
+            <div className="grid grid-cols-2 gap-3 text-xs text-muted-foreground md:grid-cols-4">
+              <div>
+                <p>Referencia</p>
+                <p className="num font-semibold text-foreground">{formatCurrency(dd.reference)}</p>
+              </div>
+              <div>
+                <p>Suelo</p>
+                <p className="num font-semibold text-foreground">{formatCurrency(dd.floor)}</p>
+              </div>
+              <div>
+                <p>Margen restante</p>
+                <p className="num font-semibold text-foreground">{formatCurrency(dd.remaining)}</p>
+              </div>
+              <div>
+                <p>Estado</p>
+                <p className={cn("font-semibold", dd.breached ? "text-loss" : "text-profit")}>
+                  {dd.breached ? "Cuenta rota" : "En regla"}
+                </p>
+              </div>
             </div>
           </section>
         ) : null}

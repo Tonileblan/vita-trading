@@ -20,6 +20,7 @@ export type Database = {
           currency: string
           current_balance: number
           drawdown_limit: number | null
+          drawdown_type: string
           firm: string | null
           id: string
           initial_balance: number
@@ -34,6 +35,7 @@ export type Database = {
           currency?: string
           current_balance?: number
           drawdown_limit?: number | null
+          drawdown_type?: string
           firm?: string | null
           id?: string
           initial_balance?: number
@@ -48,6 +50,7 @@ export type Database = {
           currency?: string
           current_balance?: number
           drawdown_limit?: number | null
+          drawdown_type?: string
           firm?: string | null
           id?: string
           initial_balance?: number

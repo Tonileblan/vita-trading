@@ -1,5 +1,26 @@
 export type AccountType = "funded" | "personal";
 
+/** Cómo se calcula el límite de pérdida de la cuenta. */
+export type DrawdownType = "static" | "trailing" | "eod";
+
+export const DRAWDOWN_TYPES: { key: DrawdownType; label: string; help: string }[] = [
+  {
+    key: "static",
+    label: "Estático",
+    help: "El límite se fija sobre el balance inicial y no se mueve.",
+  },
+  {
+    key: "trailing",
+    label: "Dinámico (trailing)",
+    help: "El límite sube con cada nuevo máximo de balance alcanzado.",
+  },
+  {
+    key: "eod",
+    label: "Dinámico a cierre (EOD)",
+    help: "El límite sube con el máximo del balance al cierre de cada día.",
+  },
+];
+
 export interface Account {
   id: string;
   name: string;
@@ -8,6 +29,7 @@ export interface Account {
   initialBalance: number;
   currentBalance: number;
   drawdownLimit?: number | undefined;
+  drawdownType?: DrawdownType | undefined;
   currency: string;
 }
 
