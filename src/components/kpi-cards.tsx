@@ -83,11 +83,24 @@ function StreakCard({ trades }: { trades: Trade[] }) {
     </div>
   );
 
+  const streakLabel =
+    cur.type === "none"
+      ? "Sin racha"
+      : `${cur.count} ${
+          cur.type === "win"
+            ? cur.count === 1
+              ? "ganada"
+              : "ganadas"
+            : cur.count === 1
+              ? "perdida"
+              : "perdidas"
+        }`;
+
   return (
     <Card
       label="Racha actual"
       value={currentLabel}
-      sub={`Mejor racha: ${info.maxWin} ganadas · ${info.maxLoss} perdidas`}
+      sub={`Racha: ${streakLabel}`}
       icon={cur.type === "loss" ? Snowflake : Flame}
       headerExtra={rangeButtons}
       {...(cur.type !== "none"
@@ -95,7 +108,7 @@ function StreakCard({ trades }: { trades: Trade[] }) {
         : {})}
     >
       <p className="mt-1.5 text-[11px] text-muted-foreground">
-        En {range}: {info.wins} ganadas · {info.losses} perdidas
+        Mejor racha: {info.maxWin} ganadas · {info.maxLoss} perdidas
       </p>
     </Card>
   );
