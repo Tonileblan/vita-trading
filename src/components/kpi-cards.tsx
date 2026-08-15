@@ -12,6 +12,7 @@ function Card({
   icon: Icon,
   tone = "neutral",
   children,
+  headerExtra,
 }: {
   label: string;
   value: string;
@@ -19,6 +20,7 @@ function Card({
   icon: React.ElementType;
   tone?: "neutral" | "profit" | "loss";
   children?: React.ReactNode;
+  headerExtra?: React.ReactNode;
 }) {
   return (
     <div className="panel p-4">
@@ -26,7 +28,7 @@ function Card({
         <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           {label}
         </span>
-        <Icon className="size-4 text-brand-soft" />
+        {headerExtra ?? <Icon className="size-4 text-brand-soft" />}
       </div>
       <div
         className={cn(
@@ -68,32 +70,36 @@ function StreakCard({ trades }: { trades: Trade[] }) {
               : "perdidas"
         }`;
 
+  const rangeButtons = (
+    <div className="flex gap-1">
+      {STREAK_RANGES.map((r) => (
+        <button
+          key={r.key}
+          onClick={() => setRange(r.key)}
+          className={cn(
+            "rounded px-2 py-0.5 text-[10px] font-semibold transition-colors",
+            range === r.key
+              ? "bg-brand text-primary-foreground"
+              : "border border-border text-muted-foreground hover:text-foreground",
+          )}
+        >
+          {r.label}
+        </button>
+      ))}
+    </div>
+  );
+
   return (
     <Card
       label="Racha actual"
       value={currentLabel}
       sub={`Mejor racha: ${info.maxWin} ganadas · ${info.maxLoss} perdidas`}
       icon={cur.type === "loss" ? Snowflake : Flame}
+      headerExtra={rangeButtons}
       {...(cur.type !== "none"
         ? { tone: cur.type === "win" ? ("profit" as const) : ("loss" as const) }
         : {})}
     >
-      <div className="mt-2 flex gap-1">
-        {STREAK_RANGES.map((r) => (
-          <button
-            key={r.key}
-            onClick={() => setRange(r.key)}
-            className={cn(
-              "rounded px-2 py-0.5 text-[10px] font-semibold transition-colors",
-              range === r.key
-                ? "bg-brand text-primary-foreground"
-                : "border border-border text-muted-foreground hover:text-foreground",
-            )}
-          >
-            {r.label}
-          </button>
-        ))}
-      </div>
       <p className="mt-1.5 text-[11px] text-muted-foreground">
         En {range}: {info.wins} ganadas · {info.losses} perdidas
       </p>
