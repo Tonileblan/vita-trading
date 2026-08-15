@@ -98,7 +98,7 @@ function AuthPage() {
       <div className="w-full max-w-sm">
         <div className="mb-6 flex items-center justify-center gap-2">
           <CandlestickChart className="size-5" />
-          <span className="font-display text-2xl leading-none tracking-wide">Bitácora</span>
+          <span className="font-display text-2xl leading-none tracking-wide">Vita-Trading</span>
         </div>
 
         <div className="panel p-6">
