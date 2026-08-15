@@ -57,7 +57,12 @@ function Landing() {
         <div className="mx-auto flex max-w-2xl items-center justify-between px-4 py-3">
           <div className="flex items-center gap-2">
             <CandlestickChart className="size-5" />
-            <span className="font-display text-2xl leading-none tracking-wide">Vita-Trading</span>
+            <div className="flex min-w-0 flex-col leading-none">
+              <span className="font-display text-2xl leading-none tracking-wide">Vita-Trading</span>
+              <span className="font-hand text-sm leading-none text-muted-foreground sm:text-base">
+                by Toni
+              </span>
+            </div>
           </div>
           <Button asChild size="sm" variant="outline">
             <Link to="/auth">Entrar</Link>
