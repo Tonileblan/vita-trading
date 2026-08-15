@@ -7,6 +7,7 @@ export interface Profile {
   id: string;
   display_name: string | null;
   avatar_url: string | null;
+  is_private: boolean;
 }
 
 interface AuthState {
@@ -46,7 +47,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("profiles")
-        .select("id, display_name, avatar_url")
+        .select("id, display_name, avatar_url, is_private")
         .eq("id", userId!)
         .maybeSingle();
       if (error) throw error;
