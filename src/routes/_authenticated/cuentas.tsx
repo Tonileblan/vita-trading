@@ -330,6 +330,51 @@ function AccountsPage() {
     );
   };
 
+  const sum = (list: typeof accounts) => ({
+    initial: list.reduce((s, a) => s + a.initialBalance, 0),
+    current: list.reduce((s, a) => s + accountBalance(a, trades), 0),
+  });
+  const fundedTotals = sum(funded);
+  const realTotals = sum(personal);
+
+  const CapitalBlock = ({
+    label,
+    icon,
+    totals,
+    count,
+  }: {
+    label: string;
+    icon: React.ReactNode;
+    totals: { initial: number; current: number };
+    count: number;
+  }) => (
+    <div className="panel p-4">
+      <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+        {icon} {label} · {count}
+      </p>
+      <div className="mt-3 grid grid-cols-3 gap-3 text-sm">
+        <div>
+          <p className="text-xs text-muted-foreground">Capital inicial</p>
+          <p className="num font-semibold">{formatCurrency(totals.initial)}</p>
+        </div>
+        <div>
+          <p className="text-xs text-muted-foreground">Capital total</p>
+          <p className="num font-semibold">{formatCurrency(totals.current)}</p>
+        </div>
+        <div>
+          <p className="text-xs text-muted-foreground">Resultado</p>
+          <p
+            className={cn(
+              "num font-semibold",
+              totals.current - totals.initial >= 0 ? "text-profit" : "text-loss",
+            )}
+          >
+            {formatCurrency(totals.current - totals.initial, true)}
+          </p>
+        </div>
+      </div>
+    </div>
+  );
 
   return (
     <AppShell
@@ -346,6 +391,22 @@ function AccountsPage() {
       }
     >
       <div className="space-y-8">
+        <section className="grid gap-3 md:grid-cols-2">
+          <CapitalBlock
+            label="Capital fondeo"
+            icon={<Building2 className="size-4" />}
+            totals={fundedTotals}
+            count={funded.length}
+          />
+          <CapitalBlock
+            label="Capital real"
+            icon={<User className="size-4" />}
+            totals={realTotals}
+            count={personal.length}
+          />
+        </section>
+
+
         <section className="space-y-3">
           <h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
             <Building2 className="size-4" /> Cuentas de fondeo
