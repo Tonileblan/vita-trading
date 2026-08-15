@@ -41,6 +41,8 @@ interface JournalState extends Bucket {
   toggleAccount: (id: string) => void;
   selectAll: () => void;
   addAccount: (account: Omit<Account, "id">) => void;
+  updateAccount: (id: string, patch: Partial<Omit<Account, "id">>) => void;
+  removeAccount: (id: string) => void;
   addTrade: (trade: Omit<Trade, "id">) => void;
   addWithdrawal: (withdrawal: Omit<Withdrawal, "id">) => void;
   updateStrategy: (id: string, patch: Partial<Strategy>) => void;
@@ -103,6 +105,18 @@ export function JournalProvider({ children }: { children: ReactNode }) {
           selectedAccountIds: [...b.selectedAccountIds, id],
         }));
       },
+      updateAccount: (id, patch) =>
+        patchBucket((b) => ({
+          ...b,
+          accounts: b.accounts.map((a) => (a.id === id ? { ...a, ...patch } : a)),
+        })),
+      removeAccount: (id) =>
+        patchBucket((b) => ({
+          ...b,
+          accounts: b.accounts.filter((a) => a.id !== id),
+          selectedAccountIds: b.selectedAccountIds.filter((x) => x !== id),
+          trades: b.trades.filter((t) => t.accountId !== id),
+        })),
       addTrade: (trade) => {
         const id = `trd-${Math.random().toString(36).slice(2, 8)}`;
         patchBucket((b) => ({
