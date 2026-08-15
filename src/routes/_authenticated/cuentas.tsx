@@ -51,7 +51,15 @@ function AccountDialog({ account, trigger }: { account?: Account; trigger: React
   const [open, setOpen] = useState(false);
   const [type, setType] = useState<AccountType>(account?.type ?? "funded");
   const [name, setName] = useState(account?.name ?? "");
+  const { firms, customFirms, addFirm, removeFirm } = usePropFirms();
+  const [newFirm, setNewFirm] = useState("");
   const [firm, setFirm] = useState(account?.firm ?? PROP_FIRMS[0]!);
+  const handleAddFirm = () => {
+    const added = addFirm(newFirm);
+    if (!added) return;
+    setFirm(added);
+    setNewFirm("");
+  };
   const [initial, setInitial] = useState(String(account?.initialBalance ?? 50000));
   const [current, setCurrent] = useState(String(account?.currentBalance ?? 50000));
   const [dd, setDd] = useState(String(account?.drawdownLimit ?? 2500));
