@@ -1,5 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
-import { Clock } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Activity, BarChart3, Clock, RefreshCw } from "lucide-react";
+import { useServerFn } from "@tanstack/react-start";
+import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -8,7 +10,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { getMarketPulse } from "@/lib/market-data.functions";
 import { cn } from "@/lib/utils";
+
 
 const ZONES = [
   "Europe/Madrid",
