@@ -69,6 +69,29 @@ function EstrategiasPage() {
     >
       <div className="space-y-5">
         <MarketHours />
+        {strategies.length === 0 ? (
+          <div className="panel flex flex-col items-center gap-3 p-8 text-center">
+            <Layers className="size-8 text-muted-foreground" />
+            <div>
+              <p className="text-lg font-semibold">No hay estrategias en este diario</p>
+              <p className="text-sm text-muted-foreground">
+                Crea una nueva o restaura las estrategias por defecto (Principal, Fondeo, Asia, Oro, Lite).
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center justify-center gap-2">
+              <Button onClick={() => restoreDefaultStrategies()}>
+                <Layers className="size-4" /> Restaurar estrategias por defecto
+              </Button>
+              <StrategyDialog
+                trigger={
+                  <Button variant="outline">
+                    <Plus className="size-4" /> Nueva estrategia
+                  </Button>
+                }
+              />
+            </div>
+          </div>
+        ) : (
         <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           {strategies.map((s) => (
             <div key={s.id} className="panel p-4">
@@ -115,6 +138,7 @@ function EstrategiasPage() {
             </div>
           ))}
         </section>
+        )}
 
         <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {[
