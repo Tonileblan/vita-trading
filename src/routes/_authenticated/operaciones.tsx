@@ -48,7 +48,12 @@ function TradesPage() {
     <AppShell
       title="Registro de Operaciones"
       subtitle={`${filtered.length} operaciones · PnL ${formatCurrency(m.totalPnl, true)}`}
-      actions={<TradeFormDialog />}
+      actions={
+        <div className="flex flex-wrap gap-2">
+          <TradeImportDialog />
+          <TradeFormDialog />
+        </div>
+      }
     >
       <div className="space-y-4">
         <div className="flex flex-wrap items-center gap-3">
