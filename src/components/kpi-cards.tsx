@@ -99,7 +99,17 @@ function StreakCard({ trades }: { trades: Trade[] }) {
   return (
     <Card
       label="Racha actual"
-      value={currentLabel}
+      value={
+        info.wins === 0 && info.losses === 0 ? (
+          "Sin operaciones"
+        ) : (
+          <span>
+            <span className="text-profit">{info.wins} {winWord}</span>
+            {" · "}
+            <span className="text-loss">{info.losses} {lossWord}</span>
+          </span>
+        )
+      }
       sub={`Racha: ${streakLabel}`}
       icon={cur.type === "loss" ? Snowflake : Flame}
       headerExtra={rangeButtons}
