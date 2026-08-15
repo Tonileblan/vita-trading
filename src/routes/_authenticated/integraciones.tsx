@@ -7,13 +7,13 @@ import { Button } from "@/components/ui/button";
 export const Route = createFileRoute("/_authenticated/integraciones")({
   head: () => ({
     meta: [
-      { title: "Integraciones y Webhooks — TONITRADING" },
+      { title: "Integraciones y Webhooks — Vita-Trading" },
       {
         name: "description",
         content:
           "Endpoint webhook listo para recibir ejecuciones de MetaTrader, cTrader o NinjaTrader vía n8n.",
       },
-      { property: "og:title", content: "Integraciones y Webhooks — TONITRADING" },
+      { property: "og:title", content: "Integraciones y Webhooks — Vita-Trading" },
       {
         property: "og:description",
         content: "Automatiza el registro de trades en tiempo real con un simple POST JSON.",

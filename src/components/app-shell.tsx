@@ -130,7 +130,7 @@ export function AppShell({
           <Link to="/panel" className="flex min-w-0 items-center gap-2">
             <CandlestickChart className="size-5 shrink-0" />
             <span className="truncate font-display text-xl leading-none tracking-wide sm:text-2xl">
-              Bitácora
+              Vita-Trading
             </span>
           </Link>
           <div className="flex shrink-0 items-center gap-2">

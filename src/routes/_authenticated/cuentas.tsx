@@ -30,12 +30,12 @@ import { cn } from "@/lib/utils";
 export const Route = createFileRoute("/_authenticated/cuentas")({
   head: () => ({
     meta: [
-      { title: "Gestión de cuentas — TONITRADING" },
+      { title: "Gestión de cuentas — Vita-Trading" },
       {
         name: "description",
         content: "Administra cuentas de fondeo y personales: balance, drawdown y rendimiento.",
       },
-      { property: "og:title", content: "Gestión de cuentas — TONITRADING" },
+      { property: "og:title", content: "Gestión de cuentas — Vita-Trading" },
       {
         property: "og:description",
         content: "Cuentas de prop firm y personales con control de drawdown en tiempo real.",

@@ -14,12 +14,12 @@ import { cn } from "@/lib/utils";
 export const Route = createFileRoute("/_authenticated/operaciones")({
   head: () => ({
     meta: [
-      { title: "Operaciones — TONITRADING Journal" },
+      { title: "Operaciones — Vita-Trading Journal" },
       {
         name: "description",
         content: "Historial completo de operaciones con filtros por activo, estrategia y cuenta.",
       },
-      { property: "og:title", content: "Operaciones — TONITRADING Journal" },
+      { property: "og:title", content: "Operaciones — Vita-Trading Journal" },
       {
         property: "og:description",
         content: "Registra y revisa cada ejecución con evidencia gráfica y notas de análisis.",
