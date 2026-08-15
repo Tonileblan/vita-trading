@@ -15,6 +15,7 @@ interface AuthState {
   loading: boolean;
   profile: Profile | null;
   isAdmin: boolean;
+  isSupervisor: boolean;
   signOut: () => Promise<void>;
 }
 
@@ -69,6 +70,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     loading,
     profile,
     isAdmin: roles.includes("admin"),
+    isSupervisor: roles.includes("admin") || roles.includes("supervisor"),
     signOut: async () => {
       await queryClient.cancelQueries();
       queryClient.clear();
