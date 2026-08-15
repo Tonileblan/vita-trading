@@ -118,6 +118,28 @@ export function MarketHours() {
     return () => clearInterval(id);
   }, []);
 
+  const fetchPulse = useServerFn(getMarketPulse);
+  const [pulse, setPulse] = useState<Awaited<ReturnType<typeof getMarketPulse>> | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(false);
+
+  const refresh = useCallback(async () => {
+    setLoading(true);
+    setError(false);
+    try {
+      setPulse(await fetchPulse({}));
+    } catch {
+      setError(true);
+    } finally {
+      setLoading(false);
+    }
+  }, [fetchPulse]);
+
+  useEffect(() => {
+    void refresh();
+  }, [refresh]);
+
+
   const zoneOptions = useMemo(
     () => Array.from(new Set([zone, ...ZONES])).filter(Boolean),
     [zone],
