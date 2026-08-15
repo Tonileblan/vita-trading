@@ -1,0 +1,95 @@
+import { Zap } from "lucide-react";
+import { formatCurrency, formatDateTime } from "@/lib/metrics";
+import type { Account, Trade } from "@/lib/types";
+import { cn } from "@/lib/utils";
+
+export function TradesTable({
+  trades,
+  accounts,
+  limit,
+}: {
+  trades: Trade[];
+  accounts: Account[];
+  limit?: number;
+}) {
+  const rows = limit ? trades.slice(0, limit) : trades;
+  const nameOf = (id: string) => accounts.find((a) => a.id === id)?.name ?? "—";
+
+  return (
+    <div className="panel overflow-x-auto">
+      <table className="w-full min-w-[820px] text-sm">
+        <thead>
+          <tr className="border-b border-border text-left text-xs uppercase tracking-wider text-muted-foreground">
+            <th className="px-4 py-3 font-semibold">Cierre</th>
+            <th className="px-4 py-3 font-semibold">Activo</th>
+            <th className="px-4 py-3 font-semibold">Dir.</th>
+            <th className="px-4 py-3 font-semibold">Cuenta</th>
+            <th className="px-4 py-3 text-right font-semibold">Entrada</th>
+            <th className="px-4 py-3 text-right font-semibold">Salida</th>
+            <th className="px-4 py-3 text-right font-semibold">Tam.</th>
+            <th className="px-4 py-3 font-semibold">Estrategia</th>
+            <th className="px-4 py-3 text-right font-semibold">PnL</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((t) => (
+            <tr key={t.id} className="border-b border-border/60 last:border-0 hover:bg-accent/40">
+              <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
+                <span className="num">{formatDateTime(t.closedAt)}</span>
+                {t.source === "webhook" && (
+                  <Zap className="ml-1 inline size-3 text-brand-soft" aria-label="Vía webhook" />
+                )}
+              </td>
+              <td className="px-4 py-3 font-semibold">{t.symbol}</td>
+              <td className="px-4 py-3">
+                <span
+                  className={cn(
+                    "rounded px-2 py-0.5 text-xs font-semibold uppercase",
+                    t.direction === "long"
+                      ? "bg-profit/15 text-profit"
+                      : "bg-loss/15 text-loss",
+                  )}
+                >
+                  {t.direction}
+                </span>
+              </td>
+              <td className="max-w-[160px] truncate px-4 py-3 text-muted-foreground">
+                {nameOf(t.accountId)}
+              </td>
+              <td className="num px-4 py-3 text-right">{t.entryPrice}</td>
+              <td className="num px-4 py-3 text-right">{t.exitPrice}</td>
+              <td className="num px-4 py-3 text-right">{t.size}</td>
+              <td className="px-4 py-3">
+                <div className="flex flex-wrap gap-1">
+                  {t.tags.map((tag) => (
+                    <span
+                      key={tag}
+                      className="rounded-full border border-border px-2 py-0.5 text-[11px] text-muted-foreground"
+                    >
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              </td>
+              <td
+                className={cn(
+                  "num px-4 py-3 text-right font-semibold",
+                  t.pnl >= 0 ? "text-profit" : "text-loss",
+                )}
+              >
+                {formatCurrency(t.pnl, true)}
+              </td>
+            </tr>
+          ))}
+          {rows.length === 0 && (
+            <tr>
+              <td colSpan={9} className="px-4 py-10 text-center text-muted-foreground">
+                No hay operaciones para los filtros seleccionados.
+              </td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+    </div>
+  );
+}

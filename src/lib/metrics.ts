@@ -1,0 +1,105 @@
+import type { Account, Trade } from "./types";
+
+export function formatCurrency(value: number, withSign = false) {
+  const sign = withSign && value > 0 ? "+" : value < 0 ? "-" : "";
+  return `${sign}$${Math.abs(value).toLocaleString("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+}
+
+export function formatDateTime(iso: string) {
+  const d = new Date(iso);
+  return d.toLocaleString("es-ES", {
+    day: "2-digit",
+    month: "short",
+    year: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "UTC",
+  });
+}
+
+export interface Metrics {
+  totalPnl: number;
+  winRate: number;
+  profitFactor: number;
+  wins: number;
+  losses: number;
+  total: number;
+  avgWin: number;
+  avgLoss: number;
+  streak: { type: "win" | "loss" | "none"; count: number };
+  bestTrade: number;
+  worstTrade: number;
+}
+
+export function computeMetrics(trades: Trade[]): Metrics {
+  const wins = trades.filter((t) => t.pnl > 0);
+  const losses = trades.filter((t) => t.pnl < 0);
+  const grossProfit = wins.reduce((s, t) => s + t.pnl, 0);
+  const grossLoss = Math.abs(losses.reduce((s, t) => s + t.pnl, 0));
+  const sorted = [...trades].sort(
+    (a, b) => new Date(b.closedAt).getTime() - new Date(a.closedAt).getTime(),
+  );
+
+  let streakType: "win" | "loss" | "none" = "none";
+  let streakCount = 0;
+  for (const t of sorted) {
+    const type = t.pnl >= 0 ? "win" : "loss";
+    if (streakType === "none") {
+      streakType = type;
+      streakCount = 1;
+    } else if (type === streakType) {
+      streakCount++;
+    } else break;
+  }
+
+  return {
+    totalPnl: trades.reduce((s, t) => s + t.pnl, 0),
+    winRate: trades.length ? (wins.length / trades.length) * 100 : 0,
+    profitFactor: grossLoss ? grossProfit / grossLoss : grossProfit ? Infinity : 0,
+    wins: wins.length,
+    losses: losses.length,
+    total: trades.length,
+    avgWin: wins.length ? grossProfit / wins.length : 0,
+    avgLoss: losses.length ? -grossLoss / losses.length : 0,
+    streak: { type: streakType, count: streakCount },
+    bestTrade: trades.length ? Math.max(...trades.map((t) => t.pnl)) : 0,
+    worstTrade: trades.length ? Math.min(...trades.map((t) => t.pnl)) : 0,
+  };
+}
+
+export function buildEquityCurve(trades: Trade[], startBalance: number) {
+  const sorted = [...trades].sort(
+    (a, b) => new Date(a.closedAt).getTime() - new Date(b.closedAt).getTime(),
+  );
+  let equity = startBalance;
+  return sorted.map((t, i) => {
+    equity += t.pnl;
+    return {
+      index: i + 1,
+      date: new Date(t.closedAt).toLocaleDateString("es-ES", {
+        day: "2-digit",
+        month: "short",
+        timeZone: "UTC",
+      }),
+      equity: Number(equity.toFixed(2)),
+    };
+  });
+}
+
+export function filterByRange(trades: Trade[], range: "7d" | "30d" | "90d" | "all") {
+  if (range === "all") return trades;
+  const days = range === "7d" ? 7 : range === "30d" ? 30 : 90;
+  const latest = trades.reduce(
+    (max, t) => Math.max(max, new Date(t.closedAt).getTime()),
+    0,
+  );
+  const cutoff = latest - days * 86400000;
+  return trades.filter((t) => new Date(t.closedAt).getTime() >= cutoff);
+}
+
+export function accountsStartBalance(accounts: Account[]) {
+  return accounts.reduce((s, a) => s + a.initialBalance, 0);
+}
