@@ -4,10 +4,10 @@ export interface Account {
   id: string;
   name: string;
   type: AccountType;
-  firm?: string;
+  firm?: string | undefined;
   initialBalance: number;
   currentBalance: number;
-  drawdownLimit?: number;
+  drawdownLimit?: number | undefined;
   currency: string;
 }
 
@@ -25,7 +25,7 @@ export interface Trade {
   size: number;
   pnl: number;
   tags: string[];
-  notes?: string;
+  notes?: string | undefined;
   screenshots: string[];
   source: "manual" | "webhook";
 }
