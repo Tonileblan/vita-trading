@@ -20,6 +20,7 @@ import { Route as AuthenticatedIntegracionesRouteImport } from './routes/_authen
 import { Route as AuthenticatedOperacionesRouteImport } from './routes/_authenticated/operaciones'
 import { Route as AuthenticatedPanelRouteImport } from './routes/_authenticated/panel'
 import { Route as AuthenticatedRetirosRouteImport } from './routes/_authenticated/retiros'
+import { Route as AuthenticatedSupervisionRouteImport } from './routes/_authenticated/supervision'
 import { Route as AuthenticatedUsuariosRouteImport } from './routes/_authenticated/usuarios'
 import { Route as ApiPublicTradesWebhookRouteImport } from './routes/api/public/trades.webhook'
 
@@ -80,6 +81,12 @@ const AuthenticatedRetirosRoute = AuthenticatedRetirosRouteImport.update({
   path: '/retiros',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedSupervisionRoute =
+  AuthenticatedSupervisionRouteImport.update({
+    id: '/supervision',
+    path: '/supervision',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedUsuariosRoute = AuthenticatedUsuariosRouteImport.update({
   id: '/usuarios',
   path: '/usuarios',
@@ -102,6 +109,7 @@ export interface FileRoutesByFullPath {
   '/operaciones': typeof AuthenticatedOperacionesRoute
   '/panel': typeof AuthenticatedPanelRoute
   '/retiros': typeof AuthenticatedRetirosRoute
+  '/supervision': typeof AuthenticatedSupervisionRoute
   '/usuarios': typeof AuthenticatedUsuariosRoute
   '/api/public/trades/webhook': typeof ApiPublicTradesWebhookRoute
 }
@@ -116,6 +124,7 @@ export interface FileRoutesByTo {
   '/operaciones': typeof AuthenticatedOperacionesRoute
   '/panel': typeof AuthenticatedPanelRoute
   '/retiros': typeof AuthenticatedRetirosRoute
+  '/supervision': typeof AuthenticatedSupervisionRoute
   '/usuarios': typeof AuthenticatedUsuariosRoute
   '/api/public/trades/webhook': typeof ApiPublicTradesWebhookRoute
 }
@@ -132,6 +141,7 @@ export interface FileRoutesById {
   '/_authenticated/operaciones': typeof AuthenticatedOperacionesRoute
   '/_authenticated/panel': typeof AuthenticatedPanelRoute
   '/_authenticated/retiros': typeof AuthenticatedRetirosRoute
+  '/_authenticated/supervision': typeof AuthenticatedSupervisionRoute
   '/_authenticated/usuarios': typeof AuthenticatedUsuariosRoute
   '/api/public/trades/webhook': typeof ApiPublicTradesWebhookRoute
 }
@@ -148,6 +158,7 @@ export interface FileRouteTypes {
     | '/operaciones'
     | '/panel'
     | '/retiros'
+    | '/supervision'
     | '/usuarios'
     | '/api/public/trades/webhook'
   fileRoutesByTo: FileRoutesByTo
@@ -162,6 +173,7 @@ export interface FileRouteTypes {
     | '/operaciones'
     | '/panel'
     | '/retiros'
+    | '/supervision'
     | '/usuarios'
     | '/api/public/trades/webhook'
   id:
@@ -177,6 +189,7 @@ export interface FileRouteTypes {
     | '/_authenticated/operaciones'
     | '/_authenticated/panel'
     | '/_authenticated/retiros'
+    | '/_authenticated/supervision'
     | '/_authenticated/usuarios'
     | '/api/public/trades/webhook'
   fileRoutesById: FileRoutesById
@@ -267,6 +280,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedRetirosRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/supervision': {
+      id: '/_authenticated/supervision'
+      path: '/supervision'
+      fullPath: '/supervision'
+      preLoaderRoute: typeof AuthenticatedSupervisionRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/usuarios': {
       id: '/_authenticated/usuarios'
       path: '/usuarios'
@@ -293,6 +313,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedOperacionesRoute: typeof AuthenticatedOperacionesRoute
   AuthenticatedPanelRoute: typeof AuthenticatedPanelRoute
   AuthenticatedRetirosRoute: typeof AuthenticatedRetirosRoute
+  AuthenticatedSupervisionRoute: typeof AuthenticatedSupervisionRoute
   AuthenticatedUsuariosRoute: typeof AuthenticatedUsuariosRoute
 }
 
@@ -305,6 +326,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedOperacionesRoute: AuthenticatedOperacionesRoute,
   AuthenticatedPanelRoute: AuthenticatedPanelRoute,
   AuthenticatedRetirosRoute: AuthenticatedRetirosRoute,
+  AuthenticatedSupervisionRoute: AuthenticatedSupervisionRoute,
   AuthenticatedUsuariosRoute: AuthenticatedUsuariosRoute,
 }
 
