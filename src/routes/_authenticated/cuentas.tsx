@@ -224,7 +224,7 @@ function AccountDialog({ account, trigger }: { account?: Account; trigger: React
 }
 
 function AccountsPage() {
-  const { accounts, trades } = useJournal();
+  const { accounts, trades, withdrawals } = useJournal();
   const funded = accounts.filter((a) => a.type === "funded");
   const personal = accounts.filter((a) => a.type === "personal");
 
@@ -234,7 +234,7 @@ function AccountsPage() {
     const m = computeMetrics(accTrades);
     const pnl = accountPnl(trades, id);
     const balance = accountBalance(acc, trades);
-    const dd = accountDrawdown(acc, trades);
+    const dd = accountDrawdown(acc, trades, withdrawals);
 
     return (
       <div className="panel p-4">

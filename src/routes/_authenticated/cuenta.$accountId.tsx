@@ -37,7 +37,7 @@ export const Route = createFileRoute("/_authenticated/cuenta/$accountId")({
 
 function AccountDetail() {
   const { accountId } = Route.useParams();
-  const { accounts, trades, strategies, loading } = useJournal();
+  const { accounts, trades, strategies, withdrawals, loading } = useJournal();
   const account = accounts.find((a) => a.id === accountId);
 
   const accTrades = useMemo(
@@ -62,7 +62,7 @@ function AccountDetail() {
 
   const pnl = accountPnl(trades, account.id);
   const balance = accountBalance(account, trades);
-  const dd = accountDrawdown(account, trades);
+  const dd = accountDrawdown(account, trades, withdrawals);
 
   const byStrategy = strategies
     .map((s) => {
@@ -120,7 +120,10 @@ function AccountDetail() {
         {dd ? (
           <section className="panel space-y-2 p-4">
             <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
-              <span className="font-semibold">Drawdown · {dd.label}</span>
+              <span className="font-semibold">
+                Drawdown · {dd.label}
+                {dd.frozen ? " · suelo congelado" : ""}
+              </span>
               <span className="num text-muted-foreground">
                 {formatCurrency(dd.used)} / {formatCurrency(dd.limit)}
               </span>
@@ -151,6 +154,12 @@ function AccountDetail() {
                 </p>
               </div>
             </div>
+            {dd.breachedAt ? (
+              <p className="text-xs font-semibold text-loss">
+                Suelo perforado el {new Date(dd.breachedAt).toLocaleDateString("es-ES")}
+              </p>
+            ) : null}
+
           </section>
         ) : null}
 
