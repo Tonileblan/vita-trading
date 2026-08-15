@@ -120,7 +120,10 @@ function AccountDetail() {
         {dd ? (
           <section className="panel space-y-2 p-4">
             <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
-              <span className="font-semibold">Drawdown · {dd.label}</span>
+              <span className="font-semibold">
+                Drawdown · {dd.label}
+                {dd.frozen ? " · suelo congelado" : ""}
+              </span>
               <span className="num text-muted-foreground">
                 {formatCurrency(dd.used)} / {formatCurrency(dd.limit)}
               </span>
@@ -151,6 +154,12 @@ function AccountDetail() {
                 </p>
               </div>
             </div>
+            {dd.breachedAt ? (
+              <p className="text-xs font-semibold text-loss">
+                Suelo perforado el {new Date(dd.breachedAt).toLocaleDateString("es-ES")}
+              </p>
+            ) : null}
+
           </section>
         ) : null}
 
