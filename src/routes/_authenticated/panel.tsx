@@ -54,12 +54,18 @@ function Overview() {
     () => buildEquityCurve(trades, accountsStartBalance(selectedAccounts)),
     [trades, selectedAccounts],
   );
-  const equity = selectedAccounts.reduce((s, a) => s + accountBalance(a, visibleTrades), 0);
+  const fundedEquity = selectedAccounts
+    .filter((a) => a.type === "funded")
+    .reduce((s, a) => s + accountBalance(a, visibleTrades), 0);
+  const realEquity = selectedAccounts
+    .filter((a) => a.type !== "funded")
+    .reduce((s, a) => s + accountBalance(a, visibleTrades), 0);
 
   return (
     <AppShell
       title="Resumen"
-      subtitle={`${selectedAccounts.length} cuenta(s) seleccionadas · Capital ${formatCurrency(equity)}`}
+      subtitle={`${selectedAccounts.length} cuenta(s) · Fondeo ${formatCurrency(fundedEquity)} · Real ${formatCurrency(realEquity)}`}
+
       actions={<TradeFormDialog />}
     >
       <div className="space-y-5">
