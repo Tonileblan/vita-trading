@@ -15,8 +15,8 @@ function Card({
   headerExtra,
 }: {
   label: string;
-  value: string;
-  sub: string;
+  value: React.ReactNode;
+  sub: React.ReactNode;
   icon: React.ElementType;
   tone?: "neutral" | "profit" | "loss";
   children?: React.ReactNode;
@@ -59,10 +59,6 @@ function StreakCard({ trades }: { trades: Trade[] }) {
 
   const winWord = info.wins === 1 ? "ganada" : "ganadas";
   const lossWord = info.losses === 1 ? "perdida" : "perdidas";
-  const currentLabel =
-    info.wins === 0 && info.losses === 0
-      ? "Sin operaciones"
-      : `${info.wins} ${winWord} · ${info.losses} ${lossWord}`;
 
   const rangeButtons = (
     <div className="flex gap-1">
@@ -99,7 +95,17 @@ function StreakCard({ trades }: { trades: Trade[] }) {
   return (
     <Card
       label="Racha actual"
-      value={currentLabel}
+      value={
+        info.wins === 0 && info.losses === 0 ? (
+          "Sin operaciones"
+        ) : (
+          <span>
+            <span className="text-profit">{info.wins} {winWord}</span>
+            {" · "}
+            <span className="text-loss">{info.losses} {lossWord}</span>
+          </span>
+        )
+      }
       sub={`Racha: ${streakLabel}`}
       icon={cur.type === "loss" ? Snowflake : Flame}
       headerExtra={rangeButtons}
