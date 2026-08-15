@@ -32,7 +32,14 @@ function seedBucket(): Bucket {
 }
 
 function emptyBucket(): Bucket {
-  return { accounts: [], strategies: [], withdrawals: [], trades: [], selectedAccountIds: [] };
+  return {
+    accounts: [],
+    // Todo diario nuevo arranca con las estrategias por defecto.
+    strategies: mockStrategies.map((s) => ({ ...s })),
+    withdrawals: [],
+    trades: [],
+    selectedAccountIds: [],
+  };
 }
 
 interface JournalState extends Bucket {
@@ -46,6 +53,8 @@ interface JournalState extends Bucket {
   addTrade: (trade: Omit<Trade, "id">) => void;
   addWithdrawal: (withdrawal: Omit<Withdrawal, "id">) => void;
   updateStrategy: (id: string, patch: Partial<Strategy>) => void;
+  addStrategy: (strategy: Omit<Strategy, "id">) => void;
+  removeStrategy: (id: string) => void;
   visibleTrades: Trade[];
 }
 
