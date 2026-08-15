@@ -153,14 +153,42 @@ function AccountDialog({ account, trigger }: { account?: Account; trigger: React
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
-                  {PROP_FIRMS.map((f) => (
+                <SelectContent className="max-h-64">
+                  {firms.map((f) => (
                     <SelectItem key={f} value={f}>
                       {f}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
+              <div className="flex gap-2">
+                <Input
+                  value={newFirm}
+                  onChange={(e) => setNewFirm(e.target.value)}
+                  placeholder="Añadir otra prop firm"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      handleAddFirm();
+                    }
+                  }}
+                />
+                <Button type="button" variant="outline" onClick={handleAddFirm}>
+                  Añadir
+                </Button>
+              </div>
+              {customFirms.includes(firm) && (
+                <button
+                  type="button"
+                  className="text-xs text-muted-foreground underline"
+                  onClick={() => {
+                    removeFirm(firm);
+                    setFirm(PROP_FIRMS[0]!);
+                  }}
+                >
+                  Eliminar "{firm}" de la lista
+                </button>
+              )}
             </div>
           )}
 
