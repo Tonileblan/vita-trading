@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Flame, Percent, Snowflake, Target, TrendingUp } from "lucide-react";
+import { ArrowDown, ArrowUp, Flame, Percent, Snowflake, Target, TrendingUp } from "lucide-react";
 import type { Metrics } from "@/lib/metrics";
 import type { Trade } from "@/lib/types";
 import { computeStreaks, filterByDays, formatCurrency } from "@/lib/metrics";
@@ -57,8 +57,6 @@ function StreakCard({ trades }: { trades: Trade[] }) {
   const info = computeStreaks(filterByDays(trades, days));
   const cur = info.current;
 
-  const winWord = info.wins === 1 ? "ganada" : "ganadas";
-  const lossWord = info.losses === 1 ? "perdida" : "perdidas";
 
   const rangeButtons = (
     <div className="flex gap-1">
@@ -99,10 +97,15 @@ function StreakCard({ trades }: { trades: Trade[] }) {
         info.wins === 0 && info.losses === 0 ? (
           "Sin operaciones"
         ) : (
-          <span>
-            <span className="text-profit">{info.wins} {winWord}</span>
-            {" · "}
-            <span className="text-loss">{info.losses} {lossWord}</span>
+          <span className="inline-flex items-center gap-3">
+            <span className="inline-flex items-center gap-1 text-profit">
+              <ArrowUp className="size-4" />
+              {info.wins}
+            </span>
+            <span className="inline-flex items-center gap-1 text-loss">
+              <ArrowDown className="size-4" />
+              {info.losses}
+            </span>
           </span>
         )
       }
