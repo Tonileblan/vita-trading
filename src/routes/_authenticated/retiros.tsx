@@ -15,7 +15,7 @@ import {
 import { useJournal } from "@/lib/journal-store";
 import { formatCurrency } from "@/lib/metrics";
 
-export const Route = createFileRoute("/retiros")({
+export const Route = createFileRoute("/_authenticated/retiros")({
   head: () => ({
     meta: [
       { title: "Retiros — Bitácora de trading" },

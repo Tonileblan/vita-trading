@@ -1,0 +1,72 @@
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+
+export interface Journal {
+  id: string;
+  owner_id: string;
+  name: string;
+  description: string | null;
+  base_currency: string;
+  is_archived: boolean;
+  created_at: string;
+}
+
+export function useJournals() {
+  return useQuery({
+    queryKey: ["journals"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("journals")
+        .select("id, owner_id, name, description, base_currency, is_archived, created_at")
+        .order("created_at", { ascending: true });
+      if (error) throw error;
+      return (data ?? []) as Journal[];
+    },
+  });
+}
+
+export function useCreateJournal() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: { name: string; description?: string; base_currency: string }) => {
+      const { data: userData } = await supabase.auth.getUser();
+      const ownerId = userData.user?.id;
+      if (!ownerId) throw new Error("No hay sesión activa");
+      const { data, error } = await supabase
+        .from("journals")
+        .insert({
+          owner_id: ownerId,
+          name: input.name,
+          description: input.description ?? null,
+          base_currency: input.base_currency,
+        })
+        .select()
+        .single();
+      if (error) throw error;
+      return data as Journal;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["journals"] }),
+  });
+}
+
+export function useUpdateJournal() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, ...patch }: Partial<Journal> & { id: string }) => {
+      const { error } = await supabase.from("journals").update(patch).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["journals"] }),
+  });
+}
+
+export function useDeleteJournal() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("journals").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["journals"] }),
+  });
+}

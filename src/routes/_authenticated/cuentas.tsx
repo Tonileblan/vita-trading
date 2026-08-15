@@ -27,7 +27,7 @@ import { computeMetrics, formatCurrency } from "@/lib/metrics";
 import { PROP_FIRMS, type AccountType } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
-export const Route = createFileRoute("/cuentas")({
+export const Route = createFileRoute("/_authenticated/cuentas")({
   head: () => ({
     meta: [
       { title: "Gestión de cuentas — TONITRADING" },
