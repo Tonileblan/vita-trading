@@ -209,19 +209,24 @@ function AccountsPage() {
     const acc = accounts.find((a) => a.id === id)!;
     const accTrades = trades.filter((t) => t.accountId === id);
     const m = computeMetrics(accTrades);
-    const pnl = acc.currentBalance - acc.initialBalance;
+    const pnl = accountPnl(trades, id);
+    const balance = accountBalance(acc, trades);
     const ddUsed =
       acc.drawdownLimit && pnl < 0 ? Math.min(100, (Math.abs(pnl) / acc.drawdownLimit) * 100) : 0;
 
     return (
       <div className="panel p-4">
         <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <h3 className="truncate font-semibold">{acc.name}</h3>
+          <Link
+            to="/cuenta/$accountId"
+            params={{ accountId: acc.id }}
+            className="min-w-0 flex-1 group"
+          >
+            <h3 className="truncate font-semibold group-hover:text-brand">{acc.name}</h3>
             <p className="text-xs text-muted-foreground">
               {acc.firm ?? "Cuenta personal"} · {acc.currency}
             </p>
-          </div>
+          </Link>
           <div className="flex items-center gap-2">
             <span
               className={cn(
@@ -249,7 +254,7 @@ function AccountsPage() {
           </div>
           <div>
             <p className="text-xs text-muted-foreground">Actual</p>
-            <p className="num font-semibold">{formatCurrency(acc.currentBalance)}</p>
+            <p className="num font-semibold">{formatCurrency(balance)}</p>
           </div>
           <div>
             <p className="text-xs text-muted-foreground">Win rate</p>
@@ -274,13 +279,25 @@ function AccountsPage() {
           </div>
         )}
 
-        <p className="mt-4 text-xs text-muted-foreground">
-          {m.total} operaciones · Profit factor{" "}
-          <span className="num">{Number.isFinite(m.profitFactor) ? m.profitFactor.toFixed(2) : "∞"}</span>
-        </p>
+        <div className="mt-4 flex items-center justify-between text-xs text-muted-foreground">
+          <span>
+            {m.total} operaciones · Profit factor{" "}
+            <span className="num">
+              {Number.isFinite(m.profitFactor) ? m.profitFactor.toFixed(2) : "∞"}
+            </span>
+          </span>
+          <Link
+            to="/cuenta/$accountId"
+            params={{ accountId: acc.id }}
+            className="font-semibold text-brand hover:underline"
+          >
+            Ver cuenta →
+          </Link>
+        </div>
       </div>
     );
   };
+
 
   return (
     <AppShell
