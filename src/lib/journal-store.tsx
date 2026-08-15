@@ -1,15 +1,19 @@
 import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
-import { mockAccounts, mockTrades } from "./mock-data";
-import type { Account, Trade } from "./types";
+import { mockAccounts, mockStrategies, mockTrades, mockWithdrawals } from "./mock-data";
+import type { Account, Strategy, Trade, Withdrawal } from "./types";
 
 interface JournalState {
   accounts: Account[];
+  strategies: Strategy[];
+  withdrawals: Withdrawal[];
   trades: Trade[];
   selectedAccountIds: string[];
   toggleAccount: (id: string) => void;
   selectAll: () => void;
   addAccount: (account: Omit<Account, "id">) => void;
   addTrade: (trade: Omit<Trade, "id">) => void;
+  addWithdrawal: (withdrawal: Omit<Withdrawal, "id">) => void;
+  updateStrategy: (id: string, patch: Partial<Strategy>) => void;
   visibleTrades: Trade[];
 }
 
@@ -17,6 +21,8 @@ const JournalContext = createContext<JournalState | null>(null);
 
 export function JournalProvider({ children }: { children: ReactNode }) {
   const [accounts, setAccounts] = useState<Account[]>(mockAccounts);
+  const [strategies, setStrategies] = useState<Strategy[]>(mockStrategies);
+  const [withdrawals, setWithdrawals] = useState<Withdrawal[]>(mockWithdrawals);
   const [trades, setTrades] = useState<Trade[]>(mockTrades);
   const [selectedAccountIds, setSelectedAccountIds] = useState<string[]>(
     mockAccounts.map((a) => a.id),
@@ -26,6 +32,8 @@ export function JournalProvider({ children }: { children: ReactNode }) {
     const visibleTrades = trades.filter((t) => selectedAccountIds.includes(t.accountId));
     return {
       accounts,
+      strategies,
+      withdrawals,
       trades,
       selectedAccountIds,
       visibleTrades,
@@ -50,8 +58,14 @@ export function JournalProvider({ children }: { children: ReactNode }) {
           ),
         );
       },
+      addWithdrawal: (withdrawal) => {
+        const id = `wd-${Math.random().toString(36).slice(2, 8)}`;
+        setWithdrawals((prev) => [{ ...withdrawal, id }, ...prev]);
+      },
+      updateStrategy: (id, patch) =>
+        setStrategies((prev) => prev.map((s) => (s.id === id ? { ...s, ...patch } : s))),
     };
-  }, [accounts, trades, selectedAccountIds]);
+  }, [accounts, strategies, withdrawals, trades, selectedAccountIds]);
 
   return <JournalContext.Provider value={value}>{children}</JournalContext.Provider>;
 }
