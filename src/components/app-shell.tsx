@@ -26,10 +26,9 @@ import { useAuth } from "@/lib/auth-context";
 import { useJournal } from "@/lib/journal-store";
 import { useJournals } from "@/lib/journals";
 import { cn } from "@/lib/utils";
-import { AccountSidePanel } from "./account-side-panel";
 
 const nav = [
-  { to: "/panel", label: "Overview", icon: LayoutDashboard },
+  { to: "/panel", label: "Resumen", icon: LayoutDashboard },
   { to: "/diarios", label: "Diarios", icon: NotebookPen },
   { to: "/cuentas", label: "Cuentas", icon: Wallet },
   { to: "/estrategias", label: "Estrategias", icon: Layers },
