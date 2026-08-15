@@ -208,9 +208,14 @@ function JournalsPage() {
       ) : journals.length === 0 ? (
         <div className="panel p-8 text-center">
           <p className="text-sm text-muted-foreground">Todavía no tienes diarios.</p>
-          <Button className="mt-4" onClick={openCreate}>
-            <Plus className="size-4" /> Crear el primero
-          </Button>
+          <div className="mt-4 flex flex-wrap justify-center gap-2">
+            <Button onClick={openCreate}>
+              <Plus className="size-4" /> Crear el primero
+            </Button>
+            <Button variant="outline" disabled={busyId === "example"} onClick={handleExample}>
+              <Sparkles className="size-4" /> Diario de ejemplo
+            </Button>
+          </div>
         </div>
       ) : (
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
