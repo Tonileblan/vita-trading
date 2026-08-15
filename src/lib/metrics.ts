@@ -39,14 +39,17 @@ export function computeMetrics(trades: Trade[]): Metrics {
   const losses = trades.filter((t) => t.pnl < 0);
   const grossProfit = wins.reduce((s, t) => s + t.pnl, 0);
   const grossLoss = Math.abs(losses.reduce((s, t) => s + t.pnl, 0));
-  const sorted = [...trades].sort(
-    (a, b) => new Date(b.closedAt).getTime() - new Date(a.closedAt).getTime(),
-  );
+  const sorted = [...trades].sort((a, b) => {
+    const diff = new Date(b.closedAt).getTime() - new Date(a.closedAt).getTime();
+    if (diff !== 0) return diff;
+    return String(b.id ?? "").localeCompare(String(a.id ?? ""));
+  });
 
   let streakType: "win" | "loss" | "none" = "none";
   let streakCount = 0;
   for (const t of sorted) {
-    const type = t.pnl >= 0 ? "win" : "loss";
+    if (t.pnl === 0) continue; // breakeven no rompe ni suma racha
+    const type: "win" | "loss" = t.pnl > 0 ? "win" : "loss";
     if (streakType === "none") {
       streakType = type;
       streakCount = 1;
@@ -54,6 +57,7 @@ export function computeMetrics(trades: Trade[]): Metrics {
       streakCount++;
     } else break;
   }
+
 
   return {
     totalPnl: trades.reduce((s, t) => s + t.pnl, 0),
