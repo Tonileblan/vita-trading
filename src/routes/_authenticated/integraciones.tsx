@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 
-export const Route = createFileRoute("/integraciones")({
+export const Route = createFileRoute("/_authenticated/integraciones")({
   head: () => ({
     meta: [
       { title: "Integraciones y Webhooks — TONITRADING" },

@@ -10,7 +10,7 @@ import { computeMetrics, formatCurrency } from "@/lib/metrics";
 import { STRATEGY_TAGS } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
-export const Route = createFileRoute("/operaciones")({
+export const Route = createFileRoute("/_authenticated/operaciones")({
   head: () => ({
     meta: [
       { title: "Operaciones — TONITRADING Journal" },

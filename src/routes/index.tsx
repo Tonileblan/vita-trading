@@ -1,101 +1,95 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
-import { AppShell } from "@/components/app-shell";
-import { EquityChart } from "@/components/equity-chart";
-import { KpiCards } from "@/components/kpi-cards";
-import { TradeFormDialog } from "@/components/trade-form-dialog";
-import { TradesTable } from "@/components/trades-table";
-import { useJournal } from "@/lib/journal-store";
-import {
-  accountsStartBalance,
-  buildEquityCurve,
-  computeMetrics,
-  filterByRange,
-  formatCurrency,
-} from "@/lib/metrics";
-import { cn } from "@/lib/utils";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { CandlestickChart, LineChart, NotebookPen, Users } from "lucide-react";
+import { useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { useAuth } from "@/lib/auth-context";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Overview — TONITRADING Journal" },
+      { title: "Bitácora de Trading — Diarios, métricas y equipo" },
       {
         name: "description",
         content:
-          "Dashboard de bitácora de trading: win rate, PnL, profit factor y curva de capital por cuenta.",
+          "Registra operaciones, organiza varios diarios de trading y gestiona usuarios con métricas en tiempo real.",
       },
-      { property: "og:title", content: "Overview — TONITRADING Journal" },
+      { property: "og:title", content: "Bitácora de Trading — Diarios, métricas y equipo" },
       {
         property: "og:description",
-        content: "Consolida tus cuentas de fondeo y personales en un único panel de métricas.",
+        content: "Diarios independientes, cuentas de fondeo, estrategias y control de retiros.",
       },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
-  component: Overview,
+  component: Landing,
 });
 
-const RANGES = [
-  { key: "7d", label: "7D" },
-  { key: "30d", label: "30D" },
-  { key: "90d", label: "90D" },
-  { key: "all", label: "Todo" },
-] as const;
+const FEATURES = [
+  {
+    icon: NotebookPen,
+    title: "Diarios independientes",
+    text: "Cada bitácora agrupa sus propias cuentas, estrategias y operaciones.",
+  },
+  {
+    icon: LineChart,
+    title: "Métricas al instante",
+    text: "Win rate, profit factor, expectativa y curva de capital consolidada.",
+  },
+  {
+    icon: Users,
+    title: "Usuarios y roles",
+    text: "Perfil propio para cada trader y rol de administrador para el equipo.",
+  },
+];
 
-function Overview() {
-  const { visibleTrades, accounts, selectedAccountIds } = useJournal();
-  const [range, setRange] = useState<(typeof RANGES)[number]["key"]>("all");
+function Landing() {
+  const { session, loading } = useAuth();
+  const navigate = useNavigate();
 
-  const trades = useMemo(() => filterByRange(visibleTrades, range), [visibleTrades, range]);
-  const metrics = useMemo(() => computeMetrics(trades), [trades]);
-  const selectedAccounts = accounts.filter((a) => selectedAccountIds.includes(a.id));
-  const curve = useMemo(
-    () => buildEquityCurve(trades, accountsStartBalance(selectedAccounts)),
-    [trades, selectedAccounts],
-  );
-  const equity = selectedAccounts.reduce((s, a) => s + a.currentBalance, 0);
+  useEffect(() => {
+    if (!loading && session) navigate({ to: "/panel", replace: true });
+  }, [loading, session, navigate]);
 
   return (
-    <AppShell
-      title="Global Overview"
-      subtitle={`${selectedAccounts.length} cuenta(s) seleccionadas · Capital ${formatCurrency(equity)}`}
-      actions={<TradeFormDialog />}
-    >
-      <div className="space-y-5">
-        <KpiCards metrics={metrics} />
+    <main className="min-h-screen bg-background">
+      <header className="flex items-center justify-between px-6 py-5">
+        <div className="flex items-center gap-2">
+          <CandlestickChart className="size-6 text-brand" />
+          <span className="font-display text-lg font-bold tracking-tight">Trading Journal</span>
+        </div>
+        <Button asChild size="sm">
+          <Link to="/auth">Entrar</Link>
+        </Button>
+      </header>
 
-        <section className="panel p-4">
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <h2 className="text-base font-semibold">Equity Curve</h2>
-              <p className="text-xs text-muted-foreground">
-                Curva consolidada de las cuentas activas en el panel lateral
-              </p>
-            </div>
-            <div className="flex gap-1 rounded-md border border-border p-1">
-              {RANGES.map((r) => (
-                <button
-                  key={r.key}
-                  onClick={() => setRange(r.key)}
-                  className={cn(
-                    "rounded px-3 py-1 text-xs font-semibold transition-colors",
-                    range === r.key
-                      ? "bg-brand text-primary-foreground"
-                      : "text-muted-foreground hover:text-foreground",
-                  )}
-                >
-                  {r.label}
-                </button>
-              ))}
-            </div>
-          </div>
-          <EquityChart data={curve} />
-        </section>
+      <section className="mx-auto max-w-3xl px-6 py-20 text-center">
+        <h1 className="font-display text-4xl font-extrabold tracking-tight sm:text-5xl">
+          Tu bitácora de trading, ordenada y medible
+        </h1>
+        <p className="mt-4 text-muted-foreground">
+          Crea varios diarios, controla tus cuentas de fondeo y personales, sigue tus estrategias y
+          gestiona el acceso de cada usuario.
+        </p>
+        <div className="mt-8 flex justify-center gap-3">
+          <Button asChild size="lg">
+            <Link to="/auth">Crear cuenta gratis</Link>
+          </Button>
+          <Button asChild size="lg" variant="outline">
+            <Link to="/auth">Ya tengo cuenta</Link>
+          </Button>
+        </div>
+      </section>
 
-        <section className="space-y-3">
-          <h2 className="text-base font-semibold">Últimas operaciones</h2>
-          <TradesTable trades={trades} accounts={accounts} limit={12} />
-        </section>
-      </div>
-    </AppShell>
+      <section className="mx-auto grid max-w-5xl gap-4 px-6 pb-24 sm:grid-cols-3">
+        {FEATURES.map((f) => (
+          <article key={f.title} className="panel p-5">
+            <f.icon className="size-5 text-brand" />
+            <h2 className="mt-3 text-base font-semibold">{f.title}</h2>
+            <p className="mt-1 text-sm text-muted-foreground">{f.text}</p>
+          </article>
+        ))}
+      </section>
+    </main>
   );
 }

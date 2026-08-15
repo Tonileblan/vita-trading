@@ -10,12 +10,17 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as CuentasRouteImport } from './routes/cuentas'
-import { Route as EscaladoRouteImport } from './routes/escalado'
-import { Route as EstrategiasRouteImport } from './routes/estrategias'
-import { Route as IntegracionesRouteImport } from './routes/integraciones'
-import { Route as OperacionesRouteImport } from './routes/operaciones'
-import { Route as RetirosRouteImport } from './routes/retiros'
+import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
+import { Route as AuthRouteImport } from './routes/auth'
+import { Route as AuthenticatedCuentasRouteImport } from './routes/_authenticated/cuentas'
+import { Route as AuthenticatedDiariosRouteImport } from './routes/_authenticated/diarios'
+import { Route as AuthenticatedEscaladoRouteImport } from './routes/_authenticated/escalado'
+import { Route as AuthenticatedEstrategiasRouteImport } from './routes/_authenticated/estrategias'
+import { Route as AuthenticatedIntegracionesRouteImport } from './routes/_authenticated/integraciones'
+import { Route as AuthenticatedOperacionesRouteImport } from './routes/_authenticated/operaciones'
+import { Route as AuthenticatedPanelRouteImport } from './routes/_authenticated/panel'
+import { Route as AuthenticatedRetirosRouteImport } from './routes/_authenticated/retiros'
+import { Route as AuthenticatedUsuariosRouteImport } from './routes/_authenticated/usuarios'
 import { Route as ApiPublicTradesWebhookRouteImport } from './routes/api/public/trades.webhook'
 
 const IndexRoute = IndexRouteImport.update({
@@ -23,35 +28,62 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const CuentasRoute = CuentasRouteImport.update({
+const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
+  id: '/_authenticated',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedCuentasRoute = AuthenticatedCuentasRouteImport.update({
   id: '/cuentas',
   path: '/cuentas',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const EscaladoRoute = EscaladoRouteImport.update({
+const AuthenticatedDiariosRoute = AuthenticatedDiariosRouteImport.update({
+  id: '/diarios',
+  path: '/diarios',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedEscaladoRoute = AuthenticatedEscaladoRouteImport.update({
   id: '/escalado',
   path: '/escalado',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const EstrategiasRoute = EstrategiasRouteImport.update({
-  id: '/estrategias',
-  path: '/estrategias',
-  getParentRoute: () => rootRouteImport,
+const AuthenticatedEstrategiasRoute =
+  AuthenticatedEstrategiasRouteImport.update({
+    id: '/estrategias',
+    path: '/estrategias',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedIntegracionesRoute =
+  AuthenticatedIntegracionesRouteImport.update({
+    id: '/integraciones',
+    path: '/integraciones',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedOperacionesRoute =
+  AuthenticatedOperacionesRouteImport.update({
+    id: '/operaciones',
+    path: '/operaciones',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedPanelRoute = AuthenticatedPanelRouteImport.update({
+  id: '/panel',
+  path: '/panel',
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const IntegracionesRoute = IntegracionesRouteImport.update({
-  id: '/integraciones',
-  path: '/integraciones',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const OperacionesRoute = OperacionesRouteImport.update({
-  id: '/operaciones',
-  path: '/operaciones',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const RetirosRoute = RetirosRouteImport.update({
+const AuthenticatedRetirosRoute = AuthenticatedRetirosRouteImport.update({
   id: '/retiros',
   path: '/retiros',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedUsuariosRoute = AuthenticatedUsuariosRouteImport.update({
+  id: '/usuarios',
+  path: '/usuarios',
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const ApiPublicTradesWebhookRoute = ApiPublicTradesWebhookRouteImport.update({
   id: '/api/public/trades/webhook',
@@ -61,76 +93,98 @@ const ApiPublicTradesWebhookRoute = ApiPublicTradesWebhookRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/cuentas': typeof CuentasRoute
-  '/escalado': typeof EscaladoRoute
-  '/estrategias': typeof EstrategiasRoute
-  '/integraciones': typeof IntegracionesRoute
-  '/operaciones': typeof OperacionesRoute
-  '/retiros': typeof RetirosRoute
+  '/auth': typeof AuthRoute
+  '/cuentas': typeof AuthenticatedCuentasRoute
+  '/diarios': typeof AuthenticatedDiariosRoute
+  '/escalado': typeof AuthenticatedEscaladoRoute
+  '/estrategias': typeof AuthenticatedEstrategiasRoute
+  '/integraciones': typeof AuthenticatedIntegracionesRoute
+  '/operaciones': typeof AuthenticatedOperacionesRoute
+  '/panel': typeof AuthenticatedPanelRoute
+  '/retiros': typeof AuthenticatedRetirosRoute
+  '/usuarios': typeof AuthenticatedUsuariosRoute
   '/api/public/trades/webhook': typeof ApiPublicTradesWebhookRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/cuentas': typeof CuentasRoute
-  '/escalado': typeof EscaladoRoute
-  '/estrategias': typeof EstrategiasRoute
-  '/integraciones': typeof IntegracionesRoute
-  '/operaciones': typeof OperacionesRoute
-  '/retiros': typeof RetirosRoute
+  '/auth': typeof AuthRoute
+  '/cuentas': typeof AuthenticatedCuentasRoute
+  '/diarios': typeof AuthenticatedDiariosRoute
+  '/escalado': typeof AuthenticatedEscaladoRoute
+  '/estrategias': typeof AuthenticatedEstrategiasRoute
+  '/integraciones': typeof AuthenticatedIntegracionesRoute
+  '/operaciones': typeof AuthenticatedOperacionesRoute
+  '/panel': typeof AuthenticatedPanelRoute
+  '/retiros': typeof AuthenticatedRetirosRoute
+  '/usuarios': typeof AuthenticatedUsuariosRoute
   '/api/public/trades/webhook': typeof ApiPublicTradesWebhookRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/cuentas': typeof CuentasRoute
-  '/escalado': typeof EscaladoRoute
-  '/estrategias': typeof EstrategiasRoute
-  '/integraciones': typeof IntegracionesRoute
-  '/operaciones': typeof OperacionesRoute
-  '/retiros': typeof RetirosRoute
+  '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
+  '/auth': typeof AuthRoute
+  '/_authenticated/cuentas': typeof AuthenticatedCuentasRoute
+  '/_authenticated/diarios': typeof AuthenticatedDiariosRoute
+  '/_authenticated/escalado': typeof AuthenticatedEscaladoRoute
+  '/_authenticated/estrategias': typeof AuthenticatedEstrategiasRoute
+  '/_authenticated/integraciones': typeof AuthenticatedIntegracionesRoute
+  '/_authenticated/operaciones': typeof AuthenticatedOperacionesRoute
+  '/_authenticated/panel': typeof AuthenticatedPanelRoute
+  '/_authenticated/retiros': typeof AuthenticatedRetirosRoute
+  '/_authenticated/usuarios': typeof AuthenticatedUsuariosRoute
   '/api/public/trades/webhook': typeof ApiPublicTradesWebhookRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/auth'
     | '/cuentas'
+    | '/diarios'
     | '/escalado'
     | '/estrategias'
     | '/integraciones'
     | '/operaciones'
+    | '/panel'
     | '/retiros'
+    | '/usuarios'
     | '/api/public/trades/webhook'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/auth'
     | '/cuentas'
+    | '/diarios'
     | '/escalado'
     | '/estrategias'
     | '/integraciones'
     | '/operaciones'
+    | '/panel'
     | '/retiros'
+    | '/usuarios'
     | '/api/public/trades/webhook'
   id:
     | '__root__'
     | '/'
-    | '/cuentas'
-    | '/escalado'
-    | '/estrategias'
-    | '/integraciones'
-    | '/operaciones'
-    | '/retiros'
+    | '/_authenticated'
+    | '/auth'
+    | '/_authenticated/cuentas'
+    | '/_authenticated/diarios'
+    | '/_authenticated/escalado'
+    | '/_authenticated/estrategias'
+    | '/_authenticated/integraciones'
+    | '/_authenticated/operaciones'
+    | '/_authenticated/panel'
+    | '/_authenticated/retiros'
+    | '/_authenticated/usuarios'
     | '/api/public/trades/webhook'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  CuentasRoute: typeof CuentasRoute
-  EscaladoRoute: typeof EscaladoRoute
-  EstrategiasRoute: typeof EstrategiasRoute
-  IntegracionesRoute: typeof IntegracionesRoute
-  OperacionesRoute: typeof OperacionesRoute
-  RetirosRoute: typeof RetirosRoute
+  AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
+  AuthRoute: typeof AuthRoute
   ApiPublicTradesWebhookRoute: typeof ApiPublicTradesWebhookRoute
 }
 
@@ -143,47 +197,82 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/cuentas': {
-      id: '/cuentas'
+    '/_authenticated': {
+      id: '/_authenticated'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AuthenticatedRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/cuentas': {
+      id: '/_authenticated/cuentas'
       path: '/cuentas'
       fullPath: '/cuentas'
-      preLoaderRoute: typeof CuentasRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof AuthenticatedCuentasRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/escalado': {
-      id: '/escalado'
+    '/_authenticated/diarios': {
+      id: '/_authenticated/diarios'
+      path: '/diarios'
+      fullPath: '/diarios'
+      preLoaderRoute: typeof AuthenticatedDiariosRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/escalado': {
+      id: '/_authenticated/escalado'
       path: '/escalado'
       fullPath: '/escalado'
-      preLoaderRoute: typeof EscaladoRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof AuthenticatedEscaladoRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/estrategias': {
-      id: '/estrategias'
+    '/_authenticated/estrategias': {
+      id: '/_authenticated/estrategias'
       path: '/estrategias'
       fullPath: '/estrategias'
-      preLoaderRoute: typeof EstrategiasRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof AuthenticatedEstrategiasRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/integraciones': {
-      id: '/integraciones'
+    '/_authenticated/integraciones': {
+      id: '/_authenticated/integraciones'
       path: '/integraciones'
       fullPath: '/integraciones'
-      preLoaderRoute: typeof IntegracionesRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof AuthenticatedIntegracionesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/operaciones': {
-      id: '/operaciones'
+    '/_authenticated/operaciones': {
+      id: '/_authenticated/operaciones'
       path: '/operaciones'
       fullPath: '/operaciones'
-      preLoaderRoute: typeof OperacionesRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof AuthenticatedOperacionesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/retiros': {
-      id: '/retiros'
+    '/_authenticated/panel': {
+      id: '/_authenticated/panel'
+      path: '/panel'
+      fullPath: '/panel'
+      preLoaderRoute: typeof AuthenticatedPanelRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/retiros': {
+      id: '/_authenticated/retiros'
       path: '/retiros'
       fullPath: '/retiros'
-      preLoaderRoute: typeof RetirosRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof AuthenticatedRetirosRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/usuarios': {
+      id: '/_authenticated/usuarios'
+      path: '/usuarios'
+      fullPath: '/usuarios'
+      preLoaderRoute: typeof AuthenticatedUsuariosRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/api/public/trades/webhook': {
       id: '/api/public/trades/webhook'
@@ -195,14 +284,37 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AuthenticatedRouteRouteChildren {
+  AuthenticatedCuentasRoute: typeof AuthenticatedCuentasRoute
+  AuthenticatedDiariosRoute: typeof AuthenticatedDiariosRoute
+  AuthenticatedEscaladoRoute: typeof AuthenticatedEscaladoRoute
+  AuthenticatedEstrategiasRoute: typeof AuthenticatedEstrategiasRoute
+  AuthenticatedIntegracionesRoute: typeof AuthenticatedIntegracionesRoute
+  AuthenticatedOperacionesRoute: typeof AuthenticatedOperacionesRoute
+  AuthenticatedPanelRoute: typeof AuthenticatedPanelRoute
+  AuthenticatedRetirosRoute: typeof AuthenticatedRetirosRoute
+  AuthenticatedUsuariosRoute: typeof AuthenticatedUsuariosRoute
+}
+
+const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedCuentasRoute: AuthenticatedCuentasRoute,
+  AuthenticatedDiariosRoute: AuthenticatedDiariosRoute,
+  AuthenticatedEscaladoRoute: AuthenticatedEscaladoRoute,
+  AuthenticatedEstrategiasRoute: AuthenticatedEstrategiasRoute,
+  AuthenticatedIntegracionesRoute: AuthenticatedIntegracionesRoute,
+  AuthenticatedOperacionesRoute: AuthenticatedOperacionesRoute,
+  AuthenticatedPanelRoute: AuthenticatedPanelRoute,
+  AuthenticatedRetirosRoute: AuthenticatedRetirosRoute,
+  AuthenticatedUsuariosRoute: AuthenticatedUsuariosRoute,
+}
+
+const AuthenticatedRouteRouteWithChildren =
+  AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  CuentasRoute: CuentasRoute,
-  EscaladoRoute: EscaladoRoute,
-  EstrategiasRoute: EstrategiasRoute,
-  IntegracionesRoute: IntegracionesRoute,
-  OperacionesRoute: OperacionesRoute,
-  RetirosRoute: RetirosRoute,
+  AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
+  AuthRoute: AuthRoute,
   ApiPublicTradesWebhookRoute: ApiPublicTradesWebhookRoute,
 }
 export const routeTree = rootRouteImport

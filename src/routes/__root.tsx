@@ -12,6 +12,7 @@ import { useEffect, type ReactNode } from "react";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { JournalProvider } from "../lib/journal-store";
+import { AuthProvider } from "../lib/auth-context";
 import { Toaster } from "../components/ui/sonner";
 
 
@@ -130,11 +131,13 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
+      <AuthProvider>
       <JournalProvider>
         {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
         <Outlet />
         <Toaster position="top-right" />
       </JournalProvider>
+      </AuthProvider>
     </QueryClientProvider>
   );
 }

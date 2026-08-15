@@ -9,7 +9,7 @@ import { computeStrategyStats, formatCurrency, scalingPlan } from "@/lib/metrics
 import { FUTURES_SPECS } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
-export const Route = createFileRoute("/escalado")({
+export const Route = createFileRoute("/_authenticated/escalado")({
   head: () => ({
     meta: [
       { title: "Plan de escalado — Bitácora de trading" },

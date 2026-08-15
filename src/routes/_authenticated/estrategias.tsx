@@ -5,7 +5,7 @@ import { useJournal } from "@/lib/journal-store";
 import { computeStrategyStats, formatCurrency, monthlyNet } from "@/lib/metrics";
 import { cn } from "@/lib/utils";
 
-export const Route = createFileRoute("/estrategias")({
+export const Route = createFileRoute("/_authenticated/estrategias")({
   head: () => ({
     meta: [
       { title: "Estrategias y portafolio — Bitácora de trading" },
