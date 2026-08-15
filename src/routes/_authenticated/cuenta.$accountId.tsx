@@ -37,7 +37,7 @@ export const Route = createFileRoute("/_authenticated/cuenta/$accountId")({
 
 function AccountDetail() {
   const { accountId } = Route.useParams();
-  const { accounts, trades, strategies, loading } = useJournal();
+  const { accounts, trades, strategies, withdrawals, loading } = useJournal();
   const account = accounts.find((a) => a.id === accountId);
 
   const accTrades = useMemo(
@@ -62,7 +62,7 @@ function AccountDetail() {
 
   const pnl = accountPnl(trades, account.id);
   const balance = accountBalance(account, trades);
-  const dd = accountDrawdown(account, trades);
+  const dd = accountDrawdown(account, trades, withdrawals);
 
   const byStrategy = strategies
     .map((s) => {
