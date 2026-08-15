@@ -23,7 +23,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useJournal } from "@/lib/journal-store";
-import { computeMetrics, formatCurrency } from "@/lib/metrics";
+import { accountBalance, accountPnl, computeMetrics, formatCurrency } from "@/lib/metrics";
 import { PROP_FIRMS, type Account, type AccountType } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
