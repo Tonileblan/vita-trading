@@ -119,13 +119,23 @@ function Overview() {
             </button>
           ))}
         </section>
-        <KpiCards metrics={metrics} />
+        <KpiCards metrics={metrics} scope={scope} />
 
 
         <section className="panel p-4">
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <div>
-              <h2 className="text-xl leading-none">Curva de capital</h2>
+              <h2 className="text-xl leading-none">
+                Curva de capital{" "}
+                <span className="text-sm font-medium text-muted-foreground">
+                  ·{" "}
+                  {scope === "funded"
+                    ? "Fondeo"
+                    : scope === "real"
+                      ? "Real"
+                      : "Total"}
+                </span>
+              </h2>
               <p className="text-xs text-muted-foreground">
                 Consolidada de las cuentas activas
               </p>
