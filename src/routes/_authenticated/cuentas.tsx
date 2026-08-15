@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { Building2, Plus, User } from "lucide-react";
+import { Building2, Pencil, Plus, Trash2, User } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
@@ -222,14 +222,24 @@ function AccountsPage() {
               {acc.firm ?? "Cuenta personal"} · {acc.currency}
             </p>
           </div>
-          <span
-            className={cn(
-              "num rounded-md px-2 py-1 text-sm font-bold",
-              pnl >= 0 ? "bg-profit/15 text-profit" : "bg-loss/15 text-loss",
-            )}
-          >
-            {formatCurrency(pnl, true)}
-          </span>
+          <div className="flex items-center gap-2">
+            <span
+              className={cn(
+                "num rounded-md px-2 py-1 text-sm font-bold",
+                pnl >= 0 ? "bg-profit/15 text-profit" : "bg-loss/15 text-loss",
+              )}
+            >
+              {formatCurrency(pnl, true)}
+            </span>
+            <AccountDialog
+              account={acc}
+              trigger={
+                <Button variant="ghost" size="icon" aria-label={`Editar ${acc.name}`}>
+                  <Pencil className="size-4" />
+                </Button>
+              }
+            />
+          </div>
         </div>
 
         <div className="mt-4 grid grid-cols-3 gap-3 text-sm">
@@ -276,7 +286,15 @@ function AccountsPage() {
     <AppShell
       title="Gestión de Cuentas"
       subtitle="Cuentas de fondeo y personales"
-      actions={<NewAccountDialog />}
+      actions={
+        <AccountDialog
+          trigger={
+            <Button>
+              <Plus className="size-4" /> Nueva cuenta
+            </Button>
+          }
+        />
+      }
     >
       <div className="space-y-8">
         <section className="space-y-3">
