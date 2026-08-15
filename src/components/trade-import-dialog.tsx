@@ -26,7 +26,12 @@ import { formatCurrency } from "@/lib/metrics";
 import { cn } from "@/lib/utils";
 
 /** Clave de deduplicación: mismo activo, dirección, día y PnL. */
-function dedupeKey(t: { symbol: string; direction: string; closedAt?: string | null; pnl: number }) {
+function dedupeKey(t: {
+  symbol: string;
+  direction: string;
+  closedAt?: string | null | undefined;
+  pnl: number;
+}) {
   const day = t.closedAt ? new Date(t.closedAt).toISOString().slice(0, 10) : "sin-fecha";
   return [t.symbol.toUpperCase().trim(), t.direction, day, t.pnl.toFixed(2)].join("|");
 }
