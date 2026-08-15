@@ -15,8 +15,8 @@ function Card({
   headerExtra,
 }: {
   label: string;
-  value: string;
-  sub: string;
+  value: React.ReactNode;
+  sub: React.ReactNode;
   icon: React.ElementType;
   tone?: "neutral" | "profit" | "loss";
   children?: React.ReactNode;
