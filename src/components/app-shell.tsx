@@ -125,19 +125,21 @@ export function AppShell({
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="border-b border-border bg-card">
-        <div className="mx-auto flex max-w-4xl flex-wrap items-center justify-between gap-3 px-4 py-3">
-          <Link to="/panel" className="flex items-center gap-2">
-            <CandlestickChart className="size-5" />
-            <span className="font-display text-2xl leading-none tracking-wide">Bitácora</span>
+      <header className="sticky top-0 z-30 border-b border-border bg-card">
+        <div className="mx-auto grid max-w-4xl grid-cols-[minmax(0,1fr)_auto] items-center gap-2 px-4 py-2.5 sm:gap-3 sm:py-3">
+          <Link to="/panel" className="flex min-w-0 items-center gap-2">
+            <CandlestickChart className="size-5 shrink-0" />
+            <span className="truncate font-display text-xl leading-none tracking-wide sm:text-2xl">
+              Bitácora
+            </span>
           </Link>
-          <div className="flex items-center gap-2">
+          <div className="flex shrink-0 items-center gap-2">
             <JournalSwitcher />
             <UserMenu />
           </div>
         </div>
         <div className="border-t border-border">
-          <nav className="mx-auto flex max-w-4xl gap-1 overflow-x-auto px-4 py-2">
+          <nav className="mx-auto flex max-w-4xl gap-1 overflow-x-auto px-4 py-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {items.map((item) => {
               const active = pathname.startsWith(item.to);
               return (
