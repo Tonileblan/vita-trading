@@ -38,12 +38,20 @@ function Card({
   );
 }
 
-export function KpiCards({ metrics }: { metrics: Metrics }) {
+export function KpiCards({
+  metrics,
+  scope = "all",
+}: {
+  metrics: Metrics;
+  scope?: "all" | "funded" | "real";
+}) {
   const pf = metrics.profitFactor;
+  const pnlLabel =
+    scope === "funded" ? "PnL Fondeo" : scope === "real" ? "PnL Real" : "PnL Total";
   return (
     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
       <Card
-        label="PnL Total"
+        label={pnlLabel}
         value={formatCurrency(metrics.totalPnl, true)}
         sub={`${metrics.total} operaciones cerradas`}
         icon={TrendingUp}
