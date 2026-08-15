@@ -223,8 +223,13 @@ export function JournalProvider({ children }: { children: ReactNode }) {
       if (result.strategies.length === 0) {
         const { data: userData } = await supabase.auth.getUser();
         const uid = userData.user?.id;
-        const owned = journals.find((j) => j.id === activeJournalId)?.owner_id === uid;
-        if (uid && owned) {
+        // Comprueba la propiedad directamente en la base para evitar carreras con la lista de diarios.
+        const { data: journal } = await supabase
+          .from("journals")
+          .select("owner_id")
+          .eq("id", activeJournalId)
+          .maybeSingle();
+        if (uid && journal?.owner_id === uid) {
           await seedDefaultStrategies(activeJournalId, uid);
           return fetchJournalData(activeJournalId);
         }
