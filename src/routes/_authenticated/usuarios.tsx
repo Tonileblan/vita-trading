@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Eye, Moon, ShieldCheck, ShieldOff, Sun } from "lucide-react";
+import { Coffee, Eye, Moon, ShieldCheck, ShieldOff, Sun } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/app-shell";
@@ -238,6 +238,21 @@ function UsersPage() {
             </div>
           </section>
         )}
+
+        <footer className="mt-10 flex flex-col items-center gap-3 border-t border-ink/10 pt-6 text-center">
+          <p className="font-hand text-xl text-ink/70">
+            Creado por Toni
+          </p>
+          <a
+            href="https://www.buymeacoffee.com/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 rounded-full bg-[#ff813f] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#ff7a2e]"
+          >
+            <Coffee className="size-4" />
+            Invítame a un café
+          </a>
+        </footer>
       </div>
     </AppShell>
   );
