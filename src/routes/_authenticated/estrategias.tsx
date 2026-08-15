@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMemo } from "react";
 import { Layers, Pencil, Plus } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
+import { CapitalSplit } from "@/components/capital-split";
 import { MarketHours } from "@/components/market-hours";
 import { StrategyDialog } from "@/components/strategy-dialog";
 import { Button } from "@/components/ui/button";
@@ -35,7 +36,7 @@ function pct(v: number) {
 }
 
 function EstrategiasPage() {
-  const { strategies, trades, withdrawals, restoreDefaultStrategies } = useJournal();
+  const { strategies, trades, withdrawals, accounts, restoreDefaultStrategies } = useJournal();
 
   const stats = useMemo(
     () => strategies.map((s) => computeStrategyStats(s, trades, withdrawals)),
@@ -69,6 +70,7 @@ function EstrategiasPage() {
     >
       <div className="space-y-5">
         <MarketHours />
+        <CapitalSplit accounts={accounts} trades={trades} />
         {strategies.length === 0 ? (
           <div className="panel flex flex-col items-center gap-3 p-8 text-center">
             <Layers className="size-8 text-muted-foreground" />
