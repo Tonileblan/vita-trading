@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Coffee, Eye, Moon, ShieldCheck, ShieldOff, Sun } from "lucide-react";
+import { Coffee, Eye, Lock, Moon, ShieldCheck, ShieldOff, Sun, Unlock } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/app-shell";
@@ -43,6 +43,23 @@ function UsersPage() {
   const qc = useQueryClient();
   const [name, setName] = useState("");
   const [avatar, setAvatar] = useState("");
+  const isPrivate = profile?.is_private ?? false;
+
+  const togglePrivate = useMutation({
+    mutationFn: async (next: boolean) => {
+      const { error } = await supabase
+        .from("profiles")
+        .update({ is_private: next })
+        .eq("id", user!.id);
+      if (error) throw error;
+      return next;
+    },
+    onSuccess: (next) => {
+      toast.success(next ? "Perfil privado activado" : "Perfil visible para supervisores");
+      qc.invalidateQueries({ queryKey: ["profile"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
 
   useEffect(() => {
     setName(profile?.display_name ?? "");
@@ -137,6 +154,23 @@ function UsersPage() {
           </div>
           <Button onClick={() => saveProfile.mutate()} disabled={saveProfile.isPending}>
             Guardar perfil
+          </Button>
+        </section>
+
+        <section className="panel max-w-lg space-y-3 p-5">
+          <h2 className="text-base font-semibold">Privacidad</h2>
+          <p className="text-xs text-muted-foreground">
+            {isPrivate
+              ? "Tu perfil es privado: nadie más, ni siquiera un supervisor, puede ver tus diarios, cuentas, operaciones ni tu chat."
+              : "Los supervisores pueden ver tu resumen y comentarte en el chat interno."}
+          </p>
+          <Button
+            variant={isPrivate ? "default" : "outline"}
+            disabled={togglePrivate.isPending}
+            onClick={() => togglePrivate.mutate(!isPrivate)}
+          >
+            {isPrivate ? <Lock className="size-4" /> : <Unlock className="size-4" />}
+            {isPrivate ? "Perfil privado activado" : "Hacer perfil privado"}
           </Button>
         </section>
 
