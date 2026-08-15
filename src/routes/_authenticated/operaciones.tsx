@@ -4,6 +4,7 @@ import { Search } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { Input } from "@/components/ui/input";
 import { TradeFormDialog } from "@/components/trade-form-dialog";
+import { TradeImportDialog } from "@/components/trade-import-dialog";
 import { TradesTable } from "@/components/trades-table";
 import { useJournal } from "@/lib/journal-store";
 import { computeMetrics, formatCurrency } from "@/lib/metrics";
