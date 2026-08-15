@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Archive, ArchiveRestore, Check, Pencil, Plus, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { Archive, ArchiveRestore, Check, Download, Pencil, Plus, Trash2, Upload } from "lucide-react";
+import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
@@ -23,6 +23,8 @@ import {
   type Journal,
 } from "@/lib/journals";
 import { useJournal } from "@/lib/journal-store";
+import { exportJournalCsv, importJournalCsv } from "@/lib/journal-csv";
+import { useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/diarios")({
@@ -49,6 +51,48 @@ function JournalsPage() {
   const update = useUpdateJournal();
   const remove = useDeleteJournal();
   const { activeJournalId, setActiveJournalId } = useJournal();
+  const qc = useQueryClient();
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [importTarget, setImportTarget] = useState<Journal | null>(null);
+  const [busyId, setBusyId] = useState<string | null>(null);
+
+  async function handleExport(j: Journal) {
+    setBusyId(j.id);
+    try {
+      const n = await exportJournalCsv(j.id, j.name);
+      toast.success(`Exportadas ${n} operaciones de "${j.name}"`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "No se pudo exportar");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  function pickFile(j: Journal) {
+    setImportTarget(j);
+    fileRef.current?.click();
+  }
+
+  async function handleFile(file: File) {
+    const j = importTarget;
+    if (!j) return;
+    setBusyId(j.id);
+    try {
+      const res = await importJournalCsv(j.id, await file.text());
+      await qc.invalidateQueries({ queryKey: ["journal-data"] });
+      toast.success(
+        `${res.imported} operaciones importadas` +
+          (res.duplicates ? ` · ${res.duplicates} duplicadas omitidas` : "") +
+          (res.createdAccounts ? ` · ${res.createdAccounts} cuentas nuevas` : "") +
+          (res.createdStrategies ? ` · ${res.createdStrategies} estrategias nuevas` : ""),
+      );
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "No se pudo importar el CSV");
+    } finally {
+      setBusyId(null);
+      setImportTarget(null);
+    }
+  }
 
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Journal | null>(null);
@@ -165,6 +209,24 @@ function JournalsPage() {
                   <Button
                     size="sm"
                     variant="outline"
+                    title="Exportar operaciones a CSV"
+                    disabled={busyId === j.id}
+                    onClick={() => handleExport(j)}
+                  >
+                    <Download className="size-4" />
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    title="Importar operaciones desde CSV"
+                    disabled={busyId === j.id}
+                    onClick={() => pickFile(j)}
+                  >
+                    <Upload className="size-4" />
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
                     onClick={() =>
                       update.mutate({ id: j.id, is_archived: !j.is_archived })
                     }
@@ -191,6 +253,23 @@ function JournalsPage() {
           })}
         </div>
       )}
+
+      <input
+        ref={fileRef}
+        type="file"
+        accept=".csv,text/csv"
+        className="hidden"
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          e.target.value = "";
+          if (f) void handleFile(f);
+        }}
+      />
+
+      <p className="mt-4 text-xs text-muted-foreground">
+        CSV: fecha_apertura, fecha_cierre, cuenta, estrategia, simbolo, direccion, entrada, salida,
+        tamano, pnl, etiquetas, notas. Al importar se omiten las operaciones ya registradas.
+      </p>
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogTrigger asChild>
