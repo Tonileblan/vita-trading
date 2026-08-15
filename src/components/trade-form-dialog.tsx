@@ -46,6 +46,19 @@ export function TradeFormDialog() {
   const [dragging, setDragging] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
+  // Mantiene la selección alineada con las estrategias del diario activo.
+  useEffect(() => {
+    if (strategies.length === 0) {
+      if (strategyId) setStrategyId("");
+      return;
+    }
+    if (!strategies.some((s) => s.id === strategyId)) setStrategyId(strategies[0]!.id);
+  }, [strategies, strategyId]);
+
+  useEffect(() => {
+    setTags((prev) => prev.filter((t) => strategies.some((s) => s.name === t)));
+  }, [strategies]);
+
   const addFiles = (files: FileList | File[] | null) => {
     if (!files) return;
     Array.from(files)
@@ -221,9 +234,9 @@ export function TradeFormDialog() {
           <div className="space-y-2 sm:col-span-2">
             <Label>Estrategias</Label>
             <div className="flex flex-wrap gap-2">
-              {STRATEGY_TAGS.map((tag) => (
+              {strategies.map(({ id, name: tag }) => (
                 <button
-                  key={tag}
+                  key={id}
                   type="button"
                   onClick={() =>
                     setTags((prev) =>
