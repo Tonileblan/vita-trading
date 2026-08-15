@@ -8,7 +8,7 @@ import { TradeImportDialog } from "@/components/trade-import-dialog";
 import { TradesTable } from "@/components/trades-table";
 import { useJournal } from "@/lib/journal-store";
 import { computeMetrics, formatCurrency } from "@/lib/metrics";
-import { STRATEGY_TAGS } from "@/lib/types";
+
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/operaciones")({
