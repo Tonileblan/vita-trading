@@ -140,6 +140,16 @@ export function JournalProvider({ children }: { children: ReactNode }) {
         const id = `wd-${Math.random().toString(36).slice(2, 8)}`;
         patchBucket((b) => ({ ...b, withdrawals: [{ ...withdrawal, id }, ...b.withdrawals] }));
       },
+      addStrategy: (strategy) => {
+        const id = `str-${Math.random().toString(36).slice(2, 8)}`;
+        patchBucket((b) => ({ ...b, strategies: [...b.strategies, { ...strategy, id }] }));
+      },
+      removeStrategy: (id) =>
+        patchBucket((b) => ({
+          ...b,
+          strategies: b.strategies.filter((s) => s.id !== id),
+          withdrawals: b.withdrawals.filter((w) => w.strategyId !== id),
+        })),
       updateStrategy: (id, patch) =>
         patchBucket((b) => ({
           ...b,
