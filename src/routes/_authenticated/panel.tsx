@@ -119,7 +119,7 @@ function Overview() {
             </button>
           ))}
         </section>
-        <KpiCards metrics={metrics} scope={scope} />
+        <KpiCards metrics={metrics} scope={scope} trades={scopedTrades} />
 
 
         <section className="panel p-4">
