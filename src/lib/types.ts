@@ -76,6 +76,7 @@ export interface Strategy {
 export interface Withdrawal {
   id: string;
   strategyId: string;
+  accountId?: string | undefined;
   date: string;
   amount: number;
   reason?: string | undefined;

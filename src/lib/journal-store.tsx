@@ -123,6 +123,7 @@ function toWithdrawal(r: Row): Withdrawal {
   return {
     id: String(r["id"]),
     strategyId: String(r["strategy_id"] ?? ""),
+    accountId: (r["account_id"] as string | null) ?? undefined,
     date: String(r["date"] ?? new Date().toISOString()),
     amount: Number(r["amount"] ?? 0),
     reason: (r["reason"] as string | null) ?? undefined,
@@ -301,6 +302,7 @@ export function JournalProvider({ children }: { children: ReactNode }) {
         const base = await ownerFields();
         const { error } = await supabase.from("withdrawals").insert({
           strategy_id: withdrawal.strategyId || null,
+          account_id: withdrawal.accountId || null,
           date: withdrawal.date,
           amount: withdrawal.amount,
           reason: withdrawal.reason ?? null,

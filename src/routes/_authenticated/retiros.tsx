@@ -37,8 +37,9 @@ export const Route = createFileRoute("/_authenticated/retiros")({
 });
 
 function RetirosPage() {
-  const { strategies, withdrawals, addWithdrawal } = useJournal();
+  const { accounts, strategies, withdrawals, addWithdrawal } = useJournal();
   const [strategyId, setStrategyId] = useState(strategies[0]?.id ?? "");
+  const [accountId, setAccountId] = useState(accounts[0]?.id ?? "");
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [amount, setAmount] = useState("");
   const [reason, setReason] = useState("");
@@ -57,12 +58,13 @@ function RetirosPage() {
 
   const submit = () => {
     const value = Number(amount);
-    if (!strategyId || !value || value <= 0) {
-      toast.error("Indica estrategia y un importe válido");
+    if (!strategyId || !accountId || !value || value <= 0) {
+      toast.error("Indica cuenta, estrategia y un importe válido");
       return;
     }
     addWithdrawal({
       strategyId,
+      accountId,
       date: new Date(date).toISOString(),
       amount: value,
       reason: reason || undefined,
@@ -73,6 +75,18 @@ function RetirosPage() {
   };
 
   const name = (id: string) => strategies.find((s) => s.id === id)?.name ?? "—";
+  const accName = (id?: string) => accounts.find((a) => a.id === id)?.name ?? "—";
+
+  const byAccount = useMemo(
+    () =>
+      accounts.map((a) => ({
+        account: a,
+        total: withdrawals
+          .filter((w) => w.accountId === a.id)
+          .reduce((acc, w) => acc + w.amount, 0),
+      })),
+    [accounts, withdrawals],
+  );
 
   return (
     <AppShell
@@ -87,6 +101,7 @@ function RetirosPage() {
             <thead className="text-xs uppercase text-muted-foreground">
               <tr className="border-b border-border">
                 <th className="py-2 text-left">Fecha</th>
+                <th className="py-2 text-left">Cuenta</th>
                 <th className="py-2 text-left">Estrategia</th>
                 <th className="py-2 text-right">Monto</th>
                 <th className="py-2 text-left">Motivo</th>
@@ -105,6 +120,7 @@ function RetirosPage() {
                   <td className="py-2 tabular-nums">
                     {new Date(w.date).toLocaleDateString("es-ES", { timeZone: "UTC" })}
                   </td>
+                  <td className="py-2">{accName(w.accountId)}</td>
                   <td className="py-2">{name(w.strategyId)}</td>
                   <td className="py-2 text-right tabular-nums">{formatCurrency(w.amount)}</td>
                   <td className="py-2 text-muted-foreground">{w.reason ?? "—"}</td>
@@ -117,6 +133,21 @@ function RetirosPage() {
         <div className="space-y-5">
           <section className="panel space-y-3 p-4">
             <h2 className="text-base font-semibold">Nuevo retiro</h2>
+            <div className="space-y-2">
+              <Label>Cuenta</Label>
+              <Select value={accountId} onValueChange={setAccountId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecciona" />
+                </SelectTrigger>
+                <SelectContent>
+                  {accounts.map((a) => (
+                    <SelectItem key={a.id} value={a.id}>
+                      {a.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <div className="space-y-2">
               <Label>Estrategia</Label>
               <Select value={strategyId} onValueChange={setStrategyId}>
@@ -159,7 +190,16 @@ function RetirosPage() {
           </section>
 
           <section className="panel p-4">
-            <h2 className="mb-3 text-base font-semibold">Resumen</h2>
+            <h2 className="mb-3 text-base font-semibold">Resumen por cuenta</h2>
+            <ul className="mb-4 space-y-2 text-sm">
+              {byAccount.map((x) => (
+                <li key={x.account.id} className="flex justify-between">
+                  <span className="text-muted-foreground">{x.account.name}</span>
+                  <span className="tabular-nums">{formatCurrency(x.total)}</span>
+                </li>
+              ))}
+            </ul>
+            <h2 className="mb-3 text-base font-semibold">Resumen por estrategia</h2>
             <ul className="space-y-2 text-sm">
               {byStrategy.map((x) => (
                 <li key={x.strategy.id} className="flex justify-between">

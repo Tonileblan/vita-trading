@@ -200,6 +200,7 @@ async function journalRows(j: Journal): Promise<CsvRow[]> {
     rows.push({
       tipo: "retiro",
       diario: j.name,
+      cuenta: w.accountId ? (accountName.get(w.accountId) ?? "") : "",
       estrategia: strategyName.get(w.strategyId) ?? "",
       fecha: w.date,
       importe: w.amount,
@@ -468,10 +469,12 @@ export async function importJournalCsv(
         continue;
       }
       const strategyId = await ensureStrategy(ctx, stName);
+      const accountId = await ensureAccount(ctx, at(r, "cuenta"));
       const { error } = await supabase.from("withdrawals").insert({
         journal_id: ctx.id,
         user_id: userId,
         strategy_id: strategyId,
+        account_id: accountId,
         date,
         amount,
         reason: at(r, "motivo") || null,
