@@ -125,9 +125,14 @@ export function AppShell({
         <div className="mx-auto grid max-w-4xl grid-cols-[minmax(0,1fr)_auto] items-center gap-2 px-4 py-2.5 sm:gap-3 sm:py-3">
           <Link to="/panel" className="flex min-w-0 items-center gap-2">
             <CandlestickChart className="size-5 shrink-0" />
-            <span className="truncate font-display text-xl leading-none tracking-wide sm:text-2xl">
-              Vita-Trading
-            </span>
+            <div className="flex min-w-0 flex-col leading-none">
+              <span className="truncate font-display text-xl tracking-wide sm:text-2xl">
+                Vita-Trading
+              </span>
+              <span className="font-hand text-sm leading-none text-muted-foreground sm:text-base">
+                by Toni
+              </span>
+            </div>
           </Link>
           <div className="flex shrink-0 items-center gap-2">
             <JournalSwitcher />

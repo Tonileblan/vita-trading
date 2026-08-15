@@ -184,3 +184,9 @@
   text-transform: uppercase;
   color: var(--color-muted-foreground);
 }
+
+/* Tipografía de escritura a mano */
+@utility font-hand {
+  font-family: var(--font-hand);
+  font-weight: 500;
+}
