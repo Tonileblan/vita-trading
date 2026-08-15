@@ -14,6 +14,7 @@ import { Route as CuentasRouteImport } from './routes/cuentas'
 import { Route as EstrategiasRouteImport } from './routes/estrategias'
 import { Route as IntegracionesRouteImport } from './routes/integraciones'
 import { Route as OperacionesRouteImport } from './routes/operaciones'
+import { Route as RetirosRouteImport } from './routes/retiros'
 import { Route as ApiPublicTradesWebhookRouteImport } from './routes/api/public/trades.webhook'
 
 const IndexRoute = IndexRouteImport.update({
@@ -41,6 +42,11 @@ const OperacionesRoute = OperacionesRouteImport.update({
   path: '/operaciones',
   getParentRoute: () => rootRouteImport,
 } as any)
+const RetirosRoute = RetirosRouteImport.update({
+  id: '/retiros',
+  path: '/retiros',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicTradesWebhookRoute = ApiPublicTradesWebhookRouteImport.update({
   id: '/api/public/trades/webhook',
   path: '/api/public/trades/webhook',
@@ -53,6 +59,7 @@ export interface FileRoutesByFullPath {
   '/estrategias': typeof EstrategiasRoute
   '/integraciones': typeof IntegracionesRoute
   '/operaciones': typeof OperacionesRoute
+  '/retiros': typeof RetirosRoute
   '/api/public/trades/webhook': typeof ApiPublicTradesWebhookRoute
 }
 export interface FileRoutesByTo {
@@ -61,6 +68,7 @@ export interface FileRoutesByTo {
   '/estrategias': typeof EstrategiasRoute
   '/integraciones': typeof IntegracionesRoute
   '/operaciones': typeof OperacionesRoute
+  '/retiros': typeof RetirosRoute
   '/api/public/trades/webhook': typeof ApiPublicTradesWebhookRoute
 }
 export interface FileRoutesById {
@@ -70,6 +78,7 @@ export interface FileRoutesById {
   '/estrategias': typeof EstrategiasRoute
   '/integraciones': typeof IntegracionesRoute
   '/operaciones': typeof OperacionesRoute
+  '/retiros': typeof RetirosRoute
   '/api/public/trades/webhook': typeof ApiPublicTradesWebhookRoute
 }
 export interface FileRouteTypes {
@@ -80,6 +89,7 @@ export interface FileRouteTypes {
     | '/estrategias'
     | '/integraciones'
     | '/operaciones'
+    | '/retiros'
     | '/api/public/trades/webhook'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -88,6 +98,7 @@ export interface FileRouteTypes {
     | '/estrategias'
     | '/integraciones'
     | '/operaciones'
+    | '/retiros'
     | '/api/public/trades/webhook'
   id:
     | '__root__'
@@ -96,6 +107,7 @@ export interface FileRouteTypes {
     | '/estrategias'
     | '/integraciones'
     | '/operaciones'
+    | '/retiros'
     | '/api/public/trades/webhook'
   fileRoutesById: FileRoutesById
 }
@@ -105,6 +117,7 @@ export interface RootRouteChildren {
   EstrategiasRoute: typeof EstrategiasRoute
   IntegracionesRoute: typeof IntegracionesRoute
   OperacionesRoute: typeof OperacionesRoute
+  RetirosRoute: typeof RetirosRoute
   ApiPublicTradesWebhookRoute: typeof ApiPublicTradesWebhookRoute
 }
 
@@ -145,6 +158,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OperacionesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/retiros': {
+      id: '/retiros'
+      path: '/retiros'
+      fullPath: '/retiros'
+      preLoaderRoute: typeof RetirosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/trades/webhook': {
       id: '/api/public/trades/webhook'
       path: '/api/public/trades/webhook'
@@ -161,6 +181,7 @@ const rootRouteChildren: RootRouteChildren = {
   EstrategiasRoute: EstrategiasRoute,
   IntegracionesRoute: IntegracionesRoute,
   OperacionesRoute: OperacionesRoute,
+  RetirosRoute: RetirosRoute,
   ApiPublicTradesWebhookRoute: ApiPublicTradesWebhookRoute,
 }
 export const routeTree = rootRouteImport
