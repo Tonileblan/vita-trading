@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ImagePlus, Plus, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -22,7 +22,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useJournal } from "@/lib/journal-store";
-import { STRATEGY_TAGS, type Direction } from "@/lib/types";
+import { type Direction } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 const nowLocal = () => new Date().toISOString().slice(0, 16);
@@ -40,11 +40,24 @@ export function TradeFormDialog() {
   const [exitPrice, setExitPrice] = useState("");
   const [size, setSize] = useState("1");
   const [pnl, setPnl] = useState("");
-  const [tags, setTags] = useState<string[]>(["ICT"]);
+  const [tags, setTags] = useState<string[]>([]);
   const [notes, setNotes] = useState("");
   const [shots, setShots] = useState<string[]>([]);
   const [dragging, setDragging] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  // Mantiene la selección alineada con las estrategias del diario activo.
+  useEffect(() => {
+    if (strategies.length === 0) {
+      if (strategyId) setStrategyId("");
+      return;
+    }
+    if (!strategies.some((s) => s.id === strategyId)) setStrategyId(strategies[0]!.id);
+  }, [strategies, strategyId]);
+
+  useEffect(() => {
+    setTags((prev) => prev.filter((t) => strategies.some((s) => s.name === t)));
+  }, [strategies]);
 
   const addFiles = (files: FileList | File[] | null) => {
     if (!files) return;
@@ -221,9 +234,9 @@ export function TradeFormDialog() {
           <div className="space-y-2 sm:col-span-2">
             <Label>Estrategias</Label>
             <div className="flex flex-wrap gap-2">
-              {STRATEGY_TAGS.map((tag) => (
+              {strategies.map(({ id, name: tag }) => (
                 <button
-                  key={tag}
+                  key={id}
                   type="button"
                   onClick={() =>
                     setTags((prev) =>

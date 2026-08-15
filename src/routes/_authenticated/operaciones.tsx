@@ -8,7 +8,7 @@ import { TradeImportDialog } from "@/components/trade-import-dialog";
 import { TradesTable } from "@/components/trades-table";
 import { useJournal } from "@/lib/journal-store";
 import { computeMetrics, formatCurrency } from "@/lib/metrics";
-import { STRATEGY_TAGS } from "@/lib/types";
+
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/operaciones")({
@@ -30,7 +30,7 @@ export const Route = createFileRoute("/_authenticated/operaciones")({
 });
 
 function TradesPage() {
-  const { visibleTrades, accounts } = useJournal();
+  const { visibleTrades, accounts, strategies } = useJournal();
   const [query, setQuery] = useState("");
   const [tag, setTag] = useState<string | null>(null);
 
@@ -68,9 +68,9 @@ function TradesPage() {
             />
           </div>
           <div className="flex flex-wrap gap-2">
-            {STRATEGY_TAGS.map((t) => (
+            {strategies.map(({ id, name: t }) => (
               <button
-                key={t}
+                key={id}
                 onClick={() => setTag(tag === t ? null : t)}
                 className={cn(
                   "rounded-full border px-3 py-1 text-xs font-medium transition-colors",
