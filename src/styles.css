@@ -59,6 +59,7 @@
   --font-display: "Bebas Neue", ui-sans-serif, system-ui, sans-serif;
   --font-sans: "Barlow", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "Barlow", ui-sans-serif, system-ui, sans-serif;
+  --font-hand: "Caveat", ui-sans-serif, system-ui, cursive;
 }
 
 :root {
@@ -182,4 +183,10 @@
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--color-muted-foreground);
+}
+
+/* Tipografía de escritura a mano */
+@utility font-hand {
+  font-family: var(--font-hand);
+  font-weight: 500;
 }
