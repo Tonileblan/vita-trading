@@ -10,6 +10,8 @@ import {
   CandlestickChart,
   NotebookPen,
   Users,
+  MessageSquare,
+  ShieldCheck,
   LogOut,
 } from "lucide-react";
 import { useEffect, type ReactNode } from "react";
@@ -37,6 +39,11 @@ const nav = [
   { to: "/escalado", label: "Escalado", icon: TrendingUp },
   { to: "/integraciones", label: "Integraciones", icon: Webhook },
   { to: "/usuarios", label: "Usuarios", icon: Users },
+  { to: "/chat", label: "Chat", icon: MessageSquare },
+] as const;
+
+const supervisorNav = [
+  { to: "/supervision", label: "Supervisión", icon: ShieldCheck },
 ] as const;
 
 function JournalSwitcher() {
@@ -113,6 +120,8 @@ export function AppShell({
   showAccountPanel?: boolean;
 }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const { isSupervisor } = useAuth();
+  const items = isSupervisor ? [...nav, ...supervisorNav] : nav;
 
   return (
     <div className="min-h-screen bg-background">
@@ -129,7 +138,7 @@ export function AppShell({
         </div>
         <div className="border-t border-border">
           <nav className="mx-auto flex max-w-4xl gap-1 overflow-x-auto px-4 py-2">
-            {nav.map((item) => {
+            {items.map((item) => {
               const active = pathname.startsWith(item.to);
               return (
                 <Link

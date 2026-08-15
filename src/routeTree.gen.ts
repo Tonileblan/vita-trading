@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as AuthenticatedChatRouteImport } from './routes/_authenticated/chat'
 import { Route as AuthenticatedCuentasRouteImport } from './routes/_authenticated/cuentas'
 import { Route as AuthenticatedDiariosRouteImport } from './routes/_authenticated/diarios'
 import { Route as AuthenticatedEscaladoRouteImport } from './routes/_authenticated/escalado'
@@ -20,6 +21,7 @@ import { Route as AuthenticatedIntegracionesRouteImport } from './routes/_authen
 import { Route as AuthenticatedOperacionesRouteImport } from './routes/_authenticated/operaciones'
 import { Route as AuthenticatedPanelRouteImport } from './routes/_authenticated/panel'
 import { Route as AuthenticatedRetirosRouteImport } from './routes/_authenticated/retiros'
+import { Route as AuthenticatedSupervisionRouteImport } from './routes/_authenticated/supervision'
 import { Route as AuthenticatedUsuariosRouteImport } from './routes/_authenticated/usuarios'
 import { Route as ApiPublicTradesWebhookRouteImport } from './routes/api/public/trades.webhook'
 
@@ -36,6 +38,11 @@ const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedChatRoute = AuthenticatedChatRouteImport.update({
+  id: '/chat',
+  path: '/chat',
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedCuentasRoute = AuthenticatedCuentasRouteImport.update({
   id: '/cuentas',
@@ -80,6 +87,12 @@ const AuthenticatedRetirosRoute = AuthenticatedRetirosRouteImport.update({
   path: '/retiros',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedSupervisionRoute =
+  AuthenticatedSupervisionRouteImport.update({
+    id: '/supervision',
+    path: '/supervision',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedUsuariosRoute = AuthenticatedUsuariosRouteImport.update({
   id: '/usuarios',
   path: '/usuarios',
@@ -94,6 +107,7 @@ const ApiPublicTradesWebhookRoute = ApiPublicTradesWebhookRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/chat': typeof AuthenticatedChatRoute
   '/cuentas': typeof AuthenticatedCuentasRoute
   '/diarios': typeof AuthenticatedDiariosRoute
   '/escalado': typeof AuthenticatedEscaladoRoute
@@ -102,12 +116,14 @@ export interface FileRoutesByFullPath {
   '/operaciones': typeof AuthenticatedOperacionesRoute
   '/panel': typeof AuthenticatedPanelRoute
   '/retiros': typeof AuthenticatedRetirosRoute
+  '/supervision': typeof AuthenticatedSupervisionRoute
   '/usuarios': typeof AuthenticatedUsuariosRoute
   '/api/public/trades/webhook': typeof ApiPublicTradesWebhookRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/chat': typeof AuthenticatedChatRoute
   '/cuentas': typeof AuthenticatedCuentasRoute
   '/diarios': typeof AuthenticatedDiariosRoute
   '/escalado': typeof AuthenticatedEscaladoRoute
@@ -116,6 +132,7 @@ export interface FileRoutesByTo {
   '/operaciones': typeof AuthenticatedOperacionesRoute
   '/panel': typeof AuthenticatedPanelRoute
   '/retiros': typeof AuthenticatedRetirosRoute
+  '/supervision': typeof AuthenticatedSupervisionRoute
   '/usuarios': typeof AuthenticatedUsuariosRoute
   '/api/public/trades/webhook': typeof ApiPublicTradesWebhookRoute
 }
@@ -124,6 +141,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
+  '/_authenticated/chat': typeof AuthenticatedChatRoute
   '/_authenticated/cuentas': typeof AuthenticatedCuentasRoute
   '/_authenticated/diarios': typeof AuthenticatedDiariosRoute
   '/_authenticated/escalado': typeof AuthenticatedEscaladoRoute
@@ -132,6 +150,7 @@ export interface FileRoutesById {
   '/_authenticated/operaciones': typeof AuthenticatedOperacionesRoute
   '/_authenticated/panel': typeof AuthenticatedPanelRoute
   '/_authenticated/retiros': typeof AuthenticatedRetirosRoute
+  '/_authenticated/supervision': typeof AuthenticatedSupervisionRoute
   '/_authenticated/usuarios': typeof AuthenticatedUsuariosRoute
   '/api/public/trades/webhook': typeof ApiPublicTradesWebhookRoute
 }
@@ -140,6 +159,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/auth'
+    | '/chat'
     | '/cuentas'
     | '/diarios'
     | '/escalado'
@@ -148,12 +168,14 @@ export interface FileRouteTypes {
     | '/operaciones'
     | '/panel'
     | '/retiros'
+    | '/supervision'
     | '/usuarios'
     | '/api/public/trades/webhook'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/auth'
+    | '/chat'
     | '/cuentas'
     | '/diarios'
     | '/escalado'
@@ -162,6 +184,7 @@ export interface FileRouteTypes {
     | '/operaciones'
     | '/panel'
     | '/retiros'
+    | '/supervision'
     | '/usuarios'
     | '/api/public/trades/webhook'
   id:
@@ -169,6 +192,7 @@ export interface FileRouteTypes {
     | '/'
     | '/_authenticated'
     | '/auth'
+    | '/_authenticated/chat'
     | '/_authenticated/cuentas'
     | '/_authenticated/diarios'
     | '/_authenticated/escalado'
@@ -177,6 +201,7 @@ export interface FileRouteTypes {
     | '/_authenticated/operaciones'
     | '/_authenticated/panel'
     | '/_authenticated/retiros'
+    | '/_authenticated/supervision'
     | '/_authenticated/usuarios'
     | '/api/public/trades/webhook'
   fileRoutesById: FileRoutesById
@@ -210,6 +235,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/auth'
       preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/chat': {
+      id: '/_authenticated/chat'
+      path: '/chat'
+      fullPath: '/chat'
+      preLoaderRoute: typeof AuthenticatedChatRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/cuentas': {
       id: '/_authenticated/cuentas'
@@ -267,6 +299,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedRetirosRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/supervision': {
+      id: '/_authenticated/supervision'
+      path: '/supervision'
+      fullPath: '/supervision'
+      preLoaderRoute: typeof AuthenticatedSupervisionRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/usuarios': {
       id: '/_authenticated/usuarios'
       path: '/usuarios'
@@ -285,6 +324,7 @@ declare module '@tanstack/react-router' {
 }
 
 interface AuthenticatedRouteRouteChildren {
+  AuthenticatedChatRoute: typeof AuthenticatedChatRoute
   AuthenticatedCuentasRoute: typeof AuthenticatedCuentasRoute
   AuthenticatedDiariosRoute: typeof AuthenticatedDiariosRoute
   AuthenticatedEscaladoRoute: typeof AuthenticatedEscaladoRoute
@@ -293,10 +333,12 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedOperacionesRoute: typeof AuthenticatedOperacionesRoute
   AuthenticatedPanelRoute: typeof AuthenticatedPanelRoute
   AuthenticatedRetirosRoute: typeof AuthenticatedRetirosRoute
+  AuthenticatedSupervisionRoute: typeof AuthenticatedSupervisionRoute
   AuthenticatedUsuariosRoute: typeof AuthenticatedUsuariosRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedChatRoute: AuthenticatedChatRoute,
   AuthenticatedCuentasRoute: AuthenticatedCuentasRoute,
   AuthenticatedDiariosRoute: AuthenticatedDiariosRoute,
   AuthenticatedEscaladoRoute: AuthenticatedEscaladoRoute,
@@ -305,6 +347,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedOperacionesRoute: AuthenticatedOperacionesRoute,
   AuthenticatedPanelRoute: AuthenticatedPanelRoute,
   AuthenticatedRetirosRoute: AuthenticatedRetirosRoute,
+  AuthenticatedSupervisionRoute: AuthenticatedSupervisionRoute,
   AuthenticatedUsuariosRoute: AuthenticatedUsuariosRoute,
 }
 

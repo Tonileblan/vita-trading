@@ -14,6 +14,83 @@ export type Database = {
   }
   public: {
     Tables: {
+      accounts: {
+        Row: {
+          created_at: string
+          currency: string
+          current_balance: number
+          drawdown_limit: number | null
+          firm: string | null
+          id: string
+          initial_balance: number
+          journal_id: string
+          name: string
+          type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          currency?: string
+          current_balance?: number
+          drawdown_limit?: number | null
+          firm?: string | null
+          id?: string
+          initial_balance?: number
+          journal_id: string
+          name: string
+          type?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          currency?: string
+          current_balance?: number
+          drawdown_limit?: number | null
+          firm?: string | null
+          id?: string
+          initial_balance?: number
+          journal_id?: string
+          name?: string
+          type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "accounts_journal_id_fkey"
+            columns: ["journal_id"]
+            isOneToOne: false
+            referencedRelation: "journals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chat_messages: {
+        Row: {
+          body: string
+          created_at: string
+          id: string
+          sender_id: string
+          subject_user_id: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          id?: string
+          sender_id: string
+          subject_user_id: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          id?: string
+          sender_id?: string
+          subject_user_id?: string
+        }
+        Relationships: []
+      }
       journals: {
         Row: {
           base_currency: string
@@ -71,6 +148,165 @@ export type Database = {
         }
         Relationships: []
       }
+      strategies: {
+        Row: {
+          chart: string | null
+          color: string
+          contracts: string | null
+          created_at: string
+          days: string | null
+          execution: string | null
+          id: string
+          initial_capital: number
+          journal_id: string
+          main_symbol: string
+          management: string | null
+          market: string | null
+          name: string
+          risk_pct: number
+          schedule: string | null
+          setup: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          chart?: string | null
+          color?: string
+          contracts?: string | null
+          created_at?: string
+          days?: string | null
+          execution?: string | null
+          id?: string
+          initial_capital?: number
+          journal_id: string
+          main_symbol?: string
+          management?: string | null
+          market?: string | null
+          name: string
+          risk_pct?: number
+          schedule?: string | null
+          setup?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          chart?: string | null
+          color?: string
+          contracts?: string | null
+          created_at?: string
+          days?: string | null
+          execution?: string | null
+          id?: string
+          initial_capital?: number
+          journal_id?: string
+          main_symbol?: string
+          management?: string | null
+          market?: string | null
+          name?: string
+          risk_pct?: number
+          schedule?: string | null
+          setup?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "strategies_journal_id_fkey"
+            columns: ["journal_id"]
+            isOneToOne: false
+            referencedRelation: "journals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      trades: {
+        Row: {
+          account_id: string | null
+          closed_at: string
+          created_at: string
+          direction: string
+          entry_price: number
+          exit_price: number
+          id: string
+          journal_id: string
+          notes: string | null
+          opened_at: string
+          pnl: number
+          screenshots: string[]
+          size: number
+          source: string
+          strategy_id: string | null
+          symbol: string
+          tags: string[]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          account_id?: string | null
+          closed_at?: string
+          created_at?: string
+          direction?: string
+          entry_price?: number
+          exit_price?: number
+          id?: string
+          journal_id: string
+          notes?: string | null
+          opened_at?: string
+          pnl?: number
+          screenshots?: string[]
+          size?: number
+          source?: string
+          strategy_id?: string | null
+          symbol: string
+          tags?: string[]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          account_id?: string | null
+          closed_at?: string
+          created_at?: string
+          direction?: string
+          entry_price?: number
+          exit_price?: number
+          id?: string
+          journal_id?: string
+          notes?: string | null
+          opened_at?: string
+          pnl?: number
+          screenshots?: string[]
+          size?: number
+          source?: string
+          strategy_id?: string | null
+          symbol?: string
+          tags?: string[]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trades_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trades_journal_id_fkey"
+            columns: ["journal_id"]
+            isOneToOne: false
+            referencedRelation: "journals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trades_strategy_id_fkey"
+            columns: ["strategy_id"]
+            isOneToOne: false
+            referencedRelation: "strategies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -92,6 +328,57 @@ export type Database = {
         }
         Relationships: []
       }
+      withdrawals: {
+        Row: {
+          amount: number
+          created_at: string
+          date: string
+          id: string
+          journal_id: string
+          reason: string | null
+          strategy_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          date?: string
+          id?: string
+          journal_id: string
+          reason?: string | null
+          strategy_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          date?: string
+          id?: string
+          journal_id?: string
+          reason?: string | null
+          strategy_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "withdrawals_journal_id_fkey"
+            columns: ["journal_id"]
+            isOneToOne: false
+            referencedRelation: "journals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "withdrawals_strategy_id_fkey"
+            columns: ["strategy_id"]
+            isOneToOne: false
+            referencedRelation: "strategies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -104,9 +391,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_supervisor: { Args: { _user_id: string }; Returns: boolean }
     }
     Enums: {
-      app_role: "admin" | "user"
+      app_role: "admin" | "user" | "supervisor"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -234,7 +522,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "user"],
+      app_role: ["admin", "user", "supervisor"],
     },
   },
 } as const

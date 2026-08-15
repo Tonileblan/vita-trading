@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ShieldCheck, ShieldOff } from "lucide-react";
+import { Eye, ShieldCheck, ShieldOff } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/app-shell";
@@ -84,17 +84,25 @@ function UsersPage() {
     },
   });
 
-  const toggleAdmin = useMutation({
-    mutationFn: async ({ userId, makeAdmin }: { userId: string; makeAdmin: boolean }) => {
-      if (makeAdmin) {
-        const { error } = await supabase.from("user_roles").insert({ user_id: userId, role: "admin" });
+  const toggleRole = useMutation({
+    mutationFn: async ({
+      userId,
+      role,
+      grant,
+    }: {
+      userId: string;
+      role: "admin" | "supervisor";
+      grant: boolean;
+    }) => {
+      if (grant) {
+        const { error } = await supabase.from("user_roles").insert({ user_id: userId, role });
         if (error) throw error;
       } else {
         const { error } = await supabase
           .from("user_roles")
           .delete()
           .eq("user_id", userId)
-          .eq("role", "admin");
+          .eq("role", role);
         if (error) throw error;
       }
     },
@@ -146,6 +154,7 @@ function UsersPage() {
                   {users.map((u) => {
                     const userRoles = roles.filter((r) => r.user_id === u.id).map((r) => r.role);
                     const admin = userRoles.includes("admin");
+                    const supervisor = userRoles.includes("supervisor");
                     return (
                       <tr key={u.id} className="border-t border-border">
                         <td className="py-2">{u.display_name ?? u.id.slice(0, 8)}</td>
@@ -153,25 +162,41 @@ function UsersPage() {
                           {new Date(u.created_at).toLocaleDateString("es-ES")}
                         </td>
                         <td className="py-2">{userRoles.join(", ") || "user"}</td>
-                        <td className="py-2 text-right">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            disabled={u.id === user?.id}
-                            onClick={() =>
-                              toggleAdmin.mutate({ userId: u.id, makeAdmin: !admin })
-                            }
-                          >
-                            {admin ? (
-                              <>
-                                <ShieldOff className="size-4" /> Quitar admin
-                              </>
-                            ) : (
-                              <>
-                                <ShieldCheck className="size-4" /> Hacer admin
-                              </>
-                            )}
-                          </Button>
+                        <td className="py-2">
+                          <div className="flex flex-wrap justify-end gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() =>
+                                toggleRole.mutate({
+                                  userId: u.id,
+                                  role: "supervisor",
+                                  grant: !supervisor,
+                                })
+                              }
+                            >
+                              <Eye className="size-4" />
+                              {supervisor ? "Quitar supervisor" : "Hacer supervisor"}
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              disabled={u.id === user?.id}
+                              onClick={() =>
+                                toggleRole.mutate({ userId: u.id, role: "admin", grant: !admin })
+                              }
+                            >
+                              {admin ? (
+                                <>
+                                  <ShieldOff className="size-4" /> Quitar admin
+                                </>
+                              ) : (
+                                <>
+                                  <ShieldCheck className="size-4" /> Hacer admin
+                                </>
+                              )}
+                            </Button>
+                          </div>
                         </td>
                       </tr>
                     );
