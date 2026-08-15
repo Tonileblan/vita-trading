@@ -170,11 +170,11 @@ function JournalsPage() {
       showAccountPanel={false}
       actions={
         <div className="flex flex-wrap gap-2">
-          <Button size="sm" variant="outline" disabled={busyId === "all"} onClick={handleExportAll}>
-            <Download className="size-4" /> Exportar todo
+          <Button size="sm" variant="outline" title="Exportar todo" disabled={busyId === "all"} onClick={handleExportAll}>
+            <Download className="size-4" />
           </Button>
-          <Button size="sm" variant="outline" disabled={busyId === "all"} onClick={() => pickFile(null)}>
-            <Upload className="size-4" /> Importar
+          <Button size="sm" variant="outline" title="Importar" disabled={busyId === "all"} onClick={() => pickFile(null)}>
+            <Upload className="size-4" />
           </Button>
           <Button size="sm" onClick={openCreate}>
             <Plus className="size-4" /> Nuevo diario

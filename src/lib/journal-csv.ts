@@ -201,7 +201,7 @@ async function journalRows(j: Journal): Promise<CsvRow[]> {
       tipo: "retiro",
       diario: j.name,
       cuenta: w.accountId ? (accountName.get(w.accountId) ?? "") : "",
-      estrategia: strategyName.get(w.strategyId) ?? "",
+      estrategia: w.strategyId ? (strategyName.get(w.strategyId) ?? "") : "",
       fecha: w.date,
       importe: w.amount,
       motivo: w.reason ?? "",

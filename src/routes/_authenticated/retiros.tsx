@@ -37,33 +37,21 @@ export const Route = createFileRoute("/_authenticated/retiros")({
 });
 
 function RetirosPage() {
-  const { accounts, strategies, withdrawals, addWithdrawal } = useJournal();
-  const [strategyId, setStrategyId] = useState(strategies[0]?.id ?? "");
+  const { accounts, withdrawals, addWithdrawal } = useJournal();
   const [accountId, setAccountId] = useState(accounts[0]?.id ?? "");
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [amount, setAmount] = useState("");
   const [reason, setReason] = useState("");
 
-  const byStrategy = useMemo(
-    () =>
-      strategies.map((s) => ({
-        strategy: s,
-        total: withdrawals
-          .filter((w) => w.strategyId === s.id)
-          .reduce((acc, w) => acc + w.amount, 0),
-      })),
-    [strategies, withdrawals],
-  );
-  const total = byStrategy.reduce((s, x) => s + x.total, 0);
+  const total = withdrawals.reduce((s, w) => s + w.amount, 0);
 
   const submit = () => {
     const value = Number(amount);
-    if (!strategyId || !accountId || !value || value <= 0) {
-      toast.error("Indica cuenta, estrategia y un importe válido");
+    if (!accountId || !value || value <= 0) {
+      toast.error("Indica cuenta y un importe válido");
       return;
     }
     addWithdrawal({
-      strategyId,
       accountId,
       date: new Date(date).toISOString(),
       amount: value,
@@ -74,7 +62,6 @@ function RetirosPage() {
     toast.success("Retiro registrado");
   };
 
-  const name = (id: string) => strategies.find((s) => s.id === id)?.name ?? "—";
   const accName = (id?: string) => accounts.find((a) => a.id === id)?.name ?? "—";
 
   const byAccount = useMemo(
@@ -97,12 +84,11 @@ function RetirosPage() {
       <div className="grid min-w-0 gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
         <section className="panel min-w-0 overflow-x-auto p-4">
           <h2 className="mb-3 text-base font-semibold">Registro de retiros</h2>
-          <table className="w-full min-w-[520px] text-sm">
+            <table className="w-full min-w-[520px] text-sm">
             <thead className="text-xs uppercase text-muted-foreground">
               <tr className="border-b border-border">
                 <th className="py-2 text-left">Fecha</th>
                 <th className="py-2 text-left">Cuenta</th>
-                <th className="py-2 text-left">Estrategia</th>
                 <th className="py-2 text-right">Monto</th>
                 <th className="py-2 text-left">Motivo</th>
               </tr>
@@ -121,7 +107,6 @@ function RetirosPage() {
                     {new Date(w.date).toLocaleDateString("es-ES", { timeZone: "UTC" })}
                   </td>
                   <td className="py-2">{accName(w.accountId)}</td>
-                  <td className="py-2">{name(w.strategyId)}</td>
                   <td className="py-2 text-right tabular-nums">{formatCurrency(w.amount)}</td>
                   <td className="py-2 text-muted-foreground">{w.reason ?? "—"}</td>
                 </tr>
@@ -143,21 +128,6 @@ function RetirosPage() {
                   {accounts.map((a) => (
                     <SelectItem key={a.id} value={a.id}>
                       {a.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Estrategia</Label>
-              <Select value={strategyId} onValueChange={setStrategyId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecciona" />
-                </SelectTrigger>
-                <SelectContent>
-                  {strategies.map((s) => (
-                    <SelectItem key={s.id} value={s.id}>
-                      {s.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -199,19 +169,10 @@ function RetirosPage() {
                 </li>
               ))}
             </ul>
-            <h2 className="mb-3 text-base font-semibold">Resumen por estrategia</h2>
-            <ul className="space-y-2 text-sm">
-              {byStrategy.map((x) => (
-                <li key={x.strategy.id} className="flex justify-between">
-                  <span className="text-muted-foreground">{x.strategy.name}</span>
-                  <span className="tabular-nums">{formatCurrency(x.total)}</span>
-                </li>
-              ))}
-              <li className="flex justify-between border-t border-border pt-2 font-semibold">
-                <span>Total</span>
-                <span className="tabular-nums">{formatCurrency(total)}</span>
-              </li>
-            </ul>
+            <li className="flex justify-between border-t border-border pt-2 font-semibold">
+              <span>Total</span>
+              <span className="tabular-nums">{formatCurrency(total)}</span>
+            </li>
           </section>
         </div>
       </div>

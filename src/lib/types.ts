@@ -75,7 +75,7 @@ export interface Strategy {
 /** Los retiros restan capital pero NO cuentan como pérdida operativa. */
 export interface Withdrawal {
   id: string;
-  strategyId: string;
+  strategyId?: string | undefined;
   accountId?: string | undefined;
   date: string;
   amount: number;
