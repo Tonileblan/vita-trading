@@ -74,6 +74,70 @@ export function computeMetrics(trades: Trade[]): Metrics {
   };
 }
 
+export interface StreakInfo {
+  current: { type: "win" | "loss" | "none"; count: number };
+  maxWin: number;
+  maxLoss: number;
+  wins: number;
+  losses: number;
+}
+
+/** Rachas (consecutivas) sobre un conjunto de operaciones ya filtradas por ventana. */
+export function computeStreaks(trades: Trade[]): StreakInfo {
+  const wins = trades.filter((t) => t.pnl > 0).length;
+  const losses = trades.filter((t) => t.pnl < 0).length;
+  if (!trades.length) {
+    return { current: { type: "none", count: 0 }, maxWin: 0, maxLoss: 0, wins, losses };
+  }
+  const desc = [...trades].sort((a, b) => {
+    const diff = new Date(b.closedAt).getTime() - new Date(a.closedAt).getTime();
+    if (diff !== 0) return diff;
+    return String(b.id ?? "").localeCompare(String(a.id ?? ""));
+  });
+  // Racha actual (más reciente)
+  let curType: "win" | "loss" | "none" = "none";
+  let curCount = 0;
+  for (const t of desc) {
+    if (t.pnl === 0) continue;
+    const type: "win" | "loss" = t.pnl > 0 ? "win" : "loss";
+    if (curType === "none") {
+      curType = type;
+      curCount = 1;
+    } else if (type === curType) {
+      curCount++;
+    } else break;
+  }
+  // Mejor racha de ganancias y de pérdidas (recorriendo de antiguo a nuevo)
+  let maxWin = 0;
+  let maxLoss = 0;
+  let runType: "win" | "loss" = "win";
+  let runCount = 0;
+  for (const t of [...desc].reverse()) {
+    if (t.pnl === 0) continue;
+    const type: "win" | "loss" = t.pnl > 0 ? "win" : "loss";
+    if (runType === type) {
+      runCount++;
+    } else {
+      runType = type;
+      runCount = 1;
+    }
+    if (type === "win") maxWin = Math.max(maxWin, runCount);
+    else maxLoss = Math.max(maxLoss, runCount);
+  }
+  return { current: { type: curType, count: curCount }, maxWin, maxLoss, wins, losses };
+}
+
+/** Filtra operaciones a una ventana de días respecto a la operación más reciente. */
+export function filterByDays(trades: Trade[], days: number) {
+  if (!days) return trades;
+  const latest = trades.reduce(
+    (max, t) => Math.max(max, new Date(t.closedAt).getTime()),
+    0,
+  );
+  const cutoff = latest - days * 86400000;
+  return trades.filter((t) => new Date(t.closedAt).getTime() >= cutoff);
+}
+
 export function buildEquityCurve(trades: Trade[], startBalance: number) {
   const sorted = [...trades].sort(
     (a, b) => new Date(a.closedAt).getTime() - new Date(b.closedAt).getTime(),
