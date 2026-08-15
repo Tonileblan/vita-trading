@@ -101,7 +101,7 @@ function EscaladoPage() {
           </p>
         </section>
 
-        <div className="space-y-5">
+        <div className="min-w-0 space-y-5">
           <section className="panel overflow-x-auto p-4">
             <h2 className="mb-3 text-base font-semibold">Niveles de contratos</h2>
             <table className="w-full min-w-[520px] text-sm">
