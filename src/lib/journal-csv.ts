@@ -1,31 +1,69 @@
 import { supabase } from "@/integrations/supabase/client";
 import { fetchJournalData } from "./journal-store";
+import type { Journal } from "./journals";
 import type { Trade } from "./types";
 
-export const CSV_COLUMNS = [
-  "fecha_apertura",
-  "fecha_cierre",
+/** Columnas del CSV completo (diarios + cuentas + estrategias + operaciones + retiros). */
+export const FULL_COLUMNS = [
+  "tipo",
+  "diario",
+  "nombre",
+  "descripcion",
+  "moneda",
+  "tipo_cuenta",
+  "firma",
+  "balance_inicial",
+  "limite_drawdown",
+  "capital_inicial",
+  "riesgo_pct",
+  "simbolo_principal",
+  "color",
   "cuenta",
   "estrategia",
   "simbolo",
   "direccion",
+  "fecha_apertura",
+  "fecha_cierre",
   "entrada",
   "salida",
   "tamano",
   "pnl",
   "etiquetas",
   "notas",
+  "fecha",
+  "importe",
+  "motivo",
 ] as const;
+
+type Col = (typeof FULL_COLUMNS)[number];
+type CsvRow = Partial<Record<Col, string | number>>;
 
 function esc(v: unknown): string {
   const s = v == null ? "" : String(v);
   return /[",\n;]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }
 
+function serialize(rows: CsvRow[]): string {
+  const lines = [FULL_COLUMNS.join(",")];
+  for (const r of rows) lines.push(FULL_COLUMNS.map((c) => esc(r[c] ?? "")).join(","));
+  return "\uFEFF" + lines.join("\n");
+}
+
+function download(content: string, filename: string) {
+  const blob = new Blob([content], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 /** Parser CSV tolerante (coma o punto y coma, comillas dobles). */
 export function parseCsv(text: string): string[][] {
   const clean = text.replace(/^\uFEFF/, "").replace(/\r\n?/g, "\n");
-  const delimiter = (clean.split("\n")[0]?.split(";").length ?? 1) > (clean.split("\n")[0]?.split(",").length ?? 1) ? ";" : ",";
+  const first = clean.split("\n")[0] ?? "";
+  const delimiter = first.split(";").length > first.split(",").length ? ";" : ",";
   const rows: string[][] = [];
   let row: string[] = [];
   let field = "";
@@ -58,7 +96,8 @@ export function parseCsv(text: string): string[][] {
 function num(v: string | undefined): number {
   if (!v) return 0;
   const s = v.trim().replace(/\s/g, "").replace(/[€$]/g, "");
-  const normalized = s.includes(",") && !s.includes(".") ? s.replace(",", ".") : s.replace(/,(?=\d{3}\b)/g, "");
+  const normalized =
+    s.includes(",") && !s.includes(".") ? s.replace(",", ".") : s.replace(/,(?=\d{3}\b)/g, "");
   const n = Number(normalized);
   return Number.isFinite(n) ? n : 0;
 }
@@ -94,150 +133,375 @@ function tradeKey(t: {
   ].join("|");
 }
 
-export async function exportJournalCsv(journalId: string, journalName: string) {
-  const data = await fetchJournalData(journalId);
+function withdrawalKey(w: { date: string; amount: number; strategy: string }) {
+  return [w.date.slice(0, 10), w.amount.toFixed(2), w.strategy.toLowerCase()].join("|");
+}
+
+/* --------------------------------- export --------------------------------- */
+
+async function journalRows(j: Journal): Promise<CsvRow[]> {
+  const data = await fetchJournalData(j.id);
   const accountName = new Map(data.accounts.map((a) => [a.id, a.name]));
   const strategyName = new Map(data.strategies.map((s) => [s.id, s.name]));
-  const lines = [CSV_COLUMNS.join(",")];
-  for (const t of data.trades) {
-    lines.push(
-      [
-        t.openedAt,
-        t.closedAt,
-        accountName.get(t.accountId) ?? "",
-        strategyName.get(t.strategyId) ?? "",
-        t.symbol,
-        t.direction,
-        t.entryPrice,
-        t.exitPrice,
-        t.size,
-        t.pnl,
-        t.tags.join(" "),
-        t.notes ?? "",
-      ]
-        .map(esc)
-        .join(","),
-    );
+  const rows: CsvRow[] = [
+    {
+      tipo: "diario",
+      diario: j.name,
+      nombre: j.name,
+      descripcion: j.description ?? "",
+      moneda: j.base_currency,
+    },
+  ];
+  for (const a of data.accounts) {
+    rows.push({
+      tipo: "cuenta",
+      diario: j.name,
+      nombre: a.name,
+      moneda: a.currency,
+      tipo_cuenta: a.type,
+      firma: a.firm ?? "",
+      balance_inicial: a.initialBalance,
+      limite_drawdown: a.drawdownLimit ?? "",
+    });
   }
-  const blob = new Blob(["\uFEFF" + lines.join("\n")], { type: "text/csv;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `${journalName.replace(/[^\w\-]+/g, "_").toLowerCase()}-operaciones.csv`;
-  a.click();
-  URL.revokeObjectURL(url);
-  return data.trades.length;
+  for (const s of data.strategies) {
+    rows.push({
+      tipo: "estrategia",
+      diario: j.name,
+      nombre: s.name,
+      capital_inicial: s.initialCapital,
+      riesgo_pct: s.riskPct,
+      simbolo_principal: s.mainSymbol,
+      color: s.color,
+      descripcion: s.setup ?? "",
+    });
+  }
+  for (const t of data.trades) {
+    rows.push({
+      tipo: "operacion",
+      diario: j.name,
+      cuenta: accountName.get(t.accountId) ?? "",
+      estrategia: strategyName.get(t.strategyId) ?? "",
+      simbolo: t.symbol,
+      direccion: t.direction,
+      fecha_apertura: t.openedAt,
+      fecha_cierre: t.closedAt,
+      entrada: t.entryPrice,
+      salida: t.exitPrice,
+      tamano: t.size,
+      pnl: t.pnl,
+      etiquetas: t.tags.join(" "),
+      notas: t.notes ?? "",
+    });
+  }
+  for (const w of data.withdrawals) {
+    rows.push({
+      tipo: "retiro",
+      diario: j.name,
+      estrategia: strategyName.get(w.strategyId) ?? "",
+      fecha: w.date,
+      importe: w.amount,
+      motivo: w.reason ?? "",
+    });
+  }
+  return rows;
 }
+
+function slug(s: string) {
+  return s.replace(/[^\w-]+/g, "_").toLowerCase();
+}
+
+/** Exporta un diario completo (cuentas, estrategias, operaciones y retiros). */
+export async function exportJournalCsv(journalId: string, journalName: string) {
+  const journal: Journal = {
+    id: journalId,
+    owner_id: "",
+    name: journalName,
+    description: null,
+    base_currency: "EUR",
+    is_archived: false,
+    created_at: "",
+  };
+  const rows = await journalRows(journal);
+  download(serialize(rows), `${slug(journalName)}-completo.csv`);
+  return rows.length - 1;
+}
+
+/** Exporta todos los diarios del usuario en un único CSV. */
+export async function exportAllJournalsCsv(journals: Journal[]) {
+  const rows: CsvRow[] = [];
+  for (const j of journals) rows.push(...(await journalRows(j)));
+  download(serialize(rows), `bitacora-completa-${new Date().toISOString().slice(0, 10)}.csv`);
+  return rows.length;
+}
+
+/* --------------------------------- import --------------------------------- */
 
 export interface ImportResult {
-  imported: number;
+  journals: number;
+  accounts: number;
+  strategies: number;
+  trades: number;
+  withdrawals: number;
   duplicates: number;
-  createdAccounts: number;
-  createdStrategies: number;
 }
 
-export async function importJournalCsv(journalId: string, text: string): Promise<ImportResult> {
+interface JournalCtx {
+  id: string;
+  accounts: Map<string, string>;
+  strategies: Map<string, string>;
+  trades: Set<string>;
+  withdrawals: Set<string>;
+}
+
+/**
+ * Importa un CSV completo (con columna `tipo`) o un CSV simple de operaciones.
+ * `fallbackJournalId` se usa cuando la fila no indica diario.
+ */
+export async function importJournalCsv(
+  fallbackJournalId: string,
+  text: string,
+): Promise<ImportResult> {
   const rows = parseCsv(text);
-  if (rows.length < 2) throw new Error("El archivo no contiene operaciones");
+  if (rows.length < 2) throw new Error("El archivo no contiene datos");
   const header = rows[0]!.map((h) => h.trim().toLowerCase());
-  const idx = (name: string) => header.indexOf(name);
-  const col = {
-    open: idx("fecha_apertura"),
-    close: idx("fecha_cierre"),
-    account: idx("cuenta"),
-    strategy: idx("estrategia"),
-    symbol: idx("simbolo"),
-    direction: idx("direccion"),
-    entry: idx("entrada"),
-    exit: idx("salida"),
-    size: idx("tamano"),
-    pnl: idx("pnl"),
-    tags: idx("etiquetas"),
-    notes: idx("notas"),
+  const at = (r: string[], name: string) => {
+    const i = header.indexOf(name);
+    return i < 0 ? "" : (r[i] ?? "").trim();
   };
-  if (col.symbol < 0 || col.pnl < 0) {
-    throw new Error("Faltan columnas obligatorias: simbolo y pnl");
+  const hasType = header.includes("tipo");
+  if (!hasType && !header.includes("simbolo")) {
+    throw new Error("Formato no reconocido: falta la columna 'tipo' o 'simbolo'");
   }
 
   const { data: auth } = await supabase.auth.getUser();
   const userId = auth.user?.id;
   if (!userId) throw new Error("Sesión no válida");
 
-  const data = await fetchJournalData(journalId);
-  const accounts = new Map(data.accounts.map((a) => [a.name.toLowerCase(), a.id]));
-  const strategies = new Map(data.strategies.map((s) => [s.name.toLowerCase(), s.id]));
-  const existing = new Set(data.trades.map(tradeKey));
+  const { data: existingJournals, error: jErr } = await supabase
+    .from("journals")
+    .select("id, name");
+  if (jErr) throw jErr;
+  const journalIds = new Map(
+    ((existingJournals ?? []) as { id: string; name: string }[]).map((j) => [
+      j.name.toLowerCase(),
+      j.id,
+    ]),
+  );
 
-  let createdAccounts = 0;
-  let createdStrategies = 0;
-  let duplicates = 0;
-  const payload: Record<string, unknown>[] = [];
+  const result: ImportResult = {
+    journals: 0,
+    accounts: 0,
+    strategies: 0,
+    trades: 0,
+    withdrawals: 0,
+    duplicates: 0,
+  };
+  const contexts = new Map<string, JournalCtx>();
+
+  async function ctxFor(id: string): Promise<JournalCtx> {
+    const cached = contexts.get(id);
+    if (cached) return cached;
+    const data = await fetchJournalData(id);
+    const ctx: JournalCtx = {
+      id,
+      accounts: new Map(data.accounts.map((a) => [a.name.toLowerCase(), a.id])),
+      strategies: new Map(data.strategies.map((s) => [s.name.toLowerCase(), s.id])),
+      trades: new Set(data.trades.map(tradeKey)),
+      withdrawals: new Set(
+        data.withdrawals.map((w) =>
+          withdrawalKey({
+            date: w.date,
+            amount: w.amount,
+            strategy:
+              data.strategies.find((s) => s.id === w.strategyId)?.name ?? "",
+          }),
+        ),
+      ),
+    };
+    contexts.set(id, ctx);
+    return ctx;
+  }
+
+  async function resolveJournal(name: string): Promise<string> {
+    if (!name) return fallbackJournalId;
+    const found = journalIds.get(name.toLowerCase());
+    if (found) return found;
+    const { data, error } = await supabase
+      .from("journals")
+      .insert({ owner_id: userId, name, base_currency: "EUR" } as never)
+      .select("id")
+      .single();
+    if (error) throw error;
+    const id = (data as { id: string }).id;
+    journalIds.set(name.toLowerCase(), id);
+    result.journals++;
+    return id;
+  }
+
+  async function ensureAccount(ctx: JournalCtx, name: string): Promise<string | null> {
+    if (!name) return null;
+    const found = ctx.accounts.get(name.toLowerCase());
+    if (found) return found;
+    const { data, error } = await supabase
+      .from("accounts")
+      .insert({
+        journal_id: ctx.id,
+        user_id: userId,
+        name,
+        type: "personal",
+        initial_balance: 0,
+        current_balance: 0,
+      } as never)
+      .select("id")
+      .single();
+    if (error) throw error;
+    const id = (data as { id: string }).id;
+    ctx.accounts.set(name.toLowerCase(), id);
+    result.accounts++;
+    return id;
+  }
+
+  async function ensureStrategy(ctx: JournalCtx, name: string, symbol = ""): Promise<string | null> {
+    if (!name) return null;
+    const found = ctx.strategies.get(name.toLowerCase());
+    if (found) return found;
+    const { data, error } = await supabase
+      .from("strategies")
+      .insert({ journal_id: ctx.id, user_id: userId, name, main_symbol: symbol } as never)
+      .select("id")
+      .single();
+    if (error) throw error;
+    const id = (data as { id: string }).id;
+    ctx.strategies.set(name.toLowerCase(), id);
+    result.strategies++;
+    return id;
+  }
 
   for (const r of rows.slice(1)) {
-    const symbol = (r[col.symbol] ?? "").trim().toUpperCase();
+    const type = hasType ? at(r, "tipo").toLowerCase() : "operacion";
+    const journalId = await resolveJournal(hasType ? at(r, "diario") : "");
+    const ctx = await ctxFor(journalId);
+
+    if (type === "diario") {
+      const desc = at(r, "descripcion");
+      const currency = at(r, "moneda");
+      if (desc || currency) {
+        await supabase
+          .from("journals")
+          .update({
+            ...(desc ? { description: desc } : {}),
+            ...(currency ? { base_currency: currency } : {}),
+          } as never)
+          .eq("id", journalId);
+      }
+      continue;
+    }
+
+    if (type === "cuenta") {
+      const name = at(r, "nombre") || at(r, "cuenta");
+      if (!name) continue;
+      if (ctx.accounts.has(name.toLowerCase())) {
+        result.duplicates++;
+        continue;
+      }
+      const { data, error } = await supabase
+        .from("accounts")
+        .insert({
+          journal_id: ctx.id,
+          user_id: userId,
+          name,
+          type: at(r, "tipo_cuenta") === "funded" ? "funded" : "personal",
+          firm: at(r, "firma") || null,
+          initial_balance: num(at(r, "balance_inicial")),
+          current_balance: num(at(r, "balance_inicial")),
+          drawdown_limit: at(r, "limite_drawdown") ? num(at(r, "limite_drawdown")) : null,
+          currency: at(r, "moneda") || "USD",
+        } as never)
+        .select("id")
+        .single();
+      if (error) throw error;
+      ctx.accounts.set(name.toLowerCase(), (data as { id: string }).id);
+      result.accounts++;
+      continue;
+    }
+
+    if (type === "estrategia") {
+      const name = at(r, "nombre") || at(r, "estrategia");
+      if (!name) continue;
+      if (ctx.strategies.has(name.toLowerCase())) {
+        result.duplicates++;
+        continue;
+      }
+      const { data, error } = await supabase
+        .from("strategies")
+        .insert({
+          journal_id: ctx.id,
+          user_id: userId,
+          name,
+          initial_capital: num(at(r, "capital_inicial")),
+          risk_pct: num(at(r, "riesgo_pct")) || 0.01,
+          main_symbol: at(r, "simbolo_principal"),
+          ...(at(r, "color") ? { color: at(r, "color") } : {}),
+          ...(at(r, "descripcion") ? { setup: at(r, "descripcion") } : {}),
+        } as never)
+        .select("id")
+        .single();
+      if (error) throw error;
+      ctx.strategies.set(name.toLowerCase(), (data as { id: string }).id);
+      result.strategies++;
+      continue;
+    }
+
+    if (type === "retiro") {
+      const stName = at(r, "estrategia");
+      const date = toIso(at(r, "fecha"));
+      const amount = num(at(r, "importe"));
+      const key = withdrawalKey({ date, amount, strategy: stName });
+      if (ctx.withdrawals.has(key)) {
+        result.duplicates++;
+        continue;
+      }
+      const strategyId = await ensureStrategy(ctx, stName);
+      const { error } = await supabase.from("withdrawals").insert({
+        journal_id: ctx.id,
+        user_id: userId,
+        strategy_id: strategyId,
+        date,
+        amount,
+        reason: at(r, "motivo") || null,
+      } as never);
+      if (error) throw error;
+      ctx.withdrawals.add(key);
+      result.withdrawals++;
+      continue;
+    }
+
+    // operación
+    const symbol = at(r, "simbolo").toUpperCase();
     if (!symbol) continue;
-    const closedAt = toIso(r[col.close] ?? r[col.open]);
-    const openedAt = col.open >= 0 ? toIso(r[col.open]) : closedAt;
+    const closedAt = toIso(at(r, "fecha_cierre") || at(r, "fecha_apertura"));
+    const openedAt = at(r, "fecha_apertura") ? toIso(at(r, "fecha_apertura")) : closedAt;
     const trade = {
       symbol,
       closedAt,
-      entryPrice: num(r[col.entry]),
-      exitPrice: num(r[col.exit]),
-      size: num(r[col.size]) || 1,
-      pnl: num(r[col.pnl]),
+      entryPrice: num(at(r, "entrada")),
+      exitPrice: num(at(r, "salida")),
+      size: num(at(r, "tamano")) || 1,
+      pnl: num(at(r, "pnl")),
     };
     const key = tradeKey(trade);
-    if (existing.has(key)) {
-      duplicates++;
+    if (ctx.trades.has(key)) {
+      result.duplicates++;
       continue;
     }
-    existing.add(key);
-
-    const accName = (r[col.account] ?? "").trim();
-    let accountId: string | null = accName ? (accounts.get(accName.toLowerCase()) ?? null) : null;
-    if (accName && !accountId) {
-      const { data: created, error } = await supabase
-        .from("accounts")
-        .insert({
-          journal_id: journalId,
-          user_id: userId,
-          name: accName,
-          type: "personal",
-          initial_balance: 0,
-          current_balance: 0,
-        } as never)
-        .select("id")
-        .single();
-      if (error) throw error;
-      accountId = (created as { id: string }).id;
-      accounts.set(accName.toLowerCase(), accountId);
-      createdAccounts++;
-    }
-
-    const stName = (r[col.strategy] ?? "").trim();
-    let strategyId: string | null = stName ? (strategies.get(stName.toLowerCase()) ?? null) : null;
-    if (stName && !strategyId) {
-      const { data: created, error } = await supabase
-        .from("strategies")
-        .insert({
-          journal_id: journalId,
-          user_id: userId,
-          name: stName,
-          main_symbol: symbol,
-        } as never)
-        .select("id")
-        .single();
-      if (error) throw error;
-      strategyId = (created as { id: string }).id;
-      strategies.set(stName.toLowerCase(), strategyId);
-      createdStrategies++;
-    }
-
-    const direction: Trade["direction"] =
-      (r[col.direction] ?? "").trim().toLowerCase().startsWith("s") ? "short" : "long";
-
-    payload.push({
-      journal_id: journalId,
+    const accountId = await ensureAccount(ctx, at(r, "cuenta"));
+    const strategyId = await ensureStrategy(ctx, at(r, "estrategia"), symbol);
+    const direction: Trade["direction"] = at(r, "direccion").toLowerCase().startsWith("s")
+      ? "short"
+      : "long";
+    const { error } = await supabase.from("trades").insert({
+      journal_id: ctx.id,
       user_id: userId,
       account_id: accountId,
       strategy_id: strategyId,
@@ -249,16 +513,14 @@ export async function importJournalCsv(journalId: string, text: string): Promise
       exit_price: trade.exitPrice,
       size: trade.size,
       pnl: trade.pnl,
-      tags: (r[col.tags] ?? "").split(/[\s,;]+/).filter(Boolean),
-      notes: (r[col.notes] ?? "").trim() || null,
+      tags: at(r, "etiquetas").split(/[\s,;]+/).filter(Boolean),
+      notes: at(r, "notas") || null,
       source: "manual",
-    });
-  }
-
-  if (payload.length) {
-    const { error } = await supabase.from("trades").insert(payload as never);
+    } as never);
     if (error) throw error;
+    ctx.trades.add(key);
+    result.trades++;
   }
 
-  return { imported: payload.length, duplicates, createdAccounts, createdStrategies };
+  return result;
 }

@@ -23,7 +23,7 @@ import {
   type Journal,
 } from "@/lib/journals";
 import { useJournal } from "@/lib/journal-store";
-import { exportJournalCsv, importJournalCsv } from "@/lib/journal-csv";
+import { exportAllJournalsCsv, exportJournalCsv, importJournalCsv } from "@/lib/journal-csv";
 import { useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
 
@@ -60,7 +60,7 @@ function JournalsPage() {
     setBusyId(j.id);
     try {
       const n = await exportJournalCsv(j.id, j.name);
-      toast.success(`Exportadas ${n} operaciones de "${j.name}"`);
+      toast.success(`Exportados ${n} registros de "${j.name}"`);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "No se pudo exportar");
     } finally {
@@ -68,23 +68,40 @@ function JournalsPage() {
     }
   }
 
-  function pickFile(j: Journal) {
+  async function handleExportAll() {
+    setBusyId("all");
+    try {
+      const n = await exportAllJournalsCsv(journals);
+      toast.success(`Copia completa exportada (${n} registros)`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "No se pudo exportar");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  function pickFile(j: Journal | null) {
     setImportTarget(j);
     fileRef.current?.click();
   }
 
   async function handleFile(file: File) {
-    const j = importTarget;
-    if (!j) return;
-    setBusyId(j.id);
+    const targetId = importTarget?.id ?? activeJournalId;
+    setBusyId(importTarget?.id ?? "all");
     try {
-      const res = await importJournalCsv(j.id, await file.text());
+      const res = await importJournalCsv(targetId, await file.text());
+      await qc.invalidateQueries({ queryKey: ["journals"] });
       await qc.invalidateQueries({ queryKey: ["journal-data"] });
+      const parts = [
+        res.journals ? `${res.journals} diarios` : "",
+        res.accounts ? `${res.accounts} cuentas` : "",
+        res.strategies ? `${res.strategies} estrategias` : "",
+        res.trades ? `${res.trades} operaciones` : "",
+        res.withdrawals ? `${res.withdrawals} retiros` : "",
+      ].filter(Boolean);
       toast.success(
-        `${res.imported} operaciones importadas` +
-          (res.duplicates ? ` · ${res.duplicates} duplicadas omitidas` : "") +
-          (res.createdAccounts ? ` · ${res.createdAccounts} cuentas nuevas` : "") +
-          (res.createdStrategies ? ` · ${res.createdStrategies} estrategias nuevas` : ""),
+        (parts.length ? `Importado: ${parts.join(", ")}` : "Nada nuevo que importar") +
+          (res.duplicates ? ` · ${res.duplicates} duplicados omitidos` : ""),
       );
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "No se pudo importar el CSV");
@@ -93,6 +110,7 @@ function JournalsPage() {
       setImportTarget(null);
     }
   }
+
 
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Journal | null>(null);
@@ -151,9 +169,17 @@ function JournalsPage() {
       subtitle="Bitácoras independientes: cada una con sus cuentas, estrategias y operaciones"
       showAccountPanel={false}
       actions={
-        <Button size="sm" onClick={openCreate}>
-          <Plus className="size-4" /> Nuevo diario
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button size="sm" variant="outline" disabled={busyId === "all"} onClick={handleExportAll}>
+            <Download className="size-4" /> Exportar todo
+          </Button>
+          <Button size="sm" variant="outline" disabled={busyId === "all"} onClick={() => pickFile(null)}>
+            <Upload className="size-4" /> Importar
+          </Button>
+          <Button size="sm" onClick={openCreate}>
+            <Plus className="size-4" /> Nuevo diario
+          </Button>
+        </div>
       }
     >
       {isLoading ? (
@@ -267,8 +293,9 @@ function JournalsPage() {
       />
 
       <p className="mt-4 text-xs text-muted-foreground">
-        CSV: fecha_apertura, fecha_cierre, cuenta, estrategia, simbolo, direccion, entrada, salida,
-        tamano, pnl, etiquetas, notas. Al importar se omiten las operaciones ya registradas.
+        El CSV incluye todo: diarios, cuentas, estrategias, operaciones y retiros (columna
+        <span className="font-mono"> tipo</span>). Al importar se crean los diarios, cuentas y
+        estrategias que falten y se omiten los registros ya existentes.
       </p>
 
       <Dialog open={open} onOpenChange={setOpen}>
