@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Flame, Percent, Snowflake, Target, TrendingUp } from "lucide-react";
+import { ArrowDown, ArrowUp, Flame, Percent, Snowflake, Target, TrendingUp } from "lucide-react";
 import type { Metrics } from "@/lib/metrics";
 import type { Trade } from "@/lib/types";
 import { computeStreaks, filterByDays, formatCurrency } from "@/lib/metrics";
