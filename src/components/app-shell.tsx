@@ -61,7 +61,7 @@ function JournalSwitcher() {
     <select
       value={active?.id ?? ""}
       onChange={(e) => setActiveJournalId(e.target.value)}
-      className="h-9 rounded-md border border-border bg-card px-2 text-sm"
+      className="h-9 max-w-[7.5rem] rounded-md border border-border bg-card px-2 text-sm sm:max-w-none"
       aria-label="Diario activo"
     >
       {journals.map((j) => (
