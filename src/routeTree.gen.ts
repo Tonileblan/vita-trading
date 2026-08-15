@@ -15,7 +15,6 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedChatRouteImport } from './routes/_authenticated/chat'
 import { Route as AuthenticatedCuentasRouteImport } from './routes/_authenticated/cuentas'
 import { Route as AuthenticatedDiariosRouteImport } from './routes/_authenticated/diarios'
-import { Route as AuthenticatedEscaladoRouteImport } from './routes/_authenticated/escalado'
 import { Route as AuthenticatedEstrategiasRouteImport } from './routes/_authenticated/estrategias'
 import { Route as AuthenticatedOperacionesRouteImport } from './routes/_authenticated/operaciones'
 import { Route as AuthenticatedPanelRouteImport } from './routes/_authenticated/panel'
@@ -52,11 +51,6 @@ const AuthenticatedCuentasRoute = AuthenticatedCuentasRouteImport.update({
 const AuthenticatedDiariosRoute = AuthenticatedDiariosRouteImport.update({
   id: '/diarios',
   path: '/diarios',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedEscaladoRoute = AuthenticatedEscaladoRouteImport.update({
-  id: '/escalado',
-  path: '/escalado',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedEstrategiasRoute =
@@ -110,7 +104,6 @@ export interface FileRoutesByFullPath {
   '/chat': typeof AuthenticatedChatRoute
   '/cuentas': typeof AuthenticatedCuentasRoute
   '/diarios': typeof AuthenticatedDiariosRoute
-  '/escalado': typeof AuthenticatedEscaladoRoute
   '/estrategias': typeof AuthenticatedEstrategiasRoute
   '/operaciones': typeof AuthenticatedOperacionesRoute
   '/panel': typeof AuthenticatedPanelRoute
@@ -126,7 +119,6 @@ export interface FileRoutesByTo {
   '/chat': typeof AuthenticatedChatRoute
   '/cuentas': typeof AuthenticatedCuentasRoute
   '/diarios': typeof AuthenticatedDiariosRoute
-  '/escalado': typeof AuthenticatedEscaladoRoute
   '/estrategias': typeof AuthenticatedEstrategiasRoute
   '/operaciones': typeof AuthenticatedOperacionesRoute
   '/panel': typeof AuthenticatedPanelRoute
@@ -144,7 +136,6 @@ export interface FileRoutesById {
   '/_authenticated/chat': typeof AuthenticatedChatRoute
   '/_authenticated/cuentas': typeof AuthenticatedCuentasRoute
   '/_authenticated/diarios': typeof AuthenticatedDiariosRoute
-  '/_authenticated/escalado': typeof AuthenticatedEscaladoRoute
   '/_authenticated/estrategias': typeof AuthenticatedEstrategiasRoute
   '/_authenticated/operaciones': typeof AuthenticatedOperacionesRoute
   '/_authenticated/panel': typeof AuthenticatedPanelRoute
@@ -162,7 +153,6 @@ export interface FileRouteTypes {
     | '/chat'
     | '/cuentas'
     | '/diarios'
-    | '/escalado'
     | '/estrategias'
     | '/operaciones'
     | '/panel'
@@ -178,7 +168,6 @@ export interface FileRouteTypes {
     | '/chat'
     | '/cuentas'
     | '/diarios'
-    | '/escalado'
     | '/estrategias'
     | '/operaciones'
     | '/panel'
@@ -195,7 +184,6 @@ export interface FileRouteTypes {
     | '/_authenticated/chat'
     | '/_authenticated/cuentas'
     | '/_authenticated/diarios'
-    | '/_authenticated/escalado'
     | '/_authenticated/estrategias'
     | '/_authenticated/operaciones'
     | '/_authenticated/panel'
@@ -255,13 +243,6 @@ declare module '@tanstack/react-router' {
       path: '/diarios'
       fullPath: '/diarios'
       preLoaderRoute: typeof AuthenticatedDiariosRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/escalado': {
-      id: '/_authenticated/escalado'
-      path: '/escalado'
-      fullPath: '/escalado'
-      preLoaderRoute: typeof AuthenticatedEscaladoRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/estrategias': {
@@ -327,7 +308,6 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedChatRoute: typeof AuthenticatedChatRoute
   AuthenticatedCuentasRoute: typeof AuthenticatedCuentasRoute
   AuthenticatedDiariosRoute: typeof AuthenticatedDiariosRoute
-  AuthenticatedEscaladoRoute: typeof AuthenticatedEscaladoRoute
   AuthenticatedEstrategiasRoute: typeof AuthenticatedEstrategiasRoute
   AuthenticatedOperacionesRoute: typeof AuthenticatedOperacionesRoute
   AuthenticatedPanelRoute: typeof AuthenticatedPanelRoute
@@ -341,7 +321,6 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedChatRoute: AuthenticatedChatRoute,
   AuthenticatedCuentasRoute: AuthenticatedCuentasRoute,
   AuthenticatedDiariosRoute: AuthenticatedDiariosRoute,
-  AuthenticatedEscaladoRoute: AuthenticatedEscaladoRoute,
   AuthenticatedEstrategiasRoute: AuthenticatedEstrategiasRoute,
   AuthenticatedOperacionesRoute: AuthenticatedOperacionesRoute,
   AuthenticatedPanelRoute: AuthenticatedPanelRoute,

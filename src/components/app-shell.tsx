@@ -5,7 +5,6 @@ import {
   ListOrdered,
   Layers,
   Banknote,
-  TrendingUp,
   CandlestickChart,
   NotebookPen,
   Users,
@@ -35,7 +34,6 @@ const nav = [
   { to: "/estrategias", label: "Estrategias", icon: Layers },
   { to: "/operaciones", label: "Operaciones", icon: ListOrdered },
   { to: "/retiros", label: "Retiros", icon: Banknote },
-  { to: "/escalado", label: "Escalado", icon: TrendingUp },
   { to: "/usuarios", label: "Usuarios", icon: Users },
   { to: "/chat", label: "Chat", icon: MessageSquare },
 ] as const;
