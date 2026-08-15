@@ -45,45 +45,67 @@ export const Route = createFileRoute("/_authenticated/cuentas")({
   component: AccountsPage,
 });
 
-function NewAccountDialog() {
-  const { addAccount } = useJournal();
+function AccountDialog({ account, trigger }: { account?: Account; trigger: React.ReactNode }) {
+  const { addAccount, updateAccount, removeAccount } = useJournal();
+  const editing = Boolean(account);
   const [open, setOpen] = useState(false);
-  const [type, setType] = useState<AccountType>("funded");
-  const [name, setName] = useState("");
-  const [firm, setFirm] = useState(PROP_FIRMS[0]!);
-  const [initial, setInitial] = useState("50000");
-  const [current, setCurrent] = useState("50000");
-  const [dd, setDd] = useState("2500");
+  const [type, setType] = useState<AccountType>(account?.type ?? "funded");
+  const [name, setName] = useState(account?.name ?? "");
+  const [firm, setFirm] = useState(account?.firm ?? PROP_FIRMS[0]!);
+  const [initial, setInitial] = useState(String(account?.initialBalance ?? 50000));
+  const [current, setCurrent] = useState(String(account?.currentBalance ?? 50000));
+  const [dd, setDd] = useState(String(account?.drawdownLimit ?? 2500));
+
+  const onOpenChange = (v: boolean) => {
+    setOpen(v);
+    if (v && account) {
+      setType(account.type);
+      setName(account.name);
+      setFirm(account.firm ?? PROP_FIRMS[0]!);
+      setInitial(String(account.initialBalance));
+      setCurrent(String(account.currentBalance));
+      setDd(String(account.drawdownLimit ?? 0));
+    }
+  };
 
   const submit = () => {
     if (!name.trim()) {
       toast.error("Añade un nombre de cuenta");
       return;
     }
-    addAccount({
+    const payload = {
       name: name.trim(),
       type,
       firm: type === "funded" ? firm : undefined,
       initialBalance: Number(initial) || 0,
       currentBalance: Number(current) || Number(initial) || 0,
       drawdownLimit: type === "funded" ? Number(dd) || 0 : undefined,
-      currency: "USD",
-    });
-    toast.success("Cuenta creada");
+      currency: account?.currency ?? "USD",
+    };
+    if (account) {
+      updateAccount(account.id, payload);
+      toast.success("Cuenta actualizada");
+    } else {
+      addAccount(payload);
+      toast.success("Cuenta creada");
+      setName("");
+    }
     setOpen(false);
-    setName("");
+  };
+
+  const remove = () => {
+    if (!account) return;
+    removeAccount(account.id);
+    toast.success("Cuenta eliminada");
+    setOpen(false);
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button>
-          <Plus className="size-4" /> Nueva cuenta
-        </Button>
-      </DialogTrigger>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Crear cuenta</DialogTitle>
+          <DialogTitle>{editing ? "Editar cuenta" : "Crear cuenta"}</DialogTitle>
           <DialogDescription>Elige el tipo y define los parámetros de riesgo.</DialogDescription>
         </DialogHeader>
 
