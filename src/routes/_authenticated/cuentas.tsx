@@ -23,8 +23,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useJournal } from "@/lib/journal-store";
-import { accountBalance, accountPnl, computeMetrics, formatCurrency } from "@/lib/metrics";
-import { PROP_FIRMS, type Account, type AccountType } from "@/lib/types";
+import { accountBalance, accountPnl, computeMetrics, formatCurrency, accountDrawdown } from "@/lib/metrics";
+import { PROP_FIRMS, type Account, type AccountType, DRAWDOWN_TYPES, type DrawdownType } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/cuentas")({
@@ -55,6 +55,7 @@ function AccountDialog({ account, trigger }: { account?: Account; trigger: React
   const [initial, setInitial] = useState(String(account?.initialBalance ?? 50000));
   const [current, setCurrent] = useState(String(account?.currentBalance ?? 50000));
   const [dd, setDd] = useState(String(account?.drawdownLimit ?? 2500));
+  const [ddType, setDdType] = useState<DrawdownType>(account?.drawdownType ?? "static");
 
   const onOpenChange = (v: boolean) => {
     setOpen(v);
@@ -65,6 +66,7 @@ function AccountDialog({ account, trigger }: { account?: Account; trigger: React
       setInitial(String(account.initialBalance));
       setCurrent(String(account.currentBalance));
       setDd(String(account.drawdownLimit ?? 0));
+      setDdType(account.drawdownType ?? "static");
     }
   };
 
@@ -80,6 +82,7 @@ function AccountDialog({ account, trigger }: { account?: Account; trigger: React
       initialBalance: Number(initial) || 0,
       currentBalance: Number(current) || Number(initial) || 0,
       drawdownLimit: type === "funded" ? Number(dd) || 0 : undefined,
+      drawdownType: type === "funded" ? ddType : undefined,
       currency: account?.currency ?? "USD",
     };
     if (account) {
@@ -173,10 +176,30 @@ function AccountDialog({ account, trigger }: { account?: Account; trigger: React
           </div>
 
           {type === "funded" && (
-            <div className="space-y-2">
-              <Label>Límite de drawdown</Label>
-              <Input value={dd} onChange={(e) => setDd(e.target.value)} inputMode="decimal" />
-            </div>
+            <>
+              <div className="space-y-2">
+                <Label>Límite de drawdown</Label>
+                <Input value={dd} onChange={(e) => setDd(e.target.value)} inputMode="decimal" />
+              </div>
+              <div className="space-y-2">
+                <Label>Tipo de drawdown</Label>
+                <Select value={ddType} onValueChange={(v) => setDdType(v as DrawdownType)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {DRAWDOWN_TYPES.map((d) => (
+                      <SelectItem key={d.key} value={d.key}>
+                        {d.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  {DRAWDOWN_TYPES.find((d) => d.key === ddType)?.help}
+                </p>
+              </div>
+            </>
           )}
         </div>
 
@@ -211,8 +234,7 @@ function AccountsPage() {
     const m = computeMetrics(accTrades);
     const pnl = accountPnl(trades, id);
     const balance = accountBalance(acc, trades);
-    const ddUsed =
-      acc.drawdownLimit && pnl < 0 ? Math.min(100, (Math.abs(pnl) / acc.drawdownLimit) * 100) : 0;
+    const dd = accountDrawdown(acc, trades);
 
     return (
       <div className="panel p-4">
@@ -262,20 +284,30 @@ function AccountsPage() {
           </div>
         </div>
 
-        {acc.drawdownLimit && (
+        {dd && (
           <div className="mt-4">
-            <div className="flex justify-between text-xs text-muted-foreground">
-              <span>Drawdown usado</span>
+            <div className="flex flex-wrap justify-between gap-x-2 text-xs text-muted-foreground">
+              <span>Drawdown {dd.label.toLowerCase()}</span>
               <span className="num">
-                {formatCurrency(Math.max(0, -pnl))} / {formatCurrency(acc.drawdownLimit)}
+                {formatCurrency(dd.used)} / {formatCurrency(dd.limit)}
               </span>
             </div>
             <div className="mt-1 h-2 overflow-hidden rounded-full bg-muted">
               <div
-                className={cn("h-full", ddUsed > 70 ? "bg-loss" : "bg-brand")}
-                style={{ width: `${ddUsed}%` }}
+                className={cn("h-full", dd.pct > 70 ? "bg-loss" : "bg-brand")}
+                style={{ width: `${dd.pct}%` }}
               />
             </div>
+            <p
+              className={cn(
+                "mt-1 text-xs",
+                dd.breached ? "font-semibold text-loss" : "text-muted-foreground",
+              )}
+            >
+              {dd.breached
+                ? `Cuenta rota: límite en ${formatCurrency(dd.floor)}`
+                : `Puedes perder ${formatCurrency(dd.remaining)} más (suelo ${formatCurrency(dd.floor)})`}
+            </p>
           </div>
         )}
 
