@@ -12,6 +12,7 @@ function Card({
   icon: Icon,
   tone = "neutral",
   children,
+  headerExtra,
 }: {
   label: string;
   value: string;
@@ -19,6 +20,7 @@ function Card({
   icon: React.ElementType;
   tone?: "neutral" | "profit" | "loss";
   children?: React.ReactNode;
+  headerExtra?: React.ReactNode;
 }) {
   return (
     <div className="panel p-4">
@@ -26,7 +28,7 @@ function Card({
         <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           {label}
         </span>
-        <Icon className="size-4 text-brand-soft" />
+        {headerExtra ?? <Icon className="size-4 text-brand-soft" />}
       </div>
       <div
         className={cn(
