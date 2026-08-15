@@ -105,7 +105,6 @@ export function AppShell({
   subtitle,
   actions,
   children,
-  showAccountPanel = true,
 }: {
   title: string;
   subtitle?: string;
