@@ -95,7 +95,7 @@ function StreakCard({ trades }: { trades: Trade[] }) {
         ))}
       </div>
       <p className="mt-1.5 text-[11px] text-muted-foreground">
-        En {r.labelForRange ?? range}: {info.wins} ganadas · {info.losses} perdidas
+        En {range}: {info.wins} ganadas · {info.losses} perdidas
       </p>
     </Card>
   );
