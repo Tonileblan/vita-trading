@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Archive, ArchiveRestore, Check, Download, Pencil, Plus, Trash2, Upload } from "lucide-react";
+import { Archive, ArchiveRestore, Check, Download, Pencil, Plus, Sparkles, Trash2, Upload } from "lucide-react";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/app-shell";
@@ -24,6 +24,7 @@ import {
 } from "@/lib/journals";
 import { useJournal } from "@/lib/journal-store";
 import { exportAllJournalsCsv, exportJournalCsv, importJournalCsv } from "@/lib/journal-csv";
+import { createExampleJournal } from "@/lib/example-journal";
 import { useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
 
@@ -55,6 +56,20 @@ function JournalsPage() {
   const fileRef = useRef<HTMLInputElement>(null);
   const [importTarget, setImportTarget] = useState<Journal | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+
+  async function handleExample() {
+    setBusyId("example");
+    try {
+      const created = await createExampleJournal();
+      await qc.invalidateQueries({ queryKey: ["journals"] });
+      setActiveJournalId(created.id);
+      toast.success(`Diario de ejemplo creado con datos de muestra`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "No se pudo crear el diario de ejemplo");
+    } finally {
+      setBusyId(null);
+    }
+  }
 
   async function handleExport(j: Journal) {
     setBusyId(j.id);
@@ -173,8 +188,14 @@ function JournalsPage() {
           <Button size="sm" variant="outline" title="Exportar todo" disabled={busyId === "all"} onClick={handleExportAll}>
             <Download className="size-4" />
           </Button>
-          <Button size="sm" variant="outline" title="Importar" disabled={busyId === "all"} onClick={() => pickFile(null)}>
-            <Upload className="size-4" />
+          <Button
+            size="sm"
+            variant="outline"
+            title="Crear diario de ejemplo con datos de muestra"
+            disabled={busyId === "example"}
+            onClick={handleExample}
+          >
+            <Sparkles className="size-4" /> Ejemplo
           </Button>
           <Button size="sm" onClick={openCreate}>
             <Plus className="size-4" /> Nuevo diario
@@ -187,9 +208,14 @@ function JournalsPage() {
       ) : journals.length === 0 ? (
         <div className="panel p-8 text-center">
           <p className="text-sm text-muted-foreground">Todavía no tienes diarios.</p>
-          <Button className="mt-4" onClick={openCreate}>
-            <Plus className="size-4" /> Crear el primero
-          </Button>
+          <div className="mt-4 flex flex-wrap justify-center gap-2">
+            <Button onClick={openCreate}>
+              <Plus className="size-4" /> Crear el primero
+            </Button>
+            <Button variant="outline" disabled={busyId === "example"} onClick={handleExample}>
+              <Sparkles className="size-4" /> Diario de ejemplo
+            </Button>
+          </div>
         </div>
       ) : (
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
