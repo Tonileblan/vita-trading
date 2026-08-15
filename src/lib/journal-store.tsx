@@ -185,6 +185,7 @@ interface JournalState extends JournalData {
   updateStrategy: (id: string, patch: Partial<Strategy>) => Promise<void>;
   addStrategy: (strategy: Omit<Strategy, "id">) => Promise<void>;
   removeStrategy: (id: string) => Promise<void>;
+  restoreDefaultStrategies: () => Promise<void>;
   visibleTrades: Trade[];
 }
 
@@ -223,8 +224,13 @@ export function JournalProvider({ children }: { children: ReactNode }) {
       if (result.strategies.length === 0) {
         const { data: userData } = await supabase.auth.getUser();
         const uid = userData.user?.id;
-        const owned = journals.find((j) => j.id === activeJournalId)?.owner_id === uid;
-        if (uid && owned) {
+        // Comprueba la propiedad directamente en la base para evitar carreras con la lista de diarios.
+        const { data: journal } = await supabase
+          .from("journals")
+          .select("owner_id")
+          .eq("id", activeJournalId)
+          .maybeSingle();
+        if (uid && journal?.owner_id === uid) {
           await seedDefaultStrategies(activeJournalId, uid);
           return fetchJournalData(activeJournalId);
         }
@@ -330,6 +336,20 @@ export function JournalProvider({ children }: { children: ReactNode }) {
       removeStrategy: async (id) => {
         const { error } = await supabase.from("strategies").delete().eq("id", id);
         if (error) throw error;
+        await refresh();
+      },
+      restoreDefaultStrategies: async () => {
+        const base = await ownerFields();
+        if (!base.user_id) return;
+        // Omite las estrategias por defecto que ya existan (por nombre) para no duplicar.
+        const existing = new Set(data.strategies.map((s) => s.name));
+        const rows = mockStrategies
+          .filter((s) => !existing.has(s.name))
+          .map((s) => ({ ...fromStrategy(s), ...base } as never));
+        if (rows.length > 0) {
+          const { error } = await supabase.from("strategies").insert(rows);
+          if (error) throw error;
+        }
         await refresh();
       },
     };
