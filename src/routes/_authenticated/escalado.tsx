@@ -57,8 +57,8 @@ function EscaladoPage() {
       subtitle="Cuándo subir de 1 → 2 → 3… contratos manteniendo tu % de riesgo"
       showAccountPanel={false}
     >
-      <div className="grid gap-5 lg:grid-cols-[320px_1fr]">
-        <section className="panel space-y-3 p-4">
+      <div className="grid min-w-0 gap-5 lg:grid-cols-[320px_minmax(0,1fr)]">
+        <section className="panel min-w-0 space-y-3 p-4">
           <h2 className="text-base font-semibold">Parámetros</h2>
           <div className="space-y-2">
             <Label>Capital actual ($)</Label>
