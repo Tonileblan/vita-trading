@@ -99,10 +99,15 @@ function StreakCard({ trades }: { trades: Trade[] }) {
         info.wins === 0 && info.losses === 0 ? (
           "Sin operaciones"
         ) : (
-          <span>
-            <span className="text-profit">{info.wins} {winWord}</span>
-            {" · "}
-            <span className="text-loss">{info.losses} {lossWord}</span>
+          <span className="inline-flex items-center gap-3">
+            <span className="inline-flex items-center gap-1 text-profit">
+              <ArrowUp className="size-4" />
+              {info.wins}
+            </span>
+            <span className="inline-flex items-center gap-1 text-loss">
+              <ArrowDown className="size-4" />
+              {info.losses}
+            </span>
           </span>
         )
       }
