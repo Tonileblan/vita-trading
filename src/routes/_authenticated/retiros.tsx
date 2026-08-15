@@ -169,19 +169,10 @@ function RetirosPage() {
                 </li>
               ))}
             </ul>
-            <h2 className="mb-3 text-base font-semibold">Resumen por estrategia</h2>
-            <ul className="space-y-2 text-sm">
-              {byStrategy.map((x) => (
-                <li key={x.strategy.id} className="flex justify-between">
-                  <span className="text-muted-foreground">{x.strategy.name}</span>
-                  <span className="tabular-nums">{formatCurrency(x.total)}</span>
-                </li>
-              ))}
-              <li className="flex justify-between border-t border-border pt-2 font-semibold">
-                <span>Total</span>
-                <span className="tabular-nums">{formatCurrency(total)}</span>
-              </li>
-            </ul>
+            <li className="flex justify-between border-t border-border pt-2 font-semibold">
+              <span>Total</span>
+              <span className="tabular-nums">{formatCurrency(total)}</span>
+            </li>
           </section>
         </div>
       </div>
