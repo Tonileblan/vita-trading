@@ -23,7 +23,7 @@ import {
   type Journal,
 } from "@/lib/journals";
 import { useJournal } from "@/lib/journal-store";
-import { exportJournalCsv, importJournalCsv } from "@/lib/journal-csv";
+import { exportAllJournalsCsv, exportJournalCsv, importJournalCsv } from "@/lib/journal-csv";
 import { useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
 
@@ -169,9 +169,17 @@ function JournalsPage() {
       subtitle="Bitácoras independientes: cada una con sus cuentas, estrategias y operaciones"
       showAccountPanel={false}
       actions={
-        <Button size="sm" onClick={openCreate}>
-          <Plus className="size-4" /> Nuevo diario
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button size="sm" variant="outline" disabled={busyId === "all"} onClick={handleExportAll}>
+            <Download className="size-4" /> Exportar todo
+          </Button>
+          <Button size="sm" variant="outline" disabled={busyId === "all"} onClick={() => pickFile(null)}>
+            <Upload className="size-4" /> Importar
+          </Button>
+          <Button size="sm" onClick={openCreate}>
+            <Plus className="size-4" /> Nuevo diario
+          </Button>
+        </div>
       }
     >
       {isLoading ? (
@@ -285,8 +293,9 @@ function JournalsPage() {
       />
 
       <p className="mt-4 text-xs text-muted-foreground">
-        CSV: fecha_apertura, fecha_cierre, cuenta, estrategia, simbolo, direccion, entrada, salida,
-        tamano, pnl, etiquetas, notas. Al importar se omiten las operaciones ya registradas.
+        El CSV incluye todo: diarios, cuentas, estrategias, operaciones y retiros (columna
+        <span className="font-mono"> tipo</span>). Al importar se crean los diarios, cuentas y
+        estrategias que falten y se omiten los registros ya existentes.
       </p>
 
       <Dialog open={open} onOpenChange={setOpen}>
