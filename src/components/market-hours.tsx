@@ -137,10 +137,10 @@ export function MarketHours() {
           <Clock className="size-4 text-muted-foreground" />
           <h2 className="font-display text-xl tracking-wide">Horario de sesiones</h2>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex w-full min-w-0 flex-col gap-1 sm:w-auto sm:flex-row sm:items-center sm:gap-2">
           <Label className="text-xs text-muted-foreground">Tu zona horaria</Label>
           <Select value={zone} onValueChange={setZone}>
-            <SelectTrigger className="w-[220px]">
+            <SelectTrigger className="w-full sm:w-[220px]">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
