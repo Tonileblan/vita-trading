@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Archive, ArchiveRestore, Check, Download, Pencil, Plus, Trash2, Upload } from "lucide-react";
+import { Archive, ArchiveRestore, Check, Download, Pencil, Plus, Sparkles, Trash2, Upload } from "lucide-react";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/app-shell";
