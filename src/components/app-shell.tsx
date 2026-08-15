@@ -3,7 +3,6 @@ import {
   LayoutDashboard,
   Wallet,
   ListOrdered,
-  Webhook,
   Layers,
   Banknote,
   TrendingUp,
@@ -37,7 +36,6 @@ const nav = [
   { to: "/operaciones", label: "Operaciones", icon: ListOrdered },
   { to: "/retiros", label: "Retiros", icon: Banknote },
   { to: "/escalado", label: "Escalado", icon: TrendingUp },
-  { to: "/integraciones", label: "Integraciones", icon: Webhook },
   { to: "/usuarios", label: "Usuarios", icon: Users },
   { to: "/chat", label: "Chat", icon: MessageSquare },
 ] as const;

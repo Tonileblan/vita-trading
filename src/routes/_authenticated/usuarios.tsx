@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Eye, ShieldCheck, ShieldOff } from "lucide-react";
+import { Eye, Moon, ShieldCheck, ShieldOff, Sun } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/app-shell";
@@ -9,16 +9,18 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
+import { useTheme } from "@/lib/theme";
+import { IntegrationsPanel } from "@/components/integrations-panel";
 
 export const Route = createFileRoute("/_authenticated/usuarios")({
   head: () => ({
     meta: [
-      { title: "Usuarios — Bitácora de Trading" },
+      { title: "Usuarios — Vita-Trading" },
       {
         name: "description",
         content: "Gestiona tu perfil y, si eres administrador, los roles del resto de usuarios.",
       },
-      { property: "og:title", content: "Usuarios — Bitácora de Trading" },
+      { property: "og:title", content: "Usuarios — Vita-Trading" },
       {
         property: "og:description",
         content: "Perfiles, nombres visibles y permisos de administrador.",
@@ -37,6 +39,7 @@ interface Row {
 
 function UsersPage() {
   const { user, profile, isAdmin } = useAuth();
+  const { theme, setTheme } = useTheme();
   const qc = useQueryClient();
   const [name, setName] = useState("");
   const [avatar, setAvatar] = useState("");
@@ -135,6 +138,35 @@ function UsersPage() {
           <Button onClick={() => saveProfile.mutate()} disabled={saveProfile.isPending}>
             Guardar perfil
           </Button>
+        </section>
+
+        <section className="panel max-w-lg space-y-3 p-5">
+          <h2 className="text-base font-semibold">Apariencia</h2>
+          <p className="text-xs text-muted-foreground">Elige el tema de la interfaz.</p>
+          <div className="flex gap-2">
+            <Button
+              variant={theme === "light" ? "default" : "outline"}
+              onClick={() => setTheme("light")}
+            >
+              <Sun className="size-4" /> Modo claro
+            </Button>
+            <Button
+              variant={theme === "dark" ? "default" : "outline"}
+              onClick={() => setTheme("dark")}
+            >
+              <Moon className="size-4" /> Modo oscuro
+            </Button>
+          </div>
+        </section>
+
+        <section className="panel space-y-4 p-5">
+          <div>
+            <h2 className="text-base font-semibold">Integraciones</h2>
+            <p className="text-xs text-muted-foreground">
+              Automatiza el registro de operaciones con n8n, MetaTrader, cTrader o NinjaTrader 8.
+            </p>
+          </div>
+          <IntegrationsPanel />
         </section>
 
         {isAdmin && (
