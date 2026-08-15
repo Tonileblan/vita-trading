@@ -97,8 +97,8 @@ function AuthPage() {
     <main className="flex min-h-screen items-center justify-center bg-background px-4 py-10">
       <div className="w-full max-w-sm">
         <div className="mb-6 flex items-center justify-center gap-2">
-          <CandlestickChart className="size-6 text-brand" />
-          <span className="font-display text-lg font-bold tracking-tight">Trading Journal</span>
+          <CandlestickChart className="size-5" />
+          <span className="font-display text-2xl leading-none tracking-wide">Bitácora</span>
         </div>
 
         <div className="panel p-6">

@@ -56,7 +56,7 @@ function Overview() {
 
   return (
     <AppShell
-      title="Global Overview"
+      title="Resumen"
       subtitle={`${selectedAccounts.length} cuenta(s) seleccionadas · Capital ${formatCurrency(equity)}`}
       actions={<TradeFormDialog />}
     >
@@ -66,9 +66,9 @@ function Overview() {
         <section className="panel p-4">
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <div>
-              <h2 className="text-base font-semibold">Equity Curve</h2>
+              <h2 className="text-xl leading-none">Curva de capital</h2>
               <p className="text-xs text-muted-foreground">
-                Curva consolidada de las cuentas activas en el panel lateral
+                Consolidada de las cuentas activas
               </p>
             </div>
             <div className="flex gap-1 rounded-md border border-border p-1">
