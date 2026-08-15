@@ -17,7 +17,6 @@ import { Route as AuthenticatedCuentasRouteImport } from './routes/_authenticate
 import { Route as AuthenticatedDiariosRouteImport } from './routes/_authenticated/diarios'
 import { Route as AuthenticatedEscaladoRouteImport } from './routes/_authenticated/escalado'
 import { Route as AuthenticatedEstrategiasRouteImport } from './routes/_authenticated/estrategias'
-import { Route as AuthenticatedIntegracionesRouteImport } from './routes/_authenticated/integraciones'
 import { Route as AuthenticatedOperacionesRouteImport } from './routes/_authenticated/operaciones'
 import { Route as AuthenticatedPanelRouteImport } from './routes/_authenticated/panel'
 import { Route as AuthenticatedRetirosRouteImport } from './routes/_authenticated/retiros'
@@ -64,12 +63,6 @@ const AuthenticatedEstrategiasRoute =
   AuthenticatedEstrategiasRouteImport.update({
     id: '/estrategias',
     path: '/estrategias',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedIntegracionesRoute =
-  AuthenticatedIntegracionesRouteImport.update({
-    id: '/integraciones',
-    path: '/integraciones',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedOperacionesRoute =
@@ -119,7 +112,6 @@ export interface FileRoutesByFullPath {
   '/diarios': typeof AuthenticatedDiariosRoute
   '/escalado': typeof AuthenticatedEscaladoRoute
   '/estrategias': typeof AuthenticatedEstrategiasRoute
-  '/integraciones': typeof AuthenticatedIntegracionesRoute
   '/operaciones': typeof AuthenticatedOperacionesRoute
   '/panel': typeof AuthenticatedPanelRoute
   '/retiros': typeof AuthenticatedRetirosRoute
@@ -136,7 +128,6 @@ export interface FileRoutesByTo {
   '/diarios': typeof AuthenticatedDiariosRoute
   '/escalado': typeof AuthenticatedEscaladoRoute
   '/estrategias': typeof AuthenticatedEstrategiasRoute
-  '/integraciones': typeof AuthenticatedIntegracionesRoute
   '/operaciones': typeof AuthenticatedOperacionesRoute
   '/panel': typeof AuthenticatedPanelRoute
   '/retiros': typeof AuthenticatedRetirosRoute
@@ -155,7 +146,6 @@ export interface FileRoutesById {
   '/_authenticated/diarios': typeof AuthenticatedDiariosRoute
   '/_authenticated/escalado': typeof AuthenticatedEscaladoRoute
   '/_authenticated/estrategias': typeof AuthenticatedEstrategiasRoute
-  '/_authenticated/integraciones': typeof AuthenticatedIntegracionesRoute
   '/_authenticated/operaciones': typeof AuthenticatedOperacionesRoute
   '/_authenticated/panel': typeof AuthenticatedPanelRoute
   '/_authenticated/retiros': typeof AuthenticatedRetirosRoute
@@ -174,7 +164,6 @@ export interface FileRouteTypes {
     | '/diarios'
     | '/escalado'
     | '/estrategias'
-    | '/integraciones'
     | '/operaciones'
     | '/panel'
     | '/retiros'
@@ -191,7 +180,6 @@ export interface FileRouteTypes {
     | '/diarios'
     | '/escalado'
     | '/estrategias'
-    | '/integraciones'
     | '/operaciones'
     | '/panel'
     | '/retiros'
@@ -209,7 +197,6 @@ export interface FileRouteTypes {
     | '/_authenticated/diarios'
     | '/_authenticated/escalado'
     | '/_authenticated/estrategias'
-    | '/_authenticated/integraciones'
     | '/_authenticated/operaciones'
     | '/_authenticated/panel'
     | '/_authenticated/retiros'
@@ -284,13 +271,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedEstrategiasRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/integraciones': {
-      id: '/_authenticated/integraciones'
-      path: '/integraciones'
-      fullPath: '/integraciones'
-      preLoaderRoute: typeof AuthenticatedIntegracionesRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
     '/_authenticated/operaciones': {
       id: '/_authenticated/operaciones'
       path: '/operaciones'
@@ -349,7 +329,6 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedDiariosRoute: typeof AuthenticatedDiariosRoute
   AuthenticatedEscaladoRoute: typeof AuthenticatedEscaladoRoute
   AuthenticatedEstrategiasRoute: typeof AuthenticatedEstrategiasRoute
-  AuthenticatedIntegracionesRoute: typeof AuthenticatedIntegracionesRoute
   AuthenticatedOperacionesRoute: typeof AuthenticatedOperacionesRoute
   AuthenticatedPanelRoute: typeof AuthenticatedPanelRoute
   AuthenticatedRetirosRoute: typeof AuthenticatedRetirosRoute
@@ -364,7 +343,6 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedDiariosRoute: AuthenticatedDiariosRoute,
   AuthenticatedEscaladoRoute: AuthenticatedEscaladoRoute,
   AuthenticatedEstrategiasRoute: AuthenticatedEstrategiasRoute,
-  AuthenticatedIntegracionesRoute: AuthenticatedIntegracionesRoute,
   AuthenticatedOperacionesRoute: AuthenticatedOperacionesRoute,
   AuthenticatedPanelRoute: AuthenticatedPanelRoute,
   AuthenticatedRetirosRoute: AuthenticatedRetirosRoute,
