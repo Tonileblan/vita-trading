@@ -151,7 +151,10 @@ const MONTHS = [
 
 export function monthlyNet(trades: Trade[], startCapital: number) {
   const nets = new Array(12).fill(0) as number[];
-  for (const t of trades) nets[new Date(t.closedAt).getUTCMonth()] += t.pnl;
+  for (const t of trades) {
+    const i = new Date(t.closedAt).getUTCMonth();
+    nets[i] = (nets[i] ?? 0) + t.pnl;
+  }
   let acc = 0;
   return nets.map((net, i) => {
     acc += net;
