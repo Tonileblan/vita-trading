@@ -188,8 +188,14 @@ function JournalsPage() {
           <Button size="sm" variant="outline" title="Exportar todo" disabled={busyId === "all"} onClick={handleExportAll}>
             <Download className="size-4" />
           </Button>
-          <Button size="sm" variant="outline" title="Importar" disabled={busyId === "all"} onClick={() => pickFile(null)}>
-            <Upload className="size-4" />
+          <Button
+            size="sm"
+            variant="outline"
+            title="Crear diario de ejemplo con datos de muestra"
+            disabled={busyId === "example"}
+            onClick={handleExample}
+          >
+            <Sparkles className="size-4" /> Ejemplo
           </Button>
           <Button size="sm" onClick={openCreate}>
             <Plus className="size-4" /> Nuevo diario
