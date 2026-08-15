@@ -1,11 +1,12 @@
 import { Link } from "@tanstack/react-router";
 import { Building2, User } from "lucide-react";
 import { useJournal } from "@/lib/journal-store";
-import { formatCurrency } from "@/lib/metrics";
+import { accountBalance, accountPnl, formatCurrency } from "@/lib/metrics";
 import { cn } from "@/lib/utils";
 
 export function AccountSidePanel() {
-  const { accounts, selectedAccountIds, toggleAccount, selectAll } = useJournal();
+  const { accounts, trades, selectedAccountIds, toggleAccount, selectAll } = useJournal();
+
 
   return (
     <div className="mt-6 flex min-h-0 flex-1 flex-col border-t border-sidebar-border pt-4">
