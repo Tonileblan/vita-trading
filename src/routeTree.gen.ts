@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as CuentasRouteImport } from './routes/cuentas'
+import { Route as EscaladoRouteImport } from './routes/escalado'
 import { Route as EstrategiasRouteImport } from './routes/estrategias'
 import { Route as IntegracionesRouteImport } from './routes/integraciones'
 import { Route as OperacionesRouteImport } from './routes/operaciones'
@@ -25,6 +26,11 @@ const IndexRoute = IndexRouteImport.update({
 const CuentasRoute = CuentasRouteImport.update({
   id: '/cuentas',
   path: '/cuentas',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EscaladoRoute = EscaladoRouteImport.update({
+  id: '/escalado',
+  path: '/escalado',
   getParentRoute: () => rootRouteImport,
 } as any)
 const EstrategiasRoute = EstrategiasRouteImport.update({
@@ -56,6 +62,7 @@ const ApiPublicTradesWebhookRoute = ApiPublicTradesWebhookRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/cuentas': typeof CuentasRoute
+  '/escalado': typeof EscaladoRoute
   '/estrategias': typeof EstrategiasRoute
   '/integraciones': typeof IntegracionesRoute
   '/operaciones': typeof OperacionesRoute
@@ -65,6 +72,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/cuentas': typeof CuentasRoute
+  '/escalado': typeof EscaladoRoute
   '/estrategias': typeof EstrategiasRoute
   '/integraciones': typeof IntegracionesRoute
   '/operaciones': typeof OperacionesRoute
@@ -75,6 +83,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/cuentas': typeof CuentasRoute
+  '/escalado': typeof EscaladoRoute
   '/estrategias': typeof EstrategiasRoute
   '/integraciones': typeof IntegracionesRoute
   '/operaciones': typeof OperacionesRoute
@@ -86,6 +95,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/cuentas'
+    | '/escalado'
     | '/estrategias'
     | '/integraciones'
     | '/operaciones'
@@ -95,6 +105,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/cuentas'
+    | '/escalado'
     | '/estrategias'
     | '/integraciones'
     | '/operaciones'
@@ -104,6 +115,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/cuentas'
+    | '/escalado'
     | '/estrategias'
     | '/integraciones'
     | '/operaciones'
@@ -114,6 +126,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   CuentasRoute: typeof CuentasRoute
+  EscaladoRoute: typeof EscaladoRoute
   EstrategiasRoute: typeof EstrategiasRoute
   IntegracionesRoute: typeof IntegracionesRoute
   OperacionesRoute: typeof OperacionesRoute
@@ -135,6 +148,13 @@ declare module '@tanstack/react-router' {
       path: '/cuentas'
       fullPath: '/cuentas'
       preLoaderRoute: typeof CuentasRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/escalado': {
+      id: '/escalado'
+      path: '/escalado'
+      fullPath: '/escalado'
+      preLoaderRoute: typeof EscaladoRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/estrategias': {
@@ -178,6 +198,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CuentasRoute: CuentasRoute,
+  EscaladoRoute: EscaladoRoute,
   EstrategiasRoute: EstrategiasRoute,
   IntegracionesRoute: IntegracionesRoute,
   OperacionesRoute: OperacionesRoute,
