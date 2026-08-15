@@ -81,7 +81,7 @@ function UserMenu() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="sm" className="max-w-[10rem] truncate">
+        <Button variant="outline" size="sm" className="max-w-[6.5rem] truncate sm:max-w-[10rem]">
           {label}
         </Button>
       </DropdownMenuTrigger>
