@@ -61,7 +61,7 @@ function JournalSwitcher() {
     <select
       value={active?.id ?? ""}
       onChange={(e) => setActiveJournalId(e.target.value)}
-      className="h-9 rounded-md border border-border bg-card px-2 text-sm"
+      className="h-9 max-w-[7.5rem] rounded-md border border-border bg-card px-2 text-sm sm:max-w-none"
       aria-label="Diario activo"
     >
       {journals.map((j) => (
@@ -81,7 +81,7 @@ function UserMenu() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="sm" className="max-w-[10rem] truncate">
+        <Button variant="outline" size="sm" className="max-w-[6.5rem] truncate sm:max-w-[10rem]">
           {label}
         </Button>
       </DropdownMenuTrigger>
@@ -125,19 +125,21 @@ export function AppShell({
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="border-b border-border bg-card">
-        <div className="mx-auto flex max-w-4xl flex-wrap items-center justify-between gap-3 px-4 py-3">
-          <Link to="/panel" className="flex items-center gap-2">
-            <CandlestickChart className="size-5" />
-            <span className="font-display text-2xl leading-none tracking-wide">Bitácora</span>
+      <header className="sticky top-0 z-30 border-b border-border bg-card">
+        <div className="mx-auto grid max-w-4xl grid-cols-[minmax(0,1fr)_auto] items-center gap-2 px-4 py-2.5 sm:gap-3 sm:py-3">
+          <Link to="/panel" className="flex min-w-0 items-center gap-2">
+            <CandlestickChart className="size-5 shrink-0" />
+            <span className="truncate font-display text-xl leading-none tracking-wide sm:text-2xl">
+              Bitácora
+            </span>
           </Link>
-          <div className="flex items-center gap-2">
+          <div className="flex shrink-0 items-center gap-2">
             <JournalSwitcher />
             <UserMenu />
           </div>
         </div>
         <div className="border-t border-border">
-          <nav className="mx-auto flex max-w-4xl gap-1 overflow-x-auto px-4 py-2">
+          <nav className="mx-auto flex max-w-4xl gap-1 overflow-x-auto px-4 py-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {items.map((item) => {
               const active = pathname.startsWith(item.to);
               return (
@@ -159,13 +161,17 @@ export function AppShell({
         </div>
       </header>
 
-      <main className="mx-auto max-w-4xl px-4 py-6">
-        <div className="mb-6 flex flex-wrap items-end justify-between gap-3 border-b border-border pb-4">
-          <div>
-            <h1 className="text-3xl leading-none">{title}</h1>
+      <main className="mx-auto max-w-4xl px-4 py-5 sm:py-6">
+        <div className="mb-5 flex flex-col gap-3 border-b border-border pb-4 sm:mb-6 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
+          <div className="min-w-0">
+            <h1 className="text-2xl leading-none sm:text-3xl">{title}</h1>
             {subtitle && <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p>}
           </div>
-          {actions && <div className="flex items-center gap-2">{actions}</div>}
+          {actions && (
+            <div className="flex flex-wrap items-center gap-2 [&>*]:flex-1 sm:[&>*]:flex-none">
+              {actions}
+            </div>
+          )}
         </div>
         <div className="space-y-6">{children}</div>
       </main>

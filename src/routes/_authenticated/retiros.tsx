@@ -80,8 +80,8 @@ function RetirosPage() {
       subtitle="Se restan del capital pero NO cuentan como pérdida operativa"
       showAccountPanel={false}
     >
-      <div className="grid gap-5 lg:grid-cols-[1fr_320px]">
-        <section className="panel overflow-x-auto p-4">
+      <div className="grid min-w-0 gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
+        <section className="panel min-w-0 overflow-x-auto p-4">
           <h2 className="mb-3 text-base font-semibold">Registro de retiros</h2>
           <table className="w-full min-w-[520px] text-sm">
             <thead className="text-xs uppercase text-muted-foreground">
