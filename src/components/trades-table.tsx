@@ -149,6 +149,7 @@ export function TradesTable({
           )}
         </tbody>
       </table>
-    </div>
+      </div>
+    </>
   );
 }
