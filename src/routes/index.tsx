@@ -53,25 +53,29 @@ function Landing() {
 
   return (
     <main className="min-h-screen bg-background">
-      <header className="flex items-center justify-between px-6 py-5">
-        <div className="flex items-center gap-2">
-          <CandlestickChart className="size-6 text-brand" />
-          <span className="font-display text-lg font-bold tracking-tight">Trading Journal</span>
+      <header className="border-b border-border bg-card">
+        <div className="mx-auto flex max-w-2xl items-center justify-between px-4 py-3">
+          <div className="flex items-center gap-2">
+            <CandlestickChart className="size-5" />
+            <span className="font-display text-2xl leading-none tracking-wide">Bitácora</span>
+          </div>
+          <Button asChild size="sm" variant="outline">
+            <Link to="/auth">Entrar</Link>
+          </Button>
         </div>
-        <Button asChild size="sm">
-          <Link to="/auth">Entrar</Link>
-        </Button>
       </header>
 
-      <section className="mx-auto max-w-3xl px-6 py-20 text-center">
-        <h1 className="font-display text-4xl font-extrabold tracking-tight sm:text-5xl">
-          Tu bitácora de trading, ordenada y medible
+      <section className="mx-auto max-w-2xl px-4 py-16">
+        <p className="label-retro text-sm">Diario de operaciones</p>
+        <h1 className="mt-2 text-5xl leading-[0.95] sm:text-6xl">
+          Apunta cada operación.
+          <br />
+          Mira los números claros.
         </h1>
-        <p className="mt-4 text-muted-foreground">
-          Crea varios diarios, controla tus cuentas de fondeo y personales, sigue tus estrategias y
-          gestiona el acceso de cada usuario.
+        <p className="mt-4 max-w-lg text-muted-foreground">
+          Varios diarios, cuentas de fondeo y personales, estrategias y retiros. Sin ruido.
         </p>
-        <div className="mt-8 flex justify-center gap-3">
+        <div className="mt-8 flex flex-wrap gap-3">
           <Button asChild size="lg">
             <Link to="/auth">Crear cuenta gratis</Link>
           </Button>
@@ -81,14 +85,18 @@ function Landing() {
         </div>
       </section>
 
-      <section className="mx-auto grid max-w-5xl gap-4 px-6 pb-24 sm:grid-cols-3">
-        {FEATURES.map((f) => (
-          <article key={f.title} className="panel p-5">
-            <f.icon className="size-5 text-brand" />
-            <h2 className="mt-3 text-base font-semibold">{f.title}</h2>
-            <p className="mt-1 text-sm text-muted-foreground">{f.text}</p>
-          </article>
-        ))}
+      <section className="mx-auto max-w-2xl px-4 pb-24">
+        <ul className="divide-y divide-border border-y border-border">
+          {FEATURES.map((f) => (
+            <li key={f.title} className="flex gap-4 py-5">
+              <f.icon className="mt-1 size-5 shrink-0" />
+              <div>
+                <h2 className="text-xl leading-none">{f.title}</h2>
+                <p className="mt-1.5 text-sm text-muted-foreground">{f.text}</p>
+              </div>
+            </li>
+          ))}
+        </ul>
       </section>
     </main>
   );
