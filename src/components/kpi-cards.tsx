@@ -59,10 +59,6 @@ function StreakCard({ trades }: { trades: Trade[] }) {
 
   const winWord = info.wins === 1 ? "ganada" : "ganadas";
   const lossWord = info.losses === 1 ? "perdida" : "perdidas";
-  const currentLabel =
-    info.wins === 0 && info.losses === 0
-      ? "Sin operaciones"
-      : `${info.wins} ${winWord} · ${info.losses} ${lossWord}`;
 
   const rangeButtons = (
     <div className="flex gap-1">
