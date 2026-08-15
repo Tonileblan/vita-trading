@@ -52,7 +52,7 @@ function Overview() {
     () => buildEquityCurve(trades, accountsStartBalance(selectedAccounts)),
     [trades, selectedAccounts],
   );
-  const equity = selectedAccounts.reduce((s, a) => s + a.currentBalance, 0);
+  const equity = selectedAccounts.reduce((s, a) => s + accountBalance(a, visibleTrades), 0);
 
   return (
     <AppShell
