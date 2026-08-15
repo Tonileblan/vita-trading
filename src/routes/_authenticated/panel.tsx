@@ -44,16 +44,41 @@ const RANGES = [
   { key: "all", label: "Todo" },
 ] as const;
 
+const SCOPES = [
+  { key: "all", label: "Capital total" },
+  { key: "funded", label: "Capital fondeo" },
+  { key: "real", label: "Capital real" },
+] as const;
+
+type Scope = (typeof SCOPES)[number]["key"];
+
 function Overview() {
   const { visibleTrades, accounts, selectedAccountIds } = useJournal();
   const [range, setRange] = useState<(typeof RANGES)[number]["key"]>("all");
+  const [scope, setScope] = useState<Scope>("all");
 
-  const trades = useMemo(() => filterByRange(visibleTrades, range), [visibleTrades, range]);
+  const selectedAccounts = useMemo(
+    () => accounts.filter((a) => selectedAccountIds.includes(a.id)),
+    [accounts, selectedAccountIds],
+  );
+  const scopedAccounts = useMemo(
+    () =>
+      selectedAccounts.filter((a) =>
+        scope === "all" ? true : scope === "funded" ? a.type === "funded" : a.type !== "funded",
+      ),
+    [selectedAccounts, scope],
+  );
+  const scopedIds = useMemo(() => new Set(scopedAccounts.map((a) => a.id)), [scopedAccounts]);
+  const scopedTrades = useMemo(
+    () => visibleTrades.filter((t) => scopedIds.has(t.accountId)),
+    [visibleTrades, scopedIds],
+  );
+
+  const trades = useMemo(() => filterByRange(scopedTrades, range), [scopedTrades, range]);
   const metrics = useMemo(() => computeMetrics(trades), [trades]);
-  const selectedAccounts = accounts.filter((a) => selectedAccountIds.includes(a.id));
   const curve = useMemo(
-    () => buildEquityCurve(trades, accountsStartBalance(selectedAccounts)),
-    [trades, selectedAccounts],
+    () => buildEquityCurve(trades, accountsStartBalance(scopedAccounts)),
+    [trades, scopedAccounts],
   );
   const fundedEquity = selectedAccounts
     .filter((a) => a.type === "funded")
@@ -61,6 +86,12 @@ function Overview() {
   const realEquity = selectedAccounts
     .filter((a) => a.type !== "funded")
     .reduce((s, a) => s + accountBalance(a, visibleTrades), 0);
+
+  const scopeValue = (key: Scope) => {
+    if (key === "funded") return fundedEquity;
+    if (key === "real") return realEquity;
+    return fundedEquity + realEquity;
+  };
 
   return (
     <AppShell
@@ -70,8 +101,27 @@ function Overview() {
       actions={<TradeFormDialog />}
     >
       <div className="space-y-5">
-        <CapitalSplit accounts={selectedAccounts} trades={visibleTrades} />
+        <section className="grid gap-3 sm:grid-cols-3">
+          {SCOPES.map((s) => (
+            <button
+              key={s.key}
+              onClick={() => setScope(s.key)}
+              className={cn(
+                "panel p-4 text-left transition-colors",
+                scope === s.key
+                  ? "border-brand bg-brand/10"
+                  : "hover:border-foreground/30",
+              )}
+            >
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                {s.label}
+              </p>
+              <p className="num mt-1 text-lg font-semibold">{formatCurrency(scopeValue(s.key))}</p>
+            </button>
+          ))}
+        </section>
         <KpiCards metrics={metrics} />
+
 
         <section className="panel p-4">
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
