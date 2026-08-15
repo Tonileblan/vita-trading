@@ -24,7 +24,9 @@ export function AccountSidePanel() {
       <div className="flex-1 space-y-1 overflow-y-auto px-3 pb-4">
         {accounts.map((acc) => {
           const active = selectedAccountIds.includes(acc.id);
-          const pnl = acc.currentBalance - acc.initialBalance;
+          const pnl = accountPnl(trades, acc.id);
+          const balance = accountBalance(acc, trades);
+
           return (
             <button
               key={acc.id}
