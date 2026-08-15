@@ -5,7 +5,6 @@ import {
   ListOrdered,
   Layers,
   Banknote,
-  TrendingUp,
   CandlestickChart,
   NotebookPen,
   Users,
