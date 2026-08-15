@@ -125,6 +125,10 @@ export interface DrawdownStatus {
   remaining: number;
   pct: number;
   breached: boolean;
+  /** Fecha en la que se perforó el suelo por primera vez (ISO). */
+  breachedAt?: string;
+  /** El suelo dinámico ya no sube más (alcanzó el capital inicial). */
+  frozen: boolean;
 }
 
 const DD_LABELS: Record<NonNullable<Account["drawdownType"]>, string> = {
@@ -133,37 +137,79 @@ const DD_LABELS: Record<NonNullable<Account["drawdownType"]>, string> = {
   eod: "Dinámico a cierre (EOD)",
 };
 
+function localDayKey(iso: string) {
+  const d = new Date(iso);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
 /** Calcula el estado de drawdown según el tipo configurado en la cuenta. */
-export function accountDrawdown(account: Account, trades: Trade[]): DrawdownStatus | null {
+export function accountDrawdown(
+  account: Account,
+  trades: Trade[],
+  withdrawals: { accountId?: string | undefined; date: string; amount: number }[] = [],
+): DrawdownStatus | null {
   const limit = account.drawdownLimit ?? 0;
   const type = account.drawdownType ?? "static";
   if (!limit) return null;
 
-  const own = trades
-    .filter((t) => t.accountId === account.id)
-    .sort((a, b) => new Date(a.closedAt).getTime() - new Date(b.closedAt).getTime());
+  const initial = account.initialBalance;
+  // El suelo dinámico deja de subir cuando la referencia alcanza inicial + límite.
+  const maxReference = initial + limit;
 
-  let running = account.initialBalance;
-  let peak = account.initialBalance;
+  type Ev = { at: string; delta: number };
+  const events: Ev[] = [
+    ...trades.filter((t) => t.accountId === account.id).map((t) => ({ at: t.closedAt, delta: t.pnl })),
+    ...withdrawals
+      .filter((w) => w.accountId === account.id)
+      .map((w) => ({ at: w.date, delta: -Math.abs(w.amount) })),
+  ].sort((a, b) => new Date(a.at).getTime() - new Date(b.at).getTime());
+
+  const today = localDayKey(new Date().toISOString());
+
+  let running = initial;
+  let peak = initial;
+  let breachedAt: string | undefined;
   const eodBalances = new Map<string, number>();
-  for (const t of own) {
-    running += t.pnl;
+  // Referencia EOD vigente durante el recorrido (mayor cierre de días anteriores).
+  let eodReference = initial;
+  let lastDay: string | null = null;
+
+  for (const ev of events) {
+    const day = localDayKey(ev.at);
+    if (lastDay !== null && day !== lastDay) {
+      const prevClose = eodBalances.get(lastDay);
+      if (prevClose !== undefined) eodReference = Math.max(eodReference, prevClose);
+    }
+    lastDay = day;
+
+    running += ev.delta;
+    eodBalances.set(day, running);
     peak = Math.max(peak, running);
-    eodBalances.set(t.closedAt.slice(0, 10), running);
+
+    let refNow = initial;
+    if (type === "trailing") refNow = Math.min(peak, maxReference);
+    if (type === "eod") refNow = Math.min(Math.max(initial, eodReference), maxReference);
+    if (!breachedAt && running <= refNow - limit) breachedAt = ev.at;
   }
+  // Consolida el último día si ya no es hoy.
+  if (lastDay !== null && lastDay !== today) {
+    const close = eodBalances.get(lastDay);
+    if (close !== undefined) eodReference = Math.max(eodReference, close);
+  }
+
   const balance = running;
 
-  let reference = account.initialBalance;
-  if (type === "trailing") reference = peak;
-  if (type === "eod") {
-    const days = [...eodBalances.entries()].sort(([a], [b]) => (a < b ? -1 : 1));
-    // el máximo de cierres diarios ya consolidados (excluye el día en curso)
-    const closed = days.slice(0, Math.max(0, days.length - 1)).map(([, v]) => v);
-    reference = Math.max(account.initialBalance, ...closed);
-  }
+  let reference = initial;
+  if (type === "trailing") reference = Math.min(peak, maxReference);
+  if (type === "eod") reference = Math.min(Math.max(initial, eodReference), maxReference);
 
   const floor = reference - limit;
   const used = Math.max(0, reference - balance);
+  const frozen = type !== "static" && reference >= maxReference;
+  const breached = balance <= floor || breachedAt !== undefined;
   return {
     type,
     label: DD_LABELS[type],
@@ -174,9 +220,12 @@ export function accountDrawdown(account: Account, trades: Trade[]): DrawdownStat
     used,
     remaining: Math.max(0, balance - floor),
     pct: Math.min(100, (used / limit) * 100),
-    breached: balance <= floor,
+    breached,
+    ...(breachedAt ? { breachedAt } : {}),
+    frozen,
   };
 }
+
 
 export function accountsStartBalance(accounts: Account[]) {
   return accounts.reduce((s, a) => s + a.initialBalance, 0);
