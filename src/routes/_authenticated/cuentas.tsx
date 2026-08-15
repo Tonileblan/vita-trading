@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/select";
 import { useJournal } from "@/lib/journal-store";
 import { computeMetrics, formatCurrency } from "@/lib/metrics";
-import { PROP_FIRMS, type AccountType } from "@/lib/types";
+import { PROP_FIRMS, type Account, type AccountType } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/cuentas")({
@@ -180,11 +180,20 @@ function AccountDialog({ account, trigger }: { account?: Account; trigger: React
           )}
         </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={() => setOpen(false)}>
-            Cancelar
-          </Button>
-          <Button onClick={submit}>Crear cuenta</Button>
+        <DialogFooter className="sm:justify-between">
+          {editing ? (
+            <Button variant="destructive" onClick={remove}>
+              <Trash2 className="size-4" /> Eliminar
+            </Button>
+          ) : (
+            <span />
+          )}
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setOpen(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={submit}>{editing ? "Guardar cambios" : "Crear cuenta"}</Button>
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>
