@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMemo } from "react";
 import { Pencil, Plus } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
+import { MarketHours } from "@/components/market-hours";
 import { StrategyDialog } from "@/components/strategy-dialog";
 import { Button } from "@/components/ui/button";
 import { useJournal } from "@/lib/journal-store";
@@ -67,6 +68,7 @@ function EstrategiasPage() {
       }
     >
       <div className="space-y-5">
+        <MarketHours />
         <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           {strategies.map((s) => (
             <div key={s.id} className="panel p-4">
