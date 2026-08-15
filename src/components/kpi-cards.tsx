@@ -1,6 +1,7 @@
+import { useState } from "react";
 import { Flame, Percent, Snowflake, Target, TrendingUp } from "lucide-react";
-import type { Metrics } from "@/lib/metrics";
-import { formatCurrency } from "@/lib/metrics";
+import type { Metrics, Trade } from "@/lib/metrics";
+import { computeStreaks, filterByDays, formatCurrency } from "@/lib/metrics";
 import { cn } from "@/lib/utils";
 
 function Card({
@@ -9,12 +10,14 @@ function Card({
   sub,
   icon: Icon,
   tone = "neutral",
+  children,
 }: {
   label: string;
   value: string;
   sub: string;
   icon: React.ElementType;
   tone?: "neutral" | "profit" | "loss";
+  children?: React.ReactNode;
 }) {
   return (
     <div className="panel p-4">
@@ -34,16 +37,77 @@ function Card({
         {value}
       </div>
       <p className="mt-1 text-xs text-muted-foreground">{sub}</p>
+      {children}
     </div>
+  );
+}
+
+const STREAK_RANGES = [
+  { key: "7d", label: "7D", days: 7 },
+  { key: "30d", label: "30D", days: 30 },
+  { key: "180d", label: "180D", days: 180 },
+] as const;
+
+function StreakCard({ trades }: { trades: Trade[] }) {
+  const [range, setRange] = useState<(typeof STREAK_RANGES)[number]["key"]>("30d");
+  const days = STREAK_RANGES.find((r) => r.key === range)!.days;
+  const info = computeStreaks(filterByDays(trades, days));
+  const cur = info.current;
+
+  const currentLabel =
+    cur.type === "none"
+      ? "Sin racha"
+      : `${cur.count} ${
+          cur.type === "win"
+            ? cur.count === 1
+              ? "ganada"
+              : "ganadas"
+            : cur.count === 1
+              ? "perdida"
+              : "perdidas"
+        }`;
+
+  return (
+    <Card
+      label="Racha actual"
+      value={currentLabel}
+      sub={`Mejor racha: ${info.maxWin} ganadas · ${info.maxLoss} perdidas`}
+      icon={cur.type === "loss" ? Snowflake : Flame}
+      {...(cur.type !== "none"
+        ? { tone: cur.type === "win" ? ("profit" as const) : ("loss" as const) }
+        : {})}
+    >
+      <div className="mt-2 flex gap-1">
+        {STREAK_RANGES.map((r) => (
+          <button
+            key={r.key}
+            onClick={() => setRange(r.key)}
+            className={cn(
+              "rounded px-2 py-0.5 text-[10px] font-semibold transition-colors",
+              range === r.key
+                ? "bg-brand text-primary-foreground"
+                : "border border-border text-muted-foreground hover:text-foreground",
+            )}
+          >
+            {r.label}
+          </button>
+        ))}
+      </div>
+      <p className="mt-1.5 text-[11px] text-muted-foreground">
+        En {r.labelForRange ?? range}: {info.wins} ganadas · {info.losses} perdidas
+      </p>
+    </Card>
   );
 }
 
 export function KpiCards({
   metrics,
   scope = "all",
+  trades,
 }: {
   metrics: Metrics;
   scope?: "all" | "funded" | "real";
+  trades?: Trade[];
 }) {
   const pf = metrics.profitFactor;
   const pnlLabel =
@@ -70,28 +134,29 @@ export function KpiCards({
         icon={Target}
         tone={pf >= 1 ? "profit" : "loss"}
       />
-      <Card
-        label="Racha actual"
-        value={
-          metrics.streak.type === "none"
-            ? "Sin racha"
-            : `${metrics.streak.count} ${
-                metrics.streak.type === "win"
-                  ? metrics.streak.count === 1
-                    ? "ganada"
-                    : "ganadas"
-                  : metrics.streak.count === 1
-                    ? "perdida"
-                    : "perdidas"
-              }`
-        }
-        sub={`Mejor ${formatCurrency(metrics.bestTrade)} · Peor ${formatCurrency(metrics.worstTrade)}`}
-        icon={metrics.streak.type === "loss" ? Snowflake : Flame}
-        {...(metrics.streak.type !== "none"
-          ? { tone: metrics.streak.type === "win" ? ("profit" as const) : ("loss" as const) }
-          : {})}
-      />
-
+      {trades ? <StreakCard trades={trades} /> : (
+        <Card
+          label="Racha actual"
+          value={
+            metrics.streak.type === "none"
+              ? "Sin racha"
+              : `${metrics.streak.count} ${
+                  metrics.streak.type === "win"
+                    ? metrics.streak.count === 1
+                      ? "ganada"
+                      : "ganadas"
+                    : metrics.streak.count === 1
+                      ? "perdida"
+                      : "perdidas"
+                }`
+          }
+          sub={`Mejor ${formatCurrency(metrics.bestTrade)} · Peor ${formatCurrency(metrics.worstTrade)}`}
+          icon={metrics.streak.type === "loss" ? Snowflake : Flame}
+          {...(metrics.streak.type !== "none"
+            ? { tone: metrics.streak.type === "win" ? ("profit" as const) : ("loss" as const) }
+            : {})}
+        />
+      )}
     </div>
   );
 }
