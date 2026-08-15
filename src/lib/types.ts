@@ -39,6 +39,15 @@ export interface Strategy {
   riskPct: number; // 0.03 = 3%
   mainSymbol: string;
   color: string;
+  /** Ficha operativa (opcional). */
+  market?: string | undefined;
+  chart?: string | undefined;
+  days?: string | undefined;
+  schedule?: string | undefined;
+  execution?: string | undefined;
+  setup?: string | undefined;
+  management?: string | undefined;
+  contracts?: string | undefined;
 }
 
 /** Los retiros restan capital pero NO cuentan como pérdida operativa. */

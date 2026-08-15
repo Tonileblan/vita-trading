@@ -1,6 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo } from "react";
+import { Pencil, Plus } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
+import { StrategyDialog } from "@/components/strategy-dialog";
+import { Button } from "@/components/ui/button";
 import { useJournal } from "@/lib/journal-store";
 import { computeStrategyStats, formatCurrency, monthlyNet } from "@/lib/metrics";
 import { cn } from "@/lib/utils";
@@ -53,8 +56,64 @@ function EstrategiasPage() {
       title="Estrategias y portafolio"
       subtitle="Cada estrategia con su propio capital y riesgo · comparativa global"
       showAccountPanel={false}
+      actions={
+        <StrategyDialog
+          trigger={
+            <Button>
+              <Plus className="size-4" /> Nueva estrategia
+            </Button>
+          }
+        />
+      }
     >
       <div className="space-y-5">
+        <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          {strategies.map((s) => (
+            <div key={s.id} className="panel p-4">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <h3 className="truncate text-lg font-semibold">{s.name}</h3>
+                  <p className="text-xs text-muted-foreground">
+                    {s.mainSymbol} · riesgo {(s.riskPct * 100).toFixed(1)}% ·{" "}
+                    {formatCurrency(s.initialCapital)}
+                  </p>
+                </div>
+                <StrategyDialog
+                  strategy={s}
+                  trigger={
+                    <Button variant="ghost" size="icon" aria-label={`Editar ${s.name}`}>
+                      <Pencil className="size-4" />
+                    </Button>
+                  }
+                />
+              </div>
+              <dl className="mt-3 space-y-1 text-xs">
+                {(
+                  [
+                    ["Mercado", s.market],
+                    ["Gráfico", s.chart],
+                    ["Días", s.days],
+                    ["Horario", s.schedule],
+                    ["Operación", s.execution],
+                    ["Configuración", s.setup],
+                    ["Gestión", s.management],
+                    ["Contratos", s.contracts],
+                  ] as const
+                )
+                  .filter(([, v]) => Boolean(v))
+                  .map(([k, v]) => (
+                    <div key={k} className="flex gap-2">
+                      <dt className="shrink-0 uppercase tracking-wide text-muted-foreground">
+                        {k}
+                      </dt>
+                      <dd className="min-w-0">{v}</dd>
+                    </div>
+                  ))}
+              </dl>
+            </div>
+          ))}
+        </section>
+
         <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {[
             { label: "Capital inicial total", value: formatCurrency(totals.initial) },
