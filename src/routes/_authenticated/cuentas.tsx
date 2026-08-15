@@ -25,6 +25,7 @@ import {
 import { useJournal } from "@/lib/journal-store";
 import { accountBalance, accountPnl, computeMetrics, formatCurrency, accountDrawdown } from "@/lib/metrics";
 import { PROP_FIRMS, type Account, type AccountType, DRAWDOWN_TYPES, type DrawdownType } from "@/lib/types";
+import { usePropFirms } from "@/lib/prop-firms";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/cuentas")({
@@ -51,7 +52,15 @@ function AccountDialog({ account, trigger }: { account?: Account; trigger: React
   const [open, setOpen] = useState(false);
   const [type, setType] = useState<AccountType>(account?.type ?? "funded");
   const [name, setName] = useState(account?.name ?? "");
+  const { firms, customFirms, addFirm, removeFirm } = usePropFirms();
+  const [newFirm, setNewFirm] = useState("");
   const [firm, setFirm] = useState(account?.firm ?? PROP_FIRMS[0]!);
+  const handleAddFirm = () => {
+    const added = addFirm(newFirm);
+    if (!added) return;
+    setFirm(added);
+    setNewFirm("");
+  };
   const [initial, setInitial] = useState(String(account?.initialBalance ?? 50000));
   const [current, setCurrent] = useState(String(account?.currentBalance ?? 50000));
   const [dd, setDd] = useState(String(account?.drawdownLimit ?? 2500));
@@ -153,14 +162,42 @@ function AccountDialog({ account, trigger }: { account?: Account; trigger: React
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
-                  {PROP_FIRMS.map((f) => (
+                <SelectContent className="max-h-64">
+                  {firms.map((f) => (
                     <SelectItem key={f} value={f}>
                       {f}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
+              <div className="flex gap-2">
+                <Input
+                  value={newFirm}
+                  onChange={(e) => setNewFirm(e.target.value)}
+                  placeholder="Añadir otra prop firm"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      handleAddFirm();
+                    }
+                  }}
+                />
+                <Button type="button" variant="outline" onClick={handleAddFirm}>
+                  Añadir
+                </Button>
+              </div>
+              {customFirms.includes(firm) && (
+                <button
+                  type="button"
+                  className="text-xs text-muted-foreground underline"
+                  onClick={() => {
+                    removeFirm(firm);
+                    setFirm(PROP_FIRMS[0]!);
+                  }}
+                >
+                  Eliminar "{firm}" de la lista
+                </button>
+              )}
             </div>
           )}
 
