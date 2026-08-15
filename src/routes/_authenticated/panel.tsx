@@ -7,12 +7,14 @@ import { TradeFormDialog } from "@/components/trade-form-dialog";
 import { TradesTable } from "@/components/trades-table";
 import { useJournal } from "@/lib/journal-store";
 import {
+  accountBalance,
   accountsStartBalance,
   buildEquityCurve,
   computeMetrics,
   filterByRange,
   formatCurrency,
 } from "@/lib/metrics";
+
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/panel")({
@@ -52,7 +54,7 @@ function Overview() {
     () => buildEquityCurve(trades, accountsStartBalance(selectedAccounts)),
     [trades, selectedAccounts],
   );
-  const equity = selectedAccounts.reduce((s, a) => s + a.currentBalance, 0);
+  const equity = selectedAccounts.reduce((s, a) => s + accountBalance(a, visibleTrades), 0);
 
   return (
     <AppShell

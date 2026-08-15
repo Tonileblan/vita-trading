@@ -23,6 +23,7 @@ import { Route as AuthenticatedPanelRouteImport } from './routes/_authenticated/
 import { Route as AuthenticatedRetirosRouteImport } from './routes/_authenticated/retiros'
 import { Route as AuthenticatedSupervisionRouteImport } from './routes/_authenticated/supervision'
 import { Route as AuthenticatedUsuariosRouteImport } from './routes/_authenticated/usuarios'
+import { Route as AuthenticatedCuentaAccountIdRouteImport } from './routes/_authenticated/cuenta.$accountId'
 import { Route as ApiPublicTradesWebhookRouteImport } from './routes/api/public/trades.webhook'
 
 const IndexRoute = IndexRouteImport.update({
@@ -98,6 +99,12 @@ const AuthenticatedUsuariosRoute = AuthenticatedUsuariosRouteImport.update({
   path: '/usuarios',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedCuentaAccountIdRoute =
+  AuthenticatedCuentaAccountIdRouteImport.update({
+    id: '/cuenta/$accountId',
+    path: '/cuenta/$accountId',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const ApiPublicTradesWebhookRoute = ApiPublicTradesWebhookRouteImport.update({
   id: '/api/public/trades/webhook',
   path: '/api/public/trades/webhook',
@@ -118,6 +125,7 @@ export interface FileRoutesByFullPath {
   '/retiros': typeof AuthenticatedRetirosRoute
   '/supervision': typeof AuthenticatedSupervisionRoute
   '/usuarios': typeof AuthenticatedUsuariosRoute
+  '/cuenta/$accountId': typeof AuthenticatedCuentaAccountIdRoute
   '/api/public/trades/webhook': typeof ApiPublicTradesWebhookRoute
 }
 export interface FileRoutesByTo {
@@ -134,6 +142,7 @@ export interface FileRoutesByTo {
   '/retiros': typeof AuthenticatedRetirosRoute
   '/supervision': typeof AuthenticatedSupervisionRoute
   '/usuarios': typeof AuthenticatedUsuariosRoute
+  '/cuenta/$accountId': typeof AuthenticatedCuentaAccountIdRoute
   '/api/public/trades/webhook': typeof ApiPublicTradesWebhookRoute
 }
 export interface FileRoutesById {
@@ -152,6 +161,7 @@ export interface FileRoutesById {
   '/_authenticated/retiros': typeof AuthenticatedRetirosRoute
   '/_authenticated/supervision': typeof AuthenticatedSupervisionRoute
   '/_authenticated/usuarios': typeof AuthenticatedUsuariosRoute
+  '/_authenticated/cuenta/$accountId': typeof AuthenticatedCuentaAccountIdRoute
   '/api/public/trades/webhook': typeof ApiPublicTradesWebhookRoute
 }
 export interface FileRouteTypes {
@@ -170,6 +180,7 @@ export interface FileRouteTypes {
     | '/retiros'
     | '/supervision'
     | '/usuarios'
+    | '/cuenta/$accountId'
     | '/api/public/trades/webhook'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -186,6 +197,7 @@ export interface FileRouteTypes {
     | '/retiros'
     | '/supervision'
     | '/usuarios'
+    | '/cuenta/$accountId'
     | '/api/public/trades/webhook'
   id:
     | '__root__'
@@ -203,6 +215,7 @@ export interface FileRouteTypes {
     | '/_authenticated/retiros'
     | '/_authenticated/supervision'
     | '/_authenticated/usuarios'
+    | '/_authenticated/cuenta/$accountId'
     | '/api/public/trades/webhook'
   fileRoutesById: FileRoutesById
 }
@@ -313,6 +326,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedUsuariosRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/cuenta/$accountId': {
+      id: '/_authenticated/cuenta/$accountId'
+      path: '/cuenta/$accountId'
+      fullPath: '/cuenta/$accountId'
+      preLoaderRoute: typeof AuthenticatedCuentaAccountIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/api/public/trades/webhook': {
       id: '/api/public/trades/webhook'
       path: '/api/public/trades/webhook'
@@ -335,6 +355,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedRetirosRoute: typeof AuthenticatedRetirosRoute
   AuthenticatedSupervisionRoute: typeof AuthenticatedSupervisionRoute
   AuthenticatedUsuariosRoute: typeof AuthenticatedUsuariosRoute
+  AuthenticatedCuentaAccountIdRoute: typeof AuthenticatedCuentaAccountIdRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
@@ -349,6 +370,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedRetirosRoute: AuthenticatedRetirosRoute,
   AuthenticatedSupervisionRoute: AuthenticatedSupervisionRoute,
   AuthenticatedUsuariosRoute: AuthenticatedUsuariosRoute,
+  AuthenticatedCuentaAccountIdRoute: AuthenticatedCuentaAccountIdRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =

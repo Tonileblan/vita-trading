@@ -1,11 +1,12 @@
 import { Link } from "@tanstack/react-router";
 import { Building2, User } from "lucide-react";
 import { useJournal } from "@/lib/journal-store";
-import { formatCurrency } from "@/lib/metrics";
+import { accountBalance, accountPnl, formatCurrency } from "@/lib/metrics";
 import { cn } from "@/lib/utils";
 
 export function AccountSidePanel() {
-  const { accounts, selectedAccountIds, toggleAccount, selectAll } = useJournal();
+  const { accounts, trades, selectedAccountIds, toggleAccount, selectAll } = useJournal();
+
 
   return (
     <div className="mt-6 flex min-h-0 flex-1 flex-col border-t border-sidebar-border pt-4">
@@ -23,7 +24,9 @@ export function AccountSidePanel() {
       <div className="flex-1 space-y-1 overflow-y-auto px-3 pb-4">
         {accounts.map((acc) => {
           const active = selectedAccountIds.includes(acc.id);
-          const pnl = acc.currentBalance - acc.initialBalance;
+          const pnl = accountPnl(trades, acc.id);
+          const balance = accountBalance(acc, trades);
+
           return (
             <button
               key={acc.id}
@@ -45,8 +48,9 @@ export function AccountSidePanel() {
               </div>
               <div className="mt-1 flex items-center justify-between">
                 <span className="num text-xs text-muted-foreground">
-                  {formatCurrency(acc.currentBalance)}
+                  {formatCurrency(balance)}
                 </span>
+
                 <span
                   className={cn(
                     "num text-xs font-semibold",
