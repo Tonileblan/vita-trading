@@ -37,33 +37,21 @@ export const Route = createFileRoute("/_authenticated/retiros")({
 });
 
 function RetirosPage() {
-  const { accounts, strategies, withdrawals, addWithdrawal } = useJournal();
-  const [strategyId, setStrategyId] = useState(strategies[0]?.id ?? "");
+  const { accounts, withdrawals, addWithdrawal } = useJournal();
   const [accountId, setAccountId] = useState(accounts[0]?.id ?? "");
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [amount, setAmount] = useState("");
   const [reason, setReason] = useState("");
 
-  const byStrategy = useMemo(
-    () =>
-      strategies.map((s) => ({
-        strategy: s,
-        total: withdrawals
-          .filter((w) => w.strategyId === s.id)
-          .reduce((acc, w) => acc + w.amount, 0),
-      })),
-    [strategies, withdrawals],
-  );
-  const total = byStrategy.reduce((s, x) => s + x.total, 0);
+  const total = withdrawals.reduce((s, w) => s + w.amount, 0);
 
   const submit = () => {
     const value = Number(amount);
-    if (!strategyId || !accountId || !value || value <= 0) {
-      toast.error("Indica cuenta, estrategia y un importe válido");
+    if (!accountId || !value || value <= 0) {
+      toast.error("Indica cuenta y un importe válido");
       return;
     }
     addWithdrawal({
-      strategyId,
       accountId,
       date: new Date(date).toISOString(),
       amount: value,
@@ -74,7 +62,6 @@ function RetirosPage() {
     toast.success("Retiro registrado");
   };
 
-  const name = (id: string) => strategies.find((s) => s.id === id)?.name ?? "—";
   const accName = (id?: string) => accounts.find((a) => a.id === id)?.name ?? "—";
 
   const byAccount = useMemo(
