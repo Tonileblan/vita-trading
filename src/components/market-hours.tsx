@@ -1,5 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
-import { Clock } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Activity, BarChart3, Clock, RefreshCw } from "lucide-react";
+import { useServerFn } from "@tanstack/react-start";
+import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -8,7 +10,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { getMarketPulse } from "@/lib/market-data.functions";
 import { cn } from "@/lib/utils";
+
 
 const ZONES = [
   "Europe/Madrid",
@@ -114,6 +118,28 @@ export function MarketHours() {
     return () => clearInterval(id);
   }, []);
 
+  const fetchPulse = useServerFn(getMarketPulse);
+  const [pulse, setPulse] = useState<Awaited<ReturnType<typeof getMarketPulse>> | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(false);
+
+  const refresh = useCallback(async () => {
+    setLoading(true);
+    setError(false);
+    try {
+      setPulse(await fetchPulse({}));
+    } catch {
+      setError(true);
+    } finally {
+      setLoading(false);
+    }
+  }, [fetchPulse]);
+
+  useEffect(() => {
+    void refresh();
+  }, [refresh]);
+
+
   const zoneOptions = useMemo(
     () => Array.from(new Set([zone, ...ZONES])).filter(Boolean),
     [zone],
@@ -183,6 +209,69 @@ export function MarketHours() {
           </div>
         ))}
       </div>
+
+      <div className="grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
+        <div className="rounded-lg border p-3">
+          <div className="flex items-center gap-2">
+            <Activity className="size-3.5 text-muted-foreground" />
+            <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Volatilidad VXN
+            </span>
+          </div>
+          <p className="mt-1 font-display text-2xl tracking-wide tabular-nums">
+            {pulse?.vxn.value != null ? pulse.vxn.value.toFixed(2) : error ? "—" : "…"}
+          </p>
+          <p
+            className={cn(
+              "text-[11px]",
+              pulse?.vxn.change == null
+                ? "text-muted-foreground"
+                : pulse.vxn.change >= 0
+                  ? "text-loss"
+                  : "text-profit",
+            )}
+          >
+            {pulse?.vxn.change != null && pulse.vxn.changePct != null
+              ? `${pulse.vxn.change >= 0 ? "+" : ""}${pulse.vxn.change.toFixed(2)} (${pulse.vxn.changePct.toFixed(2)}%) vs cierre previo`
+              : "CBOE Nasdaq 100 Volatility"}
+          </p>
+        </div>
+
+        <div className="rounded-lg border p-3">
+          <div className="flex items-center gap-2">
+            <BarChart3 className="size-3.5 text-muted-foreground" />
+            <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Volumen del día (NQ)
+            </span>
+          </div>
+          <p className="mt-1 font-display text-2xl tracking-wide tabular-nums">
+            {pulse?.volume.value != null
+              ? new Intl.NumberFormat("es-ES").format(pulse.volume.value)
+              : error
+                ? "—"
+                : "…"}
+          </p>
+          <p className="text-[11px] text-muted-foreground">
+            {pulse?.volume.price != null
+              ? `Contratos · último ${pulse.volume.price.toFixed(2)}`
+              : "Contratos negociados en la sesión"}
+          </p>
+        </div>
+
+        <div className="flex items-center justify-between gap-2 sm:flex-col sm:items-end sm:justify-center">
+          <Button variant="outline" size="sm" onClick={() => void refresh()} disabled={loading}>
+            <RefreshCw className={cn("size-4", loading && "animate-spin")} /> Actualizar
+          </Button>
+          <span className="text-[11px] text-muted-foreground">
+            {error
+              ? "Sin datos"
+              : pulse
+                ? `Actualizado ${fmt(new Date(pulse.updatedAt), zone)}`
+                : "Cargando…"}
+          </span>
+        </div>
+      </div>
+
     </section>
   );
 }
