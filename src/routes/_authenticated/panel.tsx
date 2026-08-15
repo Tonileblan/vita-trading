@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { EquityChart } from "@/components/equity-chart";
+import { CapitalSplit } from "@/components/capital-split";
 import { KpiCards } from "@/components/kpi-cards";
 import { TradeFormDialog } from "@/components/trade-form-dialog";
 import { TradesTable } from "@/components/trades-table";
@@ -69,6 +70,7 @@ function Overview() {
       actions={<TradeFormDialog />}
     >
       <div className="space-y-5">
+        <CapitalSplit accounts={selectedAccounts} trades={visibleTrades} />
         <KpiCards metrics={metrics} />
 
         <section className="panel p-4">
