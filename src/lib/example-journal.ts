@@ -139,7 +139,13 @@ export async function createExampleJournal(name = "Diario de ejemplo") {
   if (mockWithdrawals.length > 0) {
     const firstAcc = accIdMap.get(mockAccounts[0]!.id) ?? null;
     const wdRows = mockWithdrawals.map((w) =>
-      withdrawalRow(w, journalId, userId, firstAcc, stratIdMap.get(w.strategyId) ?? null),
+      withdrawalRow(
+        w,
+        journalId,
+        userId,
+        firstAcc,
+        w.strategyId ? (stratIdMap.get(w.strategyId) ?? null) : null,
+      ),
     );
     const { error: wErr } = await supabase.from("withdrawals").insert(wdRows as never);
     if (wErr) throw wErr;
