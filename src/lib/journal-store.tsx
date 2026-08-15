@@ -185,6 +185,7 @@ interface JournalState extends JournalData {
   updateStrategy: (id: string, patch: Partial<Strategy>) => Promise<void>;
   addStrategy: (strategy: Omit<Strategy, "id">) => Promise<void>;
   removeStrategy: (id: string) => Promise<void>;
+  restoreDefaultStrategies: () => Promise<void>;
   visibleTrades: Trade[];
 }
 
