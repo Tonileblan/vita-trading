@@ -87,7 +87,13 @@ export interface Withdrawal {
   date: string;
   amount: number;
   reason?: string | undefined;
+  /** 'pending' = solicitado, pendiente de aprobación; solo 'approved' se contabiliza. */
+  status: WithdrawalStatus;
+  requestedAt?: string | undefined;
+  approvedAt?: string | undefined;
 }
+
+export type WithdrawalStatus = "pending" | "approved" | "rejected";
 
 /** Valor por punto (referencia) de los futuros más habituales. */
 export const FUTURES_SPECS: { symbol: string; pointValue: number }[] = [
