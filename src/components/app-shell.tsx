@@ -112,12 +112,14 @@ export function AppShell({
   subtitle,
   actions,
   children,
+  bareHeader,
 }: {
   title: ReactNode;
   subtitle?: string;
   actions?: ReactNode;
   children: ReactNode;
   showAccountPanel?: boolean;
+  bareHeader?: boolean;
 }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const { isSupervisor } = useAuth();
@@ -167,7 +169,12 @@ export function AppShell({
       </header>
 
       <main className="mx-auto max-w-4xl px-4 py-5 sm:py-6">
-        <div className="mb-5 flex flex-col gap-3 border-b border-border pb-4 sm:mb-6 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
+        <div
+          className={cn(
+            "flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between",
+            bareHeader ? "mb-0" : "mb-5 border-b border-border pb-4 sm:mb-6",
+          )}
+        >
           <div className="min-w-0">
             <h1 className="text-2xl leading-none sm:text-3xl">{title}</h1>
             {subtitle && <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p>}

@@ -55,9 +55,10 @@ function ContaPage() {
 
   return (
     <AppShell
+      bareHeader
       title={
         <div
-          className="flex gap-1"
+          className="flex gap-1 border-b border-border"
           role="tablist"
           aria-label="Sección de conta"
         >
@@ -78,13 +79,13 @@ function ContaPage() {
                 className={cn(
                   "relative -mb-px rounded-t-lg border border-b-0 px-5 py-2 text-sm font-semibold transition-colors",
                   active
-                    ? "border-border bg-surface text-foreground"
+                    ? "border-border bg-card text-foreground"
                     : "border-transparent text-muted-foreground hover:text-foreground",
                 )}
               >
                 {label}
                 {active && (
-                  <span className="pointer-events-none absolute inset-x-0 -bottom-px h-px bg-surface" />
+                  <span className="pointer-events-none absolute inset-x-0 -bottom-px h-px bg-card" />
                 )}
               </button>
             );
