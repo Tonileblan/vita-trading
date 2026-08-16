@@ -4,18 +4,10 @@ import { Plus } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { ExpenseBreakdown } from "@/components/expense-breakdown";
 import { ExpenseFormDialog } from "@/components/expense-form-dialog";
 import { ExpensesTable } from "@/components/expenses-table";
+import { WithdrawalFormDialog } from "@/components/withdrawal-form-dialog";
 import { useJournal } from "@/lib/journal-store";
 import { formatCurrency } from "@/lib/metrics";
 import {
@@ -27,6 +19,7 @@ import {
 } from "@/lib/expense-metrics";
 import { useDeleteExpense, useExpenses, type Expense } from "@/lib/expenses";
 import { cn } from "@/lib/utils";
+import type { Withdrawal } from "@/lib/types";
 
 export const Route = createFileRoute("/_authenticated/conta")({
   head: () => ({
@@ -54,8 +47,10 @@ type Scope = "all" | "journal" | "general";
 
 function ContaPage() {
   const [tab, setTab] = useState<Tab>("retiros");
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [editing, setEditing] = useState<Expense | null>(null);
+  const [expenseDialogOpen, setExpenseDialogOpen] = useState(false);
+  const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
+  const [withdrawalDialogOpen, setWithdrawalDialogOpen] = useState(false);
+  const [editingWithdrawal, setEditingWithdrawal] = useState<Withdrawal | null>(null);
   const { activeJournalId } = useJournal();
 
   return (
@@ -67,13 +62,22 @@ function ContaPage() {
         tab === "gastos" ? (
           <Button
             onClick={() => {
-              setEditing(null);
-              setDialogOpen(true);
+              setEditingExpense(null);
+              setExpenseDialogOpen(true);
             }}
           >
             <Plus className="mr-1 size-4" /> Nuevo gasto
           </Button>
-        ) : undefined
+        ) : (
+          <Button
+            onClick={() => {
+              setEditingWithdrawal(null);
+              setWithdrawalDialogOpen(true);
+            }}
+          >
+            <Plus className="mr-1 size-4" /> Nuevo retiro
+          </Button>
+        )
       }
     >
       <div className="space-y-4">
@@ -113,35 +117,39 @@ function ContaPage() {
         </div>
 
         {tab === "retiros" ? (
-          <WithdrawalsSection />
+          <WithdrawalsSection
+            openEdit={(w) => {
+              setEditingWithdrawal(w);
+              setWithdrawalDialogOpen(true);
+            }}
+          />
         ) : (
           <ExpensesSection
             openEdit={(e) => {
-              setEditing(e);
-              setDialogOpen(true);
+              setEditingExpense(e);
+              setExpenseDialogOpen(true);
             }}
           />
         )}
       </div>
 
       <ExpenseFormDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        editing={editing}
+        open={expenseDialogOpen}
+        onOpenChange={setExpenseDialogOpen}
+        editing={editingExpense}
         defaultJournalId={activeJournalId}
+      />
+      <WithdrawalFormDialog
+        open={withdrawalDialogOpen}
+        onOpenChange={setWithdrawalDialogOpen}
+        editing={editingWithdrawal}
       />
     </AppShell>
   );
 }
 
-function WithdrawalsSection() {
-  const { accounts, allWithdrawals, addWithdrawal, updateWithdrawal, removeWithdrawal } =
-    useJournal();
-  const [accountId, setAccountId] = useState(accounts[0]?.id ?? "");
-  const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
-  const [amount, setAmount] = useState("");
-  const [reason, setReason] = useState("");
-  const [status, setStatus] = useState<"pending" | "approved">("approved");
+function WithdrawalsSection({ openEdit }: { openEdit: (w: Withdrawal) => void }) {
+  const { accounts, allWithdrawals, updateWithdrawal, removeWithdrawal } = useJournal();
 
   const approved = useMemo(
     () => allWithdrawals.filter((w) => w.status === "approved"),
@@ -153,24 +161,6 @@ function WithdrawalsSection() {
   );
   const total = approved.reduce((s, w) => s + w.amount, 0);
   const pendingTotal = pending.reduce((s, w) => s + w.amount, 0);
-
-  const submit = () => {
-    const value = Number(amount);
-    if (!accountId || !value || value <= 0) {
-      toast.error("Indica cuenta y un importe válido");
-      return;
-    }
-    addWithdrawal({
-      accountId,
-      date: new Date(date).toISOString(),
-      amount: value,
-      reason: reason || undefined,
-      status,
-    });
-    setAmount("");
-    setReason("");
-    toast.success(status === "pending" ? "Retiro solicitado (pendiente)" : "Retiro registrado");
-  };
 
   const accName = (id?: string) => accounts.find((a) => a.id === id)?.name ?? "—";
 
@@ -204,176 +194,120 @@ function WithdrawalsSection() {
   };
 
   return (
-    <div className="grid min-w-0 gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
-      <div className="min-w-0 space-y-5">
-        {pending.length > 0 && (
-          <section className="panel min-w-0 overflow-x-auto p-4">
-            <h2 className="mb-3 text-base font-semibold">
-              Solicitudes pendientes{" "}
-              <span className="text-xs font-normal text-muted-foreground">
-                (no se contabilizan)
-              </span>
-            </h2>
-            <ul className="space-y-2 text-sm">
-              {pending.map((w) => (
-                <li
-                  key={w.id}
-                  className="flex flex-wrap items-center justify-between gap-2 border-b border-border/60 pb-2"
-                >
-                  <span className="tabular-nums text-muted-foreground">
-                    {new Date(w.date).toLocaleDateString("es-ES", { timeZone: "UTC" })}
-                  </span>
-                  <span className="min-w-0 flex-1 truncate">{accName(w.accountId)}</span>
-                  <span className="tabular-nums font-medium">{formatCurrency(w.amount)}</span>
-                  <span className="flex gap-2">
-                    <Button size="sm" onClick={() => approve(w.id)}>
-                      Aprobar
-                    </Button>
-                    <Button size="sm" variant="ghost" onClick={() => reject(w.id)}>
-                      Descartar
-                    </Button>
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </section>
-        )}
-
+    <div className="space-y-5">
+      {pending.length > 0 && (
         <section className="panel min-w-0 overflow-x-auto p-4">
-          <h2 className="mb-3 text-base font-semibold">Registro de retiros</h2>
-          <table className="w-full min-w-[560px] text-sm">
-            <thead className="text-xs uppercase text-muted-foreground">
-              <tr className="border-b border-border">
-                <th className="py-2 text-left">Fecha</th>
-                <th className="py-2 text-left">Cuenta</th>
-                <th className="py-2 text-right">Monto</th>
-                <th className="py-2 text-left">Estado</th>
-                <th className="py-2 text-left">Motivo</th>
-              </tr>
-            </thead>
-            <tbody>
-              {allWithdrawals.length === 0 && (
-                <tr>
-                  <td colSpan={5} className="py-6 text-center text-muted-foreground">
-                    Todavía no hay retiros registrados.
-                  </td>
-                </tr>
-              )}
-              {allWithdrawals.map((w) => (
-                <tr key={w.id} className="border-b border-border/60">
-                  <td className="py-2 tabular-nums">
-                    {new Date(w.date).toLocaleDateString("es-ES", { timeZone: "UTC" })}
-                  </td>
-                  <td className="py-2">{accName(w.accountId)}</td>
-                  <td
-                    className={cn(
-                      "py-2 text-right tabular-nums",
-                      w.status !== "approved" && "text-muted-foreground",
-                    )}
-                  >
-                    {formatCurrency(w.amount)}
-                  </td>
-                  <td className="py-2">
-                    {w.status === "approved" ? (
-                      <span className="text-profit">Aprobado</span>
-                    ) : (
-                      <button
-                        className="text-muted-foreground underline underline-offset-2"
-                        onClick={() => approve(w.id)}
-                      >
-                        Pendiente
-                      </button>
-                    )}
-                  </td>
-                  <td className="py-2 text-muted-foreground">{w.reason ?? "—"}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </section>
-      </div>
-
-      <div className="space-y-5">
-        <section className="panel space-y-3 p-4">
-          <h2 className="text-base font-semibold">Nuevo retiro</h2>
-          <div className="space-y-2">
-            <Label>Cuenta</Label>
-            <Select value={accountId} onValueChange={setAccountId}>
-              <SelectTrigger>
-                <SelectValue placeholder="Selecciona" />
-              </SelectTrigger>
-              <SelectContent>
-                {accounts.map((a) => (
-                  <SelectItem key={a.id} value={a.id}>
-                    {a.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <Label>Estado</Label>
-            <Select
-              value={status}
-              onValueChange={(v) => setStatus(v as "pending" | "approved")}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="pending">Solicitado (pendiente)</SelectItem>
-                <SelectItem value="approved">Aprobado</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <Label>Fecha</Label>
-            <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
-          </div>
-          <div className="space-y-2">
-            <Label>Monto ($)</Label>
-            <Input
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              inputMode="decimal"
-              placeholder="1000"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label>Motivo</Label>
-            <Input
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              placeholder="Payout, gastos…"
-            />
-          </div>
-          <Button className="w-full" onClick={submit}>
-            {status === "pending" ? "Solicitar retiro" : "Registrar retiro"}
-          </Button>
-        </section>
-
-        <section className="panel p-4">
-          <h2 className="mb-3 text-base font-semibold">Resumen por cuenta</h2>
-          <ul className="mb-4 space-y-2 text-sm">
-            {byAccount.map((x) => (
-              <li key={x.account.id} className="flex justify-between">
-                <span className="text-muted-foreground">{x.account.name}</span>
-                <span className="tabular-nums">{formatCurrency(x.total)}</span>
+          <h2 className="mb-3 text-base font-semibold">
+            Solicitudes pendientes{" "}
+            <span className="text-xs font-normal text-muted-foreground">
+              (no se contabilizan)
+            </span>
+          </h2>
+          <ul className="space-y-2 text-sm">
+            {pending.map((w) => (
+              <li
+                key={w.id}
+                className="flex flex-wrap items-center justify-between gap-2 border-b border-border/60 pb-2"
+              >
+                <span className="tabular-nums text-muted-foreground">
+                  {new Date(w.date).toLocaleDateString("es-ES", { timeZone: "UTC" })}
+                </span>
+                <span className="min-w-0 flex-1 truncate">{accName(w.accountId)}</span>
+                <span className="tabular-nums font-medium">{formatCurrency(w.amount)}</span>
+                <span className="flex gap-2">
+                  <Button size="sm" onClick={() => approve(w.id)}>
+                    Aprobar
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => reject(w.id)}>
+                    Descartar
+                  </Button>
+                </span>
               </li>
             ))}
           </ul>
-          <div className="flex justify-between border-t border-border pt-2 text-sm font-semibold">
-            <span>Total aprobado</span>
-            <span className="tabular-nums">{formatCurrency(total)}</span>
-          </div>
-          {pendingTotal > 0 && (
-            <div className="mt-1 flex justify-between text-sm text-muted-foreground">
-              <span>Pendiente</span>
-              <span className="tabular-nums">{formatCurrency(pendingTotal)}</span>
-            </div>
-          )}
         </section>
-      </div>
+      )}
+
+      <section className="panel min-w-0 overflow-x-auto p-4">
+        <h2 className="mb-3 text-base font-semibold">Registro de retiros</h2>
+        <table className="w-full min-w-[560px] text-sm">
+          <thead className="text-xs uppercase text-muted-foreground">
+            <tr className="border-b border-border">
+              <th className="py-2 text-left">Fecha</th>
+              <th className="py-2 text-left">Cuenta</th>
+              <th className="py-2 text-right">Monto</th>
+              <th className="py-2 text-left">Estado</th>
+              <th className="py-2 text-left">Motivo</th>
+              <th className="py-2 text-right"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {allWithdrawals.length === 0 && (
+              <tr>
+                <td colSpan={6} className="py-6 text-center text-muted-foreground">
+                  Todavía no hay retiros registrados.
+                </td>
+              </tr>
+            )}
+            {allWithdrawals.map((w) => (
+              <tr key={w.id} className="border-b border-border/60">
+                <td className="py-2 tabular-nums">
+                  {new Date(w.date).toLocaleDateString("es-ES", { timeZone: "UTC" })}
+                </td>
+                <td className="py-2">{accName(w.accountId)}</td>
+                <td
+                  className={cn(
+                    "py-2 text-right tabular-nums",
+                    w.status !== "approved" && "text-muted-foreground",
+                  )}
+                >
+                  {formatCurrency(w.amount)}
+                </td>
+                <td className="py-2">
+                  {w.status === "approved" ? (
+                    <span className="text-profit">Aprobado</span>
+                  ) : (
+                    <button
+                      className="text-muted-foreground underline underline-offset-2"
+                      onClick={() => approve(w.id)}
+                    >
+                      Pendiente
+                    </button>
+                  )}
+                </td>
+                <td className="py-2 text-muted-foreground">{w.reason ?? "—"}</td>
+                <td className="py-2 text-right">
+                  <Button size="sm" variant="ghost" onClick={() => openEdit(w)}>
+                    Editar
+                  </Button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </section>
+
+      <section className="panel p-4">
+        <h2 className="mb-3 text-base font-semibold">Resumen por cuenta</h2>
+        <ul className="mb-4 space-y-2 text-sm">
+          {byAccount.map((x) => (
+            <li key={x.account.id} className="flex justify-between">
+              <span className="text-muted-foreground">{x.account.name}</span>
+              <span className="tabular-nums">{formatCurrency(x.total)}</span>
+            </li>
+          ))}
+        </ul>
+        <div className="flex justify-between border-t border-border pt-2 text-sm font-semibold">
+          <span>Total aprobado</span>
+          <span className="tabular-nums">{formatCurrency(total)}</span>
+        </div>
+        {pendingTotal > 0 && (
+          <div className="mt-1 flex justify-between text-sm text-muted-foreground">
+            <span>Pendiente</span>
+            <span className="tabular-nums">{formatCurrency(pendingTotal)}</span>
+          </div>
+        )}
+      </section>
     </div>
   );
 }
