@@ -157,7 +157,7 @@ function CostosPage() {
             label="Resultado neto"
             value={formatCurrency(net, true)}
             tone={net >= 0 ? "profit" : "loss"}
-            hint={`Bruto ${formatCurrency(grossPnl, true)} · ROI ${roi.toFixed(0)}%`}
+            hint={`Retiros fondeo ${formatCurrency(payouts)} + real ${formatCurrency(realPnl, true)} · ROI ${roi.toFixed(0)}%`}
           />
         </section>
 
