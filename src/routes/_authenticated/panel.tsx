@@ -117,15 +117,15 @@ function Overview() {
   return (
     <AppShell
       title={
-        <span className="flex flex-wrap items-center gap-3">
-          Resumen
+        <span className="flex flex-wrap items-center gap-3 w-full">
+          <span>Resumen</span>
           <select
             value={accountFilter}
             onChange={(e) => setAccountFilter(e.target.value)}
-            className="h-9 rounded-md border border-border bg-card px-2 text-sm font-sans"
+            className="ml-auto h-9 rounded-md border border-border bg-card px-2 text-sm font-sans"
             aria-label="Cuenta"
           >
-            <option value="all">General</option>
+            <option value="all">GENERAL</option>
             {accounts.map((a) => (
               <option key={a.id} value={a.id}>
                 {a.name}
