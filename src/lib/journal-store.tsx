@@ -103,6 +103,8 @@ export function toTrade(r: Row): Trade {
     notes: (r["notes"] as string | null) ?? undefined,
     screenshots: (r["screenshots"] as string[] | null) ?? [],
     source: (r["source"] === "webhook" ? "webhook" : "manual") as Trade["source"],
+    importBatchId: (r["import_batch_id"] as string | null) ?? undefined,
+    createdAt: (r["created_at"] as string | null) ?? undefined,
     emotionBefore: (r["emotion_before"] as string | null) ?? undefined,
     emotionAfter: (r["emotion_after"] as string | null) ?? undefined,
     followedPlan: (r["followed_plan"] as Trade["followedPlan"]) ?? undefined,
