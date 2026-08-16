@@ -167,7 +167,7 @@ function Overview() {
     >
       <div className="space-y-5">
         <RiskAlerts />
-        {accountFilter === "all" && (
+        {accountFilter === "all" && !isStrategy && (
           <section className="grid gap-3 sm:grid-cols-3">
             {SCOPES.map((s) => (
               <button
