@@ -25,6 +25,7 @@ function toAccount(r: Row): Account {
     name: String(r["name"] ?? ""),
     type: (r["type"] === "funded" ? "funded" : "personal") as Account["type"],
     firm: (r["firm"] as string | null) ?? undefined,
+    broker: (r["broker"] as string | null) ?? undefined,
     initialBalance: Number(r["initial_balance"] ?? 0),
     currentBalance: Number(r["current_balance"] ?? 0),
     drawdownLimit: r["drawdown_limit"] == null ? undefined : Number(r["drawdown_limit"]),
