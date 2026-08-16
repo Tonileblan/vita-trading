@@ -167,10 +167,12 @@ function Overview() {
     return accountTarget(account, visibleTrades, withdrawals);
   }, [isStrategy, accountFilter, selectedAccounts, visibleTrades, withdrawals]);
 
+  const curveAccounts = isStrategy ? strategyAccounts : scopedAccounts;
   const curve = useMemo(
-    () => buildEquityCurve(trades, accountsCurveStart(scopedAccounts, trades, withdrawals)),
-    [trades, scopedAccounts, withdrawals],
+    () => buildEquityCurve(trades, accountsCurveStart(curveAccounts, trades, withdrawals)),
+    [trades, curveAccounts, withdrawals],
   );
+
   const fundedAccounts = selectedAccounts.filter((a) => a.type === "funded");
   const realAccounts = selectedAccounts.filter((a) => a.type !== "funded");
   const fundedEquity = fundedAccounts.reduce(
