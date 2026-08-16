@@ -97,6 +97,11 @@ export function toTrade(r: Row): Trade {
     notes: (r["notes"] as string | null) ?? undefined,
     screenshots: (r["screenshots"] as string[] | null) ?? [],
     source: (r["source"] === "webhook" ? "webhook" : "manual") as Trade["source"],
+    emotionBefore: (r["emotion_before"] as string | null) ?? undefined,
+    emotionAfter: (r["emotion_after"] as string | null) ?? undefined,
+    followedPlan: (r["followed_plan"] as Trade["followedPlan"]) ?? undefined,
+    mistakes: (r["mistakes"] as string[] | null) ?? [],
+    emotionNote: (r["emotion_note"] as string | null) ?? undefined,
   };
 }
 
@@ -116,8 +121,14 @@ function fromTrade(t: Omit<Trade, "id">): Row {
     notes: t.notes ?? null,
     screenshots: t.screenshots,
     source: t.source,
+    emotion_before: t.emotionBefore ?? null,
+    emotion_after: t.emotionAfter ?? null,
+    followed_plan: t.followedPlan ?? null,
+    mistakes: t.mistakes ?? [],
+    emotion_note: t.emotionNote ?? null,
   };
 }
+
 
 function toWithdrawal(r: Row): Withdrawal {
   return {
