@@ -1,8 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Layers, Pencil, Plus } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { MarketHours } from "@/components/market-hours";
+import { AccountStrategyCalendar } from "@/components/account-strategy-calendar";
 import { StrategyDialog } from "@/components/strategy-dialog";
 import { Button } from "@/components/ui/button";
 import { useJournal } from "@/lib/journal-store";
@@ -42,6 +43,8 @@ function EstrategiasPage() {
     () => strategies.map((s) => computeStrategyStats(s, trades, withdrawals, accounts, strategyPeriods)),
     [strategies, trades, withdrawals, accounts, strategyPeriods],
   );
+
+  const [calendarAccountId, setCalendarAccountId] = useState<string>("");
 
   const statById = useMemo(
     () => new Map(stats.map((s) => [s.strategy.id, s])),
@@ -270,6 +273,37 @@ function EstrategiasPage() {
               ))}
             </tbody>
           </table>
+        </section>
+        <section className="panel p-4">
+          <h2 className="text-xl leading-none">Estrategia por fechas</h2>
+          <p className="mb-3 text-xs text-muted-foreground">
+            Elige una cuenta y asigna la estrategia que usaste en cada tramo de fechas.
+          </p>
+          <div className="mb-4 flex flex-wrap gap-2">
+            {accounts.map((a) => (
+              <button
+                key={a.id}
+                type="button"
+                onClick={() => setCalendarAccountId(a.id)}
+                className={cn(
+                  "rounded-full border px-3 py-1 text-xs font-semibold transition",
+                  calendarAccountId === a.id
+                    ? "border-foreground bg-foreground text-background"
+                    : "border-border text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {a.name}
+              </button>
+            ))}
+            {accounts.length === 0 && (
+              <p className="text-sm text-muted-foreground">No hay cuentas todavía.</p>
+            )}
+          </div>
+          {calendarAccountId ? (
+            <AccountStrategyCalendar key={calendarAccountId} accountId={calendarAccountId} />
+          ) : accounts.length > 0 ? (
+            <p className="text-sm text-muted-foreground">Selecciona una cuenta para ver el calendario.</p>
+          ) : null}
         </section>
       </div>
     </AppShell>
