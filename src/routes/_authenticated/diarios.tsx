@@ -313,6 +313,23 @@ function JournalsPage() {
                       <Archive className="size-4" />
                     )}
                   </Button>
+                  {j.owner_id === user?.id && (
+                    <Button
+                      size="sm"
+                      variant={j.is_template ? "default" : "outline"}
+                      title={
+                        j.is_template
+                          ? "Quitar de ejemplos públicos"
+                          : "Publicar como ejemplo público (clonable por todos)"
+                      }
+                      disabled={toggleTemplate.isPending}
+                      onClick={() =>
+                        toggleTemplate.mutate({ id: j.id, value: !j.is_template })
+                      }
+                    >
+                      <Globe className="size-4" />
+                    </Button>
+                  )}
                   <Button
                     size="sm"
                     variant="outline"
