@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { Check, X } from "lucide-react";
 import type { Trade } from "@/lib/types";
+import type { TargetStatus } from "@/lib/metrics";
 import { computeMetrics, formatCurrency } from "@/lib/metrics";
 import { cn } from "@/lib/utils";
 
