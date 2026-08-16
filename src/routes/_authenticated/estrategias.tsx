@@ -7,7 +7,7 @@ import { AccountStrategyCalendar } from "@/components/account-strategy-calendar"
 import { StrategyDialog } from "@/components/strategy-dialog";
 import { Button } from "@/components/ui/button";
 import { useJournal } from "@/lib/journal-store";
-import { computeStrategyStats, formatCurrency, monthlyNet } from "@/lib/metrics";
+import { computeStrategyStats, formatCurrency } from "@/lib/metrics";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/estrategias")({
@@ -60,7 +60,6 @@ function EstrategiasPage() {
     return { initial, net, withdrawn, ops, current };
   }, [stats]);
 
-  const months = useMemo(() => monthlyNet(trades, totals.initial), [trades, totals.initial]);
 
 
   return (
