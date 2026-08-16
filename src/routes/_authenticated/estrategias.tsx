@@ -35,22 +35,29 @@ function pct(v: number) {
 }
 
 function EstrategiasPage() {
-  const { strategies, trades, withdrawals, restoreDefaultStrategies } = useJournal();
+  const { strategies, trades, withdrawals, accounts, restoreDefaultStrategies } = useJournal();
 
   const stats = useMemo(
-    () => strategies.map((s) => computeStrategyStats(s, trades, withdrawals)),
-    [strategies, trades, withdrawals],
+    () => strategies.map((s) => computeStrategyStats(s, trades, withdrawals, accounts)),
+    [strategies, trades, withdrawals, accounts],
+  );
+
+  const statById = useMemo(
+    () => new Map(stats.map((s) => [s.strategy.id, s])),
+    [stats],
   );
 
   const totals = useMemo(() => {
-    const initial = stats.reduce((s, x) => s + x.strategy.initialCapital, 0);
+    const initial = stats.reduce((s, x) => s + x.initialCapital, 0);
     const net = stats.reduce((s, x) => s + x.net, 0);
     const withdrawn = stats.reduce((s, x) => s + x.withdrawn, 0);
     const ops = stats.reduce((s, x) => s + x.trades, 0);
-    return { initial, net, withdrawn, ops, current: initial + net - withdrawn };
+    const current = stats.reduce((s, x) => s + x.currentCapital, 0);
+    return { initial, net, withdrawn, ops, current };
   }, [stats]);
 
   const months = useMemo(() => monthlyNet(trades, totals.initial), [trades, totals.initial]);
+
 
   return (
     <AppShell
