@@ -340,9 +340,12 @@ function AccountsPage() {
             className="min-w-0 flex-1 group"
           >
             <h3 className="truncate font-semibold group-hover:text-brand">{acc.name}</h3>
-            <p className="text-xs text-muted-foreground">
-              {acc.firm ?? "Cuenta personal"} · {acc.currency}
-            </p>
+              <p className="text-xs text-muted-foreground">
+                {acc.type === "funded"
+                  ? (acc.firm ?? "Prop firm")
+                  : (acc.broker ?? "Cuenta personal")}{" "}
+                · {acc.currency}
+              </p>
           </Link>
           <div className="flex items-center gap-2">
             <span
