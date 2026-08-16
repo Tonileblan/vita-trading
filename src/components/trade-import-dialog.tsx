@@ -96,7 +96,8 @@ export function TradeImportDialog() {
         if (seen.has(key)) continue;
         seen.add(key);
         const duplicate = existing.has(key);
-        parsedRows.push({ ...t, key, duplicate, selected: !duplicate });
+        const detectedAt = parseDetectedDate(t.closedAt ?? t.openedAt);
+        parsedRows.push({ ...t, key, duplicate, selected: !duplicate, detectedAt });
       }
       setRows(parsedRows);
       if (parsedRows.length === 0) toast.error("No se detectaron operaciones en las capturas");
