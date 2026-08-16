@@ -44,9 +44,10 @@ export const Route = createFileRoute("/_authenticated/panel")({
 });
 
 const RANGES = [
-  { key: "7d", label: "7D" },
-  { key: "30d", label: "30D" },
-  { key: "90d", label: "90D" },
+  { key: "7d", label: "7 días" },
+  { key: "month", label: "Mes actual" },
+  { key: "30d", label: "30 días" },
+  { key: "180d", label: "180 días" },
   { key: "all", label: "Todo" },
 ] as const;
 
