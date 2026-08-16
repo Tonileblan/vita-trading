@@ -28,7 +28,11 @@ Devuelve TODAS las operaciones cerradas visibles en las imágenes, una por fila/
 Reglas:
 - "direction": long para compras/buy/largo, short para ventas/sell/corto.
 - "pnl" es el resultado NETO en dólares como número (negativo si es pérdida). Quita símbolos y separadores de miles.
-- Fechas en ISO 8601 con hora si es posible (ej. 2026-05-14T15:32:00). Si el año no aparece, usa el año actual.
+- Fechas: SIEMPRE que aparezca una fecha o marca de tiempo en la imagen (columna, cabecera, tarjeta o pie), devuélvela.
+  Formato ISO 8601 con hora si está disponible (ej. 2026-05-14T15:32:00). Convierte 12h (am/pm) a 24h.
+  Si la fecha aparece como dd/mm o mm/dd y el año no se ve, usa el año actual.
+  Si la fecha solo aparece una vez para todo el bloque, aplícala a todas las operaciones de ese bloque.
+  "openedAt" y "closedAt" pueden ser iguales si solo hay una marca de tiempo.
 - Si un dato no aparece, usa null. Nunca inventes valores.
 - No incluyas resúmenes, totales, ni filas de balance/comisiones.
 Responde SOLO con JSON válido: {"trades":[{...}]}`;
