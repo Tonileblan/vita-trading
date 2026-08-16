@@ -334,8 +334,9 @@ export function TradeImportDialog() {
           <Button variant="outline" onClick={() => setOpen(false)}>
             Cancelar
           </Button>
-          <Button onClick={importSelected} disabled={!rows || rows.length === 0}>
-            Importar seleccionadas
+          <Button onClick={importSelected} disabled={!rows || rows.length === 0 || importing}>
+            {importing && <Loader2 className="size-4 animate-spin" />}
+            {importing ? "Importando…" : "Importar seleccionadas"}
           </Button>
         </DialogFooter>
       </DialogContent>
