@@ -72,7 +72,7 @@ function AccountDialog({ account, trigger }: { account?: Account; trigger: React
     setNewBroker("");
   };
   const [initial, setInitial] = useState(String(account?.initialBalance ?? 50000));
-  const [current, setCurrent] = useState(String(account?.currentBalance ?? 50000));
+
   const [dd, setDd] = useState(String(account?.drawdownLimit ?? 2500));
   const [ddType, setDdType] = useState<DrawdownType>(account?.drawdownType ?? "static");
 
