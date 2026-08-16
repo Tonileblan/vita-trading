@@ -59,6 +59,8 @@ export function TradeImportDialog() {
   const [loading, setLoading] = useState(false);
   const [dragging, setDragging] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const cameraRef = useRef<HTMLInputElement>(null);
+
 
   const addFiles = (files: FileList | File[] | null) => {
     if (!files) return;
