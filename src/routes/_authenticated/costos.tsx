@@ -43,7 +43,7 @@ export const Route = createFileRoute("/_authenticated/costos")({
 type Scope = "all" | "journal" | "general";
 
 function CostosPage() {
-  const { accounts, visibleTrades, activeJournalId } = useJournal();
+  const { accounts, visibleTrades, withdrawals, activeJournalId } = useJournal();
   const { data: expenses = [], isLoading } = useExpenses();
   const remove = useDeleteExpense();
 
