@@ -148,6 +148,19 @@ function Overview() {
               </option>
             ))}
           </select>
+          <select
+            value={strategyFilter}
+            onChange={(e) => setStrategyFilter(e.target.value)}
+            className="h-9 rounded-md border border-border bg-card px-2 text-sm font-sans"
+            aria-label="Estrategia"
+          >
+            <option value="all">TODAS LAS ESTRATEGIAS</option>
+            {accountStrategies.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name}
+              </option>
+            ))}
+          </select>
         </span>
       }
       subtitle={`${selectedAccounts.length} cuenta(s) · Fondeo ${formatCurrency(fundedEquity)} · Real ${formatCurrency(realEquity)}`}
