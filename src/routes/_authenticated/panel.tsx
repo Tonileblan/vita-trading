@@ -60,8 +60,12 @@ function Overview() {
   const { visibleTrades, accounts, strategies, selectedAccountIds, withdrawals } = useJournal();
   const [range, setRange] = useState<(typeof RANGES)[number]["key"]>("all");
   const [scope, setScope] = useState<Scope>("all");
-  const [accountFilter, setAccountFilter] = useState<string>("all");
-  const [strategyFilter, setStrategyFilter] = useState<string>("all");
+  // Unified filter: "all" | account.id | `strategy:${strategyId}`
+  const [filter, setFilter] = useState<string>("all");
+
+  const isStrategy = filter.startsWith("strategy:");
+  const accountFilter = isStrategy ? "all" : filter;
+  const strategyFilter = isStrategy ? filter.slice("strategy:".length) : "all";
 
   const selectedAccounts = useMemo(
     () =>
