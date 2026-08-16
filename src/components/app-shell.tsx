@@ -94,6 +94,9 @@ function UserMenu() {
         <DropdownMenuItem onSelect={() => navigate({ to: "/usuarios" })}>
           <Users className="size-4" /> Mi perfil
         </DropdownMenuItem>
+        <DropdownMenuItem onSelect={() => navigate({ to: "/funciones" })}>
+          <LayoutDashboard className="size-4" /> Funciones de la app
+        </DropdownMenuItem>
         <DropdownMenuItem
           onSelect={async () => {
             await signOut();

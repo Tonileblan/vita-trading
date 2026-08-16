@@ -65,9 +65,14 @@ function Landing() {
               </span>
             </div>
           </div>
-          <Button asChild size="sm" variant="outline">
-            <Link to="/auth" search={{ next: undefined }}>Entrar</Link>
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button asChild size="sm" variant="ghost">
+              <Link to="/funciones">Funciones</Link>
+            </Button>
+            <Button asChild size="sm" variant="outline">
+              <Link to="/auth" search={{ next: undefined }}>Entrar</Link>
+            </Button>
+          </div>
         </div>
       </header>
 
