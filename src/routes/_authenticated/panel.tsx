@@ -158,6 +158,15 @@ function Overview() {
     [fusionAccounts, visibleTrades, withdrawals],
   );
 
+  // Calendario: con una estrategia elegida suma todas las operaciones de las cuentas que la emplean.
+  const calendarTrades = useMemo(() => {
+    if (!isStrategy) return scopedTrades;
+    const ids = new Set(strategyAccounts.map((a) => a.id));
+    return visibleTrades.filter((t) => t.accountId && ids.has(t.accountId));
+  }, [isStrategy, scopedTrades, strategyAccounts, visibleTrades]);
+
+
+
 
   // Cuenta de fondeo concreta seleccionada → progreso hacia objetivo (eval / retiro).
   const fundedTarget = useMemo(() => {
