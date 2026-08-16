@@ -51,9 +51,12 @@ export const Route = createFileRoute("/_authenticated/diarios")({
 
 function JournalsPage() {
   const { data: journals = [], isLoading } = useJournals();
+  const { data: templates = [] } = useTemplateJournals();
+  const { data: userData } = supabase.auth.getUser() as never;
   const create = useCreateJournal();
   const update = useUpdateJournal();
   const remove = useDeleteJournal();
+  const toggleTemplate = useToggleTemplate();
   const { activeJournalId, setActiveJournalId } = useJournal();
   const qc = useQueryClient();
   const fileRef = useRef<HTMLInputElement>(null);
