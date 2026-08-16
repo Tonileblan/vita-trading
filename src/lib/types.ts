@@ -26,6 +26,8 @@ export interface Account {
   name: string;
   type: AccountType;
   firm?: string | undefined;
+  /** Broker para cuentas personales (type=personal). */
+  broker?: string | undefined;
   initialBalance: number;
   currentBalance: number;
   drawdownLimit?: number | undefined;
