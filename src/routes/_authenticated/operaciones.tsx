@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { Search, Trash2, Undo2 } from "lucide-react";
+import { ArrowUpDown, Search, Trash2, Undo2 } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
@@ -53,16 +53,24 @@ function TradesPage() {
   const [selected, setSelected] = useState<string[]>([]);
   const [pending, setPending] = useState<Pending | null>(null);
   const [working, setWorking] = useState(false);
+  const [sortBy, setSortBy] = useState<"created" | "closed">("created");
 
   const filtered = useMemo(
     () =>
-      visibleTrades.filter(
-        (t) =>
-          (!tag || t.tags.includes(tag)) &&
-          (!query || t.symbol.toLowerCase().includes(query.toLowerCase())),
-      ),
-    [visibleTrades, query, tag],
+      visibleTrades
+        .filter(
+          (t) =>
+            (!tag || t.tags.includes(tag)) &&
+            (!query || t.symbol.toLowerCase().includes(query.toLowerCase())),
+        )
+        .sort((a, b) =>
+          sortBy === "created"
+            ? (b.createdAt ?? b.closedAt).localeCompare(a.createdAt ?? a.closedAt)
+            : b.closedAt.localeCompare(a.closedAt),
+        ),
+    [visibleTrades, query, tag, sortBy],
   );
+
   const m = computeMetrics(filtered);
 
   const confirm = async () => {
@@ -109,6 +117,15 @@ function TradesPage() {
               onChange={(e) => setQuery(e.target.value)}
             />
           </div>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setSortBy((s) => (s === "created" ? "closed" : "created"))}
+          >
+            <ArrowUpDown className="size-4" />
+            {sortBy === "created" ? "Orden: introducción" : "Orden: fecha operación"}
+          </Button>
+
           <div className="flex flex-wrap gap-2">
             {strategies.map(({ id, name: t }) => (
               <button
