@@ -225,7 +225,6 @@ function WithdrawalsSection({
 
   return (
     <div className="space-y-5">
-      <div className="mt-6 flex justify-end">{action}</div>
       {pending.length > 0 && (
         <section className="panel min-w-0 overflow-x-auto p-4">
           <h2 className="mb-3 text-base font-semibold">
