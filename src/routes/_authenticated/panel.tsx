@@ -310,7 +310,7 @@ function Overview() {
             ))}
           </section>
         )}
-        <KpiCards metrics={metrics} scope={scope} trades={scopedTrades} fusionEquity={showFusion ? fusionEquity : undefined} fusionInitial={showFusion ? fusionInitial : undefined} />
+        <KpiCards metrics={metrics} scope={scope} trades={trades} fusionEquity={showFusion ? fusionEquity : undefined} fusionInitial={showFusion ? fusionInitial : undefined} />
         <PerformanceAnalysis trades={trades} />
         <EmotionHighlights trades={scopedTrades} />
 
