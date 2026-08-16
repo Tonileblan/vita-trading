@@ -1,5 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
+import { format } from "date-fns";
+import { CalendarIcon } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { EquityChart } from "@/components/equity-chart";
 import { KpiCards } from "@/components/kpi-cards";
@@ -7,6 +9,8 @@ import { RiskAlerts } from "@/components/risk-alerts";
 import { EmotionHighlights } from "@/components/emotion-stats";
 import { PnlCalendar } from "@/components/pnl-calendar";
 import { PerformanceAnalysis } from "@/components/performance-analysis";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 
 import { TradesTable } from "@/components/trades-table";
