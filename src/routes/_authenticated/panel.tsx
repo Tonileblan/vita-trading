@@ -132,20 +132,7 @@ function Overview() {
     }
     return filterByRange(scopedTrades, range);
   }, [scopedTrades, range, customRange]);
-  const isAllRange = range === "all";
-  const metrics = useMemo(() => {
-    const operationMetrics = computeMetrics(trades);
-    const balanceResult = scopedAccounts.reduce(
-      (sum, account) => sum + accountResult(account, scopedTrades, withdrawals),
-      0,
-    );
-    return {
-      ...operationMetrics,
-      totalPnl: isAllRange ? balanceResult : operationMetrics.totalPnl,
-    };
-  }, [trades, scopedAccounts, scopedTrades, withdrawals, isAllRange]);
-
-  // Equity (capital total + PnL) of the selected account/strategy — shown fused in the PnL card.
+  // Accounts (capital + PnL) of the selected account/strategy.
   const fusionAccounts = useMemo(
     () =>
       isStrategy
@@ -157,11 +144,6 @@ function Overview() {
     () => fusionAccounts.reduce((sum, account) => sum + accountBalance(account, visibleTrades, withdrawals), 0),
     [fusionAccounts, visibleTrades, withdrawals],
   );
-  const fusionInitial = useMemo(
-    () => fusionAccounts.reduce((sum, account) => sum + (account.initialBalance ?? 0), 0),
-    [fusionAccounts],
-  );
-  const showFusion = accountFilter !== "all" || isStrategy;
 
   const curve = useMemo(
     () => buildEquityCurve(trades, accountsCurveStart(scopedAccounts, trades, withdrawals)),
