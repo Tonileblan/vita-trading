@@ -17,7 +17,7 @@ export const Route = createFileRoute("/_authenticated/supervision")({
     const {
       data: { user },
     } = await supabase.auth.getUser();
-    if (!user) throw redirect({ to: "/auth" });
+    if (!user) throw redirect({ to: "/auth", search: { next: undefined } });
     const { data: roles } = await supabase
       .from("user_roles")
       .select("role")
