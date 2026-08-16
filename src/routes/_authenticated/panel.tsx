@@ -17,6 +17,7 @@ import { TradesTable } from "@/components/trades-table";
 import { useJournal } from "@/lib/journal-store";
 import {
   accountBalance,
+  accountTarget,
   accountResult,
   accountsCurveStart,
   buildEquityCurve,
@@ -143,6 +144,14 @@ function Overview() {
     () => fusionAccounts.reduce((sum, account) => sum + accountBalance(account, visibleTrades, withdrawals), 0),
     [fusionAccounts, visibleTrades, withdrawals],
   );
+
+  // Cuenta de fondeo concreta seleccionada → progreso hacia objetivo (eval / retiro).
+  const fundedTarget = useMemo(() => {
+    if (isStrategy || accountFilter === "all") return null;
+    const account = selectedAccounts[0];
+    if (!account || account.type !== "funded") return null;
+    return accountTarget(account, visibleTrades, withdrawals);
+  }, [isStrategy, accountFilter, selectedAccounts, visibleTrades, withdrawals]);
 
   const curve = useMemo(
     () => buildEquityCurve(trades, accountsCurveStart(scopedAccounts, trades, withdrawals)),
@@ -341,7 +350,7 @@ function Overview() {
             </p>
           </section>
         )}
-        <PerformanceAnalysis trades={trades} />
+        <PerformanceAnalysis trades={trades} target={fundedTarget} />
         <EmotionHighlights trades={scopedTrades} />
 
 

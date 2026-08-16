@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { Check, X } from "lucide-react";
 import type { Trade } from "@/lib/types";
+import type { TargetStatus } from "@/lib/metrics";
 import { computeMetrics, formatCurrency } from "@/lib/metrics";
 import { cn } from "@/lib/utils";
 
@@ -40,7 +41,13 @@ function pfLabel(pf: number) {
   return { text: "Pobre", tone: "text-loss" };
 }
 
-export function PerformanceAnalysis({ trades }: { trades: Trade[] }) {
+export function PerformanceAnalysis({
+  trades,
+  target,
+}: {
+  trades: Trade[];
+  target?: TargetStatus | null;
+}) {
   const m = useMemo(() => computeMetrics(trades), [trades]);
 
   const { bestDay, totalProfit } = useMemo(() => {
@@ -63,9 +70,23 @@ export function PerformanceAnalysis({ trades }: { trades: Trade[] }) {
   return (
     <section className="grid gap-3 lg:grid-cols-3">
       <div className="panel p-4">
-        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-          Rendimiento
-        </p>
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            Rendimiento
+          </p>
+          {target && (
+            <span
+              className={cn(
+                "rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider",
+                target.phase === "live"
+                  ? "bg-profit/15 text-profit"
+                  : "bg-amber-500/15 text-amber-600 dark:text-amber-400",
+              )}
+            >
+              {target.phase === "live" ? "Live" : "Eval"}
+            </span>
+          )}
+        </div>
         <div className="mt-4 flex items-center justify-around gap-3">
           <div className="text-center">
             <p className="num text-2xl font-bold">
@@ -79,6 +100,39 @@ export function PerformanceAnalysis({ trades }: { trades: Trade[] }) {
             <p className="mt-1 text-xs text-muted-foreground">Win Rate</p>
           </div>
         </div>
+        {target && (
+          <div className="mt-4 border-t border-border pt-3">
+            <div className="flex items-baseline justify-between text-xs">
+              <span className="font-semibold text-muted-foreground">{target.label}</span>
+              <span className="num font-bold">{target.pct.toFixed(0)}%</span>
+            </div>
+            <div className="mt-2 h-2.5 overflow-hidden rounded-full bg-muted">
+              <div
+                className={cn("h-full", target.reached ? "bg-profit" : "bg-amber-500")}
+                style={{ width: `${Math.min(100, target.pct)}%` }}
+              />
+            </div>
+            <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
+              <span>
+                {target.reached ? (
+                  <span className="font-semibold text-profit">
+                    {target.phase === "live" ? "Listo para retirar" : "Evaluación superada"}
+                  </span>
+                ) : (
+                  <>
+                    Faltan{" "}
+                    <span className="num font-semibold text-foreground">
+                      {formatCurrency(target.remaining)}
+                    </span>
+                  </>
+                )}
+              </span>
+              <span className="num">
+                {formatCurrency(target.balance)} / {formatCurrency(target.target)}
+              </span>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="panel p-4">
