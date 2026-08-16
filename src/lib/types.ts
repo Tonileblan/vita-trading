@@ -122,6 +122,19 @@ export interface Withdrawal {
 
 export type WithdrawalStatus = "pending" | "approved" | "rejected";
 
+/** Tramo de fechas en el que una cuenta operó con una estrategia concreta. */
+export interface AccountStrategyPeriod {
+  id: string;
+  accountId: string;
+  strategyId: string;
+  /** Fecha de inicio (YYYY-MM-DD), incluida. */
+  startDate: string;
+  /** Fecha de fin (YYYY-MM-DD), incluida. Vacío = sigue vigente. */
+  endDate?: string | undefined;
+  note?: string | undefined;
+}
+
+
 /** Valor por punto (referencia) de los futuros más habituales. */
 export const FUTURES_SPECS: { symbol: string; pointValue: number }[] = [
   { symbol: "MNQ", pointValue: 2 },
