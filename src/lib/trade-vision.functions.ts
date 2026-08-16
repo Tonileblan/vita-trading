@@ -11,7 +11,7 @@ const extractedTrade = z.object({
     .string()
     .max(20)
     .nullish()
-    .transform((v) => (v && v.trim() ? v.trim() : "N/D")),
+    .transform((v) => (v && v.trim() ? v.trim() : "")),
   direction: z
     .union([z.enum(["long", "short"]), z.null(), z.undefined()])
     .transform((v) => v ?? "long"),
