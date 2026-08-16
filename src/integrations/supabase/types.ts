@@ -94,6 +94,75 @@ export type Database = {
         }
         Relationships: []
       }
+      expenses: {
+        Row: {
+          account_id: string | null
+          amount: number
+          category: string
+          concept: string
+          created_at: string
+          currency: string
+          date: string
+          id: string
+          journal_id: string | null
+          notes: string | null
+          paid: boolean
+          recurrence: string
+          recurrence_end: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          account_id?: string | null
+          amount?: number
+          category?: string
+          concept: string
+          created_at?: string
+          currency?: string
+          date?: string
+          id?: string
+          journal_id?: string | null
+          notes?: string | null
+          paid?: boolean
+          recurrence?: string
+          recurrence_end?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          account_id?: string | null
+          amount?: number
+          category?: string
+          concept?: string
+          created_at?: string
+          currency?: string
+          date?: string
+          id?: string
+          journal_id?: string | null
+          notes?: string | null
+          paid?: boolean
+          recurrence?: string
+          recurrence_end?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "expenses_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expenses_journal_id_fkey"
+            columns: ["journal_id"]
+            isOneToOne: false
+            referencedRelation: "journals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       journal_rules: {
         Row: {
           created_at: string
