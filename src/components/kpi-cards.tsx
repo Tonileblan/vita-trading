@@ -111,7 +111,6 @@ function StreakCard({ trades }: { trades: Trade[] }) {
       }
       sub={`Racha: ${streakLabel}`}
       icon={cur.type === "loss" ? Snowflake : Flame}
-      headerExtra={rangeButtons}
       {...(cur.type !== "none"
         ? { tone: cur.type === "win" ? ("profit" as const) : ("loss" as const) }
         : {})}
