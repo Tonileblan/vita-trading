@@ -16,6 +16,7 @@ import {
   accountsCurveStart,
   buildEquityCurve,
   computeMetrics,
+  effectiveStrategyId,
   filterByRange,
   formatCurrency,
 } from "@/lib/metrics";

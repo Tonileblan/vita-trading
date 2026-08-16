@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { Camera, ImagePlus, Loader2, X } from "lucide-react";
 import { toast } from "sonner";

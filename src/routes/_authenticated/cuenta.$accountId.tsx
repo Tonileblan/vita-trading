@@ -14,6 +14,7 @@ import {
   accountResult,
   buildEquityCurve,
   computeMetrics,
+  effectiveStrategyId,
   formatCurrency,
   accountDrawdown,
   accountTarget,
