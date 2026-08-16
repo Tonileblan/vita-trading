@@ -100,6 +100,39 @@ export function PerformanceAnalysis({
             <p className="mt-1 text-xs text-muted-foreground">Win Rate</p>
           </div>
         </div>
+        {target && (
+          <div className="mt-4 border-t border-border pt-3">
+            <div className="flex items-baseline justify-between text-xs">
+              <span className="font-semibold text-muted-foreground">{target.label}</span>
+              <span className="num font-bold">{target.pct.toFixed(0)}%</span>
+            </div>
+            <div className="mt-2 h-2.5 overflow-hidden rounded-full bg-muted">
+              <div
+                className={cn("h-full", target.reached ? "bg-profit" : "bg-amber-500")}
+                style={{ width: `${Math.min(100, target.pct)}%` }}
+              />
+            </div>
+            <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
+              <span>
+                {target.reached ? (
+                  <span className="font-semibold text-profit">
+                    {target.phase === "live" ? "Listo para retirar" : "Evaluación superada"}
+                  </span>
+                ) : (
+                  <>
+                    Faltan{" "}
+                    <span className="num font-semibold text-foreground">
+                      {formatCurrency(target.remaining)}
+                    </span>
+                  </>
+                )}
+              </span>
+              <span className="num">
+                {formatCurrency(target.balance)} / {formatCurrency(target.target)}
+              </span>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="panel p-4">
