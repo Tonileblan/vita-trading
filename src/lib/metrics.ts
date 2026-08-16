@@ -306,8 +306,9 @@ export function accountDrawdown(
   if (!limit) return null;
 
   const initial = account.initialBalance;
-  
-  const balanceBeforeEvents = initial;
+  const recordedPnl = accountPnl(trades, account.id);
+  const balanceBeforeEvents = account.currentBalance - recordedPnl;
+
 
   // El suelo dinámico deja de subir cuando la referencia alcanza inicial + límite.
   const maxReference = initial + limit;
