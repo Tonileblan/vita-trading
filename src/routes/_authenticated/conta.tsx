@@ -4,18 +4,10 @@ import { Plus } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { ExpenseBreakdown } from "@/components/expense-breakdown";
 import { ExpenseFormDialog } from "@/components/expense-form-dialog";
 import { ExpensesTable } from "@/components/expenses-table";
+import { WithdrawalFormDialog } from "@/components/withdrawal-form-dialog";
 import { useJournal } from "@/lib/journal-store";
 import { formatCurrency } from "@/lib/metrics";
 import {
@@ -27,6 +19,7 @@ import {
 } from "@/lib/expense-metrics";
 import { useDeleteExpense, useExpenses, type Expense } from "@/lib/expenses";
 import { cn } from "@/lib/utils";
+import type { Withdrawal } from "@/lib/types";
 
 export const Route = createFileRoute("/_authenticated/conta")({
   head: () => ({
@@ -54,8 +47,10 @@ type Scope = "all" | "journal" | "general";
 
 function ContaPage() {
   const [tab, setTab] = useState<Tab>("retiros");
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [editing, setEditing] = useState<Expense | null>(null);
+  const [expenseDialogOpen, setExpenseDialogOpen] = useState(false);
+  const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
+  const [withdrawalDialogOpen, setWithdrawalDialogOpen] = useState(false);
+  const [editingWithdrawal, setEditingWithdrawal] = useState<Withdrawal | null>(null);
   const { activeJournalId } = useJournal();
 
   return (
@@ -67,13 +62,22 @@ function ContaPage() {
         tab === "gastos" ? (
           <Button
             onClick={() => {
-              setEditing(null);
-              setDialogOpen(true);
+              setEditingExpense(null);
+              setExpenseDialogOpen(true);
             }}
           >
             <Plus className="mr-1 size-4" /> Nuevo gasto
           </Button>
-        ) : undefined
+        ) : (
+          <Button
+            onClick={() => {
+              setEditingWithdrawal(null);
+              setWithdrawalDialogOpen(true);
+            }}
+          >
+            <Plus className="mr-1 size-4" /> Nuevo retiro
+          </Button>
+        )
       }
     >
       <div className="space-y-4">
@@ -113,22 +117,32 @@ function ContaPage() {
         </div>
 
         {tab === "retiros" ? (
-          <WithdrawalsSection />
+          <WithdrawalsSection
+            openEdit={(w) => {
+              setEditingWithdrawal(w);
+              setWithdrawalDialogOpen(true);
+            }}
+          />
         ) : (
           <ExpensesSection
             openEdit={(e) => {
-              setEditing(e);
-              setDialogOpen(true);
+              setEditingExpense(e);
+              setExpenseDialogOpen(true);
             }}
           />
         )}
       </div>
 
       <ExpenseFormDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        editing={editing}
+        open={expenseDialogOpen}
+        onOpenChange={setExpenseDialogOpen}
+        editing={editingExpense}
         defaultJournalId={activeJournalId}
+      />
+      <WithdrawalFormDialog
+        open={withdrawalDialogOpen}
+        onOpenChange={setWithdrawalDialogOpen}
+        editing={editingWithdrawal}
       />
     </AppShell>
   );
