@@ -117,6 +117,8 @@ function AccountDetail() {
           </div>
         </section>
 
+        <AccountCostCard accountId={account.id} pnl={pnl} />
+
         {dd ? (
           <section className="panel space-y-2 p-4">
             <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
