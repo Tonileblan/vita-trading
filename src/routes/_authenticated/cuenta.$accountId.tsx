@@ -9,6 +9,7 @@ import { TradesTable } from "@/components/trades-table";
 import { useJournal } from "@/lib/journal-store";
 import {
   accountBalance,
+  accountCurveStart,
   accountPnl,
   buildEquityCurve,
   computeMetrics,
@@ -47,8 +48,12 @@ function AccountDetail() {
   );
   const metrics = useMemo(() => computeMetrics(accTrades), [accTrades]);
   const curve = useMemo(
-    () => buildEquityCurve(accTrades, account?.initialBalance ?? 0),
-    [accTrades, account],
+    () =>
+      buildEquityCurve(
+        accTrades,
+        account ? accountCurveStart(account, accTrades, withdrawals) : 0,
+      ),
+    [accTrades, account, withdrawals],
   );
 
   if (!account) {
@@ -171,7 +176,7 @@ function AccountDetail() {
         <section className="panel p-4">
           <h2 className="text-xl leading-none">Curva de capital</h2>
           <p className="mb-4 text-xs text-muted-foreground">
-            Desde el balance inicial de esta cuenta
+            Ajustada al balance actual registrado
           </p>
           <EquityChart data={curve} />
         </section>
