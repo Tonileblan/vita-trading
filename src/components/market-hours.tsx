@@ -210,8 +210,8 @@ export function MarketHours() {
         ))}
       </div>
 
-      <div className="grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
-        <div className="rounded-lg border p-3">
+      <div className="flex flex-wrap items-stretch gap-2">
+        <div className="min-w-[140px] flex-1 rounded-lg border p-3">
           <div className="flex items-center gap-2">
             <Activity className="size-3.5 text-muted-foreground" />
             <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
@@ -232,12 +232,12 @@ export function MarketHours() {
             )}
           >
             {pulse?.vxn.change != null && pulse.vxn.changePct != null
-              ? `${pulse.vxn.change >= 0 ? "+" : ""}${pulse.vxn.change.toFixed(2)} (${pulse.vxn.changePct.toFixed(2)}%) vs cierre previo`
+              ? `${pulse.vxn.change >= 0 ? "+" : ""}${pulse.vxn.change.toFixed(2)} (${pulse.vxn.changePct.toFixed(2)}%)`
               : "CBOE Nasdaq 100 Volatility"}
           </p>
         </div>
 
-        <div className="rounded-lg border p-3">
+        <div className="min-w-[140px] flex-1 rounded-lg border p-3">
           <div className="flex items-center gap-2">
             <BarChart3 className="size-3.5 text-muted-foreground" />
             <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
@@ -258,7 +258,7 @@ export function MarketHours() {
           </p>
         </div>
 
-        <div className="flex items-center justify-between gap-2 sm:flex-col sm:items-end sm:justify-center">
+        <div className="flex items-center gap-2 rounded-lg border p-3">
           <Button variant="outline" size="sm" onClick={() => void refresh()} disabled={loading}>
             <RefreshCw className={cn("size-4", loading && "animate-spin")} /> Actualizar
           </Button>
@@ -266,7 +266,7 @@ export function MarketHours() {
             {error
               ? "Sin datos"
               : pulse
-                ? `Actualizado ${fmt(new Date(pulse.updatedAt), zone)}`
+                ? `${fmt(new Date(pulse.updatedAt), zone)}`
                 : "Cargando…"}
           </span>
         </div>
