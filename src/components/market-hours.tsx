@@ -210,66 +210,34 @@ export function MarketHours() {
         ))}
       </div>
 
-      <div className="flex flex-wrap items-stretch gap-2">
-        <div className="min-w-[140px] flex-1 rounded-lg border p-3">
-          <div className="flex items-center gap-2">
-            <Activity className="size-3.5 text-muted-foreground" />
-            <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              Volatilidad VXN
-            </span>
-          </div>
-          <p className="mt-1 font-display text-2xl tracking-wide tabular-nums">
+      <div className="flex flex-wrap items-center gap-4">
+        <div className="flex items-center gap-2">
+          <Activity className="size-4 text-muted-foreground" />
+          <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Volatilidad VXN
+          </span>
+          <span className="font-display text-xl tracking-wide tabular-nums">
             {pulse?.vxn.value != null ? pulse.vxn.value.toFixed(2) : error ? "—" : "…"}
-          </p>
-          <p
-            className={cn(
-              "text-[11px]",
-              pulse?.vxn.change == null
-                ? "text-muted-foreground"
-                : pulse.vxn.change >= 0
-                  ? "text-loss"
-                  : "text-profit",
-            )}
-          >
-            {pulse?.vxn.change != null && pulse.vxn.changePct != null
-              ? `${pulse.vxn.change >= 0 ? "+" : ""}${pulse.vxn.change.toFixed(2)} (${pulse.vxn.changePct.toFixed(2)}%)`
-              : "CBOE Nasdaq 100 Volatility"}
-          </p>
+          </span>
         </div>
 
-        <div className="min-w-[140px] flex-1 rounded-lg border p-3">
-          <div className="flex items-center gap-2">
-            <BarChart3 className="size-3.5 text-muted-foreground" />
-            <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              Volumen del día (NQ)
-            </span>
-          </div>
-          <p className="mt-1 font-display text-2xl tracking-wide tabular-nums">
+        <div className="flex items-center gap-2">
+          <BarChart3 className="size-4 text-muted-foreground" />
+          <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Volumen del día (NQ)
+          </span>
+          <span className="font-display text-xl tracking-wide tabular-nums">
             {pulse?.volume.value != null
               ? new Intl.NumberFormat("es-ES").format(pulse.volume.value)
               : error
                 ? "—"
                 : "…"}
-          </p>
-          <p className="text-[11px] text-muted-foreground">
-            {pulse?.volume.price != null
-              ? `Contratos · último ${pulse.volume.price.toFixed(2)}`
-              : "Contratos negociados en la sesión"}
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2 rounded-lg border p-3">
-          <Button variant="outline" size="sm" onClick={() => void refresh()} disabled={loading}>
-            <RefreshCw className={cn("size-4", loading && "animate-spin")} /> Actualizar
-          </Button>
-          <span className="text-[11px] text-muted-foreground">
-            {error
-              ? "Sin datos"
-              : pulse
-                ? `${fmt(new Date(pulse.updatedAt), zone)}`
-                : "Cargando…"}
           </span>
         </div>
+
+        <Button variant="outline" size="sm" onClick={() => void refresh()} disabled={loading} className="ml-auto">
+          <RefreshCw className={cn("size-4", loading && "animate-spin")} /> Actualizar
+        </Button>
       </div>
 
     </section>
