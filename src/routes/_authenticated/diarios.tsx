@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Archive, ArchiveRestore, Check, Download, Pencil, Plus, Sparkles, Trash2, Upload } from "lucide-react";
+import { Archive, ArchiveRestore, Check, Copy, Download, Globe, Pencil, Plus, Sparkles, Trash2, Upload } from "lucide-react";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/app-shell";
@@ -19,12 +19,15 @@ import {
   useCreateJournal,
   useDeleteJournal,
   useJournals,
+  useTemplateJournals,
+  useToggleTemplate,
   useUpdateJournal,
   type Journal,
 } from "@/lib/journals";
 import { useJournal } from "@/lib/journal-store";
 import { exportAllJournalsCsv, exportJournalCsv, importJournalCsv } from "@/lib/journal-csv";
 import { createExampleJournal } from "@/lib/example-journal";
+import { cloneTemplateJournal } from "@/lib/template-clone";
 import { useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
 
