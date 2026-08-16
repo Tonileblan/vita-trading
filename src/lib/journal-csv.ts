@@ -3,7 +3,11 @@ import { fetchJournalData } from "./journal-store";
 import type { Journal } from "./journals";
 import type { Trade } from "./types";
 
-/** Columnas del CSV completo (diarios + cuentas + estrategias + operaciones + retiros). */
+/**
+ * Columnas del CSV completo: diarios, cuentas, estrategias (ficha completa),
+ * operaciones (incl. gestión emocional), retiros (con estado), gastos,
+ * check-ins de ánimo, reglas de riesgo y tramos de estrategia por fechas.
+ */
 export const FULL_COLUMNS = [
   "tipo",
   "diario",
@@ -23,6 +27,14 @@ export const FULL_COLUMNS = [
   "riesgo_pct",
   "simbolo_principal",
   "color",
+  "mercado",
+  "grafico",
+  "dias",
+  "horario",
+  "ejecucion",
+  "setup",
+  "gestion",
+  "contratos",
   "cuenta",
   "estrategia",
   "simbolo",
@@ -35,9 +47,38 @@ export const FULL_COLUMNS = [
   "pnl",
   "etiquetas",
   "notas",
+  "origen",
+  "lote_importacion",
+  "emocion_antes",
+  "emocion_despues",
+  "siguio_plan",
+  "errores",
+  "nota_emocional",
   "fecha",
   "importe",
   "motivo",
+  "estado",
+  "fecha_solicitud",
+  "fecha_aprobacion",
+  "categoria",
+  "concepto",
+  "recurrencia",
+  "fin_recurrencia",
+  "pagado",
+  "animo",
+  "energia",
+  "estres",
+  "foco",
+  "horas_sueno",
+  "intencion",
+  "revision",
+  "fecha_inicio",
+  "fecha_fin",
+  "activo",
+  "max_racha_perdidas",
+  "max_ops_dia",
+  "max_perdida_dia",
+  "exige_checkin",
 ] as const;
 
 type Col = (typeof FULL_COLUMNS)[number];
@@ -107,6 +148,11 @@ function num(v: string | undefined): number {
   return Number.isFinite(n) ? n : 0;
 }
 
+function bool(v: string | undefined): boolean {
+  const s = (v ?? "").trim().toLowerCase();
+  return s === "si" || s === "sí" || s === "true" || s === "1" || s === "yes";
+}
+
 function toIso(v: string | undefined): string {
   if (!v?.trim()) return new Date().toISOString();
   const s = v.trim();
@@ -118,6 +164,11 @@ function toIso(v: string | undefined): string {
   }
   const d = new Date(s);
   return Number.isNaN(d.getTime()) ? new Date().toISOString() : d.toISOString();
+}
+
+/** Fecha en formato YYYY-MM-DD (columnas de tipo `date`). */
+function toDay(v: string | undefined): string {
+  return toIso(v).slice(0, 10);
 }
 
 function tradeKey(t: {
@@ -142,10 +193,56 @@ function withdrawalKey(w: { date: string; amount: number; strategy: string }) {
   return [w.date.slice(0, 10), w.amount.toFixed(2), w.strategy.toLowerCase()].join("|");
 }
 
+function expenseKey(e: { date: string; amount: number; concept: string }) {
+  return [e.date.slice(0, 10), e.amount.toFixed(2), e.concept.toLowerCase().trim()].join("|");
+}
+
 /* --------------------------------- export --------------------------------- */
+
+interface ExpenseRow {
+  journal_id: string | null;
+  account_id: string | null;
+  category: string;
+  concept: string;
+  amount: number;
+  currency: string;
+  date: string;
+  recurrence: string;
+  recurrence_end: string | null;
+  paid: boolean;
+  notes: string | null;
+}
+
+interface CheckinRow {
+  date: string;
+  mood: number;
+  energy: number;
+  stress: number;
+  focus: number;
+  sleep_hours: number | null;
+  intention: string | null;
+  review_note: string | null;
+}
+
+interface RulesRow {
+  enabled: boolean;
+  max_loss_streak: number | null;
+  max_trades_day: number | null;
+  max_daily_loss: number | null;
+  require_checkin: boolean;
+}
 
 async function journalRows(j: Journal): Promise<CsvRow[]> {
   const data = await fetchJournalData(j.id);
+  const [expensesRes, checkinsRes, rulesRes] = await Promise.all([
+    supabase.from("expenses").select("*").eq("journal_id", j.id),
+    supabase.from("mood_checkins").select("*").eq("journal_id", j.id),
+    supabase.from("journal_rules").select("*").eq("journal_id", j.id).maybeSingle(),
+  ]);
+  const expenses = (expensesRes.data ?? []) as unknown as ExpenseRow[];
+  const checkins = (checkinsRes.data ?? []) as unknown as CheckinRow[];
+  const rules = (rulesRes.data ?? null) as unknown as RulesRow | null;
+
   const accountName = new Map(data.accounts.map((a) => [a.id, a.name]));
   const strategyName = new Map(data.strategies.map((s) => [s.id, s.name]));
   const rows: CsvRow[] = [
@@ -172,6 +269,7 @@ async function journalRows(j: Journal): Promise<CsvRow[]> {
       tipo_drawdown: a.drawdownType ?? "static",
       fase: a.phase ?? "eval",
       objetivo: a.profitTarget ?? "",
+      estrategia: a.strategyId ? (strategyName.get(a.strategyId) ?? "") : "",
     });
   }
   for (const s of data.strategies) {
@@ -183,7 +281,26 @@ async function journalRows(j: Journal): Promise<CsvRow[]> {
       riesgo_pct: s.riskPct,
       simbolo_principal: s.mainSymbol,
       color: s.color,
+      mercado: s.market ?? "",
+      grafico: s.chart ?? "",
+      dias: s.days ?? "",
+      horario: s.schedule ?? "",
+      ejecucion: s.execution ?? "",
+      setup: s.setup ?? "",
+      gestion: s.management ?? "",
+      contratos: s.contracts ?? "",
       descripcion: s.setup ?? "",
+    });
+  }
+  for (const p of data.strategyPeriods) {
+    rows.push({
+      tipo: "tramo",
+      diario: j.name,
+      cuenta: accountName.get(p.accountId) ?? "",
+      estrategia: strategyName.get(p.strategyId) ?? "",
+      fecha_inicio: p.startDate,
+      fecha_fin: p.endDate ?? "",
+      notas: p.note ?? "",
     });
   }
   for (const t of data.trades) {
@@ -202,6 +319,13 @@ async function journalRows(j: Journal): Promise<CsvRow[]> {
       pnl: t.pnl,
       etiquetas: t.tags.join(" "),
       notas: t.notes ?? "",
+      origen: t.source,
+      lote_importacion: t.importBatchId ?? "",
+      emocion_antes: t.emotionBefore ?? "",
+      emocion_despues: t.emotionAfter ?? "",
+      siguio_plan: t.followedPlan ?? "",
+      errores: (t.mistakes ?? []).join("; "),
+      nota_emocional: t.emotionNote ?? "",
     });
   }
   for (const w of data.withdrawals) {
@@ -213,6 +337,50 @@ async function journalRows(j: Journal): Promise<CsvRow[]> {
       fecha: w.date,
       importe: w.amount,
       motivo: w.reason ?? "",
+      estado: w.status,
+      fecha_solicitud: w.requestedAt ?? "",
+      fecha_aprobacion: w.approvedAt ?? "",
+    });
+  }
+  for (const e of expenses) {
+    rows.push({
+      tipo: "gasto",
+      diario: j.name,
+      cuenta: e.account_id ? (accountName.get(e.account_id) ?? "") : "",
+      categoria: e.category,
+      concepto: e.concept,
+      importe: e.amount,
+      moneda: e.currency,
+      fecha: e.date,
+      recurrencia: e.recurrence,
+      fin_recurrencia: e.recurrence_end ?? "",
+      pagado: e.paid ? "si" : "no",
+      notas: e.notes ?? "",
+    });
+  }
+  for (const c of checkins) {
+    rows.push({
+      tipo: "checkin",
+      diario: j.name,
+      fecha: c.date,
+      animo: c.mood,
+      energia: c.energy,
+      estres: c.stress,
+      foco: c.focus,
+      horas_sueno: c.sleep_hours ?? "",
+      intencion: c.intention ?? "",
+      revision: c.review_note ?? "",
+    });
+  }
+  if (rules) {
+    rows.push({
+      tipo: "reglas",
+      diario: j.name,
+      activo: rules.enabled ? "si" : "no",
+      max_racha_perdidas: rules.max_loss_streak ?? "",
+      max_ops_dia: rules.max_trades_day ?? "",
+      max_perdida_dia: rules.max_daily_loss ?? "",
+      exige_checkin: rules.require_checkin ? "si" : "no",
     });
   }
   return rows;
@@ -222,7 +390,7 @@ function slug(s: string) {
   return s.replace(/[^\w-]+/g, "_").toLowerCase();
 }
 
-/** Exporta un diario completo (cuentas, estrategias, operaciones y retiros). */
+/** Exporta un diario completo (cuentas, estrategias, operaciones, retiros, gastos y mente). */
 export async function exportJournalCsv(journalId: string, journalName: string) {
   const journal: Journal = {
     id: journalId,
@@ -239,10 +407,25 @@ export async function exportJournalCsv(journalId: string, journalName: string) {
   return rows.length - 1;
 }
 
-/** Exporta todos los diarios del usuario en un único CSV. */
+/** Exporta todos los diarios del usuario en un único CSV, incluidos los gastos generales. */
 export async function exportAllJournalsCsv(journals: Journal[]) {
   const rows: CsvRow[] = [];
   for (const j of journals) rows.push(...(await journalRows(j)));
+  const { data: globals } = await supabase.from("expenses").select("*").is("journal_id", null);
+  for (const e of (globals ?? []) as unknown as ExpenseRow[]) {
+    rows.push({
+      tipo: "gasto",
+      categoria: e.category,
+      concepto: e.concept,
+      importe: e.amount,
+      moneda: e.currency,
+      fecha: e.date,
+      recurrencia: e.recurrence,
+      fin_recurrencia: e.recurrence_end ?? "",
+      pagado: e.paid ? "si" : "no",
+      notas: e.notes ?? "",
+    });
+  }
   download(serialize(rows), `bitacora-completa-${new Date().toISOString().slice(0, 10)}.csv`);
   return rows.length;
 }
@@ -255,6 +438,9 @@ export interface ImportResult {
   strategies: number;
   trades: number;
   withdrawals: number;
+  expenses: number;
+  checkins: number;
+  periods: number;
   duplicates: number;
 }
 
@@ -264,6 +450,9 @@ interface JournalCtx {
   strategies: Map<string, string>;
   trades: Set<string>;
   withdrawals: Set<string>;
+  expenses: Set<string>;
+  periods: Set<string>;
+  checkins: Set<string>;
 }
 
 /**
@@ -307,14 +496,31 @@ export async function importJournalCsv(
     strategies: 0,
     trades: 0,
     withdrawals: 0,
+    expenses: 0,
+    checkins: 0,
+    periods: 0,
     duplicates: 0,
   };
   const contexts = new Map<string, JournalCtx>();
+  /** Asignaciones cuenta→estrategia aplicadas al final (la estrategia puede llegar después). */
+  const accountStrategy: { journalId: string; account: string; strategy: string }[] = [];
+  const periodRows: {
+    journalId: string;
+    account: string;
+    strategy: string;
+    start: string;
+    end: string;
+    note: string;
+  }[] = [];
 
   async function ctxFor(id: string): Promise<JournalCtx> {
     const cached = contexts.get(id);
     if (cached) return cached;
     const data = await fetchJournalData(id);
+    const [expensesRes, checkinsRes] = await Promise.all([
+      supabase.from("expenses").select("date, amount, concept").eq("journal_id", id),
+      supabase.from("mood_checkins").select("date").eq("journal_id", id),
+    ]);
     const ctx: JournalCtx = {
       id,
       accounts: new Map(data.accounts.map((a) => [a.name.toLowerCase(), a.id])),
@@ -325,10 +531,20 @@ export async function importJournalCsv(
           withdrawalKey({
             date: w.date,
             amount: w.amount,
-            strategy:
-              data.strategies.find((s) => s.id === w.strategyId)?.name ?? "",
+            strategy: data.strategies.find((s) => s.id === w.strategyId)?.name ?? "",
           }),
         ),
+      ),
+      expenses: new Set(
+        ((expensesRes.data ?? []) as unknown as ExpenseRow[]).map((e) =>
+          expenseKey({ date: e.date, amount: Number(e.amount), concept: e.concept }),
+        ),
+      ),
+      periods: new Set(
+        data.strategyPeriods.map((p) => `${p.accountId}|${p.strategyId}|${p.startDate}`),
+      ),
+      checkins: new Set(
+        ((checkinsRes.data ?? []) as unknown as { date: string }[]).map((c) => c.date.slice(0, 10)),
       ),
     };
     contexts.set(id, ctx);
@@ -413,6 +629,9 @@ export async function importJournalCsv(
     if (type === "cuenta") {
       const name = at(r, "nombre") || at(r, "cuenta");
       if (!name) continue;
+      if (at(r, "estrategia")) {
+        accountStrategy.push({ journalId, account: name, strategy: at(r, "estrategia") });
+      }
       if (ctx.accounts.has(name.toLowerCase())) {
         result.duplicates++;
         continue;
@@ -461,13 +680,32 @@ export async function importJournalCsv(
           risk_pct: num(at(r, "riesgo_pct")) || 0.01,
           main_symbol: at(r, "simbolo_principal"),
           ...(at(r, "color") ? { color: at(r, "color") } : {}),
-          ...(at(r, "descripcion") ? { setup: at(r, "descripcion") } : {}),
+          market: at(r, "mercado") || null,
+          chart: at(r, "grafico") || null,
+          days: at(r, "dias") || null,
+          schedule: at(r, "horario") || null,
+          execution: at(r, "ejecucion") || null,
+          setup: at(r, "setup") || at(r, "descripcion") || null,
+          management: at(r, "gestion") || null,
+          contracts: at(r, "contratos") || null,
         } as never)
         .select("id")
         .single();
       if (error) throw error;
       ctx.strategies.set(name.toLowerCase(), (data as { id: string }).id);
       result.strategies++;
+      continue;
+    }
+
+    if (type === "tramo") {
+      periodRows.push({
+        journalId,
+        account: at(r, "cuenta"),
+        strategy: at(r, "estrategia"),
+        start: at(r, "fecha_inicio"),
+        end: at(r, "fecha_fin"),
+        note: at(r, "notas"),
+      });
       continue;
     }
 
@@ -482,6 +720,9 @@ export async function importJournalCsv(
       }
       const strategyId = await ensureStrategy(ctx, stName);
       const accountId = await ensureAccount(ctx, at(r, "cuenta"));
+      const status = ["pending", "approved", "rejected"].includes(at(r, "estado"))
+        ? at(r, "estado")
+        : "approved";
       const { error } = await supabase.from("withdrawals").insert({
         journal_id: ctx.id,
         user_id: userId,
@@ -490,10 +731,101 @@ export async function importJournalCsv(
         date,
         amount,
         reason: at(r, "motivo") || null,
+        status,
+        requested_at: at(r, "fecha_solicitud") ? toIso(at(r, "fecha_solicitud")) : date,
+        approved_at:
+          status === "approved"
+            ? at(r, "fecha_aprobacion")
+              ? toIso(at(r, "fecha_aprobacion"))
+              : date
+            : null,
       } as never);
       if (error) throw error;
       ctx.withdrawals.add(key);
       result.withdrawals++;
+      continue;
+    }
+
+    if (type === "gasto") {
+      const concept = at(r, "concepto") || at(r, "nombre");
+      const amount = num(at(r, "importe"));
+      if (!concept && !amount) continue;
+      const date = toDay(at(r, "fecha"));
+      const key = expenseKey({ date, amount, concept });
+      if (ctx.expenses.has(key)) {
+        result.duplicates++;
+        continue;
+      }
+      const accountId = at(r, "cuenta") ? await ensureAccount(ctx, at(r, "cuenta")) : null;
+      const category = ["propfirm", "subscription", "hardware", "tax", "other"].includes(
+        at(r, "categoria"),
+      )
+        ? at(r, "categoria")
+        : "other";
+      const recurrence = ["none", "monthly", "yearly"].includes(at(r, "recurrencia"))
+        ? at(r, "recurrencia")
+        : "none";
+      const { error } = await supabase.from("expenses").insert({
+        journal_id: ctx.id,
+        user_id: userId,
+        account_id: accountId,
+        category,
+        concept,
+        amount,
+        currency: at(r, "moneda") || "EUR",
+        date,
+        recurrence,
+        recurrence_end: at(r, "fin_recurrencia") ? toDay(at(r, "fin_recurrencia")) : null,
+        paid: at(r, "pagado") ? bool(at(r, "pagado")) : true,
+        notes: at(r, "notas") || null,
+      } as never);
+      if (error) throw error;
+      ctx.expenses.add(key);
+      result.expenses++;
+      continue;
+    }
+
+    if (type === "checkin") {
+      const date = toDay(at(r, "fecha"));
+      if (ctx.checkins.has(date)) {
+        result.duplicates++;
+        continue;
+      }
+      const { error } = await supabase.from("mood_checkins").upsert(
+        {
+          journal_id: ctx.id,
+          user_id: userId,
+          date,
+          mood: num(at(r, "animo")) || 3,
+          energy: num(at(r, "energia")) || 3,
+          stress: num(at(r, "estres")) || 3,
+          focus: num(at(r, "foco")) || 3,
+          sleep_hours: at(r, "horas_sueno") ? num(at(r, "horas_sueno")) : null,
+          intention: at(r, "intencion") || null,
+          review_note: at(r, "revision") || null,
+        } as never,
+        { onConflict: "journal_id,user_id,date" },
+      );
+      if (error) throw error;
+      ctx.checkins.add(date);
+      result.checkins++;
+      continue;
+    }
+
+    if (type === "reglas") {
+      const { error } = await supabase.from("journal_rules").upsert(
+        {
+          journal_id: ctx.id,
+          user_id: userId,
+          enabled: at(r, "activo") ? bool(at(r, "activo")) : true,
+          max_loss_streak: at(r, "max_racha_perdidas") ? num(at(r, "max_racha_perdidas")) : null,
+          max_trades_day: at(r, "max_ops_dia") ? num(at(r, "max_ops_dia")) : null,
+          max_daily_loss: at(r, "max_perdida_dia") ? num(at(r, "max_perdida_dia")) : null,
+          require_checkin: bool(at(r, "exige_checkin")),
+        } as never,
+        { onConflict: "journal_id,user_id" },
+      );
+      if (error) throw error;
       continue;
     }
 
@@ -520,6 +852,7 @@ export async function importJournalCsv(
     const direction: Trade["direction"] = at(r, "direccion").toLowerCase().startsWith("s")
       ? "short"
       : "long";
+    const followed = at(r, "siguio_plan").toLowerCase();
     const { error } = await supabase.from("trades").insert({
       journal_id: ctx.id,
       user_id: userId,
@@ -535,11 +868,52 @@ export async function importJournalCsv(
       pnl: trade.pnl,
       tags: at(r, "etiquetas").split(/[\s,;]+/).filter(Boolean),
       notes: at(r, "notas") || null,
-      source: "manual",
+      source: at(r, "origen") === "webhook" ? "webhook" : "manual",
+      import_batch_id: at(r, "lote_importacion") || null,
+      emotion_before: at(r, "emocion_antes") || null,
+      emotion_after: at(r, "emocion_despues") || null,
+      followed_plan: ["yes", "partial", "no"].includes(followed) ? followed : null,
+      mistakes: at(r, "errores").split(/[;,]+/).map((s) => s.trim()).filter(Boolean),
+      emotion_note: at(r, "nota_emocional") || null,
     } as never);
     if (error) throw error;
     ctx.trades.add(key);
     result.trades++;
+  }
+
+  // Asignación de estrategia por cuenta (una vez existen ambas).
+  for (const a of accountStrategy) {
+    const ctx = await ctxFor(a.journalId);
+    const accountId = ctx.accounts.get(a.account.toLowerCase());
+    const strategyId = await ensureStrategy(ctx, a.strategy);
+    if (!accountId || !strategyId) continue;
+    await supabase.from("accounts").update({ strategy_id: strategyId } as never).eq("id", accountId);
+  }
+
+  // Tramos de estrategia por fechas.
+  for (const p of periodRows) {
+    const ctx = await ctxFor(p.journalId);
+    const accountId = await ensureAccount(ctx, p.account);
+    const strategyId = await ensureStrategy(ctx, p.strategy);
+    if (!accountId || !strategyId || !p.start) continue;
+    const start = toDay(p.start);
+    const key = `${accountId}|${strategyId}|${start}`;
+    if (ctx.periods.has(key)) {
+      result.duplicates++;
+      continue;
+    }
+    const { error } = await supabase.from("account_strategy_periods").insert({
+      journal_id: ctx.id,
+      user_id: userId,
+      account_id: accountId,
+      strategy_id: strategyId,
+      start_date: start,
+      end_date: p.end ? toDay(p.end) : null,
+      note: p.note || null,
+    } as never);
+    if (error) throw error;
+    ctx.periods.add(key);
+    result.periods++;
   }
 
   return result;

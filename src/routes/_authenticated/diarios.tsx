@@ -131,13 +131,20 @@ function JournalsPage() {
       const res = await importJournalCsv(targetId, await file.text());
       await qc.invalidateQueries({ queryKey: ["journals"] });
       await qc.invalidateQueries({ queryKey: ["journal-data"] });
+      await qc.invalidateQueries({ queryKey: ["expenses"] });
+      await qc.invalidateQueries({ queryKey: ["mood-checkins"] });
+      await qc.invalidateQueries({ queryKey: ["journal-rules"] });
       const parts = [
         res.journals ? `${res.journals} diarios` : "",
         res.accounts ? `${res.accounts} cuentas` : "",
         res.strategies ? `${res.strategies} estrategias` : "",
         res.trades ? `${res.trades} operaciones` : "",
         res.withdrawals ? `${res.withdrawals} retiros` : "",
+        res.expenses ? `${res.expenses} gastos` : "",
+        res.checkins ? `${res.checkins} check-ins` : "",
+        res.periods ? `${res.periods} tramos` : "",
       ].filter(Boolean);
+
       toast.success(
         (parts.length ? `Importado: ${parts.join(", ")}` : "Nada nuevo que importar") +
           (res.duplicates ? ` · ${res.duplicates} duplicados omitidos` : ""),
