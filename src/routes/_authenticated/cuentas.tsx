@@ -101,7 +101,7 @@ function AccountDialog({ account, trigger }: { account?: Account; trigger: React
       firm: type === "funded" ? firm : undefined,
       broker: type === "personal" ? broker : undefined,
       initialBalance: Number(initial) || 0,
-      currentBalance: Number(current) || Number(initial) || 0,
+      currentBalance: Number(initial) || 0,
       drawdownLimit: type === "funded" ? Number(dd) || 0 : undefined,
       drawdownType: type === "funded" ? ddType : undefined,
       currency: account?.currency ?? "USD",
