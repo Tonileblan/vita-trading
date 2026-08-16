@@ -9,6 +9,8 @@ import {
   NotebookPen,
   Users,
   MessageSquare,
+  Brain,
+
   ShieldCheck,
   LogOut,
 } from "lucide-react";
