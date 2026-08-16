@@ -9,6 +9,8 @@ import {
   NotebookPen,
   Users,
   MessageSquare,
+  Brain,
+
   ShieldCheck,
   LogOut,
 } from "lucide-react";
@@ -34,6 +36,8 @@ const nav = [
   { to: "/operaciones", label: "Operaciones", icon: ListOrdered },
   { to: "/estrategias", label: "Estrategias", icon: Layers },
   { to: "/retiros", label: "Retiros", icon: Banknote },
+  { to: "/mente", label: "Mente", icon: Brain },
+
   { to: "/usuarios", label: "Usuarios", icon: Users },
   { to: "/chat", label: "Chat", icon: MessageSquare },
 ] as const;

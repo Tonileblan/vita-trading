@@ -3,6 +3,9 @@ import { useMemo, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { EquityChart } from "@/components/equity-chart";
 import { KpiCards } from "@/components/kpi-cards";
+import { RiskAlerts } from "@/components/risk-alerts";
+import { EmotionHighlights } from "@/components/emotion-stats";
+
 import { TradeFormDialog } from "@/components/trade-form-dialog";
 import { TradesTable } from "@/components/trades-table";
 import { useJournal } from "@/lib/journal-store";
@@ -100,7 +103,9 @@ function Overview() {
       actions={<TradeFormDialog />}
     >
       <div className="space-y-5">
+        <RiskAlerts />
         <section className="grid gap-3 sm:grid-cols-3">
+
           {SCOPES.map((s) => (
             <button
               key={s.key}
@@ -120,6 +125,8 @@ function Overview() {
           ))}
         </section>
         <KpiCards metrics={metrics} scope={scope} trades={scopedTrades} />
+        <EmotionHighlights trades={scopedTrades} />
+
 
 
         <section className="panel p-4">

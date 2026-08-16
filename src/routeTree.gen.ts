@@ -16,6 +16,7 @@ import { Route as AuthenticatedChatRouteImport } from './routes/_authenticated/c
 import { Route as AuthenticatedCuentasRouteImport } from './routes/_authenticated/cuentas'
 import { Route as AuthenticatedDiariosRouteImport } from './routes/_authenticated/diarios'
 import { Route as AuthenticatedEstrategiasRouteImport } from './routes/_authenticated/estrategias'
+import { Route as AuthenticatedMenteRouteImport } from './routes/_authenticated/mente'
 import { Route as AuthenticatedOperacionesRouteImport } from './routes/_authenticated/operaciones'
 import { Route as AuthenticatedPanelRouteImport } from './routes/_authenticated/panel'
 import { Route as AuthenticatedRetirosRouteImport } from './routes/_authenticated/retiros'
@@ -59,6 +60,11 @@ const AuthenticatedEstrategiasRoute =
     path: '/estrategias',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedMenteRoute = AuthenticatedMenteRouteImport.update({
+  id: '/mente',
+  path: '/mente',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedOperacionesRoute =
   AuthenticatedOperacionesRouteImport.update({
     id: '/operaciones',
@@ -105,6 +111,7 @@ export interface FileRoutesByFullPath {
   '/cuentas': typeof AuthenticatedCuentasRoute
   '/diarios': typeof AuthenticatedDiariosRoute
   '/estrategias': typeof AuthenticatedEstrategiasRoute
+  '/mente': typeof AuthenticatedMenteRoute
   '/operaciones': typeof AuthenticatedOperacionesRoute
   '/panel': typeof AuthenticatedPanelRoute
   '/retiros': typeof AuthenticatedRetirosRoute
@@ -120,6 +127,7 @@ export interface FileRoutesByTo {
   '/cuentas': typeof AuthenticatedCuentasRoute
   '/diarios': typeof AuthenticatedDiariosRoute
   '/estrategias': typeof AuthenticatedEstrategiasRoute
+  '/mente': typeof AuthenticatedMenteRoute
   '/operaciones': typeof AuthenticatedOperacionesRoute
   '/panel': typeof AuthenticatedPanelRoute
   '/retiros': typeof AuthenticatedRetirosRoute
@@ -137,6 +145,7 @@ export interface FileRoutesById {
   '/_authenticated/cuentas': typeof AuthenticatedCuentasRoute
   '/_authenticated/diarios': typeof AuthenticatedDiariosRoute
   '/_authenticated/estrategias': typeof AuthenticatedEstrategiasRoute
+  '/_authenticated/mente': typeof AuthenticatedMenteRoute
   '/_authenticated/operaciones': typeof AuthenticatedOperacionesRoute
   '/_authenticated/panel': typeof AuthenticatedPanelRoute
   '/_authenticated/retiros': typeof AuthenticatedRetirosRoute
@@ -154,6 +163,7 @@ export interface FileRouteTypes {
     | '/cuentas'
     | '/diarios'
     | '/estrategias'
+    | '/mente'
     | '/operaciones'
     | '/panel'
     | '/retiros'
@@ -169,6 +179,7 @@ export interface FileRouteTypes {
     | '/cuentas'
     | '/diarios'
     | '/estrategias'
+    | '/mente'
     | '/operaciones'
     | '/panel'
     | '/retiros'
@@ -185,6 +196,7 @@ export interface FileRouteTypes {
     | '/_authenticated/cuentas'
     | '/_authenticated/diarios'
     | '/_authenticated/estrategias'
+    | '/_authenticated/mente'
     | '/_authenticated/operaciones'
     | '/_authenticated/panel'
     | '/_authenticated/retiros'
@@ -252,6 +264,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedEstrategiasRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/mente': {
+      id: '/_authenticated/mente'
+      path: '/mente'
+      fullPath: '/mente'
+      preLoaderRoute: typeof AuthenticatedMenteRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/operaciones': {
       id: '/_authenticated/operaciones'
       path: '/operaciones'
@@ -309,6 +328,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedCuentasRoute: typeof AuthenticatedCuentasRoute
   AuthenticatedDiariosRoute: typeof AuthenticatedDiariosRoute
   AuthenticatedEstrategiasRoute: typeof AuthenticatedEstrategiasRoute
+  AuthenticatedMenteRoute: typeof AuthenticatedMenteRoute
   AuthenticatedOperacionesRoute: typeof AuthenticatedOperacionesRoute
   AuthenticatedPanelRoute: typeof AuthenticatedPanelRoute
   AuthenticatedRetirosRoute: typeof AuthenticatedRetirosRoute
@@ -322,6 +342,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedCuentasRoute: AuthenticatedCuentasRoute,
   AuthenticatedDiariosRoute: AuthenticatedDiariosRoute,
   AuthenticatedEstrategiasRoute: AuthenticatedEstrategiasRoute,
+  AuthenticatedMenteRoute: AuthenticatedMenteRoute,
   AuthenticatedOperacionesRoute: AuthenticatedOperacionesRoute,
   AuthenticatedPanelRoute: AuthenticatedPanelRoute,
   AuthenticatedRetirosRoute: AuthenticatedRetirosRoute,

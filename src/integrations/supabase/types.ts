@@ -94,6 +94,53 @@ export type Database = {
         }
         Relationships: []
       }
+      journal_rules: {
+        Row: {
+          created_at: string
+          enabled: boolean
+          id: string
+          journal_id: string
+          max_daily_loss: number | null
+          max_loss_streak: number
+          max_trades_day: number
+          require_checkin: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          journal_id: string
+          max_daily_loss?: number | null
+          max_loss_streak?: number
+          max_trades_day?: number
+          require_checkin?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          journal_id?: string
+          max_daily_loss?: number | null
+          max_loss_streak?: number
+          max_trades_day?: number
+          require_checkin?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "journal_rules_journal_id_fkey"
+            columns: ["journal_id"]
+            isOneToOne: false
+            referencedRelation: "journals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       journals: {
         Row: {
           base_currency: string
@@ -126,6 +173,62 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      mood_checkins: {
+        Row: {
+          created_at: string
+          date: string
+          energy: number
+          focus: number
+          id: string
+          intention: string | null
+          journal_id: string
+          mood: number
+          review_note: string | null
+          sleep_hours: number | null
+          stress: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          date?: string
+          energy?: number
+          focus?: number
+          id?: string
+          intention?: string | null
+          journal_id: string
+          mood?: number
+          review_note?: string | null
+          sleep_hours?: number | null
+          stress?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          energy?: number
+          focus?: number
+          id?: string
+          intention?: string | null
+          journal_id?: string
+          mood?: number
+          review_note?: string | null
+          sleep_hours?: number | null
+          stress?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mood_checkins_journal_id_fkey"
+            columns: ["journal_id"]
+            isOneToOne: false
+            referencedRelation: "journals"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
@@ -231,10 +334,15 @@ export type Database = {
           closed_at: string
           created_at: string
           direction: string
+          emotion_after: string | null
+          emotion_before: string | null
+          emotion_note: string | null
           entry_price: number
           exit_price: number
+          followed_plan: string | null
           id: string
           journal_id: string
+          mistakes: string[]
           notes: string | null
           opened_at: string
           pnl: number
@@ -252,10 +360,15 @@ export type Database = {
           closed_at?: string
           created_at?: string
           direction?: string
+          emotion_after?: string | null
+          emotion_before?: string | null
+          emotion_note?: string | null
           entry_price?: number
           exit_price?: number
+          followed_plan?: string | null
           id?: string
           journal_id: string
+          mistakes?: string[]
           notes?: string | null
           opened_at?: string
           pnl?: number
@@ -273,10 +386,15 @@ export type Database = {
           closed_at?: string
           created_at?: string
           direction?: string
+          emotion_after?: string | null
+          emotion_before?: string | null
+          emotion_note?: string | null
           entry_price?: number
           exit_price?: number
+          followed_plan?: string | null
           id?: string
           journal_id?: string
+          mistakes?: string[]
           notes?: string | null
           opened_at?: string
           pnl?: number

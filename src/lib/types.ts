@@ -51,7 +51,14 @@ export interface Trade {
   notes?: string | undefined;
   screenshots: string[];
   source: "manual" | "webhook";
+  /* Gestión emocional (opcional). */
+  emotionBefore?: string | undefined;
+  emotionAfter?: string | undefined;
+  followedPlan?: "yes" | "partial" | "no" | undefined;
+  mistakes: string[];
+  emotionNote?: string | undefined;
 }
+
 
 /** Cada estrategia gestiona su propio capital y su propio riesgo. */
 export interface Strategy {

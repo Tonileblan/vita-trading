@@ -23,7 +23,15 @@ import {
 } from "@/components/ui/select";
 import { useJournal } from "@/lib/journal-store";
 import { type Direction } from "@/lib/types";
+import {
+  EMOTIONS_AFTER,
+  EMOTIONS_BEFORE,
+  FOLLOWED_PLAN,
+  MISTAKES,
+  type FollowedPlan,
+} from "@/lib/emotions";
 import { cn } from "@/lib/utils";
+
 
 const nowLocal = () => new Date().toISOString().slice(0, 16);
 
@@ -44,7 +52,14 @@ export function TradeFormDialog() {
   const [notes, setNotes] = useState("");
   const [shots, setShots] = useState<string[]>([]);
   const [dragging, setDragging] = useState(false);
+  const [showMood, setShowMood] = useState(false);
+  const [emotionBefore, setEmotionBefore] = useState("");
+  const [emotionAfter, setEmotionAfter] = useState("");
+  const [followedPlan, setFollowedPlan] = useState<FollowedPlan | "">("");
+  const [mistakes, setMistakes] = useState<string[]>([]);
+  const [emotionNote, setEmotionNote] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
+
 
   // Mantiene la selección alineada con las estrategias del diario activo.
   useEffect(() => {
@@ -90,6 +105,11 @@ export function TradeFormDialog() {
       notes,
       screenshots: shots,
       source: "manual",
+      ...(emotionBefore ? { emotionBefore } : {}),
+      ...(emotionAfter ? { emotionAfter } : {}),
+      ...(followedPlan ? { followedPlan } : {}),
+      mistakes,
+      ...(emotionNote ? { emotionNote } : {}),
     });
     toast.success("Operación registrada");
     setOpen(false);
@@ -98,7 +118,13 @@ export function TradeFormDialog() {
     setExitPrice("");
     setNotes("");
     setShots([]);
+    setEmotionBefore("");
+    setEmotionAfter("");
+    setFollowedPlan("");
+    setMistakes([]);
+    setEmotionNote("");
   };
+
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -316,6 +342,125 @@ export function TradeFormDialog() {
               placeholder="Contexto, sesgo, ejecución, errores…"
             />
           </div>
+
+          <div className="space-y-3 sm:col-span-2">
+            <button
+              type="button"
+              onClick={() => setShowMood((v) => !v)}
+              className="flex w-full items-center justify-between rounded-md border border-border px-3 py-2 text-sm font-semibold"
+            >
+              <span>Estado emocional (opcional)</span>
+              <span className="text-xs text-muted-foreground">{showMood ? "Ocultar" : "Mostrar"}</span>
+            </button>
+            {showMood && (
+              <div className="space-y-3 rounded-md border border-border p-3">
+                <div className="space-y-2">
+                  <Label>¿Cómo estaba antes de entrar?</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {EMOTIONS_BEFORE.map((e) => (
+                      <button
+                        key={e.key}
+                        type="button"
+                        onClick={() => setEmotionBefore((p) => (p === e.key ? "" : e.key))}
+                        className={cn(
+                          "rounded-full border px-3 py-1 text-xs font-medium transition-colors",
+                          emotionBefore === e.key
+                            ? "border-brand bg-brand/15 text-brand-soft"
+                            : "border-border text-muted-foreground hover:text-foreground",
+                        )}
+                      >
+                        {e.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>¿Cómo me quedé después?</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {EMOTIONS_AFTER.map((e) => (
+                      <button
+                        key={e.key}
+                        type="button"
+                        onClick={() => setEmotionAfter((p) => (p === e.key ? "" : e.key))}
+                        className={cn(
+                          "rounded-full border px-3 py-1 text-xs font-medium transition-colors",
+                          emotionAfter === e.key
+                            ? "border-brand bg-brand/15 text-brand-soft"
+                            : "border-border text-muted-foreground hover:text-foreground",
+                        )}
+                      >
+                        {e.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>¿Seguí el plan?</Label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {FOLLOWED_PLAN.map((f) => (
+                      <button
+                        key={f.key}
+                        type="button"
+                        onClick={() => setFollowedPlan((p) => (p === f.key ? "" : f.key))}
+                        className={cn(
+                          "rounded-md border px-3 py-2 text-sm font-semibold transition-colors",
+                          followedPlan === f.key
+                            ? f.key === "yes"
+                              ? "border-profit bg-profit/15 text-profit"
+                              : f.key === "no"
+                                ? "border-loss bg-loss/15 text-loss"
+                                : "border-brand bg-brand/15 text-brand-soft"
+                            : "border-border text-muted-foreground hover:text-foreground",
+                        )}
+                      >
+                        {f.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Errores cometidos</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {MISTAKES.map((m) => (
+                      <button
+                        key={m.key}
+                        type="button"
+                        onClick={() =>
+                          setMistakes((prev) =>
+                            prev.includes(m.key)
+                              ? prev.filter((x) => x !== m.key)
+                              : [...prev, m.key],
+                          )
+                        }
+                        className={cn(
+                          "rounded-full border px-3 py-1 text-xs font-medium transition-colors",
+                          mistakes.includes(m.key)
+                            ? "border-loss bg-loss/15 text-loss"
+                            : "border-border text-muted-foreground hover:text-foreground",
+                        )}
+                      >
+                        {m.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Nota emocional</Label>
+                  <Textarea
+                    rows={2}
+                    value={emotionNote}
+                    onChange={(e) => setEmotionNote(e.target.value)}
+                    placeholder="¿Qué me llevó a operar así?"
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+
         </div>
 
         <DialogFooter>

@@ -127,7 +127,9 @@ export function TradeImportDialog() {
         exitPrice: r.exitPrice ?? 0,
         size: r.size ?? 1,
         pnl: r.pnl,
+        mistakes: [],
         tags: [],
+
         notes: "Importada desde captura",
         screenshots: images.slice(0, 1),
         source: "manual",
