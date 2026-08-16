@@ -28,110 +28,28 @@ export function TradesTable({
   const colCount = 9 + (selectable ? 1 : 0) + (onDelete ? 1 : 0);
 
   return (
-    <>
-      {/* Móvil: lista de tarjetas */}
-      <div className="space-y-2 md:hidden">
-        {rows.map((t) => (
-          <div key={t.id} className="panel space-y-2 p-3">
-            <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
-              <div className="flex min-w-0 items-center gap-2">
-                {selectable && (
-                  <Checkbox
-                    className="shrink-0"
-                    checked={isSelected(t.id)}
-                    onCheckedChange={() => onToggleSelect?.(t.id)}
-                    aria-label="Seleccionar operación"
-                  />
-                )}
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold leading-none">{symbolOf(t.symbol)}</span>
-                    <span
-                      className={cn(
-                        "shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase leading-none",
-                        t.direction === "long" ? "bg-profit/15 text-profit" : "bg-loss/15 text-loss",
-                      )}
-                    >
-                      {t.direction}
-                    </span>
-                    {t.source === "webhook" && <Zap className="size-3 shrink-0 text-brand-soft" />}
-                  </div>
-                  <p className="num mt-1 truncate text-xs text-muted-foreground">
-                    {formatDateTime(t.closedAt)} · {nameOf(t.accountId)}
-                  </p>
-                </div>
-              </div>
-              <div className="flex shrink-0 items-center gap-2">
-                <span
-                  className={cn(
-                    "num text-right font-semibold tabular-nums",
-                    t.pnl >= 0 ? "text-profit" : "text-loss",
-                  )}
-                >
-                  {formatCurrency(t.pnl, true)}
-                </span>
-                {onDelete && (
-                  <button
-                    onClick={() => onDelete(t)}
-                    className="text-muted-foreground transition-colors hover:text-loss"
-                    aria-label="Eliminar operación"
-                  >
-                    <Trash2 className="size-4" />
-                  </button>
-                )}
-              </div>
-            </div>
-            {(t.entryPrice > 0 || t.exitPrice > 0 || t.size > 0) && (
-              <div className="num flex flex-wrap gap-x-4 gap-y-1 border-t border-border/50 pt-2 text-xs text-muted-foreground">
-                {t.entryPrice > 0 && <span>Entrada {t.entryPrice}</span>}
-                {t.exitPrice > 0 && <span>Salida {t.exitPrice}</span>}
-                {t.size > 0 && <span>Tam. {t.size}</span>}
-              </div>
-            )}
-            {t.tags.length > 0 && (
-              <div className="flex flex-wrap gap-1">
-                {t.tags.map((tag) => (
-                  <span
-                    key={tag}
-                    className="rounded-full border border-border px-2 py-0.5 text-[11px] text-muted-foreground"
-                  >
-                    {tag}
-                  </span>
-                ))}
-              </div>
-            )}
-          </div>
-        ))}
-        {rows.length === 0 && (
-          <div className="panel px-4 py-10 text-center text-muted-foreground">
-            No hay operaciones para los filtros seleccionados.
-          </div>
-        )}
-      </div>
-
-      {/* Escritorio: tabla */}
-      <div className="panel hidden overflow-x-auto md:block">
-      <table className="w-full min-w-[820px] text-sm">
+    <div className="panel overflow-x-auto">
+      <table className="w-full min-w-[640px] text-xs md:min-w-[820px] md:text-sm">
         <thead>
-          <tr className="border-b border-border text-left text-xs uppercase tracking-wider text-muted-foreground">
-            {selectable && <th className="w-10 px-3 py-3" />}
-            <th className="px-4 py-3 font-semibold">Cierre</th>
-            <th className="px-4 py-3 font-semibold">Activo</th>
-            <th className="px-4 py-3 font-semibold">Dir.</th>
-            <th className="px-4 py-3 font-semibold">Cuenta</th>
-            <th className="px-4 py-3 text-right font-semibold">Entrada</th>
-            <th className="px-4 py-3 text-right font-semibold">Salida</th>
-            <th className="px-4 py-3 text-right font-semibold">Tam.</th>
-            <th className="px-4 py-3 font-semibold">Estrategia</th>
-            <th className="px-4 py-3 text-right font-semibold">PnL</th>
-            {onDelete && <th className="w-10 px-3 py-3" />}
+          <tr className="border-b border-border text-left uppercase tracking-wider text-muted-foreground">
+            {selectable && <th className="w-10 px-2 py-2 md:px-3 md:py-3" />}
+            <th className="whitespace-nowrap px-2 py-2 font-semibold md:px-4 md:py-3">Cierre</th>
+            <th className="px-2 py-2 font-semibold md:px-4 md:py-3">Activo</th>
+            <th className="px-2 py-2 font-semibold md:px-4 md:py-3">Dir.</th>
+            <th className="hidden px-4 py-3 font-semibold md:table-cell">Cuenta</th>
+            <th className="px-2 py-2 text-right font-semibold md:px-4 md:py-3">Entrada</th>
+            <th className="px-2 py-2 text-right font-semibold md:px-4 md:py-3">Salida</th>
+            <th className="px-2 py-2 text-right font-semibold md:px-4 md:py-3">Tam.</th>
+            <th className="hidden px-4 py-3 font-semibold md:table-cell">Estrategia</th>
+            <th className="px-2 py-2 text-right font-semibold md:px-4 md:py-3">PnL</th>
+            {onDelete && <th className="w-10 px-2 py-2 md:px-3 md:py-3" />}
           </tr>
         </thead>
         <tbody>
           {rows.map((t) => (
             <tr key={t.id} className="border-b border-border/60 last:border-0 hover:bg-accent/40">
               {selectable && (
-                <td className="px-3 py-3">
+                <td className="px-2 py-2 md:px-3 md:py-3">
                   <Checkbox
                     checked={isSelected(t.id)}
                     onCheckedChange={() => onToggleSelect?.(t.id)}
@@ -139,32 +57,38 @@ export function TradesTable({
                   />
                 </td>
               )}
-              <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
+              <td className="whitespace-nowrap px-2 py-2 text-muted-foreground md:px-4 md:py-3">
                 <span className="num">{formatDateTime(t.closedAt)}</span>
                 {t.source === "webhook" && (
                   <Zap className="ml-1 inline size-3 text-brand-soft" aria-label="Vía webhook" />
                 )}
               </td>
-              <td className="px-4 py-3 font-semibold">{symbolOf(t.symbol)}</td>
-              <td className="px-4 py-3">
+              <td className="whitespace-nowrap px-2 py-2 font-semibold md:px-4 md:py-3">
+                {symbolOf(t.symbol)}
+              </td>
+              <td className="px-2 py-2 md:px-4 md:py-3">
                 <span
                   className={cn(
-                    "rounded px-2 py-0.5 text-xs font-semibold uppercase",
-                    t.direction === "long"
-                      ? "bg-profit/15 text-profit"
-                      : "bg-loss/15 text-loss",
+                    "rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase md:text-xs",
+                    t.direction === "long" ? "bg-profit/15 text-profit" : "bg-loss/15 text-loss",
                   )}
                 >
                   {t.direction}
                 </span>
               </td>
-              <td className="max-w-[160px] truncate px-4 py-3 text-muted-foreground">
+              <td className="hidden max-w-[160px] truncate px-4 py-3 text-muted-foreground md:table-cell">
                 {nameOf(t.accountId)}
               </td>
-              <td className="num px-4 py-3 text-right">{t.entryPrice > 0 ? t.entryPrice : "—"}</td>
-              <td className="num px-4 py-3 text-right">{t.exitPrice > 0 ? t.exitPrice : "—"}</td>
-              <td className="num px-4 py-3 text-right">{t.size > 0 ? t.size : "—"}</td>
-              <td className="px-4 py-3">
+              <td className="num whitespace-nowrap px-2 py-2 text-right md:px-4 md:py-3">
+                {t.entryPrice > 0 ? t.entryPrice : "—"}
+              </td>
+              <td className="num whitespace-nowrap px-2 py-2 text-right md:px-4 md:py-3">
+                {t.exitPrice > 0 ? t.exitPrice : "—"}
+              </td>
+              <td className="num whitespace-nowrap px-2 py-2 text-right md:px-4 md:py-3">
+                {t.size > 0 ? t.size : "—"}
+              </td>
+              <td className="hidden px-4 py-3 md:table-cell">
                 <div className="flex flex-wrap gap-1">
                   {t.tags.map((tag) => (
                     <span
@@ -178,14 +102,14 @@ export function TradesTable({
               </td>
               <td
                 className={cn(
-                  "num px-4 py-3 text-right font-semibold",
+                  "num whitespace-nowrap px-2 py-2 text-right font-semibold tabular-nums md:px-4 md:py-3",
                   t.pnl >= 0 ? "text-profit" : "text-loss",
                 )}
               >
                 {formatCurrency(t.pnl, true)}
               </td>
               {onDelete && (
-                <td className="px-3 py-3 text-right">
+                <td className="px-2 py-2 text-right md:px-3 md:py-3">
                   <button
                     onClick={() => onDelete(t)}
                     className="text-muted-foreground transition-colors hover:text-loss"
@@ -206,7 +130,6 @@ export function TradesTable({
           )}
         </tbody>
       </table>
-      </div>
-    </>
+    </div>
   );
 }
