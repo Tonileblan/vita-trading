@@ -68,7 +68,8 @@ const SCOPES = [
 type Scope = (typeof SCOPES)[number]["key"];
 
 function Overview() {
-  const { visibleTrades, accounts, strategies, selectedAccountIds, withdrawals } = useJournal();
+  const { visibleTrades, accounts, strategies, selectedAccountIds, withdrawals, strategyPeriods } =
+    useJournal();
   const [range, setRange] = useState<RangeKey>("all");
   const [customRange, setCustomRange] = useState<DateRange>({ from: undefined, to: undefined });
   const [scope, setScope] = useState<Scope>("all");
@@ -101,9 +102,9 @@ function Overview() {
       visibleTrades.filter(
         (t) =>
           scopedIds.has(t.accountId) &&
-          (strategyFilter === "all" || effectiveStrategyId(t, accounts) === strategyFilter),
+          (strategyFilter === "all" || effectiveStrategyId(t, accounts, strategyPeriods) === strategyFilter),
       ),
-    [visibleTrades, scopedIds, strategyFilter, accounts],
+    [visibleTrades, scopedIds, strategyFilter, accounts, strategyPeriods],
   );
 
   const accountStrategies = useMemo(() => {
@@ -111,11 +112,11 @@ function Overview() {
     const used = new Set(
       visibleTrades
         .filter((t) => t.accountId === accountFilter)
-        .map((t) => effectiveStrategyId(t, accounts)),
+        .map((t) => effectiveStrategyId(t, accounts, strategyPeriods)),
     );
     const filtered = strategies.filter((s) => used.has(s.id));
     return filtered.length ? filtered : strategies;
-  }, [strategies, visibleTrades, accountFilter, accounts]);
+  }, [strategies, visibleTrades, accountFilter, accounts, strategyPeriods]);
 
 
   const trades = useMemo(() => {
