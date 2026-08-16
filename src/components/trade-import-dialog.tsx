@@ -54,7 +54,7 @@ interface Row extends ExtractedTrade {
 
 
 export function TradeImportDialog() {
-  const { accounts, strategies, trades, addTrade } = useJournal();
+  const { accounts, strategies, trades, addTrades } = useJournal();
   const extract = useServerFn(extractTradesFromImages);
   const [open, setOpen] = useState(false);
   const [cameraOpen, setCameraOpen] = useState(false);
@@ -63,6 +63,7 @@ export function TradeImportDialog() {
   const [images, setImages] = useState<string[]>([]);
   const [rows, setRows] = useState<Row[] | null>(null);
   const [loading, setLoading] = useState(false);
+  const [importing, setImporting] = useState(false);
   const [dragging, setDragging] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
