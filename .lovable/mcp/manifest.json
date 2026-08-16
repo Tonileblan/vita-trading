@@ -1,0 +1,210 @@
+{
+  "version": 1,
+  "sdk_version": "0.26.2",
+  "path": "/mcp",
+  "auth": {
+    "type": "oauth",
+    "issuer": "https://nlqwxybhmyrkurxovkxk.supabase.co/auth/v1",
+    "accepted_audiences": [
+      "authenticated"
+    ]
+  },
+  "mcp": {
+    "server": {
+      "name": "trade-journal-pro",
+      "version": "0.1.0",
+      "title": "Trade Journal Pro"
+    },
+    "tools": [
+      {
+        "name": "list_journals",
+        "title": "Listar diarios",
+        "description": "Lista los diarios de trading del usuario conectado (id, nombre, divisa, archivado).",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {}
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_accounts",
+        "title": "Listar cuentas",
+        "description": "Lista las cuentas de trading (fondeo y reales) con su balance inicial, balance actual y tipo de drawdown.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "journal_id": {
+              "description": "Filtra por diario. Omite para todas.",
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          }
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_strategies",
+        "title": "Listar estrategias",
+        "description": "Lista las estrategias definidas en los diarios del usuario, con mercado, horario y riesgo.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "journal_id": {
+              "description": "Filtra por diario. Omite para todas.",
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          }
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_trades",
+        "title": "Listar operaciones",
+        "description": "Lista operaciones del usuario, opcionalmente filtradas por diario, cuenta, estrategia y rango de fechas de cierre.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "journal_id": {
+              "description": "Filtra por diario.",
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "account_id": {
+              "description": "Filtra por cuenta.",
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "strategy_id": {
+              "description": "Filtra por estrategia.",
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "from": {
+              "description": "Fecha de cierre mínima en ISO (ej. 2026-01-01).",
+              "type": "string"
+            },
+            "to": {
+              "description": "Fecha de cierre máxima en ISO.",
+              "type": "string"
+            },
+            "limit": {
+              "description": "Máximo de operaciones (por defecto 50).",
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200
+            }
+          }
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "create_trade",
+        "title": "Registrar operación",
+        "description": "Registra una operación en un diario del usuario, con PnL, precios y notas opcionales.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "journal_id": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+              "description": "Diario donde se registra la operación."
+            },
+            "symbol": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Activo operado, ej. NQ o MNQ."
+            },
+            "direction": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "description": "Dirección de la operación."
+            },
+            "pnl": {
+              "type": "number",
+              "description": "Resultado neto en la divisa de la cuenta."
+            },
+            "closed_at": {
+              "type": "string",
+              "description": "Fecha/hora de cierre en ISO."
+            },
+            "opened_at": {
+              "description": "Fecha/hora de apertura en ISO.",
+              "type": "string"
+            },
+            "entry_price": {
+              "type": "number"
+            },
+            "exit_price": {
+              "type": "number"
+            },
+            "size": {
+              "description": "Número de contratos o unidades.",
+              "type": "number"
+            },
+            "account_id": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "strategy_id": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "notes": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "journal_id",
+            "symbol",
+            "direction",
+            "pnl",
+            "closed_at"
+          ]
+        },
+        "outputSchema": null
+      }
+    ]
+  }
+}

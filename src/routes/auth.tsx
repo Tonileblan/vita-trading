@@ -11,6 +11,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 
 export const Route = createFileRoute("/auth")({
+  validateSearch: (s: Record<string, unknown>) => ({
+    next: typeof s['next'] === "string" ? (s['next'] as string) : undefined,
+  }),
   head: () => ({
     meta: [
       { title: "Acceder — Bitácora de Trading" },
@@ -32,6 +35,15 @@ export const Route = createFileRoute("/auth")({
 
 function AuthPage() {
   const navigate = useNavigate();
+  const { next } = Route.useSearch();
+  const safeNext = next && next.startsWith("/") && !next.startsWith("//") ? next : undefined;
+  const goNext = () => {
+    if (safeNext) {
+      window.location.href = safeNext;
+      return;
+    }
+    navigate({ to: "/panel", replace: true });
+  };
   const { session, loading } = useAuth();
   const [busy, setBusy] = useState(false);
   const [email, setEmail] = useState("");
@@ -40,8 +52,9 @@ function AuthPage() {
   const [pendingConfirm, setPendingConfirm] = useState(false);
 
   useEffect(() => {
-    if (!loading && session) navigate({ to: "/panel", replace: true });
-  }, [loading, session, navigate]);
+    if (!loading && session) goNext();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, session]);
 
   async function handleSignIn(e: FormEvent) {
     e.preventDefault();
@@ -52,7 +65,7 @@ function AuthPage() {
       toast.error(error.message);
       return;
     }
-    navigate({ to: "/panel", replace: true });
+    goNext();
   }
 
   async function handleSignUp(e: FormEvent) {
@@ -62,7 +75,7 @@ function AuthPage() {
       email,
       password,
       options: {
-        emailRedirectTo: window.location.origin,
+        emailRedirectTo: safeNext ? window.location.origin + safeNext : window.location.origin,
         data: { display_name: displayName },
       },
     });
@@ -76,13 +89,13 @@ function AuthPage() {
       toast.success("Revisa tu correo para confirmar la cuenta");
       return;
     }
-    navigate({ to: "/panel", replace: true });
+    goNext();
   }
 
   async function handleGoogle() {
     setBusy(true);
     const result = await lovable.auth.signInWithOAuth("google", {
-      redirect_uri: window.location.origin,
+      redirect_uri: safeNext ? window.location.origin + safeNext : window.location.origin,
     });
     if (result.error) {
       setBusy(false);
@@ -90,7 +103,7 @@ function AuthPage() {
       return;
     }
     if (result.redirected) return;
-    navigate({ to: "/panel", replace: true });
+    goNext();
   }
 
   return (
