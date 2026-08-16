@@ -175,7 +175,7 @@ export function AppShell({
             bareHeader ? "mb-0" : "mb-5 border-b border-border pb-4 sm:mb-6",
           )}
         >
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <h1 className="text-2xl leading-none sm:text-3xl">{title}</h1>
             {subtitle && <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p>}
           </div>
