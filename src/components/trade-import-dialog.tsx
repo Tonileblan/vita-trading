@@ -54,7 +54,7 @@ interface Row extends ExtractedTrade {
 
 
 export function TradeImportDialog() {
-  const { accounts, strategies, trades, addTrade } = useJournal();
+  const { accounts, strategies, trades, addTrades } = useJournal();
   const extract = useServerFn(extractTradesFromImages);
   const [open, setOpen] = useState(false);
   const [cameraOpen, setCameraOpen] = useState(false);
@@ -63,6 +63,7 @@ export function TradeImportDialog() {
   const [images, setImages] = useState<string[]>([]);
   const [rows, setRows] = useState<Row[] | null>(null);
   const [loading, setLoading] = useState(false);
+  const [importing, setImporting] = useState(false);
   const [dragging, setDragging] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -113,7 +114,7 @@ export function TradeImportDialog() {
     }
   };
 
-  const importSelected = () => {
+  const importSelected = async () => {
     if (!accountId) {
       toast.error("Selecciona una cuenta");
       return;
@@ -123,31 +124,38 @@ export function TradeImportDialog() {
       toast.error("No hay operaciones seleccionadas");
       return;
     }
-    chosen.forEach((r) => {
-      addTrade({
-        accountId,
-        strategyId,
-        symbol: r.symbol.toUpperCase(),
-        direction: r.direction,
-        openedAt: toIso(r.openedAt ?? r.closedAt),
-        closedAt: toIso(r.closedAt ?? r.openedAt),
-        entryPrice: r.entryPrice ?? 0,
-        exitPrice: r.exitPrice ?? 0,
-        size: r.size ?? 1,
-        pnl: r.pnl,
-        mistakes: [],
-        tags: [],
-
-        notes: "Importada desde captura",
-        screenshots: images.slice(0, 1),
-        source: "manual",
-      });
-    });
-    toast.success(`${chosen.length} operaciones importadas`);
-    setOpen(false);
-    setImages([]);
-    setRows(null);
+    setImporting(true);
+    try {
+      await addTrades(
+        chosen.map((r) => ({
+          accountId,
+          strategyId,
+          symbol: r.symbol.toUpperCase(),
+          direction: r.direction,
+          openedAt: toIso(r.openedAt ?? r.closedAt),
+          closedAt: toIso(r.closedAt ?? r.openedAt),
+          entryPrice: r.entryPrice ?? 0,
+          exitPrice: r.exitPrice ?? 0,
+          size: r.size ?? 1,
+          pnl: r.pnl,
+          mistakes: [],
+          tags: [],
+          notes: "Importada desde captura",
+          screenshots: images.slice(0, 1),
+          source: "manual" as const,
+        })),
+      );
+      toast.success(`${chosen.length} operaciones importadas`);
+      setOpen(false);
+      setImages([]);
+      setRows(null);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "No se pudieron importar las operaciones");
+    } finally {
+      setImporting(false);
+    }
   };
+
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -326,8 +334,9 @@ export function TradeImportDialog() {
           <Button variant="outline" onClick={() => setOpen(false)}>
             Cancelar
           </Button>
-          <Button onClick={importSelected} disabled={!rows || rows.length === 0}>
-            Importar seleccionadas
+          <Button onClick={importSelected} disabled={!rows || rows.length === 0 || importing}>
+            {importing && <Loader2 className="size-4 animate-spin" />}
+            {importing ? "Importando…" : "Importar seleccionadas"}
           </Button>
         </DialogFooter>
       </DialogContent>

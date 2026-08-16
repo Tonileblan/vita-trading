@@ -201,6 +201,8 @@ interface JournalState extends JournalData {
   updateAccount: (id: string, patch: Partial<Omit<Account, "id">>) => Promise<void>;
   removeAccount: (id: string) => Promise<void>;
   addTrade: (trade: Omit<Trade, "id">) => Promise<void>;
+  /** Inserta varias operaciones a la vez y ajusta el balance de cada cuenta una sola vez. */
+  addTrades: (trades: Omit<Trade, "id">[]) => Promise<void>;
   addWithdrawal: (withdrawal: Omit<Withdrawal, "id">) => Promise<void>;
   updateWithdrawal: (id: string, patch: Partial<Omit<Withdrawal, "id">>) => Promise<void>;
   removeWithdrawal: (id: string) => Promise<void>;
@@ -331,6 +333,33 @@ export function JournalProvider({ children }: { children: ReactNode }) {
         }
         await refresh();
       },
+      addTrades: async (list) => {
+        if (list.length === 0) return;
+        const base = await ownerFields();
+        const { error } = await supabase
+          .from("trades")
+          .insert(list.map((t) => ({ ...fromTrade(t), ...base })) as never);
+        if (error) throw error;
+        // Suma del PnL por cuenta para actualizar cada balance una única vez.
+        const deltas = new Map<string, number>();
+        for (const t of list) {
+          if (!t.accountId) continue;
+          deltas.set(t.accountId, (deltas.get(t.accountId) ?? 0) + t.pnl);
+        }
+        await Promise.all(
+          [...deltas].map(([id, delta]) => {
+            const account = data.accounts.find((a) => a.id === id);
+            if (!account) return Promise.resolve();
+            return supabase
+              .from("accounts")
+              .update({ current_balance: account.currentBalance + delta } as never)
+              .eq("id", id)
+              .then(() => undefined);
+          }),
+        );
+        await refresh();
+      },
+
       addWithdrawal: async (withdrawal) => {
         const base = await ownerFields();
         const { error } = await supabase.from("withdrawals").insert({
