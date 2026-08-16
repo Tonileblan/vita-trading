@@ -230,45 +230,49 @@ function TradesPage() {
         )}
 
 
-        {selected.length > 0 && (
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-border bg-accent/30 px-3 py-2 text-sm">
-            <span>{selected.length} seleccionadas</span>
-            <div className="flex gap-2">
-              <Button size="sm" variant="ghost" onClick={() => setSelected([])}>
-                Cancelar
-              </Button>
-              <Button
-                size="sm"
-                variant="destructive"
-                onClick={() =>
-                  setPending({
-                    kind: "trades",
-                    ids: selected,
-                    label: `Se eliminarán ${selected.length} operaciones y se ajustarán los balances.`,
-                  })
-                }
-              >
-                <Trash2 className="size-4" /> Eliminar seleccionadas
-              </Button>
-            </div>
-          </div>
-        )}
+        {tab === "operaciones" && (
+          <>
+            {selected.length > 0 && (
+              <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-border bg-accent/30 px-3 py-2 text-sm">
+                <span>{selected.length} seleccionadas</span>
+                <div className="flex gap-2">
+                  <Button size="sm" variant="ghost" onClick={() => setSelected([])}>
+                    Cancelar
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    onClick={() =>
+                      setPending({
+                        kind: "trades",
+                        ids: selected,
+                        label: `Se eliminarán ${selected.length} operaciones y se ajustarán los balances.`,
+                      })
+                    }
+                  >
+                    <Trash2 className="size-4" /> Eliminar seleccionadas
+                  </Button>
+                </div>
+              </div>
+            )}
 
-        <TradesTable
-          trades={filtered}
-          accounts={accounts}
-          selectedIds={selected}
-          onToggleSelect={(id) =>
-            setSelected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]))
-          }
-          onDelete={(t) =>
-            setPending({
-              kind: "trades",
-              ids: [t.id],
-              label: `Se eliminará la operación de ${t.symbol} (${formatCurrency(t.pnl, true)}) y se ajustará el balance.`,
-            })
-          }
-        />
+            <TradesTable
+              trades={filtered}
+              accounts={accounts}
+              selectedIds={selected}
+              onToggleSelect={(id) =>
+                setSelected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]))
+              }
+              onDelete={(t) =>
+                setPending({
+                  kind: "trades",
+                  ids: [t.id],
+                  label: `Se eliminará la operación de ${t.symbol} (${formatCurrency(t.pnl, true)}) y se ajustará el balance.`,
+                })
+              }
+            />
+          </>
+        )}
       </div>
 
       <AlertDialog open={!!pending} onOpenChange={(o) => !o && setPending(null)}>
