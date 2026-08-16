@@ -161,6 +161,46 @@ export interface JournalData {
   withdrawals: Withdrawal[];
 }
 
+/** Agrupación de operaciones creadas en una misma importación por imagen. */
+export interface ImportBatch {
+  id: string;
+  createdAt: string;
+  count: number;
+  pnl: number;
+}
+
+function groupImportBatches(trades: Trade[]): ImportBatch[] {
+  const map = new Map<string, ImportBatch>();
+  for (const t of trades) {
+    if (!t.importBatchId) continue;
+    const created = t.createdAt ?? t.closedAt;
+    const current = map.get(t.importBatchId);
+    if (current) {
+      current.count += 1;
+      current.pnl += t.pnl;
+      if (created < current.createdAt) current.createdAt = created;
+    } else {
+      map.set(t.importBatchId, { id: t.importBatchId, createdAt: created, count: 1, pnl: t.pnl });
+    }
+  }
+  return [...map.values()].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 10);
+}
+
+/** Aplica un delta de PnL al balance almacenado de cada cuenta. */
+async function applyBalanceDeltas(accounts: Account[], deltas: Map<string, number>) {
+  await Promise.all(
+    [...deltas].map(([id, delta]) => {
+      const account = accounts.find((a) => a.id === id);
+      if (!account || delta === 0) return Promise.resolve();
+      return supabase
+        .from("accounts")
+        .update({ current_balance: account.currentBalance + delta } as never)
+        .eq("id", id)
+        .then(() => undefined);
+    }),
+  );
+}
+
 const EMPTY: JournalData = { accounts: [], strategies: [], trades: [], withdrawals: [] };
 
 /** Lee todos los datos de un diario (usado también por la vista de supervisión). */
