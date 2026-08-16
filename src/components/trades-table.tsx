@@ -1,4 +1,5 @@
-import { Zap } from "lucide-react";
+import { Trash2, Zap } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { formatCurrency, formatDateTime } from "@/lib/metrics";
 import type { Account, Trade } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -7,13 +8,22 @@ export function TradesTable({
   trades,
   accounts,
   limit,
+  selectedIds,
+  onToggleSelect,
+  onDelete,
 }: {
   trades: Trade[];
   accounts: Account[];
   limit?: number;
+  selectedIds?: string[];
+  onToggleSelect?: (id: string) => void;
+  onDelete?: (trade: Trade) => void;
 }) {
   const rows = limit ? trades.slice(0, limit) : trades;
   const nameOf = (id: string) => accounts.find((a) => a.id === id)?.name ?? "—";
+  const selectable = !!onToggleSelect;
+  const isSelected = (id: string) => (selectedIds ?? []).includes(id);
+  const colCount = 9 + (selectable ? 1 : 0) + (onDelete ? 1 : 0);
 
   return (
     <>
@@ -22,6 +32,14 @@ export function TradesTable({
         {rows.map((t) => (
           <div key={t.id} className="panel space-y-2 p-3">
             <div className="flex items-start justify-between gap-3">
+              {selectable && (
+                <Checkbox
+                  className="mt-1"
+                  checked={isSelected(t.id)}
+                  onCheckedChange={() => onToggleSelect?.(t.id)}
+                  aria-label="Seleccionar operación"
+                />
+              )}
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
                   <span className="font-semibold">{t.symbol}</span>
@@ -47,6 +65,15 @@ export function TradesTable({
               >
                 {formatCurrency(t.pnl, true)}
               </span>
+              {onDelete && (
+                <button
+                  onClick={() => onDelete(t)}
+                  className="shrink-0 text-muted-foreground transition-colors hover:text-loss"
+                  aria-label="Eliminar operación"
+                >
+                  <Trash2 className="size-4" />
+                </button>
+              )}
             </div>
             <div className="num flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
               <span>Entrada {t.entryPrice}</span>
@@ -79,6 +106,7 @@ export function TradesTable({
       <table className="w-full min-w-[820px] text-sm">
         <thead>
           <tr className="border-b border-border text-left text-xs uppercase tracking-wider text-muted-foreground">
+            {selectable && <th className="w-10 px-3 py-3" />}
             <th className="px-4 py-3 font-semibold">Cierre</th>
             <th className="px-4 py-3 font-semibold">Activo</th>
             <th className="px-4 py-3 font-semibold">Dir.</th>
@@ -88,11 +116,21 @@ export function TradesTable({
             <th className="px-4 py-3 text-right font-semibold">Tam.</th>
             <th className="px-4 py-3 font-semibold">Estrategia</th>
             <th className="px-4 py-3 text-right font-semibold">PnL</th>
+            {onDelete && <th className="w-10 px-3 py-3" />}
           </tr>
         </thead>
         <tbody>
           {rows.map((t) => (
             <tr key={t.id} className="border-b border-border/60 last:border-0 hover:bg-accent/40">
+              {selectable && (
+                <td className="px-3 py-3">
+                  <Checkbox
+                    checked={isSelected(t.id)}
+                    onCheckedChange={() => onToggleSelect?.(t.id)}
+                    aria-label="Seleccionar operación"
+                  />
+                </td>
+              )}
               <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
                 <span className="num">{formatDateTime(t.closedAt)}</span>
                 {t.source === "webhook" && (
@@ -138,11 +176,22 @@ export function TradesTable({
               >
                 {formatCurrency(t.pnl, true)}
               </td>
+              {onDelete && (
+                <td className="px-3 py-3 text-right">
+                  <button
+                    onClick={() => onDelete(t)}
+                    className="text-muted-foreground transition-colors hover:text-loss"
+                    aria-label="Eliminar operación"
+                  >
+                    <Trash2 className="size-4" />
+                  </button>
+                </td>
+              )}
             </tr>
           ))}
           {rows.length === 0 && (
             <tr>
-              <td colSpan={9} className="px-4 py-10 text-center text-muted-foreground">
+              <td colSpan={colCount} className="px-4 py-10 text-center text-muted-foreground">
                 No hay operaciones para los filtros seleccionados.
               </td>
             </tr>
