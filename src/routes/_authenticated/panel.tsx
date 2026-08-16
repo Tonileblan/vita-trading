@@ -57,7 +57,7 @@ const RANGES = [
 
 type RangeKey = (typeof RANGES)[number]["key"] | "custom";
 
-type DateRange = { from?: Date; to?: Date };
+type DateRange = { from: Date | undefined; to: Date | undefined };
 
 const SCOPES = [
   { key: "all", label: "Capital total" },
