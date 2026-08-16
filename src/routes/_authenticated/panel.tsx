@@ -60,8 +60,12 @@ function Overview() {
   const { visibleTrades, accounts, strategies, selectedAccountIds, withdrawals } = useJournal();
   const [range, setRange] = useState<(typeof RANGES)[number]["key"]>("all");
   const [scope, setScope] = useState<Scope>("all");
-  const [accountFilter, setAccountFilter] = useState<string>("all");
-  const [strategyFilter, setStrategyFilter] = useState<string>("all");
+  // Unified filter: "all" | account.id | `strategy:${strategyId}`
+  const [filter, setFilter] = useState<string>("all");
+
+  const isStrategy = filter.startsWith("strategy:");
+  const accountFilter = isStrategy ? "all" : filter;
+  const strategyFilter = isStrategy ? filter.slice("strategy:".length) : "all";
 
   const selectedAccounts = useMemo(
     () =>
@@ -136,30 +140,26 @@ function Overview() {
         <span className="flex flex-wrap items-center gap-3 w-full">
           <span>Resumen</span>
           <select
-            value={accountFilter}
-            onChange={(e) => setAccountFilter(e.target.value)}
+            value={filter}
+            onChange={(e) => setFilter(e.target.value)}
             className="ml-auto h-9 rounded-md border border-border bg-card px-2 text-sm font-sans"
-            aria-label="Cuenta"
+            aria-label="Cuenta o estrategia"
           >
             <option value="all">GENERAL</option>
-            {accounts.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.name}
-              </option>
-            ))}
-          </select>
-          <select
-            value={strategyFilter}
-            onChange={(e) => setStrategyFilter(e.target.value)}
-            className="h-9 rounded-md border border-border bg-card px-2 text-sm font-sans"
-            aria-label="Estrategia"
-          >
-            <option value="all">TODAS LAS ESTRATEGIAS</option>
-            {accountStrategies.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name}
-              </option>
-            ))}
+            <optgroup label="Cuentas">
+              {accounts.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.name}
+                </option>
+              ))}
+            </optgroup>
+            <optgroup label="Estrategias">
+              {accountStrategies.map((s) => (
+                <option key={s.id} value={`strategy:${s.id}`}>
+                  Estrategia-{s.name}
+                </option>
+              ))}
+            </optgroup>
           </select>
         </span>
       }
