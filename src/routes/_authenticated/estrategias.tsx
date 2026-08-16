@@ -188,10 +188,16 @@ function EstrategiasPage() {
                     <span className="ml-2 text-xs text-muted-foreground">
                       {s.strategy.mainSymbol} · {(s.strategy.riskPct * 100).toFixed(1)}%
                     </span>
+                    <span className="block text-xs text-muted-foreground">
+                      {s.accounts.length
+                        ? s.accounts.map((a) => a.name).join(", ")
+                        : "sin cuentas asignadas"}
+                    </span>
                   </td>
                   <td className="py-2 text-right tabular-nums">
-                    {formatCurrency(s.strategy.initialCapital)}
+                    {formatCurrency(s.initialCapital)}
                   </td>
+
                   <td
                     className={cn(
                       "py-2 text-right font-semibold tabular-nums",
