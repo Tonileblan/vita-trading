@@ -5,7 +5,7 @@ import { accountBalance, accountPnl, formatCurrency } from "@/lib/metrics";
 import { cn } from "@/lib/utils";
 
 export function AccountSidePanel() {
-  const { accounts, trades, selectedAccountIds, toggleAccount, selectAll } = useJournal();
+  const { accounts, trades, withdrawals, selectedAccountIds, toggleAccount, selectAll } = useJournal();
 
 
   return (
@@ -25,7 +25,7 @@ export function AccountSidePanel() {
         {accounts.map((acc) => {
           const active = selectedAccountIds.includes(acc.id);
           const pnl = accountPnl(trades, acc.id);
-          const balance = accountBalance(acc, trades);
+          const balance = accountBalance(acc, trades, withdrawals);
 
           return (
             <button

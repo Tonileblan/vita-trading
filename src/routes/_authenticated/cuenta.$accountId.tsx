@@ -62,7 +62,7 @@ function AccountDetail() {
   }
 
   const pnl = accountPnl(trades, account.id);
-  const balance = accountBalance(account, trades);
+  const balance = accountBalance(account, trades, withdrawals);
   const dd = accountDrawdown(account, trades, withdrawals);
 
   const byStrategy = strategies

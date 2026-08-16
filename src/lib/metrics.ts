@@ -175,9 +175,27 @@ export function accountPnl(trades: Trade[], accountId: string) {
     .reduce((s, t) => s + t.pnl, 0);
 }
 
-/** Balance real = balance inicial + suma de las operaciones registradas. */
-export function accountBalance(account: Account, trades: Trade[]) {
-  return account.initialBalance + accountPnl(trades, account.id);
+/** Retiros aprobados imputados a una cuenta. */
+export function accountWithdrawn(
+  withdrawals: { accountId?: string | undefined; amount: number }[],
+  accountId: string,
+) {
+  return withdrawals
+    .filter((w) => w.accountId === accountId)
+    .reduce((s, w) => s + Math.abs(w.amount), 0);
+}
+
+/** Balance real = inicial + operaciones registradas − retiros de la cuenta. */
+export function accountBalance(
+  account: Account,
+  trades: Trade[],
+  withdrawals: { accountId?: string | undefined; amount: number }[] = [],
+) {
+  return (
+    account.initialBalance +
+    accountPnl(trades, account.id) -
+    accountWithdrawn(withdrawals, account.id)
+  );
 }
 
 export interface DrawdownStatus {
