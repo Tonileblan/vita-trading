@@ -354,6 +354,43 @@ function JournalsPage() {
         </div>
       )}
 
+      {templates.filter((t) => t.owner_id !== user?.id).length > 0 && (
+        <section className="mt-8">
+          <div className="mb-3 flex items-center gap-2">
+            <Globe className="size-4 text-profit" />
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+              Ejemplos públicos
+            </h2>
+          </div>
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {templates
+              .filter((t) => t.owner_id !== user?.id)
+              .map((t) => (
+                <article key={t.id} className="panel flex flex-col gap-3 p-4">
+                  <div className="min-w-0">
+                    <h3 className="truncate text-base font-semibold">{t.name}</h3>
+                    <p className="text-xs text-muted-foreground">
+                      {t.base_currency} · {new Date(t.created_at).toLocaleDateString("es-ES")}
+                    </p>
+                  </div>
+                  {t.description && (
+                    <p className="line-clamp-2 text-sm text-muted-foreground">{t.description}</p>
+                  )}
+                  <div className="mt-auto">
+                    <Button
+                      size="sm"
+                      disabled={busyId === "clone-" + t.id}
+                      onClick={() => handleClone(t)}
+                    >
+                      <Copy className="size-4" /> Clonar diario
+                    </Button>
+                  </div>
+                </article>
+              ))}
+          </div>
+        </section>
+      )}
+
       <input
         ref={fileRef}
         type="file"
