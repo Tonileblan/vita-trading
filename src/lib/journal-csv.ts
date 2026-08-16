@@ -12,6 +12,7 @@ export const FULL_COLUMNS = [
   "moneda",
   "tipo_cuenta",
   "firma",
+  "broker",
   "balance_inicial",
   "limite_drawdown",
   "tipo_drawdown",
