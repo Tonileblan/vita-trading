@@ -192,7 +192,7 @@ function Overview() {
             className="h-7 rounded-md border border-border bg-card px-2 text-xs font-semibold"
             aria-label="Cuenta o estrategia"
           >
-            <option value="all">GENERAL</option>
+            <option value="all">Todo</option>
             <optgroup label="Cuentas">
               {accounts.map((a) => (
                 <option key={a.id} value={a.id}>
