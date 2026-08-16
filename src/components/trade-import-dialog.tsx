@@ -90,17 +90,22 @@ export function TradeImportDialog() {
       const found = await extract({
         data: { images, symbols: strategies.map((s) => s.mainSymbol) },
       });
-      const existing = new Set(trades.map((t) => dedupeKey(t)));
-      const seen = new Set<string>();
-      const parsedRows: Row[] = [];
-      for (const t of found) {
-        const key = dedupeKey(t);
-        if (seen.has(key)) continue;
-        seen.add(key);
-        const duplicate = existing.has(key);
-        const detectedAt = parseDetectedDate(t.closedAt ?? t.openedAt);
-        parsedRows.push({ ...t, key, duplicate, selected: !duplicate, detectedAt });
+      // Cuenta cuántas operaciones idénticas ya existen para no descartar repeticiones legítimas.
+      const existingCounts = new Map<string, number>();
+      for (const t of trades) {
+        const k = dedupeKey(t);
+        existingCounts.set(k, (existingCounts.get(k) ?? 0) + 1);
       }
+      const usedCounts = new Map<string, number>();
+      const parsedRows: Row[] = [];
+      found.forEach((t, i) => {
+        const key = dedupeKey(t);
+        const used = usedCounts.get(key) ?? 0;
+        usedCounts.set(key, used + 1);
+        const duplicate = used < (existingCounts.get(key) ?? 0);
+        const detectedAt = parseDetectedDate(t.closedAt ?? t.openedAt);
+        parsedRows.push({ ...t, key: `${key}#${i}`, duplicate, selected: !duplicate, detectedAt });
+      });
       setRows(parsedRows);
       if (parsedRows.length === 0) toast.error("No se detectaron operaciones en las capturas");
       else

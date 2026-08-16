@@ -49,6 +49,10 @@ Reglas:
 - Nunca inventes precios, tamaños ni fechas: lo que no se lee va como null.
 - No incluyas filas de resumen/total acumulado, balance, saldo, comisiones ni depósitos.
   Sí incluye resultados diarios individuales aunque solo tengan fecha e importe.
+- NUNCA agrupes ni elimines filas repetidas: si dos o más filas tienen el MISMO importe
+  (misma fecha o fechas distintas), devuélvelas TODAS por separado, una entrada por fila visible.
+  El número de entradas del JSON debe coincidir exactamente con el número de filas/operaciones
+  visibles en las imágenes.
 Responde SOLO con JSON válido: {"trades":[{"symbol":null,"direction":null,"openedAt":null,"closedAt":"2026-05-14T15:32:00","entryPrice":null,"exitPrice":null,"size":null,"pnl":-120.5}]}`;
 
 export const extractTradesFromImages = createServerFn({ method: "POST" })
