@@ -17,6 +17,7 @@ import { TradesTable } from "@/components/trades-table";
 import { useJournal } from "@/lib/journal-store";
 import {
   accountBalance,
+  accountTarget,
   accountResult,
   accountsCurveStart,
   buildEquityCurve,
