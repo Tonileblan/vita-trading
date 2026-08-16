@@ -2,7 +2,6 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo } from "react";
 import { ArrowLeft, Building2, User } from "lucide-react";
 import { AccountCostCard } from "@/components/account-cost-card";
-import { AccountStrategyCalendar } from "@/components/account-strategy-calendar";
 import { AppShell } from "@/components/app-shell";
 import { EquityChart } from "@/components/equity-chart";
 import { KpiCards } from "@/components/kpi-cards";
@@ -215,8 +214,6 @@ function AccountDetail() {
           </p>
           <EquityChart data={curve} />
         </section>
-
-        <AccountStrategyCalendar accountId={account.id} />
 
         {byStrategy.length > 0 && (
           <section className="panel p-4">
