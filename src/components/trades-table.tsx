@@ -139,7 +139,7 @@ export function TradesTable({
                   <Zap className="ml-1 inline size-3 text-brand-soft" aria-label="Vía webhook" />
                 )}
               </td>
-              <td className="px-4 py-3 font-semibold">{t.symbol}</td>
+              <td className="px-4 py-3 font-semibold">{t.symbol || "—"}</td>
               <td className="px-4 py-3">
                 <span
                   className={cn(
@@ -155,9 +155,9 @@ export function TradesTable({
               <td className="max-w-[160px] truncate px-4 py-3 text-muted-foreground">
                 {nameOf(t.accountId)}
               </td>
-              <td className="num px-4 py-3 text-right">{t.entryPrice}</td>
-              <td className="num px-4 py-3 text-right">{t.exitPrice}</td>
-              <td className="num px-4 py-3 text-right">{t.size}</td>
+              <td className="num px-4 py-3 text-right">{t.entryPrice > 0 ? t.entryPrice : "—"}</td>
+              <td className="num px-4 py-3 text-right">{t.exitPrice > 0 ? t.exitPrice : "—"}</td>
+              <td className="num px-4 py-3 text-right">{t.size > 0 ? t.size : "—"}</td>
               <td className="px-4 py-3">
                 <div className="flex flex-wrap gap-1">
                   {t.tags.map((tag) => (
