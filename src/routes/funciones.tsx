@@ -11,6 +11,7 @@ import {
   Users,
   MessageSquare,
   ShieldCheck,
+  EyeOff,
   Webhook,
   ServerCog,
   Download,
@@ -84,7 +85,7 @@ const FEATURES = [
   {
     icon: ShieldCheck,
     title: "Supervisión y chat interno",
-    text: "Acceso restringido al supervisor para ver el resumen de todos y comentar el desempeño en un chat interno con el equipo. Cada usuario puede activar un modo de perfil privado.",
+    text: "Acceso restringido al supervisor para ver el resumen de todos y comentar el desempeño en un chat interno con el equipo.",
   },
 ];
 
@@ -93,6 +94,11 @@ const TECH = [
   { icon: ServerCog, title: "Servidor MCP", text: "Conecta un asistente externo para consultar diarios, cuentas, estrategias y registrar operaciones." },
   { icon: Palette, title: "Autenticación", text: "Entra con Google o por email. Cada diario y sus datos quedan protegidos por control de acceso." },
   { icon: Download, title: "Respaldo completo", text: "Exporta e importa todo (diarios, cuentas, estrategias, operaciones, retiros, gastos y mente) en CSV." },
+  {
+    icon: EyeOff,
+    title: "Modo Perfil privado",
+    text: "Cada usuario puede activar un modo de perfil privado para mantener sus datos fuera de la vista de supervisión.",
+  },
 ];
 
 function FuncionesPage() {
