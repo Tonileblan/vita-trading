@@ -326,6 +326,20 @@ export function JournalProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo<JournalState>(() => {
     const visibleTrades = data.trades.filter((t) => selectedAccountIds.includes(t.accountId));
+    const importBatches = groupImportBatches(data.trades);
+    /** Borra operaciones y devuelve a cada cuenta el PnL correspondiente. */
+    const deleteTradeIds = async (ids: string[]) => {
+      if (ids.length === 0) return;
+      const { error } = await supabase.from("trades").delete().in("id", ids);
+      if (error) throw error;
+      const deltas = new Map<string, number>();
+      for (const t of data.trades) {
+        if (!ids.includes(t.id) || !t.accountId) continue;
+        deltas.set(t.accountId, (deltas.get(t.accountId) ?? 0) - t.pnl);
+      }
+      await applyBalanceDeltas(data.accounts, deltas);
+      await refresh();
+    };
     return {
       ...data,
       // Solo los retiros aprobados afectan al capital y a las métricas.
