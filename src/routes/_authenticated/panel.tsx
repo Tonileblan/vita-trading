@@ -54,7 +54,7 @@ const SCOPES = [
 type Scope = (typeof SCOPES)[number]["key"];
 
 function Overview() {
-  const { visibleTrades, accounts, selectedAccountIds } = useJournal();
+  const { visibleTrades, accounts, selectedAccountIds, withdrawals } = useJournal();
   const [range, setRange] = useState<(typeof RANGES)[number]["key"]>("all");
   const [scope, setScope] = useState<Scope>("all");
 
