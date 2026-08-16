@@ -1,5 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
+import { format } from "date-fns";
+import { CalendarIcon } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { EquityChart } from "@/components/equity-chart";
 import { KpiCards } from "@/components/kpi-cards";
@@ -7,6 +9,8 @@ import { RiskAlerts } from "@/components/risk-alerts";
 import { EmotionHighlights } from "@/components/emotion-stats";
 import { PnlCalendar } from "@/components/pnl-calendar";
 import { PerformanceAnalysis } from "@/components/performance-analysis";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 
 import { TradesTable } from "@/components/trades-table";
@@ -51,6 +55,10 @@ const RANGES = [
   { key: "all", label: "Todo" },
 ] as const;
 
+type RangeKey = (typeof RANGES)[number]["key"] | "custom";
+
+type DateRange = { from: Date | undefined; to: Date | undefined };
+
 const SCOPES = [
   { key: "all", label: "Capital total" },
   { key: "funded", label: "Capital fondeo" },
@@ -61,7 +69,8 @@ type Scope = (typeof SCOPES)[number]["key"];
 
 function Overview() {
   const { visibleTrades, accounts, strategies, selectedAccountIds, withdrawals } = useJournal();
-  const [range, setRange] = useState<(typeof RANGES)[number]["key"]>("all");
+  const [range, setRange] = useState<RangeKey>("all");
+  const [customRange, setCustomRange] = useState<DateRange>({ from: undefined, to: undefined });
   const [scope, setScope] = useState<Scope>("all");
   // Unified filter: "all" | account.id | `strategy:${strategyId}`
   const [filter, setFilter] = useState<string>("all");
@@ -109,7 +118,21 @@ function Overview() {
   }, [strategies, visibleTrades, accountFilter, accounts]);
 
 
-  const trades = useMemo(() => filterByRange(scopedTrades, range), [scopedTrades, range]);
+  const trades = useMemo(() => {
+    if (range === "custom") {
+      const from = customRange.from;
+      const to = customRange.to;
+      if (!from && !to) return scopedTrades;
+      return scopedTrades.filter((t) => {
+        const ts = new Date(t.closedAt).getTime();
+        if (from && ts < from.getTime()) return false;
+        if (to && ts > new Date(to.getTime() + 86400000).getTime()) return false;
+        return true;
+      });
+    }
+    return filterByRange(scopedTrades, range);
+  }, [scopedTrades, range, customRange]);
+  const isAllRange = range === "all";
   const metrics = useMemo(() => {
     const operationMetrics = computeMetrics(trades);
     const balanceResult = scopedAccounts.reduce(
@@ -118,9 +141,9 @@ function Overview() {
     );
     return {
       ...operationMetrics,
-      totalPnl: range === "all" ? balanceResult : operationMetrics.totalPnl,
+      totalPnl: isAllRange ? balanceResult : operationMetrics.totalPnl,
     };
-  }, [trades, scopedAccounts, scopedTrades, withdrawals, range]);
+  }, [trades, scopedAccounts, scopedTrades, withdrawals, isAllRange]);
   const curve = useMemo(
     () => buildEquityCurve(trades, accountsCurveStart(scopedAccounts, trades, withdrawals)),
     [trades, scopedAccounts, withdrawals],
@@ -160,6 +183,65 @@ function Overview() {
               </button>
             ))}
           </div>
+          <Popover>
+            <PopoverTrigger asChild>
+              <button
+                onClick={() => setRange("custom")}
+                className={cn(
+                  "flex h-9 items-center gap-1.5 rounded-md border border-border px-2.5 text-xs font-semibold transition-colors",
+                  range === "custom"
+                    ? "border-brand bg-brand/10 text-foreground"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                <CalendarIcon className="h-3.5 w-3.5" />
+                Fechas
+                {(customRange.from || customRange.to) && (
+                  <span className="text-[10px] text-muted-foreground">
+                    {customRange.from ? format(customRange.from, "dd/MM") : "…"}–
+                    {customRange.to ? format(customRange.to, "dd/MM") : "…"}
+                  </span>
+                )}
+              </button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <div className="p-3 pointer-events-auto">
+                <Calendar
+                  mode="range"
+                  numberOfMonths={1}
+                  selected={
+                    customRange.from && customRange.to
+                      ? { from: customRange.from, to: customRange.to }
+                      : customRange.from
+                        ? { from: customRange.from }
+                        : undefined
+                  }
+                  onSelect={(sel) => {
+                    if (!sel) {
+                      setCustomRange({ from: undefined, to: undefined });
+                      return;
+                    }
+                    setCustomRange({ from: sel.from, to: "to" in sel ? sel.to : undefined });
+                  }}
+                />
+                <div className="flex items-center justify-between gap-2 px-1 pt-2">
+                  <span className="text-xs text-muted-foreground">
+                    {customRange.from
+                      ? format(customRange.from, "dd/MM/yyyy")
+                      : "Inicio"}
+                    {" → "}
+                    {customRange.to ? format(customRange.to, "dd/MM/yyyy") : "Fin"}
+                  </span>
+                  <button
+                    onClick={() => setCustomRange({ from: undefined, to: undefined })}
+                    className="text-xs font-semibold text-muted-foreground hover:text-foreground"
+                  >
+                    Limpiar
+                  </button>
+                </div>
+              </div>
+            </PopoverContent>
+          </Popover>
           <select
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
