@@ -4,7 +4,7 @@ import { format } from "date-fns";
 import { CalendarIcon } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { EquityChart } from "@/components/equity-chart";
-import { KpiCards } from "@/components/kpi-cards";
+
 import { RiskAlerts } from "@/components/risk-alerts";
 import { EmotionHighlights } from "@/components/emotion-stats";
 import { PnlCalendar } from "@/components/pnl-calendar";
