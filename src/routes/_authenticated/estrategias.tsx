@@ -2,7 +2,6 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMemo } from "react";
 import { Layers, Pencil, Plus } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
-import { CapitalSplit } from "@/components/capital-split";
 import { MarketHours } from "@/components/market-hours";
 import { StrategyDialog } from "@/components/strategy-dialog";
 import { Button } from "@/components/ui/button";
