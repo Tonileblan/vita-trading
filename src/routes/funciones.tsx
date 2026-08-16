@@ -165,7 +165,7 @@ function FuncionesPage() {
 
       <section className="mx-auto max-w-2xl px-4 pb-24">
         <div className="panel flex flex-col items-start gap-4 p-6">
-          <h2 className="text-3xl leading-none">¿Listado para apuntar tus operaciones?</h2>
+          <h2 className="text-3xl leading-none">¿Listo para empezar?</h2>
           <p className="text-sm text-muted-foreground">
             Crea tu cuenta gratis y empieza a registrar operaciones en minutos.
           </p>
