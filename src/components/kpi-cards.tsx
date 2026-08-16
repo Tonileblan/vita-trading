@@ -129,7 +129,7 @@ export function KpiCards({
         {fusionEquity !== undefined && (
           <div className="mt-1.5 text-lg font-bold">
             <span className={metrics.totalPnl >= 0 ? "text-profit" : "text-loss"}>
-              {metrics.totalPnl >= 0 ? "+" : "−"}
+              {metrics.totalPnl >= 0 ? "+" : "−"} {formatCurrency(Math.abs(metrics.totalPnl), false)}
             </span>
           </div>
         )}
