@@ -72,6 +72,7 @@ function AccountDialog({ account, trigger }: { account?: Account; trigger: React
     setNewBroker("");
   };
   const [initial, setInitial] = useState(String(account?.initialBalance ?? 50000));
+  const [current, setCurrent] = useState(String(account?.currentBalance ?? 50000));
 
   const [dd, setDd] = useState(String(account?.drawdownLimit ?? 2500));
   const [ddType, setDdType] = useState<DrawdownType>(account?.drawdownType ?? "static");
@@ -84,6 +85,7 @@ function AccountDialog({ account, trigger }: { account?: Account; trigger: React
       setFirm(account.firm ?? PROP_FIRMS[0]!);
       setBroker(account.broker ?? BROKERS[0]!);
       setInitial(String(account.initialBalance));
+      setCurrent(String(account.currentBalance));
       
       setDd(String(account.drawdownLimit ?? 0));
       setDdType(account.drawdownType ?? "static");
@@ -101,7 +103,7 @@ function AccountDialog({ account, trigger }: { account?: Account; trigger: React
       firm: type === "funded" ? firm : undefined,
       broker: type === "personal" ? broker : undefined,
       initialBalance: Number(initial) || 0,
-      currentBalance: Number(initial) || 0,
+      currentBalance: Number(current) || 0,
       drawdownLimit: type === "funded" ? Number(dd) || 0 : undefined,
       drawdownType: type === "funded" ? ddType : undefined,
       currency: account?.currency ?? "USD",
@@ -259,12 +261,22 @@ function AccountDialog({ account, trigger }: { account?: Account; trigger: React
             </div>
           )}
 
-          <div className="space-y-2">
-            <Label>Balance inicial</Label>
-            <Input value={initial} onChange={(e) => setInitial(e.target.value)} inputMode="decimal" />
-            <p className="text-xs text-muted-foreground">
-              El balance actual se calcula solo: inicial + operaciones − retiros aprobados.
-            </p>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-2">
+              <Label>Balance inicial</Label>
+              <Input
+                value={initial}
+                onChange={(e) => {
+                  setInitial(e.target.value);
+                  if (!editing) setCurrent(e.target.value);
+                }}
+                inputMode="decimal"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Balance actual</Label>
+              <Input value={current} onChange={(e) => setCurrent(e.target.value)} inputMode="decimal" />
+            </div>
           </div>
 
 
