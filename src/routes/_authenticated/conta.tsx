@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { Plus } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/app-shell";
@@ -47,95 +47,49 @@ type Scope = "all" | "journal" | "general";
 
 function ContaPage() {
   const [tab, setTab] = useState<Tab>("retiros");
-  const [scope, setScope] = useState<Scope>("all");
   const [expenseDialogOpen, setExpenseDialogOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
   const [withdrawalDialogOpen, setWithdrawalDialogOpen] = useState(false);
   const [editingWithdrawal, setEditingWithdrawal] = useState<Withdrawal | null>(null);
   const { activeJournalId } = useJournal();
 
-  const action =
-    tab === "retiros" ? (
-      <Button
-        onClick={() => {
-          setEditingWithdrawal(null);
-          setWithdrawalDialogOpen(true);
-        }}
-      >
-        <Plus className="mr-1 size-4" /> Nuevo retiro
-      </Button>
-    ) : (
-      <Button
-        onClick={() => {
-          setEditingExpense(null);
-          setExpenseDialogOpen(true);
-        }}
-      >
-        <Plus className="mr-1 size-4" /> Nuevo gasto
-      </Button>
-    );
-
   return (
     <AppShell
       bareHeader
       title={
-        <div className="flex flex-wrap items-end justify-between gap-2 border-b border-border">
-          <div className="flex gap-1" role="tablist" aria-label="Sección de conta">
-            {(
-              [
-                ["retiros", "Retiros"],
-                ["gastos", "Gastos"],
-              ] as [Tab, string][]
-            ).map(([key, label]) => {
-              const active = tab === key;
-              return (
-                <button
-                  key={key}
-                  type="button"
-                  role="tab"
-                  aria-selected={active}
-                  onClick={() => setTab(key)}
-                  className={cn(
-                    "relative -mb-px rounded-t-lg border border-b-0 px-4 py-2 font-display text-lg leading-none tracking-wide transition-colors",
-                    active
-                      ? "border-border bg-card text-foreground"
-                      : "border-transparent text-muted-foreground hover:text-foreground",
-                  )}
-                >
-                  {label}
-                  {active && (
-                    <span className="pointer-events-none absolute inset-x-0 -bottom-px h-px bg-card" />
-                  )}
-                </button>
-              );
-            })}
-          </div>
-          <div className="mb-2 flex items-center gap-3">
-            <div className="flex gap-2">
-              {(
-                [
-                  ["all", "Todos"],
-                  ["journal", "Este diario"],
-                  ["general", "General"],
-                ] as [Scope, string][]
-              ).map(([key, label]) => (
-                <button
-                  key={key}
-                  type="button"
-                  onClick={() => setScope(key)}
-                  className={cn(
-                    "rounded-md border px-3 py-1.5 text-xs font-semibold transition-colors",
-                    scope === key
-                      ? "border-brand bg-brand/15 text-brand-soft"
-                      : "border-border text-muted-foreground hover:text-foreground",
-                  )}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-            {action}
-          </div>
+        <div
+          className="flex gap-1 border-b border-border"
+          role="tablist"
+          aria-label="Sección de conta"
+        >
+          {(
+            [
+              ["retiros", "Retiros"],
+              ["gastos", "Gastos"],
+            ] as [Tab, string][]
+          ).map(([key, label]) => {
+            const active = tab === key;
+            return (
+              <button
+                key={key}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                onClick={() => setTab(key)}
+                className={cn(
+                  "relative -mb-px rounded-t-lg border border-b-0 px-4 py-2 font-display text-lg leading-none tracking-wide transition-colors",
+                  active
+                    ? "border-border bg-card text-foreground"
+                    : "border-transparent text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {label}
+                {active && (
+                  <span className="pointer-events-none absolute inset-x-0 -bottom-px h-px bg-card" />
+                )}
+              </button>
+            );
+          })}
         </div>
       }
       showAccountPanel={false}
@@ -147,14 +101,33 @@ function ContaPage() {
               setEditingWithdrawal(w);
               setWithdrawalDialogOpen(true);
             }}
+            action={
+              <Button
+                onClick={() => {
+                  setEditingWithdrawal(null);
+                  setWithdrawalDialogOpen(true);
+                }}
+              >
+                <Plus className="mr-1 size-4" /> Nuevo retiro
+              </Button>
+            }
           />
         ) : (
           <ExpensesSection
-            scope={scope}
             openEdit={(e) => {
               setEditingExpense(e);
               setExpenseDialogOpen(true);
             }}
+            action={
+              <Button
+                onClick={() => {
+                  setEditingExpense(null);
+                  setExpenseDialogOpen(true);
+                }}
+              >
+                <Plus className="mr-1 size-4" /> Nuevo gasto
+              </Button>
+            }
           />
         )}
       </div>
@@ -176,8 +149,10 @@ function ContaPage() {
 
 function WithdrawalsSection({
   openEdit,
+  action,
 }: {
   openEdit: (w: Withdrawal) => void;
+  action: ReactNode;
 }) {
   const { accounts, allWithdrawals, updateWithdrawal, removeWithdrawal } = useJournal();
 
@@ -225,6 +200,7 @@ function WithdrawalsSection({
 
   return (
     <div className="space-y-5">
+      <div className="mt-6 flex justify-end">{action}</div>
       {pending.length > 0 && (
         <section className="panel min-w-0 overflow-x-auto p-4">
           <h2 className="mb-3 text-base font-semibold">
@@ -343,15 +319,16 @@ function WithdrawalsSection({
 }
 
 function ExpensesSection({
-  scope,
   openEdit,
+  action,
 }: {
-  scope: Scope;
   openEdit: (e: Expense) => void;
+  action: ReactNode;
 }) {
   const { accounts, visibleTrades, withdrawals, activeJournalId } = useJournal();
   const { data: expenses = [], isLoading } = useExpenses();
   const remove = useDeleteExpense();
+  const [scope, setScope] = useState<Scope>("all");
 
   const filtered = useMemo(() => {
     if (scope === "journal") return expenses.filter((e) => e.journal_id === activeJournalId);
@@ -407,6 +384,33 @@ function ExpensesSection({
 
   return (
     <div className="space-y-4">
+      <div className="mt-6 flex items-center justify-between gap-2">
+        <div className="flex gap-2">
+          {(
+            [
+              ["all", "Todos"],
+              ["journal", "Este diario"],
+              ["general", "General"],
+            ] as [Scope, string][]
+          ).map(([key, label]) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setScope(key)}
+              className={cn(
+                "rounded-md border px-3 py-1.5 text-xs font-semibold transition-colors",
+                scope === key
+                  ? "border-brand bg-brand/15 text-brand-soft"
+                  : "border-border text-muted-foreground hover:text-foreground",
+              )}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        {action}
+      </div>
+
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <Kpi label="Costos este mes" value={`−${formatCurrency(monthCost)}`} tone="loss" />
         <Kpi label="Costos este año" value={`−${formatCurrency(yearCost)}`} tone="loss" />
