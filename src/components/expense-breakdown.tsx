@@ -11,7 +11,7 @@ export function ExpenseBreakdown({ occurrences }: { occurrences: Occurrence[] })
   return (
     <div className="grid gap-3 lg:grid-cols-2">
       <section className="panel p-4">
-        <h2 className="text-xl leading-none">Costos por mes</h2>
+        <h2 className="text-xl leading-none">Gastos por mes</h2>
         <div className="mt-4 flex h-40 items-end gap-1.5">
           {series.map((m) => (
             <div key={m.key} className="flex flex-1 flex-col items-center gap-1">
@@ -32,7 +32,7 @@ export function ExpenseBreakdown({ occurrences }: { occurrences: Occurrence[] })
       <section className="panel space-y-3 p-4">
         <h2 className="text-xl leading-none">Desglose por categoría</h2>
         {cats.length === 0 ? (
-          <p className="text-sm text-muted-foreground">Sin costos en este periodo.</p>
+          <p className="text-sm text-muted-foreground">Sin gastos en este periodo.</p>
         ) : (
           <ul className="space-y-2.5">
             {cats.map((c) => {

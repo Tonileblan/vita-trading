@@ -37,7 +37,7 @@ export function ExpensesTable({
   if (expenses.length === 0) {
     return (
       <div className="panel p-8 text-center text-sm text-muted-foreground">
-        No hay costos registrados con estos filtros.
+        No hay gastos registrados con estos filtros.
       </div>
     );
   }
