@@ -261,11 +261,18 @@ function JournalsPage() {
                       {j.base_currency} · {new Date(j.created_at).toLocaleDateString("es-ES")}
                     </p>
                   </div>
-                  {active && (
-                    <span className="rounded bg-brand/15 px-2 py-0.5 text-[11px] font-semibold text-brand">
-                      Activo
-                    </span>
-                  )}
+                  <div className="flex flex-col items-end gap-1">
+                    {active && (
+                      <span className="rounded bg-brand/15 px-2 py-0.5 text-[11px] font-semibold text-brand">
+                        Activo
+                      </span>
+                    )}
+                    {j.is_template && (
+                      <span className="rounded bg-profit/15 px-2 py-0.5 text-[11px] font-semibold text-profit">
+                        Ejemplo público
+                      </span>
+                    )}
+                  </div>
                 </div>
                 {j.description && (
                   <p className="line-clamp-2 text-sm text-muted-foreground">{j.description}</p>
