@@ -166,38 +166,53 @@ export function ExpenseCharts({ occurrences }: { occurrences: Occurrence[] }) {
             const y = (v: number) => T + D + plotH - (v / niceMax) * plotH;
 
             return (
-              <svg viewBox={`0 0 ${W} ${H}`} className="mt-3 w-full">
-                {/* fondo del plot */}
-                <polygon
-                  points={`${L},${T} ${L + D},${T - 0} ${L + D},${T} ${L + D},${T}`}
-                  fill="none"
-                />
+              <svg viewBox={`0 0 ${W} ${H}`} className="mt-3 w-full overflow-visible">
+                <defs>
+                  <linearGradient id="barFront" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="var(--chart-2)" stopOpacity="0.95" />
+                    <stop offset="100%" stopColor="var(--chart-2)" stopOpacity="0.6" />
+                  </linearGradient>
+                  <linearGradient id="barSide" x1="0" y1="0" x2="1" y2="0">
+                    <stop offset="0%" stopColor="var(--chart-2)" stopOpacity="0.45" />
+                    <stop offset="100%" stopColor="var(--chart-2)" stopOpacity="0.25" />
+                  </linearGradient>
+                  <linearGradient id="barTop" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="var(--chart-2)" stopOpacity="1" />
+                    <stop offset="100%" stopColor="var(--chart-2)" stopOpacity="0.8" />
+                  </linearGradient>
+                  <linearGradient id="plotBg" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="var(--muted)" stopOpacity="0.35" />
+                    <stop offset="100%" stopColor="var(--muted)" stopOpacity="0.05" />
+                  </linearGradient>
+                </defs>
+
+                {/* superficie del plot */}
                 <rect
                   x={L + D}
                   y={T}
                   width={plotW}
-                  height={plotH + D}
-                  fill="var(--card)"
-                  stroke="var(--border)"
+                  height={plotH}
+                  fill="url(#plotBg)"
+                  rx={3}
                 />
-                {/* pared lateral / suelo en perspectiva */}
-                <polygon
-                  points={`${L},${T + D} ${L + D},${T} ${L + D},${T + plotH + D} ${L},${T + plotH + D + D}`}
-                  fill="var(--muted)"
-                  opacity={0.5}
-                  stroke="var(--border)"
-                />
+                {/* suelo en perspectiva */}
                 <polygon
                   points={`${L},${T + plotH + D + D} ${L + D},${T + plotH + D} ${L + D + plotW},${T + plotH + D} ${L + plotW},${T + plotH + D + D}`}
                   fill="var(--muted)"
                   opacity={0.35}
-                  stroke="var(--border)"
+                />
+                {/* pared izquierda */}
+                <polygon
+                  points={`${L},${T + D} ${L + D},${T} ${L + D},${T + plotH + D} ${L},${T + plotH + D + D}`}
+                  fill="var(--muted)"
+                  opacity={0.18}
                 />
 
                 {/* líneas guía + etiquetas */}
                 {Array.from({ length: ticks + 1 }, (_, i) => {
                   const v = (niceMax / ticks) * i;
                   const yy = y(v);
+                  const baseline = i === 0;
                   return (
                     <g key={i}>
                       <line
@@ -206,7 +221,9 @@ export function ExpenseCharts({ occurrences }: { occurrences: Occurrence[] }) {
                         y1={yy}
                         y2={yy}
                         stroke="var(--border)"
-                        strokeWidth={0.75}
+                        strokeWidth={baseline ? 1 : 0.75}
+                        strokeDasharray={baseline ? undefined : "3 4"}
+                        opacity={baseline ? 1 : 0.8}
                       />
                       <line
                         x1={L}
@@ -214,13 +231,15 @@ export function ExpenseCharts({ occurrences }: { occurrences: Occurrence[] }) {
                         y1={yy + D}
                         y2={yy}
                         stroke="var(--border)"
-                        strokeWidth={0.75}
+                        strokeWidth={0.6}
+                        opacity={0.7}
                       />
                       <text
-                        x={L - 6}
+                        x={L - 8}
                         y={yy + D + 3.5}
                         textAnchor="end"
-                        fontSize={10}
+                        fontSize={9.5}
+                        letterSpacing="0.04em"
                         fill="var(--muted-foreground)"
                       >
                         {Math.round(v).toLocaleString("es-ES")}
@@ -240,54 +259,71 @@ export function ExpenseCharts({ occurrences }: { occurrences: Occurrence[] }) {
                       <text
                         key={m.key}
                         x={x + bw / 2}
-                        y={H - 12}
+                        y={H - 10}
                         textAnchor="middle"
-                        fontSize={10}
+                        fontSize={9.5}
+                        letterSpacing="0.06em"
                         fill="var(--muted-foreground)"
                       >
-                        {m.label}
+                        {m.label.toUpperCase()}
                       </text>
                     );
                   }
                   return (
-                    <g key={m.key}>
+                    <g key={m.key} className="transition-opacity hover:opacity-90">
                       <title>{`${m.label}: ${formatCurrency(m.amount)}`}</title>
+                      {/* sombra proyectada */}
+                      <ellipse
+                        cx={x + bw / 2 + D / 2}
+                        cy={base + D * 0.7}
+                        rx={bw * 0.62}
+                        ry={D * 0.42}
+                        fill="var(--foreground)"
+                        opacity={0.08}
+                      />
                       {/* cara superior */}
                       <polygon
                         points={`${x},${yTop} ${x + D},${yTop - D} ${x + bw + D},${yTop - D} ${x + bw},${yTop}`}
-                        fill="var(--chart-2)"
-                        opacity={0.9}
-                        stroke="var(--border)"
-                        strokeWidth={0.5}
+                        fill="url(#barTop)"
                       />
                       {/* lateral derecho */}
                       <polygon
                         points={`${x + bw},${yTop} ${x + bw + D},${yTop - D} ${x + bw + D},${base - D} ${x + bw},${base}`}
-                        fill="var(--chart-2)"
-                        opacity={0.55}
-                        stroke="var(--border)"
-                        strokeWidth={0.5}
+                        fill="url(#barSide)"
                       />
                       {/* cara frontal */}
+                      <rect x={x} y={yTop} width={bw} height={h} fill="url(#barFront)" />
+                      {/* brillo lateral */}
                       <rect
                         x={x}
                         y={yTop}
-                        width={bw}
+                        width={Math.min(2, bw / 6)}
                         height={h}
-                        fill="var(--chart-2)"
-                        stroke="var(--border)"
-                        strokeWidth={0.5}
+                        fill="var(--background)"
+                        opacity={0.18}
                       />
                       <text
-                        x={x + bw / 2}
-                        y={H - 12}
+                        x={x + bw / 2 + D / 2}
+                        y={yTop - D - 5}
                         textAnchor="middle"
-                        fontSize={10}
+                        fontSize={9}
+                        fill="var(--foreground)"
+                        opacity={0.75}
+                      >
+                        {Math.round(m.amount).toLocaleString("es-ES")}
+                      </text>
+                      <text
+                        x={x + bw / 2}
+                        y={H - 10}
+                        textAnchor="middle"
+                        fontSize={9.5}
+                        letterSpacing="0.06em"
                         fill="var(--muted-foreground)"
                       >
-                        {m.label}
+                        {m.label.toUpperCase()}
                       </text>
                     </g>
+
                   );
                 })}
               </svg>
