@@ -324,6 +324,13 @@ export function JournalProvider({ children }: { children: ReactNode }) {
           .from("trades")
           .insert({ ...fromTrade(trade), ...base } as never);
         if (error) throw error;
+        const account = data.accounts.find((a) => a.id === trade.accountId);
+        if (account) {
+          await supabase
+            .from("accounts")
+            .update({ current_balance: account.currentBalance + trade.pnl } as never)
+            .eq("id", account.id);
+        }
         await refresh();
       },
       addTrades: async (list) => {
@@ -333,8 +340,26 @@ export function JournalProvider({ children }: { children: ReactNode }) {
           .from("trades")
           .insert(list.map((t) => ({ ...fromTrade(t), ...base })) as never);
         if (error) throw error;
+        // Suma del PnL por cuenta para actualizar cada balance una única vez.
+        const deltas = new Map<string, number>();
+        for (const t of list) {
+          if (!t.accountId) continue;
+          deltas.set(t.accountId, (deltas.get(t.accountId) ?? 0) + t.pnl);
+        }
+        await Promise.all(
+          [...deltas].map(([id, delta]) => {
+            const account = data.accounts.find((a) => a.id === id);
+            if (!account) return Promise.resolve();
+            return supabase
+              .from("accounts")
+              .update({ current_balance: account.currentBalance + delta } as never)
+              .eq("id", id)
+              .then(() => undefined);
+          }),
+        );
         await refresh();
       },
+
 
 
       addWithdrawal: async (withdrawal) => {
