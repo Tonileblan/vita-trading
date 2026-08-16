@@ -24,6 +24,7 @@ import {
 import { useJournal } from "@/lib/journal-store";
 import { extractTradesFromImages, type ExtractedTrade } from "@/lib/trade-vision.functions";
 import { formatCurrency } from "@/lib/metrics";
+import { parseDetectedDate } from "@/lib/parse-date";
 import { cn } from "@/lib/utils";
 
 /** Clave de deduplicación: mismo activo, dirección, día y PnL. */
