@@ -17,5 +17,11 @@ export default defineMcp({
     issuer: `https://${projectRef}.supabase.co/auth/v1`,
     acceptedAudiences: "authenticated",
   }),
-  tools: [listJournalsTool, listAccountsTool, listStrategiesTool, listTradesTool, createTradeTool],
+  tools: [
+    listJournalsTool,
+    listAccountsTool,
+    listStrategiesTool,
+    listTradesTool,
+    createTradeTool,
+  ] as unknown as Parameters<typeof defineMcp>[0]["tools"],
 });
