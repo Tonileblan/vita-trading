@@ -275,7 +275,7 @@ export interface DrawdownStatus {
   remaining: number;
   pct: number;
   breached: boolean;
-  /** Fecha en la que se perforó el suelo por primera vez (ISO). */
+  /** Último cierre diario por debajo del suelo vigente (informativo, no rompe la cuenta). */
   breachedAt?: string;
   /** El suelo dinámico ya no sube más (alcanzó el capital inicial). */
   frozen: boolean;
