@@ -118,7 +118,21 @@ function Overview() {
   }, [strategies, visibleTrades, accountFilter, accounts]);
 
 
-  const trades = useMemo(() => filterByRange(scopedTrades, range), [scopedTrades, range]);
+  const trades = useMemo(() => {
+    if (range === "custom") {
+      const from = customRange.from;
+      const to = customRange.to;
+      if (!from && !to) return scopedTrades;
+      return scopedTrades.filter((t) => {
+        const ts = new Date(t.closedAt).getTime();
+        if (from && ts < from.getTime()) return false;
+        if (to && ts > new Date(to.getTime() + 86400000).getTime()) return false;
+        return true;
+      });
+    }
+    return filterByRange(scopedTrades, range);
+  }, [scopedTrades, range, customRange]);
+  const isAllRange = range === "all";
   const metrics = useMemo(() => {
     const operationMetrics = computeMetrics(trades);
     const balanceResult = scopedAccounts.reduce(
@@ -127,9 +141,9 @@ function Overview() {
     );
     return {
       ...operationMetrics,
-      totalPnl: range === "all" ? balanceResult : operationMetrics.totalPnl,
+      totalPnl: isAllRange ? balanceResult : operationMetrics.totalPnl,
     };
-  }, [trades, scopedAccounts, scopedTrades, withdrawals, range]);
+  }, [trades, scopedAccounts, scopedTrades, withdrawals, isAllRange]);
   const curve = useMemo(
     () => buildEquityCurve(trades, accountsCurveStart(scopedAccounts, trades, withdrawals)),
     [trades, scopedAccounts, withdrawals],
