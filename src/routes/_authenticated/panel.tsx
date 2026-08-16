@@ -100,7 +100,9 @@ function Overview() {
       actions={<TradeFormDialog />}
     >
       <div className="space-y-5">
+        <RiskAlerts />
         <section className="grid gap-3 sm:grid-cols-3">
+
           {SCOPES.map((s) => (
             <button
               key={s.key}
