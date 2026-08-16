@@ -62,6 +62,15 @@ function AccountDialog({ account, trigger }: { account?: Account; trigger: React
     setFirm(added);
     setNewFirm("");
   };
+  const { brokers, customBrokers, addBroker, removeBroker } = useBrokers();
+  const [newBroker, setNewBroker] = useState("");
+  const [broker, setBroker] = useState(account?.broker ?? BROKERS[0]!);
+  const handleAddBroker = () => {
+    const added = addBroker(newBroker);
+    if (!added) return;
+    setBroker(added);
+    setNewBroker("");
+  };
   const [initial, setInitial] = useState(String(account?.initialBalance ?? 50000));
   const [current, setCurrent] = useState(String(account?.currentBalance ?? 50000));
   const [dd, setDd] = useState(String(account?.drawdownLimit ?? 2500));
