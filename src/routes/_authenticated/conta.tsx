@@ -343,16 +343,15 @@ function WithdrawalsSection({
 }
 
 function ExpensesSection({
+  scope,
   openEdit,
-  action,
 }: {
+  scope: Scope;
   openEdit: (e: Expense) => void;
-  action: ReactNode;
 }) {
   const { accounts, visibleTrades, withdrawals, activeJournalId } = useJournal();
   const { data: expenses = [], isLoading } = useExpenses();
   const remove = useDeleteExpense();
-  const [scope, setScope] = useState<Scope>("all");
 
   const filtered = useMemo(() => {
     if (scope === "journal") return expenses.filter((e) => e.journal_id === activeJournalId);
@@ -408,33 +407,6 @@ function ExpensesSection({
 
   return (
     <div className="space-y-4">
-      <div className="mt-6 flex items-center justify-between gap-2">
-        <div className="flex gap-2">
-          {(
-            [
-              ["all", "Todos"],
-              ["journal", "Este diario"],
-              ["general", "General"],
-            ] as [Scope, string][]
-          ).map(([key, label]) => (
-            <button
-              key={key}
-              type="button"
-              onClick={() => setScope(key)}
-              className={cn(
-                "rounded-md border px-3 py-1.5 text-xs font-semibold transition-colors",
-                scope === key
-                  ? "border-brand bg-brand/15 text-brand-soft"
-                  : "border-border text-muted-foreground hover:text-foreground",
-              )}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-        {action}
-      </div>
-
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <Kpi label="Costos este mes" value={`−${formatCurrency(monthCost)}`} tone="loss" />
         <Kpi label="Costos este año" value={`−${formatCurrency(yearCost)}`} tone="loss" />
