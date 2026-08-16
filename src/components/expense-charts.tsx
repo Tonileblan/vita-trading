@@ -205,7 +205,7 @@ export function ExpenseCharts({ occurrences }: { occurrences: Occurrence[] }) {
 
                 {/* líneas guía + etiquetas */}
                 {Array.from({ length: ticks + 1 }, (_, i) => {
-                  const v = (niceMax / ticks) * i;
+                  const v = tickStep * i;
                   const yy = y(v);
                   const baseline = i === 0;
                   return (
