@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo } from "react";
 import { ArrowLeft, Building2, User } from "lucide-react";
 import { AccountCostCard } from "@/components/account-cost-card";
+import { AccountStrategyCalendar } from "@/components/account-strategy-calendar";
 import { AppShell } from "@/components/app-shell";
 import { EquityChart } from "@/components/equity-chart";
 import { KpiCards } from "@/components/kpi-cards";
@@ -43,7 +44,7 @@ export const Route = createFileRoute("/_authenticated/cuenta/$accountId")({
 
 function AccountDetail() {
   const { accountId } = Route.useParams();
-  const { accounts, trades, strategies, withdrawals, loading } = useJournal();
+  const { accounts, trades, strategies, withdrawals, strategyPeriods, loading } = useJournal();
   const account = accounts.find((a) => a.id === accountId);
 
   const accTrades = useMemo(
@@ -77,7 +78,7 @@ function AccountDetail() {
 
   const byStrategy = strategies
     .map((s) => {
-      const own = accTrades.filter((t) => effectiveStrategyId(t, accounts) === s.id);
+      const own = accTrades.filter((t) => effectiveStrategyId(t, accounts, strategyPeriods) === s.id);
       return { name: s.name, count: own.length, net: own.reduce((sum, t) => sum + t.pnl, 0) };
     })
     .filter((r) => r.count > 0)
@@ -214,6 +215,8 @@ function AccountDetail() {
           </p>
           <EquityChart data={curve} />
         </section>
+
+        <AccountStrategyCalendar accountId={account.id} />
 
         {byStrategy.length > 0 && (
           <section className="panel p-4">
