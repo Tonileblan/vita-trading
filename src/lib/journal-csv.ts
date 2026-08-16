@@ -14,6 +14,7 @@ export const FULL_COLUMNS = [
   "firma",
   "broker",
   "balance_inicial",
+  "balance_actual",
   "limite_drawdown",
   "tipo_drawdown",
   "capital_inicial",
@@ -164,6 +165,7 @@ async function journalRows(j: Journal): Promise<CsvRow[]> {
       firma: a.firm ?? "",
       broker: a.broker ?? "",
       balance_inicial: a.initialBalance,
+      balance_actual: a.currentBalance,
       limite_drawdown: a.drawdownLimit ?? "",
       tipo_drawdown: a.drawdownType ?? "static",
     });
@@ -420,7 +422,7 @@ export async function importJournalCsv(
           firm: at(r, "firma") || null,
           broker: at(r, "broker") || null,
           initial_balance: num(at(r, "balance_inicial")),
-          current_balance: num(at(r, "balance_inicial")),
+          current_balance: num(at(r, "balance_actual")) || num(at(r, "balance_inicial")),
           drawdown_limit: at(r, "limite_drawdown") ? num(at(r, "limite_drawdown")) : null,
           drawdown_type: ["static", "trailing", "eod"].includes(at(r, "tipo_drawdown"))
             ? at(r, "tipo_drawdown")

@@ -185,17 +185,30 @@ export function accountWithdrawn(
     .reduce((s, w) => s + Math.abs(w.amount), 0);
 }
 
-/** Balance real = inicial + operaciones registradas − retiros de la cuenta. */
+/** Balance real = balance actual guardado − retiros aprobados de la cuenta. */
 export function accountBalance(
   account: Account,
   trades: Trade[],
   withdrawals: { accountId?: string | undefined; amount: number }[] = [],
 ) {
-  return (
-    account.initialBalance +
-    accountPnl(trades, account.id) -
-    accountWithdrawn(withdrawals, account.id)
-  );
+  return account.currentBalance - accountWithdrawn(withdrawals, account.id);
+}
+
+/** Base de una curva para que termine en el balance actual registrado. */
+export function accountCurveStart(
+  account: Account,
+  trades: Trade[],
+  withdrawals: { accountId?: string | undefined; amount: number }[] = [],
+) {
+  return accountBalance(account, trades, withdrawals) - accountPnl(trades, account.id);
+}
+
+export function accountsCurveStart(
+  accounts: Account[],
+  trades: Trade[],
+  withdrawals: { accountId?: string | undefined; amount: number }[] = [],
+) {
+  return accounts.reduce((sum, account) => sum + accountCurveStart(account, trades, withdrawals), 0);
 }
 
 export interface DrawdownStatus {
@@ -242,6 +255,8 @@ export function accountDrawdown(
   if (!limit) return null;
 
   const initial = account.initialBalance;
+  const recordedPnl = accountPnl(trades, account.id);
+  const balanceBeforeEvents = account.currentBalance - recordedPnl;
   // El suelo dinámico deja de subir cuando la referencia alcanza inicial + límite.
   const maxReference = initial + limit;
 
@@ -255,8 +270,8 @@ export function accountDrawdown(
 
   const today = localDayKey(new Date().toISOString());
 
-  let running = initial;
-  let peak = initial;
+  let running = balanceBeforeEvents;
+  let peak = Math.max(initial, balanceBeforeEvents);
   let breachedAt: string | undefined;
   const eodBalances = new Map<string, number>();
   // Referencia EOD vigente durante el recorrido (mayor cierre de días anteriores).
