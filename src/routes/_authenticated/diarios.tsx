@@ -78,7 +78,22 @@ function JournalsPage() {
     }
   }
 
-  async function handleExport(j: Journal) {
+  async function handleClone(tpl: Journal) {
+    const name = prompt("Nombre para tu copia del diario", tpl.name);
+    if (!name?.trim()) return;
+    setBusyId("clone-" + tpl.id);
+    try {
+      const created = await cloneTemplateJournal(tpl.id, name.trim());
+      await qc.invalidateQueries({ queryKey: ["journals"] });
+      await qc.invalidateQueries({ queryKey: ["journal-data"] });
+      setActiveJournalId(created.id);
+      toast.success(`Diario "${name.trim()}" creado a partir del ejemplo`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "No se pudo clonar el diario");
+    } finally {
+      setBusyId(null);
+    }
+  }
     setBusyId(j.id);
     try {
       const n = await exportJournalCsv(j.id, j.name);
