@@ -320,6 +320,8 @@ function Overview() {
           <EquityChart data={curve} />
         </section>
 
+        <PnlCalendar trades={scopedTrades} />
+
         <section className="space-y-3">
           <h2 className="text-base font-semibold">Últimas operaciones</h2>
           <TradesTable trades={trades} accounts={accounts} limit={12} />
