@@ -330,40 +330,45 @@ export function accountDrawdown(
   // Referencia EOD vigente durante el recorrido (mayor cierre de días anteriores).
   let eodReference = initial;
   let lastDay: string | null = null;
+  let lastAt: string | null = null;
+
+  const refFor = (peakNow: number, eodRef: number) => {
+    if (type === "trailing") return Math.min(peakNow, maxReference);
+    if (type === "eod") return Math.min(Math.max(initial, eodRef), maxReference);
+    return initial;
+  };
+
+  const closeDay = (day: string, at: string) => {
+    const close = eodBalances.get(day);
+    if (close === undefined) return;
+    // La rotura se evalúa solo sobre cierres diarios ya consolidados.
+    const refNow = refFor(peak, eodReference);
+    if (close <= refNow - limit) breachedAt = at;
+    eodReference = Math.max(eodReference, close);
+  };
 
   for (const ev of events) {
     const day = localDayKey(ev.at);
-    if (lastDay !== null && day !== lastDay) {
-      const prevClose = eodBalances.get(lastDay);
-      if (prevClose !== undefined) eodReference = Math.max(eodReference, prevClose);
-    }
+    if (lastDay !== null && day !== lastDay) closeDay(lastDay, lastAt ?? ev.at);
     lastDay = day;
+    lastAt = ev.at;
 
     running += ev.delta;
     eodBalances.set(day, running);
     peak = Math.max(peak, running);
-
-    let refNow = initial;
-    if (type === "trailing") refNow = Math.min(peak, maxReference);
-    if (type === "eod") refNow = Math.min(Math.max(initial, eodReference), maxReference);
-    if (!breachedAt && running <= refNow - limit) breachedAt = ev.at;
   }
   // Consolida el último día si ya no es hoy.
-  if (lastDay !== null && lastDay !== today) {
-    const close = eodBalances.get(lastDay);
-    if (close !== undefined) eodReference = Math.max(eodReference, close);
-  }
+  if (lastDay !== null && lastDay !== today) closeDay(lastDay, lastAt ?? new Date().toISOString());
 
   const balance = running;
 
-  let reference = initial;
-  if (type === "trailing") reference = Math.min(peak, maxReference);
-  if (type === "eod") reference = Math.min(Math.max(initial, eodReference), maxReference);
+  const reference = refFor(peak, eodReference);
 
   const floor = reference - limit;
   const used = Math.max(0, reference - balance);
   const frozen = type !== "static" && reference >= maxReference;
-  const breached = balance <= floor || breachedAt !== undefined;
+  const breached = balance <= floor;
+
   return {
     type,
     label: DD_LABELS[type],
