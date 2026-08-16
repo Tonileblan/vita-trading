@@ -82,16 +82,17 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Vita-Trading — Bitácora de Trading" },
+      { title: "Bitácora de Trading — Diarios, métricas y equipo" },
       {
         name: "description",
         content:
-          "Bitácora de trading con métricas, curva de capital y gestión de cuentas de fondeo.",
+          "Registra operaciones, organiza varios diarios de trading y gestiona usuarios con métricas en tiempo real.",
       },
-      { property: "og:title", content: "Vita-Trading — Bitácora de Trading" },
+      { property: "og:title", content: "Bitácora de Trading — Diarios, métricas y equipo" },
       {
         property: "og:description",
-        content: "Registra operaciones, analiza métricas y automatiza con webhooks.",
+        content:
+          "Registra operaciones, organiza varios diarios de trading y gestiona usuarios con métricas en tiempo real.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
