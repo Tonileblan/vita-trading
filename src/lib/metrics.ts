@@ -194,6 +194,15 @@ export function accountBalance(
   return account.currentBalance - accountWithdrawn(withdrawals, account.id);
 }
 
+/** Resultado real de la cuenta = balance vigente − capital inicial. */
+export function accountResult(
+  account: Account,
+  trades: Trade[],
+  withdrawals: { accountId?: string | undefined; amount: number }[] = [],
+) {
+  return accountBalance(account, trades, withdrawals) - account.initialBalance;
+}
+
 /** Base de una curva para que termine en el balance actual registrado. */
 export function accountCurveStart(
   account: Account,
