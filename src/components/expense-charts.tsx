@@ -60,8 +60,6 @@ function sidePath(s: Slice) {
 export function ExpenseCharts({ occurrences }: { occurrences: Occurrence[] }) {
   const cats = byCategory(occurrences);
   const total = cats.reduce((s, c) => s + c.amount, 0);
-  const series = monthlySeries(occurrences, 12);
-  const max = Math.max(...series.map((s) => s.amount), 1);
 
   let cursor = -Math.PI / 2;
   const slices: Slice[] = cats.map((c) => {
