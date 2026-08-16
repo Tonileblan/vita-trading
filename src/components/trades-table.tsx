@@ -141,7 +141,7 @@ export function TradesTable({
                   <Zap className="ml-1 inline size-3 text-brand-soft" aria-label="Vía webhook" />
                 )}
               </td>
-              <td className="px-4 py-3 font-semibold">{t.symbol || "—"}</td>
+              <td className="px-4 py-3 font-semibold">{symbolOf(t.symbol)}</td>
               <td className="px-4 py-3">
                 <span
                   className={cn(
