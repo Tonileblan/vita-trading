@@ -525,11 +525,14 @@ export type Database = {
         Row: {
           account_id: string | null
           amount: number
+          approved_at: string | null
           created_at: string
           date: string
           id: string
           journal_id: string
           reason: string | null
+          requested_at: string | null
+          status: string
           strategy_id: string | null
           updated_at: string
           user_id: string
@@ -537,11 +540,14 @@ export type Database = {
         Insert: {
           account_id?: string | null
           amount?: number
+          approved_at?: string | null
           created_at?: string
           date?: string
           id?: string
           journal_id: string
           reason?: string | null
+          requested_at?: string | null
+          status?: string
           strategy_id?: string | null
           updated_at?: string
           user_id: string
@@ -549,11 +555,14 @@ export type Database = {
         Update: {
           account_id?: string | null
           amount?: number
+          approved_at?: string | null
           created_at?: string
           date?: string
           id?: string
           journal_id?: string
           reason?: string | null
+          requested_at?: string | null
+          status?: string
           strategy_id?: string | null
           updated_at?: string
           user_id?: string
