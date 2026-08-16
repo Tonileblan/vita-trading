@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { Plus } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/app-shell";
@@ -93,27 +93,6 @@ function ContaPage() {
         </div>
       }
       showAccountPanel={false}
-      actions={
-        tab === "gastos" ? (
-          <Button
-            onClick={() => {
-              setEditingExpense(null);
-              setExpenseDialogOpen(true);
-            }}
-          >
-            <Plus className="mr-1 size-4" /> Nuevo gasto
-          </Button>
-        ) : (
-          <Button
-            onClick={() => {
-              setEditingWithdrawal(null);
-              setWithdrawalDialogOpen(true);
-            }}
-          >
-            <Plus className="mr-1 size-4" /> Nuevo retiro
-          </Button>
-        )
-      }
     >
       <div className="space-y-4">
         {tab === "retiros" ? (
@@ -122,6 +101,16 @@ function ContaPage() {
               setEditingWithdrawal(w);
               setWithdrawalDialogOpen(true);
             }}
+            action={
+              <Button
+                onClick={() => {
+                  setEditingWithdrawal(null);
+                  setWithdrawalDialogOpen(true);
+                }}
+              >
+                <Plus className="mr-1 size-4" /> Nuevo retiro
+              </Button>
+            }
           />
         ) : (
           <ExpensesSection
@@ -129,6 +118,16 @@ function ContaPage() {
               setEditingExpense(e);
               setExpenseDialogOpen(true);
             }}
+            action={
+              <Button
+                onClick={() => {
+                  setEditingExpense(null);
+                  setExpenseDialogOpen(true);
+                }}
+              >
+                <Plus className="mr-1 size-4" /> Nuevo gasto
+              </Button>
+            }
           />
         )}
       </div>
@@ -148,7 +147,13 @@ function ContaPage() {
   );
 }
 
-function WithdrawalsSection({ openEdit }: { openEdit: (w: Withdrawal) => void }) {
+function WithdrawalsSection({
+  openEdit,
+  action,
+}: {
+  openEdit: (w: Withdrawal) => void;
+  action: ReactNode;
+}) {
   const { accounts, allWithdrawals, updateWithdrawal, removeWithdrawal } = useJournal();
 
   const approved = useMemo(
@@ -195,6 +200,7 @@ function WithdrawalsSection({ openEdit }: { openEdit: (w: Withdrawal) => void })
 
   return (
     <div className="space-y-5">
+      <div className="mt-6 flex justify-end">{action}</div>
       {pending.length > 0 && (
         <section className="panel min-w-0 overflow-x-auto p-4">
           <h2 className="mb-3 text-base font-semibold">
@@ -312,7 +318,13 @@ function WithdrawalsSection({ openEdit }: { openEdit: (w: Withdrawal) => void })
   );
 }
 
-function ExpensesSection({ openEdit }: { openEdit: (e: Expense) => void }) {
+function ExpensesSection({
+  openEdit,
+  action,
+}: {
+  openEdit: (e: Expense) => void;
+  action: ReactNode;
+}) {
   const { accounts, visibleTrades, withdrawals, activeJournalId } = useJournal();
   const { data: expenses = [], isLoading } = useExpenses();
   const remove = useDeleteExpense();
@@ -372,28 +384,31 @@ function ExpensesSection({ openEdit }: { openEdit: (e: Expense) => void }) {
 
   return (
     <div className="space-y-4">
-      <div className="mt-6 flex gap-2">
-        {(
-          [
-            ["all", "Todos"],
-            ["journal", "Este diario"],
-            ["general", "General"],
-          ] as [Scope, string][]
-        ).map(([key, label]) => (
-          <button
-            key={key}
-            type="button"
-            onClick={() => setScope(key)}
-            className={cn(
-              "rounded-md border px-3 py-1.5 text-xs font-semibold transition-colors",
-              scope === key
-                ? "border-brand bg-brand/15 text-brand-soft"
-                : "border-border text-muted-foreground hover:text-foreground",
-            )}
-          >
-            {label}
-          </button>
-        ))}
+      <div className="mt-6 flex items-center justify-between gap-2">
+        <div className="flex gap-2">
+          {(
+            [
+              ["all", "Todos"],
+              ["journal", "Este diario"],
+              ["general", "General"],
+            ] as [Scope, string][]
+          ).map(([key, label]) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setScope(key)}
+              className={cn(
+                "rounded-md border px-3 py-1.5 text-xs font-semibold transition-colors",
+                scope === key
+                  ? "border-brand bg-brand/15 text-brand-soft"
+                  : "border-border text-muted-foreground hover:text-foreground",
+              )}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        {action}
       </div>
 
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
