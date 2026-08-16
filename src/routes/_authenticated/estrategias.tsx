@@ -44,7 +44,7 @@ function EstrategiasPage() {
     [strategies, trades, withdrawals, accounts, strategyPeriods],
   );
 
-  const [calendarAccountId, setCalendarAccountId] = useState<string>("");
+  const [calendarAccountIds, setCalendarAccountIds] = useState<string[]>([]);
 
   const statById = useMemo(
     () => new Map(stats.map((s) => [s.strategy.id, s])),
@@ -275,34 +275,57 @@ function EstrategiasPage() {
           </table>
         </section>
         <section className="panel p-4">
-          <h2 className="text-xl leading-none">Estrategia por fechas</h2>
+          <h2 className="text-xl leading-none">Calendario</h2>
           <p className="mb-3 text-xs text-muted-foreground">
-            Elige una cuenta y asigna la estrategia que usaste en cada tramo de fechas.
+            Elige una o varias cuentas y asigna la estrategia que usaste en cada tramo de fechas.
           </p>
-          <div className="mb-4 flex flex-wrap gap-2">
-            {accounts.map((a) => (
+          <div className="mb-4 flex flex-wrap items-center gap-2">
+            {accounts.map((a) => {
+              const active = calendarAccountIds.includes(a.id);
+              return (
+                <button
+                  key={a.id}
+                  type="button"
+                  onClick={() =>
+                    setCalendarAccountIds((prev) =>
+                      prev.includes(a.id) ? prev.filter((id) => id !== a.id) : [...prev, a.id],
+                    )
+                  }
+                  className={cn(
+                    "rounded-full border px-3 py-1 text-xs font-semibold transition",
+                    active
+                      ? "border-foreground bg-foreground text-background"
+                      : "border-border text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  {a.name}
+                </button>
+              );
+            })}
+            {accounts.length > 1 && (
               <button
-                key={a.id}
                 type="button"
-                onClick={() => setCalendarAccountId(a.id)}
-                className={cn(
-                  "rounded-full border px-3 py-1 text-xs font-semibold transition",
-                  calendarAccountId === a.id
-                    ? "border-foreground bg-foreground text-background"
-                    : "border-border text-muted-foreground hover:text-foreground",
-                )}
+                onClick={() =>
+                  setCalendarAccountIds((prev) =>
+                    prev.length === accounts.length ? [] : accounts.map((a) => a.id),
+                  )
+                }
+                className="rounded-full border border-dashed border-border px-3 py-1 text-xs font-semibold text-muted-foreground hover:text-foreground"
               >
-                {a.name}
+                {calendarAccountIds.length === accounts.length ? "Ninguna" : "Todas"}
               </button>
-            ))}
+            )}
             {accounts.length === 0 && (
               <p className="text-sm text-muted-foreground">No hay cuentas todavía.</p>
             )}
           </div>
-          {calendarAccountId ? (
-            <AccountStrategyCalendar key={calendarAccountId} accountId={calendarAccountId} />
+          {calendarAccountIds.length > 0 ? (
+            <AccountStrategyCalendar
+              key={calendarAccountIds.join(",")}
+              accountIds={calendarAccountIds}
+            />
           ) : accounts.length > 0 ? (
-            <p className="text-sm text-muted-foreground">Selecciona una cuenta para ver el calendario.</p>
+            <p className="text-sm text-muted-foreground">Selecciona una o varias cuentas para ver el calendario.</p>
           ) : null}
         </section>
       </div>
