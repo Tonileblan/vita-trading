@@ -59,6 +59,8 @@ export function TradeImportDialog() {
   const [loading, setLoading] = useState(false);
   const [dragging, setDragging] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const cameraRef = useRef<HTMLInputElement>(null);
+
 
   const addFiles = (files: FileList | File[] | null) => {
     if (!files) return;
@@ -145,9 +147,10 @@ export function TradeImportDialog() {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button variant="outline">
-          <Camera className="size-4" /> Importar desde captura
+          <Camera className="size-4" /> Foto o captura
         </Button>
       </DialogTrigger>
+
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>Importar operaciones desde imagen</DialogTitle>
@@ -202,16 +205,23 @@ export function TradeImportDialog() {
             addFiles(e.dataTransfer.files);
           }}
           onPaste={(e) => addFiles(Array.from(e.clipboardData.files))}
-          onClick={() => fileRef.current?.click()}
           className={cn(
-            "cursor-pointer rounded-lg border-2 border-dashed p-6 text-center text-sm transition-colors",
+            "rounded-lg border-2 border-dashed p-6 text-center text-sm transition-colors",
             dragging
               ? "border-brand bg-brand/10 text-brand-soft"
-              : "border-border text-muted-foreground hover:border-brand/60",
+              : "border-border text-muted-foreground",
           )}
         >
           <ImagePlus className="mx-auto mb-2 size-6" />
-          Arrastra, pega (Ctrl+V) o haz clic para subir capturas (máx. 6)
+          Arrastra, pega (Ctrl+V) o usa los botones (máx. 6)
+          <div className="mt-3 flex flex-wrap justify-center gap-2">
+            <Button type="button" variant="secondary" onClick={() => cameraRef.current?.click()}>
+              <Camera className="size-4" /> Hacer foto
+            </Button>
+            <Button type="button" variant="outline" onClick={() => fileRef.current?.click()}>
+              <ImagePlus className="size-4" /> Elegir captura
+            </Button>
+          </div>
           <input
             ref={fileRef}
             type="file"
@@ -220,7 +230,16 @@ export function TradeImportDialog() {
             hidden
             onChange={(e) => addFiles(e.target.files)}
           />
+          <input
+            ref={cameraRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            hidden
+            onChange={(e) => addFiles(e.target.files)}
+          />
         </div>
+
 
         {images.length > 0 && (
           <div className="grid grid-cols-4 gap-2">
