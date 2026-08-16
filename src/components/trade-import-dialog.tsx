@@ -145,9 +145,10 @@ export function TradeImportDialog() {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button variant="outline">
-          <Camera className="size-4" /> Importar desde captura
+          <Camera className="size-4" /> Foto o captura
         </Button>
       </DialogTrigger>
+
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>Importar operaciones desde imagen</DialogTitle>
