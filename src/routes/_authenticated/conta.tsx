@@ -372,7 +372,7 @@ function ExpensesSection({ openEdit }: { openEdit: (e: Expense) => void }) {
 
   return (
     <div className="space-y-4">
-      <div className="flex gap-2">
+      <div className="mb-2 flex gap-2">
         {(
           [
             ["all", "Todos"],
@@ -385,7 +385,7 @@ function ExpensesSection({ openEdit }: { openEdit: (e: Expense) => void }) {
             type="button"
             onClick={() => setScope(key)}
             className={cn(
-              "rounded-full border px-3 py-1 text-xs font-semibold transition-colors",
+              "rounded-md border px-3 py-1.5 text-xs font-semibold transition-colors",
               scope === key
                 ? "border-brand bg-brand/15 text-brand-soft"
                 : "border-border text-muted-foreground hover:text-foreground",
