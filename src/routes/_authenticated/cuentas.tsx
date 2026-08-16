@@ -47,6 +47,26 @@ export const Route = createFileRoute("/_authenticated/cuentas")({
   component: AccountsPage,
 });
 
+function parseMoneyInput(value: string) {
+  const normalized = value.trim().replace(/\s/g, "");
+  if (!normalized) return Number.NaN;
+
+  const comma = normalized.lastIndexOf(",");
+  const dot = normalized.lastIndexOf(".");
+  if (comma >= 0 && dot >= 0) {
+    const decimal = comma > dot ? "," : ".";
+    const thousands = decimal === "," ? /\./g : /,/g;
+    return Number(normalized.replace(thousands, "").replace(decimal, "."));
+  }
+
+  const separator = comma >= 0 ? "," : dot >= 0 ? "." : null;
+  if (!separator) return Number(normalized);
+  const parts = normalized.split(separator);
+  if (parts.length > 2 || parts.some((part) => part === "")) return Number.NaN;
+  const digitsAfter = parts[1]?.length ?? 0;
+  return Number(digitsAfter === 3 ? parts.join("") : parts.join("."));
+}
+
 function AccountDialog({ account, trigger }: { account?: Account; trigger: React.ReactNode }) {
   const { addAccount, updateAccount, removeAccount } = useJournal();
   const editing = Boolean(account);
@@ -92,9 +112,15 @@ function AccountDialog({ account, trigger }: { account?: Account; trigger: React
     }
   };
 
-  const submit = () => {
+  const submit = async () => {
     if (!name.trim()) {
       toast.error("Añade un nombre de cuenta");
+      return;
+    }
+    const initialBalance = parseMoneyInput(initial);
+    const currentBalance = parseMoneyInput(current);
+    if (!Number.isFinite(initialBalance) || !Number.isFinite(currentBalance)) {
+      toast.error("Revisa los balances introducidos");
       return;
     }
     const payload = {
@@ -102,21 +128,25 @@ function AccountDialog({ account, trigger }: { account?: Account; trigger: React
       type,
       firm: type === "funded" ? firm : undefined,
       broker: type === "personal" ? broker : undefined,
-      initialBalance: Number(initial) || 0,
-      currentBalance: Number(current) || 0,
+      initialBalance,
+      currentBalance,
       drawdownLimit: type === "funded" ? Number(dd) || 0 : undefined,
       drawdownType: type === "funded" ? ddType : undefined,
       currency: account?.currency ?? "USD",
     };
-    if (account) {
-      updateAccount(account.id, payload);
-      toast.success("Cuenta actualizada");
-    } else {
-      addAccount(payload);
-      toast.success("Cuenta creada");
-      setName("");
+    try {
+      if (account) {
+        await updateAccount(account.id, payload);
+        toast.success("Cuenta actualizada");
+      } else {
+        await addAccount(payload);
+        toast.success("Cuenta creada");
+        setName("");
+      }
+      setOpen(false);
+    } catch {
+      toast.error("No se pudo guardar la cuenta");
     }
-    setOpen(false);
   };
 
   const remove = () => {
