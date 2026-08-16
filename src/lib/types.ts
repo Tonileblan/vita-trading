@@ -142,6 +142,26 @@ export const PROP_FIRMS = [
   "Wall Street Funded",
 ];
 
+/** Brokers preconfigurados para cuentas personales. */
+export const BROKERS = [
+  "AMP Futures",
+  "Interactive Brokers",
+  "NinjaTrader Brokerage",
+  "Tradovate",
+  "Phillip Capital",
+  "Dorman Trading",
+  "EdgeClear",
+  "PhillipCapital",
+  "Rithmic (demo)",
+  "OANDA",
+  "IG",
+  "XTB",
+  "TradeStation",
+  "MetaTrader 5 (genérico)",
+  "TopstepX",
+  "Quantower (genérico)",
+];
+
 export const STRATEGY_TAGS = [
   "ICT",
   "Wyckoff",
