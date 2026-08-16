@@ -26,6 +26,8 @@ export interface Account {
   name: string;
   type: AccountType;
   firm?: string | undefined;
+  /** Broker para cuentas personales (type=personal). */
+  broker?: string | undefined;
   initialBalance: number;
   currentBalance: number;
   drawdownLimit?: number | undefined;
@@ -138,6 +140,26 @@ export const PROP_FIRMS = [
   "Tradeify",
   "Traders With Edge",
   "Wall Street Funded",
+];
+
+/** Brokers preconfigurados para cuentas personales. */
+export const BROKERS = [
+  "AMP Futures",
+  "Interactive Brokers",
+  "NinjaTrader Brokerage",
+  "Tradovate",
+  "Phillip Capital",
+  "Dorman Trading",
+  "EdgeClear",
+  "PhillipCapital",
+  "Rithmic (demo)",
+  "OANDA",
+  "IG",
+  "XTB",
+  "TradeStation",
+  "MetaTrader 5 (genérico)",
+  "TopstepX",
+  "Quantower (genérico)",
 ];
 
 export const STRATEGY_TAGS = [

@@ -24,8 +24,9 @@ import {
 } from "@/components/ui/select";
 import { useJournal } from "@/lib/journal-store";
 import { accountBalance, accountPnl, computeMetrics, formatCurrency, accountDrawdown } from "@/lib/metrics";
-import { PROP_FIRMS, type Account, type AccountType, DRAWDOWN_TYPES, type DrawdownType } from "@/lib/types";
+import { PROP_FIRMS, BROKERS, type Account, type AccountType, DRAWDOWN_TYPES, type DrawdownType } from "@/lib/types";
 import { usePropFirms } from "@/lib/prop-firms";
+import { useBrokers } from "@/lib/brokers";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/cuentas")({
@@ -61,6 +62,15 @@ function AccountDialog({ account, trigger }: { account?: Account; trigger: React
     setFirm(added);
     setNewFirm("");
   };
+  const { brokers, customBrokers, addBroker, removeBroker } = useBrokers();
+  const [newBroker, setNewBroker] = useState("");
+  const [broker, setBroker] = useState(account?.broker ?? BROKERS[0]!);
+  const handleAddBroker = () => {
+    const added = addBroker(newBroker);
+    if (!added) return;
+    setBroker(added);
+    setNewBroker("");
+  };
   const [initial, setInitial] = useState(String(account?.initialBalance ?? 50000));
   const [current, setCurrent] = useState(String(account?.currentBalance ?? 50000));
   const [dd, setDd] = useState(String(account?.drawdownLimit ?? 2500));
@@ -72,6 +82,7 @@ function AccountDialog({ account, trigger }: { account?: Account; trigger: React
       setType(account.type);
       setName(account.name);
       setFirm(account.firm ?? PROP_FIRMS[0]!);
+      setBroker(account.broker ?? BROKERS[0]!);
       setInitial(String(account.initialBalance));
       setCurrent(String(account.currentBalance));
       setDd(String(account.drawdownLimit ?? 0));
@@ -88,6 +99,7 @@ function AccountDialog({ account, trigger }: { account?: Account; trigger: React
       name: name.trim(),
       type,
       firm: type === "funded" ? firm : undefined,
+      broker: type === "personal" ? broker : undefined,
       initialBalance: Number(initial) || 0,
       currentBalance: Number(current) || Number(initial) || 0,
       drawdownLimit: type === "funded" ? Number(dd) || 0 : undefined,
@@ -201,6 +213,52 @@ function AccountDialog({ account, trigger }: { account?: Account; trigger: React
             </div>
           )}
 
+          {type === "personal" && (
+            <div className="space-y-2">
+              <Label>Broker</Label>
+              <Select value={broker} onValueChange={setBroker}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="max-h-64">
+                  {brokers.map((b) => (
+                    <SelectItem key={b} value={b}>
+                      {b}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <div className="flex gap-2">
+                <Input
+                  value={newBroker}
+                  onChange={(e) => setNewBroker(e.target.value)}
+                  placeholder="Añadir otro broker"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      handleAddBroker();
+                    }
+                  }}
+                />
+                <Button type="button" variant="outline" onClick={handleAddBroker}>
+                  Añadir
+                </Button>
+              </div>
+              {customBrokers.includes(broker) && (
+                <button
+                  type="button"
+                  className="text-xs text-muted-foreground underline"
+                  onClick={() => {
+                    removeBroker(broker);
+                    setBroker(BROKERS[0]!);
+                  }}
+                >
+                  Eliminar "{broker}" de la lista
+                </button>
+              )}
+            </div>
+          )}
+
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
               <Label>Balance inicial</Label>
@@ -282,9 +340,12 @@ function AccountsPage() {
             className="min-w-0 flex-1 group"
           >
             <h3 className="truncate font-semibold group-hover:text-brand">{acc.name}</h3>
-            <p className="text-xs text-muted-foreground">
-              {acc.firm ?? "Cuenta personal"} · {acc.currency}
-            </p>
+              <p className="text-xs text-muted-foreground">
+                {acc.type === "funded"
+                  ? (acc.firm ?? "Prop firm")
+                  : (acc.broker ?? "Cuenta personal")}{" "}
+                · {acc.currency}
+              </p>
           </Link>
           <div className="flex items-center gap-2">
             <span

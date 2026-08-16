@@ -16,6 +16,7 @@ export type Database = {
     Tables: {
       accounts: {
         Row: {
+          broker: string | null
           created_at: string
           currency: string
           current_balance: number
@@ -31,6 +32,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          broker?: string | null
           created_at?: string
           currency?: string
           current_balance?: number
@@ -46,6 +48,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          broker?: string | null
           created_at?: string
           currency?: string
           current_balance?: number

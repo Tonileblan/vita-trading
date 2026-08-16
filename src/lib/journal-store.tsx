@@ -25,6 +25,7 @@ function toAccount(r: Row): Account {
     name: String(r["name"] ?? ""),
     type: (r["type"] === "funded" ? "funded" : "personal") as Account["type"],
     firm: (r["firm"] as string | null) ?? undefined,
+    broker: (r["broker"] as string | null) ?? undefined,
     initialBalance: Number(r["initial_balance"] ?? 0),
     currentBalance: Number(r["current_balance"] ?? 0),
     drawdownLimit: r["drawdown_limit"] == null ? undefined : Number(r["drawdown_limit"]),
@@ -40,6 +41,7 @@ function fromAccount(a: Partial<Omit<Account, "id">>): Row {
   if (a.name !== undefined) out["name"] = a.name;
   if (a.type !== undefined) out["type"] = a.type;
   if (a.firm !== undefined) out["firm"] = a.firm ?? null;
+  if (a.broker !== undefined) out["broker"] = a.broker ?? null;
   if (a.initialBalance !== undefined) out["initial_balance"] = a.initialBalance;
   if (a.currentBalance !== undefined) out["current_balance"] = a.currentBalance;
   if (a.drawdownLimit !== undefined) out["drawdown_limit"] = a.drawdownLimit ?? null;
