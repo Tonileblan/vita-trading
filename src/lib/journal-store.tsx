@@ -439,7 +439,9 @@ export function JournalProvider({ children }: { children: ReactNode }) {
         await deleteTradeIds(ids);
       },
       removeImportBatch: async (batchId) => {
-        const ids = data.trades.filter((t) => t.importBatchId === batchId).map((t) => t.id);
+        const group = importBatches.find((b) => b.id === batchId);
+        const ids =
+          group?.tradeIds ?? data.trades.filter((t) => t.importBatchId === batchId).map((t) => t.id);
         await deleteTradeIds(ids);
       },
       importBatches,
