@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { ExpenseBreakdown } from "@/components/expense-breakdown";
+import { ExpenseCharts } from "@/components/expense-charts";
 import { ExpenseFormDialog } from "@/components/expense-form-dialog";
 import { ExpensesTable } from "@/components/expenses-table";
 import { WithdrawalFormDialog } from "@/components/withdrawal-form-dialog";
