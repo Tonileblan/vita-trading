@@ -504,7 +504,9 @@ function AccountsPage() {
             }}
           >
             <SelectTrigger className="h-8 text-xs" aria-label={`Estrategia de ${acc.name}`}>
-              <SelectValue placeholder="Sin estrategia" />
+              <SelectValue placeholder="Sin estrategia">
+                {strategies.find((s) => s.id === acc.strategyId)?.name ?? "Sin estrategia"}
+              </SelectValue>
             </SelectTrigger>
             <SelectContent className="max-h-64">
               <SelectItem value="none">Sin estrategia</SelectItem>
