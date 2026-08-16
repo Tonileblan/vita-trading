@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { ArrowUpDown, ChevronDown, History as HistoryIcon, List as ListIcon, Search, Trash2, Undo2 } from "lucide-react";
+import { ArrowUpDown, History as HistoryIcon, List as ListIcon, Search, Trash2, Undo2 } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
