@@ -60,9 +60,11 @@ function Block({
 export function CapitalSplit({
   accounts,
   trades,
+  withdrawals = [],
 }: {
   accounts: Account[];
   trades: Trade[];
+  withdrawals?: { accountId?: string | undefined; amount: number }[];
 }) {
   const funded = accounts.filter((a) => a.type === "funded");
   const personal = accounts.filter((a) => a.type !== "funded");
@@ -72,18 +74,19 @@ export function CapitalSplit({
       <Block
         label="Capital combinado"
         icon={<Wallet className="size-4" />}
-        totals={sum(accounts, trades)}
+        totals={sum(accounts, trades, withdrawals)}
       />
       <Block
         label="Capital fondeo"
         icon={<Building2 className="size-4" />}
-        totals={sum(funded, trades)}
+        totals={sum(funded, trades, withdrawals)}
       />
       <Block
         label="Capital real"
         icon={<User className="size-4" />}
-        totals={sum(personal, trades)}
+        totals={sum(personal, trades, withdrawals)}
       />
+
     </section>
   );
 }
