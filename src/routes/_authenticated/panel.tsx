@@ -294,7 +294,6 @@ function Overview() {
         <KpiCards metrics={metrics} scope={scope} trades={scopedTrades} />
         <PerformanceAnalysis trades={trades} />
         <EmotionHighlights trades={scopedTrades} />
-        <PnlCalendar trades={scopedTrades} />
 
 
 
@@ -320,6 +319,8 @@ function Overview() {
           </div>
           <EquityChart data={curve} />
         </section>
+
+        <PnlCalendar trades={scopedTrades} />
 
         <section className="space-y-3">
           <h2 className="text-base font-semibold">Últimas operaciones</h2>
