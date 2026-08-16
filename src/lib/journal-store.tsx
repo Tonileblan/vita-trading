@@ -138,6 +138,9 @@ function toWithdrawal(r: Row): Withdrawal {
     date: String(r["date"] ?? new Date().toISOString()),
     amount: Number(r["amount"] ?? 0),
     reason: (r["reason"] as string | null) ?? undefined,
+    status: ((r["status"] as string | null) ?? "approved") as Withdrawal["status"],
+    requestedAt: (r["requested_at"] as string | null) ?? undefined,
+    approvedAt: (r["approved_at"] as string | null) ?? undefined,
   };
 }
 
@@ -193,6 +196,10 @@ interface JournalState extends JournalData {
   removeAccount: (id: string) => Promise<void>;
   addTrade: (trade: Omit<Trade, "id">) => Promise<void>;
   addWithdrawal: (withdrawal: Omit<Withdrawal, "id">) => Promise<void>;
+  updateWithdrawal: (id: string, patch: Partial<Omit<Withdrawal, "id">>) => Promise<void>;
+  removeWithdrawal: (id: string) => Promise<void>;
+  /** Todos los retiros, incluidos los pendientes (los pendientes no se contabilizan). */
+  allWithdrawals: Withdrawal[];
   updateStrategy: (id: string, patch: Partial<Strategy>) => Promise<void>;
   addStrategy: (strategy: Omit<Strategy, "id">) => Promise<void>;
   removeStrategy: (id: string) => Promise<void>;
@@ -266,6 +273,9 @@ export function JournalProvider({ children }: { children: ReactNode }) {
     const visibleTrades = data.trades.filter((t) => selectedAccountIds.includes(t.accountId));
     return {
       ...data,
+      // Solo los retiros aprobados afectan al capital y a las métricas.
+      withdrawals: data.withdrawals.filter((w) => w.status === "approved"),
+      allWithdrawals: data.withdrawals,
       loading: isLoading,
       visibleTrades,
       selectedAccountIds,
@@ -323,8 +333,25 @@ export function JournalProvider({ children }: { children: ReactNode }) {
           date: withdrawal.date,
           amount: withdrawal.amount,
           reason: withdrawal.reason ?? null,
+          status: withdrawal.status ?? "approved",
           ...base,
         } as never);
+        if (error) throw error;
+        await refresh();
+      },
+      updateWithdrawal: async (id, patch) => {
+        const row: Record<string, unknown> = {};
+        if (patch.accountId !== undefined) row["account_id"] = patch.accountId || null;
+        if (patch.date !== undefined) row["date"] = patch.date;
+        if (patch.amount !== undefined) row["amount"] = patch.amount;
+        if (patch.reason !== undefined) row["reason"] = patch.reason ?? null;
+        if (patch.status !== undefined) row["status"] = patch.status;
+        const { error } = await supabase.from("withdrawals").update(row as never).eq("id", id);
+        if (error) throw error;
+        await refresh();
+      },
+      removeWithdrawal: async (id) => {
+        const { error } = await supabase.from("withdrawals").delete().eq("id", id);
         if (error) throw error;
         await refresh();
       },
