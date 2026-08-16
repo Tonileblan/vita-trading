@@ -191,10 +191,12 @@ function Overview() {
     (s, a) => s + accountResult(a, visibleTrades, withdrawals),
     0,
   );
-  const fusionPnl = fusionAccounts.reduce(
-    (s, a) => s + accountResult(a, visibleTrades, withdrawals),
-    0,
-  );
+  // PnL del recuadro: estrategia o rango concreto → PnL de las operaciones filtradas.
+  const fusionPnl =
+    isStrategy || range !== "all"
+      ? trades.reduce((s, t) => s + t.pnl, 0)
+      : fusionAccounts.reduce((s, a) => s + accountResult(a, visibleTrades, withdrawals), 0);
+
 
   const scopeValue = (key: Scope) => {
     if (key === "funded") return fundedEquity;
