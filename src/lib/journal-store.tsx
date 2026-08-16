@@ -344,10 +344,14 @@ export function JournalProvider({ children }: { children: ReactNode }) {
     return { journal_id: activeJournalId, user_id: userData.user?.id };
   }, [activeJournalId]);
 
-  const selectedAccountIds = manualSelection ?? data.accounts.map((a) => a.id);
+  const selectedAccountIds = useMemo(
+    () => manualSelection ?? data.accounts.map((a) => a.id),
+    [manualSelection, data.accounts],
+  );
 
   const value = useMemo<JournalState>(() => {
-    const visibleTrades = data.trades.filter((t) => selectedAccountIds.includes(t.accountId));
+    const selected = new Set(selectedAccountIds);
+    const visibleTrades = data.trades.filter((t) => selected.has(t.accountId));
     const importBatches = groupImportBatches(data.trades);
     /** Borra operaciones y devuelve a cada cuenta el PnL correspondiente. */
     const deleteTradeIds = async (ids: string[]) => {
