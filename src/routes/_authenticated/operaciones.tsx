@@ -53,16 +53,24 @@ function TradesPage() {
   const [selected, setSelected] = useState<string[]>([]);
   const [pending, setPending] = useState<Pending | null>(null);
   const [working, setWorking] = useState(false);
+  const [sortBy, setSortBy] = useState<"created" | "closed">("created");
 
   const filtered = useMemo(
     () =>
-      visibleTrades.filter(
-        (t) =>
-          (!tag || t.tags.includes(tag)) &&
-          (!query || t.symbol.toLowerCase().includes(query.toLowerCase())),
-      ),
-    [visibleTrades, query, tag],
+      visibleTrades
+        .filter(
+          (t) =>
+            (!tag || t.tags.includes(tag)) &&
+            (!query || t.symbol.toLowerCase().includes(query.toLowerCase())),
+        )
+        .sort((a, b) =>
+          sortBy === "created"
+            ? (b.createdAt ?? b.closedAt).localeCompare(a.createdAt ?? a.closedAt)
+            : b.closedAt.localeCompare(a.closedAt),
+        ),
+    [visibleTrades, query, tag, sortBy],
   );
+
   const m = computeMetrics(filtered);
 
   const confirm = async () => {
