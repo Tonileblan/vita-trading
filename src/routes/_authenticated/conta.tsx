@@ -216,7 +216,7 @@ function WithdrawalsSection({ openEdit }: { openEdit: (w: Withdrawal) => void })
                 <span className="tabular-nums font-medium">{formatCurrency(w.amount)}</span>
                 <span className="flex gap-2">
                   <Button size="sm" onClick={() => approve(w.id)}>
-                    Aprobar
+                    Aprobado
                   </Button>
                   <Button size="sm" variant="ghost" onClick={() => reject(w.id)}>
                     Descartar
