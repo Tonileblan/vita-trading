@@ -140,30 +140,26 @@ function Overview() {
         <span className="flex flex-wrap items-center gap-3 w-full">
           <span>Resumen</span>
           <select
-            value={accountFilter}
-            onChange={(e) => setAccountFilter(e.target.value)}
+            value={filter}
+            onChange={(e) => setFilter(e.target.value)}
             className="ml-auto h-9 rounded-md border border-border bg-card px-2 text-sm font-sans"
-            aria-label="Cuenta"
+            aria-label="Cuenta o estrategia"
           >
             <option value="all">GENERAL</option>
-            {accounts.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.name}
-              </option>
-            ))}
-          </select>
-          <select
-            value={strategyFilter}
-            onChange={(e) => setStrategyFilter(e.target.value)}
-            className="h-9 rounded-md border border-border bg-card px-2 text-sm font-sans"
-            aria-label="Estrategia"
-          >
-            <option value="all">TODAS LAS ESTRATEGIAS</option>
-            {accountStrategies.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name}
-              </option>
-            ))}
+            <optgroup label="Cuentas">
+              {accounts.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.name}
+                </option>
+              ))}
+            </optgroup>
+            <optgroup label="Estrategias">
+              {accountStrategies.map((s) => (
+                <option key={s.id} value={`strategy:${s.id}`}>
+                  Estrategia-{s.name}
+                </option>
+              ))}
+            </optgroup>
           </select>
         </span>
       }
