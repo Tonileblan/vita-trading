@@ -309,28 +309,57 @@ function Overview() {
     >
       <div className="space-y-5">
         <RiskAlerts />
-        {accountFilter === "all" && !isStrategy && (
+        {accountFilter === "all" && !isStrategy ? (
           <section className="grid gap-3 sm:grid-cols-3">
-            {SCOPES.map((s) => (
-              <button
-                key={s.key}
-                onClick={() => setScope(s.key)}
-                className={cn(
-                  "panel p-4 text-left transition-colors",
-                  scope === s.key
-                    ? "border-brand bg-brand/10"
-                    : "hover:border-foreground/30",
-                )}
-              >
-                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  {s.label}
-                </p>
-                <p className="num mt-1 text-lg font-semibold">{formatCurrency(scopeValue(s.key))}</p>
-              </button>
-            ))}
+            {SCOPES.map((s) => {
+              const pnl = scopePnl(s.key);
+              return (
+                <button
+                  key={s.key}
+                  onClick={() => setScope(s.key)}
+                  className={cn(
+                    "panel p-4 text-left transition-colors",
+                    scope === s.key
+                      ? "border-brand bg-brand/10"
+                      : "hover:border-foreground/30",
+                  )}
+                >
+                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    {s.label}
+                  </p>
+                  <p className="num mt-1 text-lg font-semibold">
+                    {formatCurrency(scopeValue(s.key))}
+                  </p>
+                  <p
+                    className={cn(
+                      "num mt-1 text-sm font-semibold tabular-nums",
+                      pnl >= 0 ? "text-profit" : "text-loss",
+                    )}
+                  >
+                    {pnl >= 0 ? "+" : "−"} {formatCurrency(Math.abs(pnl), false)}
+                  </p>
+                </button>
+              );
+            })}
+          </section>
+        ) : (
+          <section className="panel p-4">
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              {isStrategy ? "Estrategia" : "Cuenta"}
+            </p>
+            <p className="num mt-1 text-lg font-semibold">
+              {formatCurrency(fusionEquity)}
+            </p>
+            <p
+              className={cn(
+                "num mt-1 text-sm font-semibold tabular-nums",
+                fusionPnl >= 0 ? "text-profit" : "text-loss",
+              )}
+            >
+              {fusionPnl >= 0 ? "+" : "−"} {formatCurrency(Math.abs(fusionPnl), false)}
+            </p>
           </section>
         )}
-        <KpiCards metrics={metrics} scope={scope} trades={trades} fusionEquity={showFusion ? fusionEquity : undefined} fusionInitial={showFusion ? fusionInitial : undefined} />
         <PerformanceAnalysis trades={trades} />
         <EmotionHighlights trades={scopedTrades} />
 
