@@ -290,8 +290,21 @@ export function TradeImportDialog() {
                   />
                   <span className="font-semibold">{r.symbol.toUpperCase()}</span>
                   <span className="uppercase text-muted-foreground">{r.direction}</span>
-                  <span className="text-muted-foreground">
-                    {r.closedAt ? new Date(r.closedAt).toLocaleString("es-ES") : "sin fecha"}
+                  <span
+                    className={cn(
+                      "text-muted-foreground",
+                      !r.detectedAt && "italic text-loss/80",
+                    )}
+                  >
+                    {r.detectedAt
+                      ? new Date(r.detectedAt).toLocaleString("es-ES", {
+                          day: "2-digit",
+                          month: "2-digit",
+                          year: "numeric",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })
+                      : "sin fecha"}
                   </span>
                   <span
                     className={cn("ml-auto font-semibold", r.pnl >= 0 ? "text-profit" : "text-loss")}
