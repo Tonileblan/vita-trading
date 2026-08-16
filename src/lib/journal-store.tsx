@@ -224,7 +224,11 @@ const EMPTY: JournalData = { accounts: [], strategies: [], trades: [], withdrawa
 /** Lee todos los datos de un diario (usado también por la vista de supervisión). */
 export async function fetchJournalData(journalId: string): Promise<JournalData> {
   const [accounts, strategies, trades, withdrawals] = await Promise.all([
-    supabase.from("accounts").select("*").eq("journal_id", journalId),
+    supabase
+      .from("accounts")
+      .select("*")
+      .eq("journal_id", journalId)
+      .order("created_at", { ascending: true }),
     supabase.from("strategies").select("*").eq("journal_id", journalId),
     supabase.from("trades").select("*").eq("journal_id", journalId).order("closed_at", { ascending: false }),
     supabase.from("withdrawals").select("*").eq("journal_id", journalId).order("date", { ascending: false }),
