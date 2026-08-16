@@ -132,7 +132,6 @@ export function KpiCards({
   scope?: "all" | "funded" | "real";
   trades?: Trade[];
 }) {
-  const pf = metrics.profitFactor;
   const pnlLabel =
     scope === "funded" ? "PnL Fondeo" : scope === "real" ? "PnL Real" : "PnL Total";
   return (
