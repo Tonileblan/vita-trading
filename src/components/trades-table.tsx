@@ -21,6 +21,8 @@ export function TradesTable({
 }) {
   const rows = limit ? trades.slice(0, limit) : trades;
   const nameOf = (id: string) => accounts.find((a) => a.id === id)?.name ?? "—";
+  /** Treats empty or "N/D" (legacy) symbols as unavailable. */
+  const symbolOf = (s: string) => (s && s !== "N/D" ? s : "—");
   const selectable = !!onToggleSelect;
   const isSelected = (id: string) => (selectedIds ?? []).includes(id);
   const colCount = 9 + (selectable ? 1 : 0) + (onDelete ? 1 : 0);
@@ -42,7 +44,7 @@ export function TradesTable({
               )}
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
-                  <span className="font-semibold">{t.symbol}</span>
+                  <span className="font-semibold">{symbolOf(t.symbol)}</span>
                   <span
                     className={cn(
                       "rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase",
@@ -75,11 +77,13 @@ export function TradesTable({
                 </button>
               )}
             </div>
-            <div className="num flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-              <span>Entrada {t.entryPrice}</span>
-              <span>Salida {t.exitPrice}</span>
-              <span>Tam. {t.size}</span>
-            </div>
+            {(t.entryPrice || t.exitPrice || t.size) > 0 && (
+              <div className="num flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                {t.entryPrice > 0 && <span>Entrada {t.entryPrice}</span>}
+                {t.exitPrice > 0 && <span>Salida {t.exitPrice}</span>}
+                {t.size > 0 && <span>Tam. {t.size}</span>}
+              </div>
+            )}
             {t.tags.length > 0 && (
               <div className="flex flex-wrap gap-1">
                 {t.tags.map((tag) => (
@@ -137,7 +141,7 @@ export function TradesTable({
                   <Zap className="ml-1 inline size-3 text-brand-soft" aria-label="Vía webhook" />
                 )}
               </td>
-              <td className="px-4 py-3 font-semibold">{t.symbol}</td>
+              <td className="px-4 py-3 font-semibold">{symbolOf(t.symbol)}</td>
               <td className="px-4 py-3">
                 <span
                   className={cn(
@@ -153,9 +157,9 @@ export function TradesTable({
               <td className="max-w-[160px] truncate px-4 py-3 text-muted-foreground">
                 {nameOf(t.accountId)}
               </td>
-              <td className="num px-4 py-3 text-right">{t.entryPrice}</td>
-              <td className="num px-4 py-3 text-right">{t.exitPrice}</td>
-              <td className="num px-4 py-3 text-right">{t.size}</td>
+              <td className="num px-4 py-3 text-right">{t.entryPrice > 0 ? t.entryPrice : "—"}</td>
+              <td className="num px-4 py-3 text-right">{t.exitPrice > 0 ? t.exitPrice : "—"}</td>
+              <td className="num px-4 py-3 text-right">{t.size > 0 ? t.size : "—"}</td>
               <td className="px-4 py-3">
                 <div className="flex flex-wrap gap-1">
                   {t.tags.map((tag) => (

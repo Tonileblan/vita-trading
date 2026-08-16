@@ -149,7 +149,7 @@ export function TradeImportDialog() {
           closedAt: toIso(r.closedAt ?? r.openedAt),
           entryPrice: r.entryPrice ?? 0,
           exitPrice: r.exitPrice ?? 0,
-          size: r.size ?? 1,
+          size: r.size ?? 0,
           pnl: r.pnl,
           mistakes: [],
           tags: [],
@@ -309,7 +309,7 @@ export function TradeImportDialog() {
                       )
                     }
                   />
-                  <span className="font-semibold">{r.symbol.toUpperCase()}</span>
+                  <span className="font-semibold">{r.symbol.toUpperCase() || "—"}</span>
                   <span className="uppercase text-muted-foreground">{r.direction}</span>
                   <span
                     className={cn(
