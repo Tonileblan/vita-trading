@@ -125,11 +125,13 @@ function AccountDialog({ account, trigger }: { account?: Account; trigger: React
       return;
     }
     const initialBalance = parseMoneyInput(initial);
-    const currentBalance = parseMoneyInput(current);
-    if (!Number.isFinite(initialBalance) || !Number.isFinite(currentBalance)) {
+    // El balance vigente se deriva de operaciones y retiros, no se edita a mano.
+    const currentBalance = initialBalance;
+    if (!Number.isFinite(initialBalance)) {
       toast.error("Revisa los balances introducidos");
       return;
     }
+
     const payload = {
       name: name.trim(),
       type,
@@ -303,23 +305,21 @@ function AccountDialog({ account, trigger }: { account?: Account; trigger: React
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <Label>Balance inicial</Label>
-              <Input
-                value={initial}
-                onChange={(e) => {
-                  setInitial(e.target.value);
-                  if (!editing) setCurrent(e.target.value);
-                }}
-                inputMode="decimal"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Balance actual</Label>
-              <Input value={current} onChange={(e) => setCurrent(e.target.value)} inputMode="decimal" />
-            </div>
+          <div className="space-y-2">
+            <Label>Balance inicial</Label>
+            <Input
+              value={initial}
+              onChange={(e) => {
+                setInitial(e.target.value);
+                setCurrent(e.target.value);
+              }}
+              inputMode="decimal"
+            />
+            <p className="text-xs text-muted-foreground">
+              El balance actual se calcula solo: inicial + operaciones − retiros aprobados.
+            </p>
           </div>
+
 
 
           {type === "funded" && (
