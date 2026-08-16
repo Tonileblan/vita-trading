@@ -145,6 +145,14 @@ function Overview() {
     [fusionAccounts, visibleTrades, withdrawals],
   );
 
+  // Cuenta de fondeo concreta seleccionada → progreso hacia objetivo (eval / retiro).
+  const fundedTarget = useMemo(() => {
+    if (isStrategy || accountFilter === "all") return null;
+    const account = selectedAccounts[0];
+    if (!account || account.type !== "funded") return null;
+    return accountTarget(account, visibleTrades, withdrawals);
+  }, [isStrategy, accountFilter, selectedAccounts, visibleTrades, withdrawals]);
+
   const curve = useMemo(
     () => buildEquityCurve(trades, accountsCurveStart(scopedAccounts, trades, withdrawals)),
     [trades, scopedAccounts, withdrawals],
