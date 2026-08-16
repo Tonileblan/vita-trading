@@ -105,6 +105,11 @@ export function TradeFormDialog() {
       notes,
       screenshots: shots,
       source: "manual",
+      ...(emotionBefore ? { emotionBefore } : {}),
+      ...(emotionAfter ? { emotionAfter } : {}),
+      ...(followedPlan ? { followedPlan } : {}),
+      mistakes,
+      ...(emotionNote ? { emotionNote } : {}),
     });
     toast.success("Operación registrada");
     setOpen(false);
@@ -113,7 +118,13 @@ export function TradeFormDialog() {
     setExitPrice("");
     setNotes("");
     setShots([]);
+    setEmotionBefore("");
+    setEmotionAfter("");
+    setFollowedPlan("");
+    setMistakes([]);
+    setEmotionNote("");
   };
+
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
