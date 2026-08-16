@@ -128,11 +128,13 @@ export function KpiCards({
   scope = "all",
   trades,
   fusionEquity,
+  fusionInitial,
 }: {
   metrics: Metrics;
   scope?: "all" | "funded" | "real";
   trades?: Trade[] | undefined;
   fusionEquity?: number | undefined;
+  fusionInitial?: number | undefined;
 }) {
   const pnlLabel = fusionEquity !== undefined
     ? "Capital"
@@ -142,6 +144,8 @@ export function KpiCards({
         ? "PnL Real"
         : "PnL Total";
   const pnlValue = fusionEquity !== undefined ? fusionEquity : metrics.totalPnl;
+  const fmtNoSign = (v: number) =>
+    `$${Math.abs(v).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   return (
     <div className="grid gap-3 sm:grid-cols-2">
       <Card
