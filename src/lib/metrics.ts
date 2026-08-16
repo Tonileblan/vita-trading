@@ -157,12 +157,20 @@ export function buildEquityCurve(trades: Trade[], startBalance: number) {
   });
 }
 
-export function filterByRange(trades: Trade[], range: "7d" | "30d" | "90d" | "all") {
+export function filterByRange(
+  trades: Trade[],
+  range: "7d" | "30d" | "90d" | "180d" | "month" | "all",
+) {
   if (range === "all") return trades;
-  const days = range === "7d" ? 7 : range === "30d" ? 30 : 90;
+  const now = new Date();
+  if (range === "month") {
+    const start = new Date(now.getFullYear(), now.getMonth(), 1);
+    return trades.filter((t) => new Date(t.closedAt).getTime() >= start.getTime());
+  }
+  const days = range === "7d" ? 7 : range === "30d" ? 30 : range === "180d" ? 180 : 90;
   const latest = trades.reduce(
     (max, t) => Math.max(max, new Date(t.closedAt).getTime()),
-    0,
+    now.getTime(),
   );
   const cutoff = latest - days * 86400000;
   return trades.filter((t) => new Date(t.closedAt).getTime() >= cutoff);
