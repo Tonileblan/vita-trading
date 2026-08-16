@@ -41,6 +41,7 @@ function fromAccount(a: Partial<Omit<Account, "id">>): Row {
   if (a.name !== undefined) out["name"] = a.name;
   if (a.type !== undefined) out["type"] = a.type;
   if (a.firm !== undefined) out["firm"] = a.firm ?? null;
+  if (a.broker !== undefined) out["broker"] = a.broker ?? null;
   if (a.initialBalance !== undefined) out["initial_balance"] = a.initialBalance;
   if (a.currentBalance !== undefined) out["current_balance"] = a.currentBalance;
   if (a.drawdownLimit !== undefined) out["drawdown_limit"] = a.drawdownLimit ?? null;
