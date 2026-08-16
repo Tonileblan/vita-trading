@@ -44,9 +44,10 @@ export const Route = createFileRoute("/_authenticated/panel")({
 });
 
 const RANGES = [
-  { key: "7d", label: "7D" },
-  { key: "30d", label: "30D" },
-  { key: "90d", label: "90D" },
+  { key: "7d", label: "7 días" },
+  { key: "month", label: "Mes actual" },
+  { key: "30d", label: "30 días" },
+  { key: "180d", label: "180 días" },
   { key: "all", label: "Todo" },
 ] as const;
 
@@ -143,6 +144,22 @@ function Overview() {
       title={
         <span className="flex flex-wrap items-center gap-3 w-full">
           <span>Resumen</span>
+          <div className="flex gap-1 rounded-md border border-border p-1">
+            {RANGES.map((r) => (
+              <button
+                key={r.key}
+                onClick={() => setRange(r.key)}
+                className={cn(
+                  "rounded px-2 py-1 text-xs font-semibold transition-colors",
+                  range === r.key
+                    ? "bg-brand text-primary-foreground"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {r.label}
+              </button>
+            ))}
+          </div>
           <select
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
@@ -217,22 +234,6 @@ function Overview() {
               <p className="text-xs text-muted-foreground">
                 Consolidada de las cuentas activas
               </p>
-            </div>
-            <div className="flex gap-1 rounded-md border border-border p-1">
-              {RANGES.map((r) => (
-                <button
-                  key={r.key}
-                  onClick={() => setRange(r.key)}
-                  className={cn(
-                    "rounded px-3 py-1 text-xs font-semibold transition-colors",
-                    range === r.key
-                      ? "bg-brand text-primary-foreground"
-                      : "text-muted-foreground hover:text-foreground",
-                  )}
-                >
-                  {r.label}
-                </button>
-              ))}
             </div>
           </div>
           <EquityChart data={curve} />
