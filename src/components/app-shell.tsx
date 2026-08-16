@@ -10,6 +10,7 @@ import {
   Users,
   MessageSquare,
   Brain,
+  Receipt,
 
   ShieldCheck,
   LogOut,
