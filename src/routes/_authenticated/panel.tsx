@@ -5,6 +5,8 @@ import { EquityChart } from "@/components/equity-chart";
 import { KpiCards } from "@/components/kpi-cards";
 import { RiskAlerts } from "@/components/risk-alerts";
 import { EmotionHighlights } from "@/components/emotion-stats";
+import { PerformanceAnalysis } from "@/components/performance-analysis";
+
 
 import { TradesTable } from "@/components/trades-table";
 import { useJournal } from "@/lib/journal-store";
@@ -58,17 +60,23 @@ function Overview() {
   const { visibleTrades, accounts, selectedAccountIds, withdrawals } = useJournal();
   const [range, setRange] = useState<(typeof RANGES)[number]["key"]>("all");
   const [scope, setScope] = useState<Scope>("all");
+  const [accountFilter, setAccountFilter] = useState<string>("all");
 
   const selectedAccounts = useMemo(
-    () => accounts.filter((a) => selectedAccountIds.includes(a.id)),
-    [accounts, selectedAccountIds],
+    () =>
+      accounts.filter((a) =>
+        accountFilter === "all" ? selectedAccountIds.includes(a.id) : a.id === accountFilter,
+      ),
+    [accounts, selectedAccountIds, accountFilter],
   );
   const scopedAccounts = useMemo(
     () =>
-      selectedAccounts.filter((a) =>
-        scope === "all" ? true : scope === "funded" ? a.type === "funded" : a.type !== "funded",
-      ),
-    [selectedAccounts, scope],
+      accountFilter !== "all"
+        ? selectedAccounts
+        : selectedAccounts.filter((a) =>
+            scope === "all" ? true : scope === "funded" ? a.type === "funded" : a.type !== "funded",
+          ),
+    [selectedAccounts, scope, accountFilter],
   );
   const scopedIds = useMemo(() => new Set(scopedAccounts.map((a) => a.id)), [scopedAccounts]);
   const scopedTrades = useMemo(
@@ -108,33 +116,53 @@ function Overview() {
 
   return (
     <AppShell
-      title="Resumen"
+      title={
+        <span className="flex flex-wrap items-center gap-3">
+          Resumen
+          <select
+            value={accountFilter}
+            onChange={(e) => setAccountFilter(e.target.value)}
+            className="h-9 rounded-md border border-border bg-card px-2 text-sm font-sans"
+            aria-label="Cuenta"
+          >
+            <option value="all">General</option>
+            {accounts.map((a) => (
+              <option key={a.id} value={a.id}>
+                {a.name}
+              </option>
+            ))}
+          </select>
+        </span>
+      }
       subtitle={`${selectedAccounts.length} cuenta(s) · Fondeo ${formatCurrency(fundedEquity)} · Real ${formatCurrency(realEquity)}`}
     >
       <div className="space-y-5">
         <RiskAlerts />
-        <section className="grid gap-3 sm:grid-cols-3">
-
-          {SCOPES.map((s) => (
-            <button
-              key={s.key}
-              onClick={() => setScope(s.key)}
-              className={cn(
-                "panel p-4 text-left transition-colors",
-                scope === s.key
-                  ? "border-brand bg-brand/10"
-                  : "hover:border-foreground/30",
-              )}
-            >
-              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                {s.label}
-              </p>
-              <p className="num mt-1 text-lg font-semibold">{formatCurrency(scopeValue(s.key))}</p>
-            </button>
-          ))}
-        </section>
+        {accountFilter === "all" && (
+          <section className="grid gap-3 sm:grid-cols-3">
+            {SCOPES.map((s) => (
+              <button
+                key={s.key}
+                onClick={() => setScope(s.key)}
+                className={cn(
+                  "panel p-4 text-left transition-colors",
+                  scope === s.key
+                    ? "border-brand bg-brand/10"
+                    : "hover:border-foreground/30",
+                )}
+              >
+                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  {s.label}
+                </p>
+                <p className="num mt-1 text-lg font-semibold">{formatCurrency(scopeValue(s.key))}</p>
+              </button>
+            ))}
+          </section>
+        )}
         <KpiCards metrics={metrics} scope={scope} trades={scopedTrades} />
+        <PerformanceAnalysis trades={trades} />
         <EmotionHighlights trades={scopedTrades} />
+
 
 
 
