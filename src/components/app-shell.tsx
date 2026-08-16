@@ -4,7 +4,6 @@ import {
   Wallet,
   ListOrdered,
   Layers,
-  Banknote,
   CandlestickChart,
   NotebookPen,
   Users,
