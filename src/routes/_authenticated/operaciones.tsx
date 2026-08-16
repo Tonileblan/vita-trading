@@ -117,6 +117,15 @@ function TradesPage() {
               onChange={(e) => setQuery(e.target.value)}
             />
           </div>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setSortBy((s) => (s === "created" ? "closed" : "created"))}
+          >
+            <ArrowUpDown className="size-4" />
+            {sortBy === "created" ? "Orden: introducción" : "Orden: fecha operación"}
+          </Button>
+
           <div className="flex flex-wrap gap-2">
             {strategies.map(({ id, name: t }) => (
               <button
