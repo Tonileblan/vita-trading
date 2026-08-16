@@ -161,30 +161,46 @@ export interface JournalData {
   withdrawals: Withdrawal[];
 }
 
-/** Agrupación de operaciones creadas en una misma importación por imagen. */
+/** Agrupación de operaciones creadas juntas (captura) o por separado (manual). */
 export interface ImportBatch {
   id: string;
   createdAt: string;
   count: number;
   pnl: number;
+  source: "captura" | "manual";
+  symbols: string[];
+  tradeIds: string[];
 }
 
+/** Agrupa por lote de importación; las operaciones sueltas se agrupan por minuto de creación. */
 function groupImportBatches(trades: Trade[]): ImportBatch[] {
   const map = new Map<string, ImportBatch>();
   for (const t of trades) {
-    if (!t.importBatchId) continue;
     const created = t.createdAt ?? t.closedAt;
-    const current = map.get(t.importBatchId);
+    const key = t.importBatchId ?? `manual:${created.slice(0, 16)}`;
+    const source: ImportBatch["source"] = t.importBatchId ? "captura" : "manual";
+    const current = map.get(key);
     if (current) {
       current.count += 1;
       current.pnl += t.pnl;
+      current.tradeIds.push(t.id);
+      if (!current.symbols.includes(t.symbol)) current.symbols.push(t.symbol);
       if (created < current.createdAt) current.createdAt = created;
     } else {
-      map.set(t.importBatchId, { id: t.importBatchId, createdAt: created, count: 1, pnl: t.pnl });
+      map.set(key, {
+        id: key,
+        createdAt: created,
+        count: 1,
+        pnl: t.pnl,
+        source,
+        symbols: [t.symbol],
+        tradeIds: [t.id],
+      });
     }
   }
-  return [...map.values()].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 10);
+  return [...map.values()].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 20);
 }
+
 
 /** Aplica un delta de PnL al balance almacenado de cada cuenta. */
 async function applyBalanceDeltas(accounts: Account[], deltas: Map<string, number>) {
