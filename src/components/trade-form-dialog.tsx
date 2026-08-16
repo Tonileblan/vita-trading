@@ -44,7 +44,14 @@ export function TradeFormDialog() {
   const [notes, setNotes] = useState("");
   const [shots, setShots] = useState<string[]>([]);
   const [dragging, setDragging] = useState(false);
+  const [showMood, setShowMood] = useState(false);
+  const [emotionBefore, setEmotionBefore] = useState("");
+  const [emotionAfter, setEmotionAfter] = useState("");
+  const [followedPlan, setFollowedPlan] = useState<FollowedPlan | "">("");
+  const [mistakes, setMistakes] = useState<string[]>([]);
+  const [emotionNote, setEmotionNote] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
+
 
   // Mantiene la selección alineada con las estrategias del diario activo.
   useEffect(() => {
