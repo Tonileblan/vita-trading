@@ -205,6 +205,11 @@ interface JournalState extends JournalData {
   addTrade: (trade: Omit<Trade, "id">) => Promise<void>;
   /** Inserta varias operaciones a la vez y ajusta el balance de cada cuenta una sola vez. */
   addTrades: (trades: Omit<Trade, "id">[]) => Promise<void>;
+  removeTrade: (id: string) => Promise<void>;
+  removeTrades: (ids: string[]) => Promise<void>;
+  removeImportBatch: (batchId: string) => Promise<void>;
+  /** Lotes de importación recientes (capturas/fotos), del más nuevo al más antiguo. */
+  importBatches: ImportBatch[];
   addWithdrawal: (withdrawal: Omit<Withdrawal, "id">) => Promise<void>;
   updateWithdrawal: (id: string, patch: Partial<Omit<Withdrawal, "id">>) => Promise<void>;
   removeWithdrawal: (id: string) => Promise<void>;
