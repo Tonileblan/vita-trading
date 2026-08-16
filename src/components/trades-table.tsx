@@ -21,6 +21,8 @@ export function TradesTable({
 }) {
   const rows = limit ? trades.slice(0, limit) : trades;
   const nameOf = (id: string) => accounts.find((a) => a.id === id)?.name ?? "—";
+  /** Treats empty or "N/D" (legacy) symbols as unavailable. */
+  const symbolOf = (s: string) => (s && s !== "N/D" ? s : "—");
   const selectable = !!onToggleSelect;
   const isSelected = (id: string) => (selectedIds ?? []).includes(id);
   const colCount = 9 + (selectable ? 1 : 0) + (onDelete ? 1 : 0);
