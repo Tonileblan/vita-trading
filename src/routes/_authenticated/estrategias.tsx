@@ -107,8 +107,11 @@ function EstrategiasPage() {
                   <h3 className="truncate text-lg font-semibold">{s.name}</h3>
                   <p className="text-xs text-muted-foreground">
                     {s.mainSymbol} · riesgo {(s.riskPct * 100).toFixed(1)}% ·{" "}
-                    {formatCurrency(s.initialCapital)}
+                    {statById.get(s.id)?.accounts.length
+                      ? formatCurrency(statById.get(s.id)!.currentCapital)
+                      : "sin cuentas asignadas"}
                   </p>
+
                 </div>
                 <StrategyDialog
                   strategy={s}
