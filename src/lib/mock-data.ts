@@ -85,8 +85,8 @@ export const mockStrategies: Strategy[] = [
 ];
 
 export const mockWithdrawals: Withdrawal[] = [
-  { id: "wd-1", strategyId: "str-fondeo", date: "2026-06-05T00:00:00.000Z", amount: 1200, reason: "Payout mensual" },
-  { id: "wd-2", strategyId: "str-indices", date: "2026-07-02T00:00:00.000Z", amount: 800, reason: "Retiro de beneficios" },
+  { id: "wd-1", strategyId: "str-fondeo", date: "2026-06-05T00:00:00.000Z", amount: 1200, reason: "Payout mensual", status: "approved" },
+  { id: "wd-2", strategyId: "str-indices", date: "2026-07-02T00:00:00.000Z", amount: 800, reason: "Retiro de beneficios", status: "approved" },
 ];
 
 export const mockAccounts: Account[] = [
