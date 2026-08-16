@@ -1,97 +1,29 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { ArrowDown, ArrowUp, Flame, Snowflake, TrendingUp } from "lucide-react";
 import type { Metrics } from "@/lib/metrics";
 import type { Trade } from "@/lib/types";
 import { computeStreaks, filterByDays, formatCurrency } from "@/lib/metrics";
 import { cn } from "@/lib/utils";
 
-function Card({
-  label,
-  value,
-  sub,
-  icon: Icon,
-  tone = "neutral",
-  children,
-  headerExtra,
-}: {
-  label: string;
-  value: React.ReactNode;
-  sub: React.ReactNode;
-  icon: React.ElementType;
-  tone?: "neutral" | "profit" | "loss";
-  children?: React.ReactNode;
-  headerExtra?: React.ReactNode;
-}) {
-  return (
-    <div className="panel p-4">
-      <div className="flex items-center justify-between">
-        <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-          {label}
-        </span>
-        {headerExtra ?? <Icon className="size-4 text-brand-soft" />}
-      </div>
-      <div
-        className={cn(
-          "num mt-3 text-2xl font-bold",
-          tone === "profit" && "text-profit",
-          tone === "loss" && "text-loss",
-        )}
-      >
-        {value}
-      </div>
-      <p className="mt-1 text-xs text-muted-foreground">{sub}</p>
-      {children}
-    </div>
-  );
-}
+const STREAK_RANGES = [
+  { key: "7", label: "7d" },
+  { key: "30", label: "30d" },
+  { key: "180", label: "180d" },
+] as const;
 
-function StreakCard({ trades }: { trades: Trade[] }) {
-  const info = computeStreaks(trades);
-  const cur = info.current;
+type StreakRange = (typeof STREAK_RANGES)[number]["key"];
 
-  const streakLabel =
-    cur.type === "none"
-      ? "Sin racha"
-      : `${cur.count} ${
-          cur.type === "win"
-            ? cur.count === 1
-              ? "ganada"
-              : "ganadas"
-            : cur.count === 1
-              ? "perdida"
-              : "perdidas"
-        }`;
-
-  return (
-    <Card
-      label="Racha actual"
-      value={
-        info.wins === 0 && info.losses === 0 ? (
-          "Sin operaciones"
-        ) : (
-          <span className="inline-flex items-center gap-3">
-            <span className="inline-flex items-center gap-1 text-profit">
-              <ArrowUp className="size-4" />
-              {info.wins}
-            </span>
-            <span className="inline-flex items-center gap-1 text-loss">
-              <ArrowDown className="size-4" />
-              {info.losses}
-            </span>
-          </span>
-        )
-      }
-      sub={`Racha: ${streakLabel}`}
-      icon={cur.type === "loss" ? Snowflake : Flame}
-      {...(cur.type !== "none"
-        ? { tone: cur.type === "win" ? ("profit" as const) : ("loss" as const) }
-        : {})}
-    >
-      <p className="mt-1.5 text-[11px] text-muted-foreground">
-        Mejor racha: {info.maxWin} ganadas · {info.maxLoss} perdidas
-      </p>
-    </Card>
-  );
+function streakLabel(cur: { type: "win" | "loss" | "none"; count: number }) {
+  if (cur.type === "none") return "Sin racha";
+  const noun =
+    cur.type === "win"
+      ? cur.count === 1
+        ? "ganada"
+        : "ganadas"
+      : cur.count === 1
+        ? "perdida"
+        : "perdidas";
+  return `${cur.count} ${noun}`;
 }
 
 export function KpiCards({
@@ -107,6 +39,8 @@ export function KpiCards({
   fusionEquity?: number | undefined;
   fusionInitial?: number | undefined;
 }) {
+  const [streakRange, setStreakRange] = useState<StreakRange>("30");
+
   const pnlLabel = fusionEquity !== undefined
     ? "Capital"
     : scope === "funded"
@@ -117,46 +51,112 @@ export function KpiCards({
   const pnlValue = fusionEquity !== undefined ? fusionEquity : metrics.totalPnl;
   const fmtNoSign = (v: number) =>
     `$${Math.abs(v).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+  const streakTrades = useMemo(
+    () => (trades ? filterByDays(trades, Number(streakRange)) : []),
+    [trades, streakRange],
+  );
+  const streak = useMemo(() => computeStreaks(streakTrades), [streakTrades]);
+  const cur = streak.current;
+  const StreakIcon = cur.type === "loss" ? Snowflake : Flame;
+  const streakTone =
+    cur.type !== "none"
+      ? cur.type === "win"
+        ? ("profit" as const)
+        : ("loss" as const)
+      : undefined;
+
+  const noOps = streak.wins === 0 && streak.losses === 0;
+
   return (
-    <div className="grid gap-3 sm:grid-cols-2">
-      <Card
-        label={pnlLabel}
-        value={fusionEquity !== undefined && fusionInitial !== undefined ? fmtNoSign(fusionInitial) : formatCurrency(pnlValue, true)}
-        sub={fusionEquity === undefined ? `${metrics.total} operaciones cerradas` : undefined}
-        icon={TrendingUp}
-        tone={fusionEquity === undefined && pnlValue >= 0 ? "profit" : fusionEquity === undefined ? "loss" : "neutral"}
-      >
-        {fusionEquity !== undefined && (
-          <div className="mt-1.5 text-lg font-bold">
-            <span className={metrics.totalPnl >= 0 ? "text-profit" : "text-loss"}>
-              {metrics.totalPnl >= 0 ? "+" : "−"} {formatCurrency(Math.abs(metrics.totalPnl), false)}
-            </span>
-          </div>
+    <div className="panel p-4">
+      {/* ---- Bloque PnL ---- */}
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          {pnlLabel}
+        </span>
+        <TrendingUp className="size-4 text-brand-soft" />
+      </div>
+      <div
+        className={cn(
+          "num mt-2 text-2xl font-bold",
+          fusionEquity === undefined && pnlValue >= 0 && "text-profit",
+          fusionEquity === undefined && pnlValue < 0 && "text-loss",
         )}
-      </Card>
-      {trades ? <StreakCard trades={trades} /> : (
-        <Card
-          label="Racha actual"
-          value={
-            metrics.streak.type === "none"
-              ? "Sin racha"
-              : `${metrics.streak.count} ${
-                  metrics.streak.type === "win"
-                    ? metrics.streak.count === 1
-                      ? "ganada"
-                      : "ganadas"
-                    : metrics.streak.count === 1
-                      ? "perdida"
-                      : "perdidas"
-                }`
-          }
-          sub={`Mejor ${formatCurrency(metrics.bestTrade)} · Peor ${formatCurrency(metrics.worstTrade)}`}
-          icon={metrics.streak.type === "loss" ? Snowflake : Flame}
-          {...(metrics.streak.type !== "none"
-            ? { tone: metrics.streak.type === "win" ? ("profit" as const) : ("loss" as const) }
-            : {})}
-        />
+      >
+        {fusionEquity !== undefined && fusionInitial !== undefined
+          ? fmtNoSign(fusionInitial)
+          : formatCurrency(pnlValue, true)}
+      </div>
+      <p className="mt-0.5 text-xs text-muted-foreground">
+        {fusionEquity === undefined ? `${metrics.total} operaciones cerradas` : "Capital inicial"}
+      </p>
+      {fusionEquity !== undefined && (
+        <div className="mt-1 text-lg font-bold tabular-nums">
+          <span className={metrics.totalPnl >= 0 ? "text-profit" : "text-loss"}>
+            {metrics.totalPnl >= 0 ? "+" : "−"} {formatCurrency(Math.abs(metrics.totalPnl), false)}
+          </span>
+        </div>
       )}
+
+      {/* ---- Divisor ---- */}
+      <div className="my-3 h-px bg-border" />
+
+      {/* ---- Bloque Racha ---- */}
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          Racha actual
+        </span>
+        <StreakIcon className="size-4 text-brand-soft" />
+      </div>
+
+      <div className="mt-2 flex flex-wrap items-center gap-3">
+        {noOps ? (
+          <span className="text-2xl font-bold tabular-nums">Sin operaciones</span>
+        ) : (
+          <span
+            className={cn(
+              "num inline-flex items-center gap-3 text-2xl font-bold tabular-nums",
+              streakTone === "profit" && "text-profit",
+              streakTone === "loss" && "text-loss",
+            )}
+          >
+            <span className="inline-flex items-center gap-1 text-profit">
+              <ArrowUp className="size-4" />
+              {streak.wins}
+            </span>
+            <span className="inline-flex items-center gap-1 text-loss">
+              <ArrowDown className="size-4" />
+              {streak.losses}
+            </span>
+          </span>
+        )}
+        <span className="text-xs text-muted-foreground tabular-nums">
+          {noOps ? "" : `Racha: ${streakLabel(cur)}`}
+        </span>
+      </div>
+
+      <div className="mt-2 flex flex-wrap items-center gap-3">
+        <div className="flex gap-1 rounded-md border border-border p-0.5">
+          {STREAK_RANGES.map((r) => (
+            <button
+              key={r.key}
+              onClick={() => setStreakRange(r.key)}
+              className={cn(
+                "rounded px-2 py-0.5 text-[11px] font-semibold transition-colors",
+                streakRange === r.key
+                  ? "bg-brand text-primary-foreground"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              {r.label}
+            </button>
+          ))}
+        </div>
+        <p className="text-[11px] text-muted-foreground tabular-nums">
+          Mejor racha: {streak.maxWin} ganadas · {streak.maxLoss} perdidas
+        </p>
+      </div>
     </div>
   );
 }
