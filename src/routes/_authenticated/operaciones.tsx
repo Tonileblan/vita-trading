@@ -149,7 +149,7 @@ function TradesPage() {
           <Collapsible>
             <CollapsibleTrigger asChild>
               <Button size="sm" variant="outline">
-                <History className="size-4" />
+                <HistoryIcon className="size-4" />
                 Historial de importaciones
                 <ChevronDown className="size-4 transition-transform duration-200 group-data-[state=open]:rotate-180" />
               </Button>
