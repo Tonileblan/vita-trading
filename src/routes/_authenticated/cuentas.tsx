@@ -125,11 +125,13 @@ function AccountDialog({ account, trigger }: { account?: Account; trigger: React
       return;
     }
     const initialBalance = parseMoneyInput(initial);
-    const currentBalance = parseMoneyInput(current);
-    if (!Number.isFinite(initialBalance) || !Number.isFinite(currentBalance)) {
+    // El balance vigente se deriva de operaciones y retiros, no se edita a mano.
+    const currentBalance = initialBalance;
+    if (!Number.isFinite(initialBalance)) {
       toast.error("Revisa los balances introducidos");
       return;
     }
+
     const payload = {
       name: name.trim(),
       type,
