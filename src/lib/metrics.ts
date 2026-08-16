@@ -220,6 +220,46 @@ export function accountsCurveStart(
   return accounts.reduce((sum, account) => sum + accountCurveStart(account, trades, withdrawals), 0);
 }
 
+export interface TargetStatus {
+  phase: NonNullable<Account["phase"]>;
+  label: string;
+  /** Capital objetivo absoluto. */
+  target: number;
+  balance: number;
+  /** Progreso 0-100. */
+  pct: number;
+  /** Cuánto falta para el objetivo (0 si alcanzado). */
+  remaining: number;
+  reached: boolean;
+}
+
+/** Progreso de una cuenta de fondeo hacia su objetivo (evaluación o payout). */
+export function accountTarget(
+  account: Account,
+  trades: Trade[],
+  withdrawals: { accountId?: string | undefined; amount: number }[] = [],
+): TargetStatus | null {
+  if (account.type !== "funded") return null;
+  const target = account.profitTarget ?? 0;
+  if (!target || target <= account.initialBalance) return null;
+
+  const phase = account.phase ?? "eval";
+  const balance = accountBalance(account, trades, withdrawals);
+  const span = target - account.initialBalance;
+  const gained = balance - account.initialBalance;
+  const pct = Math.max(0, Math.min(100, (gained / span) * 100));
+
+  return {
+    phase,
+    label: phase === "live" ? "Objetivo de retiro" : "Objetivo de evaluación",
+    target,
+    balance,
+    pct,
+    remaining: Math.max(0, target - balance),
+    reached: balance >= target,
+  };
+}
+
 export interface DrawdownStatus {
   type: NonNullable<Account["drawdownType"]>;
   label: string;
