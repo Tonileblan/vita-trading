@@ -167,18 +167,38 @@ function Overview() {
     () => buildEquityCurve(trades, accountsCurveStart(scopedAccounts, trades, withdrawals)),
     [trades, scopedAccounts, withdrawals],
   );
-  const fundedEquity = selectedAccounts
-    .filter((a) => a.type === "funded")
-    .reduce((s, a) => s + accountBalance(a, visibleTrades, withdrawals), 0);
-  const realEquity = selectedAccounts
-    .filter((a) => a.type !== "funded")
-    .reduce((s, a) => s + accountBalance(a, visibleTrades, withdrawals), 0);
-
+  const fundedAccounts = selectedAccounts.filter((a) => a.type === "funded");
+  const realAccounts = selectedAccounts.filter((a) => a.type !== "funded");
+  const fundedEquity = fundedAccounts.reduce(
+    (s, a) => s + accountBalance(a, visibleTrades, withdrawals),
+    0,
+  );
+  const realEquity = realAccounts.reduce(
+    (s, a) => s + accountBalance(a, visibleTrades, withdrawals),
+    0,
+  );
+  const fundedPnl = fundedAccounts.reduce(
+    (s, a) => s + accountResult(a, visibleTrades, withdrawals),
+    0,
+  );
+  const realPnl = realAccounts.reduce(
+    (s, a) => s + accountResult(a, visibleTrades, withdrawals),
+    0,
+  );
+  const fusionPnl = fusionAccounts.reduce(
+    (s, a) => s + accountResult(a, visibleTrades, withdrawals),
+    0,
+  );
 
   const scopeValue = (key: Scope) => {
     if (key === "funded") return fundedEquity;
     if (key === "real") return realEquity;
     return fundedEquity + realEquity;
+  };
+  const scopePnl = (key: Scope) => {
+    if (key === "funded") return fundedPnl;
+    if (key === "real") return realPnl;
+    return fundedPnl + realPnl;
   };
 
   return (
