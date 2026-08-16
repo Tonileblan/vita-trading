@@ -309,7 +309,7 @@ export function TradeImportDialog() {
                       )
                     }
                   />
-                  <span className="font-semibold">{r.symbol.toUpperCase()}</span>
+                  <span className="font-semibold">{r.symbol.toUpperCase() || "—"}</span>
                   <span className="uppercase text-muted-foreground">{r.direction}</span>
                   <span
                     className={cn(
