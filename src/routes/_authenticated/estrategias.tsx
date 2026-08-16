@@ -35,22 +35,29 @@ function pct(v: number) {
 }
 
 function EstrategiasPage() {
-  const { strategies, trades, withdrawals, restoreDefaultStrategies } = useJournal();
+  const { strategies, trades, withdrawals, accounts, restoreDefaultStrategies } = useJournal();
 
   const stats = useMemo(
-    () => strategies.map((s) => computeStrategyStats(s, trades, withdrawals)),
-    [strategies, trades, withdrawals],
+    () => strategies.map((s) => computeStrategyStats(s, trades, withdrawals, accounts)),
+    [strategies, trades, withdrawals, accounts],
+  );
+
+  const statById = useMemo(
+    () => new Map(stats.map((s) => [s.strategy.id, s])),
+    [stats],
   );
 
   const totals = useMemo(() => {
-    const initial = stats.reduce((s, x) => s + x.strategy.initialCapital, 0);
+    const initial = stats.reduce((s, x) => s + x.initialCapital, 0);
     const net = stats.reduce((s, x) => s + x.net, 0);
     const withdrawn = stats.reduce((s, x) => s + x.withdrawn, 0);
     const ops = stats.reduce((s, x) => s + x.trades, 0);
-    return { initial, net, withdrawn, ops, current: initial + net - withdrawn };
+    const current = stats.reduce((s, x) => s + x.currentCapital, 0);
+    return { initial, net, withdrawn, ops, current };
   }, [stats]);
 
   const months = useMemo(() => monthlyNet(trades, totals.initial), [trades, totals.initial]);
+
 
   return (
     <AppShell
@@ -100,8 +107,11 @@ function EstrategiasPage() {
                   <h3 className="truncate text-lg font-semibold">{s.name}</h3>
                   <p className="text-xs text-muted-foreground">
                     {s.mainSymbol} · riesgo {(s.riskPct * 100).toFixed(1)}% ·{" "}
-                    {formatCurrency(s.initialCapital)}
+                    {statById.get(s.id)?.accounts.length
+                      ? formatCurrency(statById.get(s.id)!.currentCapital)
+                      : "sin cuentas asignadas"}
                   </p>
+
                 </div>
                 <StrategyDialog
                   strategy={s}
@@ -178,10 +188,16 @@ function EstrategiasPage() {
                     <span className="ml-2 text-xs text-muted-foreground">
                       {s.strategy.mainSymbol} · {(s.strategy.riskPct * 100).toFixed(1)}%
                     </span>
+                    <span className="block text-xs text-muted-foreground">
+                      {s.accounts.length
+                        ? s.accounts.map((a) => a.name).join(", ")
+                        : "sin cuentas asignadas"}
+                    </span>
                   </td>
                   <td className="py-2 text-right tabular-nums">
-                    {formatCurrency(s.strategy.initialCapital)}
+                    {formatCurrency(s.initialCapital)}
                   </td>
+
                   <td
                     className={cn(
                       "py-2 text-right font-semibold tabular-nums",

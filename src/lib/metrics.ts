@@ -401,9 +401,12 @@ import type { Strategy, Withdrawal } from "./types";
 
 export interface StrategyStats {
   strategy: Strategy;
+  /** Capital inicial agregado de las cuentas asignadas a la estrategia. */
+  initialCapital: number;
   net: number;
   withdrawn: number;
   currentCapital: number;
+  accounts: Account[];
   trades: number;
   winRate: number;
   profitFactor: number;
@@ -416,26 +419,31 @@ export function computeStrategyStats(
   strategy: Strategy,
   trades: Trade[],
   withdrawals: Withdrawal[],
+  accounts: Account[] = [],
 ): StrategyStats {
-  const own = trades.filter((t) => t.strategyId === strategy.id);
+  const own = trades.filter((t) => effectiveStrategyId(t, accounts) === strategy.id);
   const m = computeMetrics(own);
-  const withdrawn = withdrawals
-    .filter((w) => w.strategyId === strategy.id)
-    .reduce((s, w) => s + w.amount, 0);
-  const currentCapital = strategy.initialCapital + m.totalPnl - withdrawn;
+  const mine = accounts.filter((a) => a.strategyId === strategy.id);
+  const approved = withdrawals.filter((w) => w.status === "approved");
+  const withdrawn = mine.reduce((s, a) => s + accountWithdrawn(approved, a.id), 0);
+  const initialCapital = mine.reduce((s, a) => s + a.initialBalance, 0);
+  const currentCapital = mine.reduce((s, a) => s + accountBalance(a, trades, approved), 0);
   return {
     strategy,
+    initialCapital,
     net: m.totalPnl,
     withdrawn,
     currentCapital,
+    accounts: mine,
     trades: m.total,
     winRate: m.winRate,
     profitFactor: m.profitFactor,
-    returnPct: strategy.initialCapital ? (m.totalPnl / strategy.initialCapital) * 100 : 0,
+    returnPct: initialCapital ? (m.totalPnl / initialCapital) * 100 : 0,
     expectancy: m.total ? m.totalPnl / m.total : 0,
     riskPerTrade: currentCapital * strategy.riskPct,
   };
 }
+
 
 const MONTHS = [
   "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
