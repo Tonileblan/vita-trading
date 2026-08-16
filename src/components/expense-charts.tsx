@@ -150,10 +150,21 @@ export function ExpenseCharts({ occurrences }: { occurrences: Occurrence[] }) {
                   {m.amount ? Math.round(m.amount) : ""}
                 </span>
                 <div
-                  className="w-full rounded-t bg-gradient-to-b from-loss/80 to-loss/30"
+                  className="relative w-full"
                   style={{ height: `${Math.max((m.amount / max) * 100, m.amount ? 4 : 0)}%` }}
                   title={`${m.label}: ${formatCurrency(m.amount)}`}
-                />
+                >
+                  {m.amount > 0 && (
+                    <>
+                      {/* cara superior */}
+                      <div className="absolute -top-[5px] left-[5px] h-[5px] w-full origin-bottom-left skew-x-[-45deg] bg-loss/90" />
+                      {/* lateral derecho */}
+                      <div className="absolute -right-[5px] top-[-5px] h-full w-[5px] origin-bottom-left skew-y-[-45deg] bg-loss/40" />
+                      {/* cara frontal */}
+                      <div className="absolute inset-0 bg-gradient-to-b from-loss/85 to-loss/45" />
+                    </>
+                  )}
+                </div>
                 <span className="text-[10px] uppercase text-muted-foreground">{m.label}</span>
               </div>
             ))}
