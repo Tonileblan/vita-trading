@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedChatRouteImport } from './routes/_authenticated/chat'
+import { Route as AuthenticatedContaRouteImport } from './routes/_authenticated/conta'
 import { Route as AuthenticatedCostosRouteImport } from './routes/_authenticated/costos'
 import { Route as AuthenticatedCuentasRouteImport } from './routes/_authenticated/cuentas'
 import { Route as AuthenticatedDiariosRouteImport } from './routes/_authenticated/diarios'
@@ -43,6 +44,11 @@ const AuthRoute = AuthRouteImport.update({
 const AuthenticatedChatRoute = AuthenticatedChatRouteImport.update({
   id: '/chat',
   path: '/chat',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedContaRoute = AuthenticatedContaRouteImport.update({
+  id: '/conta',
+  path: '/conta',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedCostosRoute = AuthenticatedCostosRouteImport.update({
@@ -114,6 +120,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/chat': typeof AuthenticatedChatRoute
+  '/conta': typeof AuthenticatedContaRoute
   '/costos': typeof AuthenticatedCostosRoute
   '/cuentas': typeof AuthenticatedCuentasRoute
   '/diarios': typeof AuthenticatedDiariosRoute
@@ -131,6 +138,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/chat': typeof AuthenticatedChatRoute
+  '/conta': typeof AuthenticatedContaRoute
   '/costos': typeof AuthenticatedCostosRoute
   '/cuentas': typeof AuthenticatedCuentasRoute
   '/diarios': typeof AuthenticatedDiariosRoute
@@ -150,6 +158,7 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/_authenticated/chat': typeof AuthenticatedChatRoute
+  '/_authenticated/conta': typeof AuthenticatedContaRoute
   '/_authenticated/costos': typeof AuthenticatedCostosRoute
   '/_authenticated/cuentas': typeof AuthenticatedCuentasRoute
   '/_authenticated/diarios': typeof AuthenticatedDiariosRoute
@@ -169,6 +178,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/chat'
+    | '/conta'
     | '/costos'
     | '/cuentas'
     | '/diarios'
@@ -186,6 +196,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/chat'
+    | '/conta'
     | '/costos'
     | '/cuentas'
     | '/diarios'
@@ -204,6 +215,7 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/auth'
     | '/_authenticated/chat'
+    | '/_authenticated/conta'
     | '/_authenticated/costos'
     | '/_authenticated/cuentas'
     | '/_authenticated/diarios'
@@ -253,6 +265,13 @@ declare module '@tanstack/react-router' {
       path: '/chat'
       fullPath: '/chat'
       preLoaderRoute: typeof AuthenticatedChatRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/conta': {
+      id: '/_authenticated/conta'
+      path: '/conta'
+      fullPath: '/conta'
+      preLoaderRoute: typeof AuthenticatedContaRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/costos': {
@@ -344,6 +363,7 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedChatRoute: typeof AuthenticatedChatRoute
+  AuthenticatedContaRoute: typeof AuthenticatedContaRoute
   AuthenticatedCostosRoute: typeof AuthenticatedCostosRoute
   AuthenticatedCuentasRoute: typeof AuthenticatedCuentasRoute
   AuthenticatedDiariosRoute: typeof AuthenticatedDiariosRoute
@@ -359,6 +379,7 @@ interface AuthenticatedRouteRouteChildren {
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedChatRoute: AuthenticatedChatRoute,
+  AuthenticatedContaRoute: AuthenticatedContaRoute,
   AuthenticatedCostosRoute: AuthenticatedCostosRoute,
   AuthenticatedCuentasRoute: AuthenticatedCuentasRoute,
   AuthenticatedDiariosRoute: AuthenticatedDiariosRoute,
