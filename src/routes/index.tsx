@@ -16,7 +16,8 @@ export const Route = createFileRoute("/")({
       { property: "og:title", content: "Bitácora de Trading — Diarios, métricas y equipo" },
       {
         property: "og:description",
-        content: "Diarios independientes, cuentas de fondeo, estrategias y control de retiros.",
+        content:
+          "Registra operaciones, organiza varios diarios de trading y gestiona usuarios con métricas en tiempo real.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
