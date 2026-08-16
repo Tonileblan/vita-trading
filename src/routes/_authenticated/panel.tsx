@@ -5,6 +5,8 @@ import { EquityChart } from "@/components/equity-chart";
 import { KpiCards } from "@/components/kpi-cards";
 import { RiskAlerts } from "@/components/risk-alerts";
 import { EmotionHighlights } from "@/components/emotion-stats";
+import { PerformanceAnalysis } from "@/components/performance-analysis";
+
 
 import { TradesTable } from "@/components/trades-table";
 import { useJournal } from "@/lib/journal-store";
