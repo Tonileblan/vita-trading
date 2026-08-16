@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo } from "react";
 import { ArrowLeft, Building2, User } from "lucide-react";
+import { AccountCostCard } from "@/components/account-cost-card";
 import { AppShell } from "@/components/app-shell";
 import { EquityChart } from "@/components/equity-chart";
 import { KpiCards } from "@/components/kpi-cards";
