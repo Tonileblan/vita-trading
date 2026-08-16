@@ -443,7 +443,7 @@ function Overview() {
           <EquityChart data={curve} />
         </section>
 
-        <PnlCalendar trades={trades} />
+        <PnlCalendar trades={scopedTrades} />
 
         <section className="space-y-3">
           <h2 className="text-base font-semibold">Últimas operaciones</h2>
