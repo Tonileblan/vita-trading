@@ -167,7 +167,29 @@ function Overview() {
       title={
         <span className="flex flex-wrap items-center gap-3 w-full">
           <span>Resumen</span>
-          <div className="flex flex-wrap gap-1 rounded-md border border-border p-1">
+          <select
+            value={filter}
+            onChange={(e) => setFilter(e.target.value)}
+            className="h-7 rounded-md border border-border bg-card px-2 text-xs font-semibold"
+            aria-label="Cuenta o estrategia"
+          >
+            <option value="all">GENERAL</option>
+            <optgroup label="Cuentas">
+              {accounts.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.name}
+                </option>
+              ))}
+            </optgroup>
+            <optgroup label="Estrategias">
+              {accountStrategies.map((s) => (
+                <option key={s.id} value={`strategy:${s.id}`}>
+                  Estrategia-{s.name}
+                </option>
+              ))}
+            </optgroup>
+          </select>
+          <div className="ml-auto flex flex-wrap gap-1 rounded-md border border-border p-1">
             {RANGES.map((r) => (
               <button
                 key={r.key}
@@ -242,28 +264,6 @@ function Overview() {
               </PopoverContent>
             </Popover>
           </div>
-          <select
-            value={filter}
-            onChange={(e) => setFilter(e.target.value)}
-            className="ml-auto h-9 rounded-md border border-border bg-card px-2 text-sm font-sans"
-            aria-label="Cuenta o estrategia"
-          >
-            <option value="all">GENERAL</option>
-            <optgroup label="Cuentas">
-              {accounts.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.name}
-                </option>
-              ))}
-            </optgroup>
-            <optgroup label="Estrategias">
-              {accountStrategies.map((s) => (
-                <option key={s.id} value={`strategy:${s.id}`}>
-                  Estrategia-{s.name}
-                </option>
-              ))}
-            </optgroup>
-          </select>
         </span>
       }
       subtitle={`${selectedAccounts.length} cuenta(s) · Fondeo ${formatCurrency(fundedEquity)} · Real ${formatCurrency(realEquity)}`}
