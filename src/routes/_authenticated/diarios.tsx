@@ -57,6 +57,7 @@ function JournalsPage() {
   const update = useUpdateJournal();
   const remove = useDeleteJournal();
   const toggleTemplate = useToggleTemplate();
+  const { user } = useAuth();
   const { activeJournalId, setActiveJournalId } = useJournal();
   const qc = useQueryClient();
   const fileRef = useRef<HTMLInputElement>(null);
