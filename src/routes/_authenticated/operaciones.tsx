@@ -145,50 +145,58 @@ function TradesPage() {
         </div>
 
         {importBatches.length > 0 && (
-          <div className="panel space-y-2 p-4">
-            <p className="font-display text-lg">Historial de importaciones</p>
-            <div className="space-y-2">
-              {importBatches.map((b) => (
-                <div
-                  key={b.id}
-                  className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-border px-3 py-2 text-sm"
-                >
-                  <div className="min-w-0">
-                    <span className="num text-muted-foreground">{formatDateTime(b.createdAt)}</span>
-                    <span className="mx-2 text-muted-foreground">·</span>
-                    <span className="rounded-full border border-border px-2 py-0.5 text-xs text-muted-foreground">
-                      {b.source === "captura" ? "Captura" : "Manual"}
-                    </span>
-                    <span className="mx-2 text-muted-foreground">·</span>
-                    <span>
-                      {b.count} {b.count === 1 ? "operación" : "operaciones"}
-                    </span>
-                    <span
-                      className={cn("num ml-2 font-semibold", b.pnl >= 0 ? "text-profit" : "text-loss")}
-                    >
-                      {formatCurrency(b.pnl, true)}
-                    </span>
-                    <span className="ml-2 truncate text-xs text-muted-foreground">
-                      {b.symbols.slice(0, 4).join(", ")}
-                    </span>
-                  </div>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() =>
-                      setPending({
-                        kind: "batch",
-                        id: b.id,
-                        label: `Se eliminarán las ${b.count} operaciones de este registro y se ajustarán los balances.`,
-                      })
-                    }
+          <Collapsible>
+            <CollapsibleTrigger asChild>
+              <Button size="sm" variant="outline">
+                <History className="size-4" />
+                Historial de importaciones
+                <ChevronDown className="size-4 transition-transform duration-200 group-data-[state=open]:rotate-180" />
+              </Button>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <div className="panel mt-2 space-y-2 p-4">
+                {importBatches.map((b) => (
+                  <div
+                    key={b.id}
+                    className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-border px-3 py-2 text-sm"
                   >
-                    <Undo2 className="size-4" /> Deshacer
-                  </Button>
-                </div>
-              ))}
-            </div>
-          </div>
+                    <div className="min-w-0">
+                      <span className="num text-muted-foreground">{formatDateTime(b.createdAt)}</span>
+                      <span className="mx-2 text-muted-foreground">·</span>
+                      <span className="rounded-full border border-border px-2 py-0.5 text-xs text-muted-foreground">
+                        {b.source === "captura" ? "Captura" : "Manual"}
+                      </span>
+                      <span className="mx-2 text-muted-foreground">·</span>
+                      <span>
+                        {b.count} {b.count === 1 ? "operación" : "operaciones"}
+                      </span>
+                      <span
+                        className={cn("num ml-2 font-semibold", b.pnl >= 0 ? "text-profit" : "text-loss")}
+                      >
+                        {formatCurrency(b.pnl, true)}
+                      </span>
+                      <span className="ml-2 truncate text-xs text-muted-foreground">
+                        {b.symbols.slice(0, 4).join(", ")}
+                      </span>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() =>
+                        setPending({
+                          kind: "batch",
+                          id: b.id,
+                          label: `Se eliminarán las ${b.count} operaciones de este registro y se ajustarán los balances.`,
+                        })
+                      }
+                    >
+                      <Undo2 className="size-4" /> Deshacer
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
         )}
 
 
