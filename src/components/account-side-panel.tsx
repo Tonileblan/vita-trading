@@ -1,7 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { Building2, User } from "lucide-react";
 import { useJournal } from "@/lib/journal-store";
-import { accountBalance, accountPnl, formatCurrency } from "@/lib/metrics";
+import { accountBalance, accountResult, formatCurrency } from "@/lib/metrics";
 import { cn } from "@/lib/utils";
 
 export function AccountSidePanel() {
@@ -24,7 +24,7 @@ export function AccountSidePanel() {
       <div className="flex-1 space-y-1 overflow-y-auto px-3 pb-4">
         {accounts.map((acc) => {
           const active = selectedAccountIds.includes(acc.id);
-          const pnl = accountPnl(trades, acc.id);
+          const result = accountResult(acc, trades, withdrawals);
           const balance = accountBalance(acc, trades, withdrawals);
 
           return (
@@ -54,10 +54,10 @@ export function AccountSidePanel() {
                 <span
                   className={cn(
                     "num text-xs font-semibold",
-                    pnl >= 0 ? "text-profit" : "text-loss",
+                     result >= 0 ? "text-profit" : "text-loss",
                   )}
                 >
-                  {formatCurrency(pnl, true)}
+                   {formatCurrency(result, true)}
                 </span>
               </div>
             </button>

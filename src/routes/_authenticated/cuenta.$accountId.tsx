@@ -11,6 +11,7 @@ import {
   accountBalance,
   accountCurveStart,
   accountPnl,
+  accountResult,
   buildEquityCurve,
   computeMetrics,
   formatCurrency,
@@ -68,6 +69,7 @@ function AccountDetail() {
 
   const pnl = accountPnl(trades, account.id);
   const balance = accountBalance(account, trades, withdrawals);
+  const result = accountResult(account, trades, withdrawals);
   const dd = accountDrawdown(account, trades, withdrawals);
 
   const byStrategy = strategies
@@ -102,9 +104,9 @@ function AccountDetail() {
             <p className="num text-lg font-semibold">{formatCurrency(balance)}</p>
           </div>
           <div>
-            <p className="text-xs text-muted-foreground">Resultado operaciones</p>
-            <p className={cn("num text-lg font-semibold", pnl >= 0 ? "text-profit" : "text-loss")}>
-              {formatCurrency(pnl, true)}
+            <p className="text-xs text-muted-foreground">Resultado de cuenta</p>
+            <p className={cn("num text-lg font-semibold", result >= 0 ? "text-profit" : "text-loss")}>
+              {formatCurrency(result, true)}
             </p>
           </div>
           <div>

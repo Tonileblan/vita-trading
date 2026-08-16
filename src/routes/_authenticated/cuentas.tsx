@@ -23,7 +23,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useJournal } from "@/lib/journal-store";
-import { accountBalance, accountPnl, computeMetrics, formatCurrency, accountDrawdown } from "@/lib/metrics";
+import { accountBalance, accountResult, computeMetrics, formatCurrency, accountDrawdown } from "@/lib/metrics";
 import { PROP_FIRMS, BROKERS, type Account, type AccountType, DRAWDOWN_TYPES, type DrawdownType } from "@/lib/types";
 import { usePropFirms } from "@/lib/prop-firms";
 import { useBrokers } from "@/lib/brokers";
@@ -337,7 +337,7 @@ function AccountsPage() {
     const acc = accounts.find((a) => a.id === id)!;
     const accTrades = trades.filter((t) => t.accountId === id);
     const m = computeMetrics(accTrades);
-    const pnl = accountPnl(trades, id);
+    const result = accountResult(acc, trades, withdrawals);
     const balance = accountBalance(acc, trades, withdrawals);
     const dd = accountDrawdown(acc, trades, withdrawals);
 
@@ -361,10 +361,10 @@ function AccountsPage() {
             <span
               className={cn(
                 "num rounded-md px-2 py-1 text-sm font-bold",
-                pnl >= 0 ? "bg-profit/15 text-profit" : "bg-loss/15 text-loss",
+                 result >= 0 ? "bg-profit/15 text-profit" : "bg-loss/15 text-loss",
               )}
             >
-              {formatCurrency(pnl, true)}
+               {formatCurrency(result, true)}
             </span>
             <AccountDialog
               account={acc}

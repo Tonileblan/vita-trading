@@ -10,6 +10,7 @@ import { TradesTable } from "@/components/trades-table";
 import { useJournal } from "@/lib/journal-store";
 import {
   accountBalance,
+  accountResult,
   accountsCurveStart,
   buildEquityCurve,
   computeMetrics,
@@ -76,7 +77,17 @@ function Overview() {
   );
 
   const trades = useMemo(() => filterByRange(scopedTrades, range), [scopedTrades, range]);
-  const metrics = useMemo(() => computeMetrics(trades), [trades]);
+  const metrics = useMemo(() => {
+    const operationMetrics = computeMetrics(trades);
+    const balanceResult = scopedAccounts.reduce(
+      (sum, account) => sum + accountResult(account, scopedTrades, withdrawals),
+      0,
+    );
+    return {
+      ...operationMetrics,
+      totalPnl: range === "all" ? balanceResult : operationMetrics.totalPnl,
+    };
+  }, [trades, scopedAccounts, scopedTrades, withdrawals, range]);
   const curve = useMemo(
     () => buildEquityCurve(trades, accountsCurveStart(scopedAccounts, trades, withdrawals)),
     [trades, scopedAccounts, withdrawals],
