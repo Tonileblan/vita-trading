@@ -33,52 +33,56 @@ export function TradesTable({
       <div className="space-y-2 md:hidden">
         {rows.map((t) => (
           <div key={t.id} className="panel space-y-2 p-3">
-            <div className="flex items-start justify-between gap-3">
-              {selectable && (
-                <Checkbox
-                  className="mt-1"
-                  checked={isSelected(t.id)}
-                  onCheckedChange={() => onToggleSelect?.(t.id)}
-                  aria-label="Seleccionar operación"
-                />
-              )}
-              <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="font-semibold">{symbolOf(t.symbol)}</span>
-                  <span
-                    className={cn(
-                      "rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase",
-                      t.direction === "long" ? "bg-profit/15 text-profit" : "bg-loss/15 text-loss",
-                    )}
-                  >
-                    {t.direction}
-                  </span>
-                  {t.source === "webhook" && <Zap className="size-3 text-brand-soft" />}
-                </div>
-                <p className="num mt-0.5 truncate text-xs text-muted-foreground">
-                  {formatDateTime(t.closedAt)} · {nameOf(t.accountId)}
-                </p>
-              </div>
-              <span
-                className={cn(
-                  "num shrink-0 font-semibold",
-                  t.pnl >= 0 ? "text-profit" : "text-loss",
+            <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
+              <div className="flex min-w-0 items-center gap-2">
+                {selectable && (
+                  <Checkbox
+                    className="shrink-0"
+                    checked={isSelected(t.id)}
+                    onCheckedChange={() => onToggleSelect?.(t.id)}
+                    aria-label="Seleccionar operación"
+                  />
                 )}
-              >
-                {formatCurrency(t.pnl, true)}
-              </span>
-              {onDelete && (
-                <button
-                  onClick={() => onDelete(t)}
-                  className="shrink-0 text-muted-foreground transition-colors hover:text-loss"
-                  aria-label="Eliminar operación"
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold leading-none">{symbolOf(t.symbol)}</span>
+                    <span
+                      className={cn(
+                        "shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase leading-none",
+                        t.direction === "long" ? "bg-profit/15 text-profit" : "bg-loss/15 text-loss",
+                      )}
+                    >
+                      {t.direction}
+                    </span>
+                    {t.source === "webhook" && <Zap className="size-3 shrink-0 text-brand-soft" />}
+                  </div>
+                  <p className="num mt-1 truncate text-xs text-muted-foreground">
+                    {formatDateTime(t.closedAt)} · {nameOf(t.accountId)}
+                  </p>
+                </div>
+              </div>
+              <div className="flex shrink-0 items-center gap-2">
+                <span
+                  className={cn(
+                    "num text-right font-semibold tabular-nums",
+                    t.pnl >= 0 ? "text-profit" : "text-loss",
+                  )}
                 >
-                  <Trash2 className="size-4" />
-                </button>
-              )}
+                  {formatCurrency(t.pnl, true)}
+                </span>
+                {onDelete && (
+                  <button
+                    onClick={() => onDelete(t)}
+                    className="text-muted-foreground transition-colors hover:text-loss"
+                    aria-label="Eliminar operación"
+                  >
+                    <Trash2 className="size-4" />
+                  </button>
+                )}
+              </div>
             </div>
-            {(t.entryPrice || t.exitPrice || t.size) > 0 && (
-              <div className="num flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+            {(t.entryPrice > 0 || t.exitPrice > 0 || t.size > 0) && (
+              <div className="num flex flex-wrap gap-x-4 gap-y-1 border-t border-border/50 pt-2 text-xs text-muted-foreground">
                 {t.entryPrice > 0 && <span>Entrada {t.entryPrice}</span>}
                 {t.exitPrice > 0 && <span>Salida {t.exitPrice}</span>}
                 {t.size > 0 && <span>Tam. {t.size}</span>}
