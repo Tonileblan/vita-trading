@@ -55,6 +55,10 @@ const RANGES = [
   { key: "all", label: "Todo" },
 ] as const;
 
+type RangeKey = (typeof RANGES)[number]["key"] | "custom";
+
+type DateRange = { from?: Date; to?: Date };
+
 const SCOPES = [
   { key: "all", label: "Capital total" },
   { key: "funded", label: "Capital fondeo" },
