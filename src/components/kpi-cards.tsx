@@ -45,37 +45,9 @@ function Card({
   );
 }
 
-const STREAK_RANGES = [
-  { key: "7d", label: "7D", days: 7 },
-  { key: "30d", label: "30D", days: 30 },
-  { key: "180d", label: "180D", days: 180 },
-] as const;
-
 function StreakCard({ trades }: { trades: Trade[] }) {
-  const [range, setRange] = useState<(typeof STREAK_RANGES)[number]["key"]>("30d");
-  const days = STREAK_RANGES.find((r) => r.key === range)!.days;
-  const info = computeStreaks(filterByDays(trades, days));
+  const info = computeStreaks(trades);
   const cur = info.current;
-
-
-  const rangeButtons = (
-    <div className="flex gap-1">
-      {STREAK_RANGES.map((r) => (
-        <button
-          key={r.key}
-          onClick={() => setRange(r.key)}
-          className={cn(
-            "rounded px-2 py-0.5 text-[10px] font-semibold transition-colors",
-            range === r.key
-              ? "bg-brand text-primary-foreground"
-              : "border border-border text-muted-foreground hover:text-foreground",
-          )}
-        >
-          {r.label}
-        </button>
-      ))}
-    </div>
-  );
 
   const streakLabel =
     cur.type === "none"
