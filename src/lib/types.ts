@@ -48,6 +48,8 @@ export interface Account {
   firm?: string | undefined;
   /** Broker para cuentas personales (type=personal). */
   broker?: string | undefined;
+  /** Estrategia asignada a la cuenta (las operaciones cuentan para ella por defecto). */
+  strategyId?: string | undefined;
   initialBalance: number;
   currentBalance: number;
   drawdownLimit?: number | undefined;

@@ -69,7 +69,7 @@ function parseMoneyInput(value: string) {
 }
 
 function AccountDialog({ account, trigger }: { account?: Account; trigger: React.ReactNode }) {
-  const { addAccount, updateAccount, removeAccount } = useJournal();
+  const { addAccount, updateAccount, removeAccount, strategies } = useJournal();
   const editing = Boolean(account);
   const [open, setOpen] = useState(false);
   const [type, setType] = useState<AccountType>(account?.type ?? "funded");
@@ -92,6 +92,7 @@ function AccountDialog({ account, trigger }: { account?: Account; trigger: React
     setBroker(added);
     setNewBroker("");
   };
+  const [strategyId, setStrategyId] = useState(account?.strategyId ?? "");
   const [initial, setInitial] = useState(String(account?.initialBalance ?? 50000));
   const [current, setCurrent] = useState(String(account?.currentBalance ?? 50000));
 
@@ -109,6 +110,7 @@ function AccountDialog({ account, trigger }: { account?: Account; trigger: React
       setName(account.name);
       setFirm(account.firm ?? PROP_FIRMS[0]!);
       setBroker(account.broker ?? BROKERS[0]!);
+      setStrategyId(account.strategyId ?? "");
       setInitial(String(account.initialBalance));
       setCurrent(String(account.currentBalance));
       
@@ -137,6 +139,7 @@ function AccountDialog({ account, trigger }: { account?: Account; trigger: React
       type,
       firm: type === "funded" ? firm : undefined,
       broker: type === "personal" ? broker : undefined,
+      strategyId: strategyId,
       initialBalance,
       currentBalance,
       drawdownLimit: type === "funded" ? Number(dd) || 0 : undefined,
@@ -211,6 +214,26 @@ function AccountDialog({ account, trigger }: { account?: Account; trigger: React
               onChange={(e) => setName(e.target.value)}
               placeholder="Apex 100K — Eval"
             />
+          </div>
+
+          <div className="space-y-2">
+            <Label>Estrategia de la cuenta</Label>
+            <Select value={strategyId || "none"} onValueChange={(v) => setStrategyId(v === "none" ? "" : v)}>
+              <SelectTrigger>
+                <SelectValue placeholder="Sin estrategia" />
+              </SelectTrigger>
+              <SelectContent className="max-h-64">
+                <SelectItem value="none">Sin estrategia</SelectItem>
+                {strategies.map((s) => (
+                  <SelectItem key={s.id} value={s.id}>
+                    {s.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              Las operaciones de esta cuenta cuentan para esta estrategia.
+            </p>
           </div>
 
           {type === "funded" && (
@@ -416,7 +439,7 @@ function AccountDialog({ account, trigger }: { account?: Account; trigger: React
 }
 
 function AccountsPage() {
-  const { accounts, trades, withdrawals } = useJournal();
+  const { accounts, trades, withdrawals, strategies, updateAccount } = useJournal();
   const funded = accounts.filter((a) => a.type === "funded");
   const personal = accounts.filter((a) => a.type === "personal");
 
@@ -466,6 +489,32 @@ function AccountsPage() {
               }
             />
           </div>
+        </div>
+
+        <div className="mt-3">
+          <Select
+            value={acc.strategyId || "none"}
+            onValueChange={async (v) => {
+              try {
+                await updateAccount(acc.id, { strategyId: v === "none" ? "" : v });
+                toast.success("Estrategia actualizada");
+              } catch {
+                toast.error("No se pudo cambiar la estrategia");
+              }
+            }}
+          >
+            <SelectTrigger className="h-8 text-xs" aria-label={`Estrategia de ${acc.name}`}>
+              <SelectValue placeholder="Sin estrategia" />
+            </SelectTrigger>
+            <SelectContent className="max-h-64">
+              <SelectItem value="none">Sin estrategia</SelectItem>
+              {strategies.map((s) => (
+                <SelectItem key={s.id} value={s.id}>
+                  {s.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         <div className="mt-4 grid grid-cols-3 gap-3 text-sm">

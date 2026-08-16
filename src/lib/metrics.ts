@@ -169,6 +169,12 @@ export function filterByRange(trades: Trade[], range: "7d" | "30d" | "90d" | "al
 }
 
 /** PnL acumulado de las operaciones de una cuenta. */
+/** Estrategia efectiva de una operación: la suya o, si no tiene, la de su cuenta. */
+export function effectiveStrategyId(trade: Trade, accounts: Account[]) {
+  if (trade.strategyId) return trade.strategyId;
+  return accounts.find((a) => a.id === trade.accountId)?.strategyId ?? "";
+}
+
 export function accountPnl(trades: Trade[], accountId: string) {
   return trades
     .filter((t) => t.accountId === accountId)

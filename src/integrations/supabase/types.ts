@@ -29,6 +29,7 @@ export type Database = {
           name: string
           phase: string
           profit_target: number | null
+          strategy_id: string | null
           type: string
           updated_at: string
           user_id: string
@@ -47,6 +48,7 @@ export type Database = {
           name: string
           phase?: string
           profit_target?: number | null
+          strategy_id?: string | null
           type?: string
           updated_at?: string
           user_id: string
@@ -65,6 +67,7 @@ export type Database = {
           name?: string
           phase?: string
           profit_target?: number | null
+          strategy_id?: string | null
           type?: string
           updated_at?: string
           user_id?: string
@@ -75,6 +78,13 @@ export type Database = {
             columns: ["journal_id"]
             isOneToOne: false
             referencedRelation: "journals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "accounts_strategy_id_fkey"
+            columns: ["strategy_id"]
+            isOneToOne: false
+            referencedRelation: "strategies"
             referencedColumns: ["id"]
           },
         ]

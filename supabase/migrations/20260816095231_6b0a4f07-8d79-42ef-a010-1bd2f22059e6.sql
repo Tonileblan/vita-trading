@@ -1,0 +1,1 @@
+ALTER TABLE public.accounts ADD COLUMN IF NOT EXISTS strategy_id uuid REFERENCES public.strategies(id) ON DELETE SET NULL;

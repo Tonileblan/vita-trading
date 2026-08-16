@@ -14,6 +14,7 @@ import {
   accountResult,
   buildEquityCurve,
   computeMetrics,
+  effectiveStrategyId,
   formatCurrency,
   accountDrawdown,
   accountTarget,
@@ -76,7 +77,7 @@ function AccountDetail() {
 
   const byStrategy = strategies
     .map((s) => {
-      const own = accTrades.filter((t) => t.strategyId === s.id);
+      const own = accTrades.filter((t) => effectiveStrategyId(t, accounts) === s.id);
       return { name: s.name, count: own.length, net: own.reduce((sum, t) => sum + t.pnl, 0) };
     })
     .filter((r) => r.count > 0)
