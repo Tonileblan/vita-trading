@@ -197,7 +197,9 @@ function buildTrades(): Trade[] {
       exitPrice,
       size,
       pnl,
+      mistakes: [],
       tags,
+
       notes: NOTES[Math.floor(rng() * NOTES.length)]!,
       screenshots: [],
       source: rng() > 0.75 ? "webhook" : "manual",
