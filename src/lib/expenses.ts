@@ -30,6 +30,18 @@ export const EXPENSE_CATEGORIES: {
     color: "#5b8def",
   },
   {
+    key: "app",
+    label: "App",
+    help: "Aplicaciones y software de apoyo",
+    color: "#9b6dd6",
+  },
+  {
+    key: "utilities",
+    label: "Suministros",
+    help: "Luz, internet, teléfono y similares",
+    color: "#3fb8af",
+  },
+  {
     key: "hardware",
     label: "Hardware y material",
     help: "Equipo, monitores, formación",
