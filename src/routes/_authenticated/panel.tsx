@@ -6,7 +6,6 @@ import { KpiCards } from "@/components/kpi-cards";
 import { RiskAlerts } from "@/components/risk-alerts";
 import { EmotionHighlights } from "@/components/emotion-stats";
 
-import { TradeFormDialog } from "@/components/trade-form-dialog";
 import { TradesTable } from "@/components/trades-table";
 import { useJournal } from "@/lib/journal-store";
 import {
@@ -99,8 +98,6 @@ function Overview() {
     <AppShell
       title="Resumen"
       subtitle={`${selectedAccounts.length} cuenta(s) · Fondeo ${formatCurrency(fundedEquity)} · Real ${formatCurrency(realEquity)}`}
-
-      actions={<TradeFormDialog />}
     >
       <div className="space-y-5">
         <RiskAlerts />
