@@ -40,7 +40,13 @@ function pfLabel(pf: number) {
   return { text: "Pobre", tone: "text-loss" };
 }
 
-export function PerformanceAnalysis({ trades }: { trades: Trade[] }) {
+export function PerformanceAnalysis({
+  trades,
+  target,
+}: {
+  trades: Trade[];
+  target?: TargetStatus | null;
+}) {
   const m = useMemo(() => computeMetrics(trades), [trades]);
 
   const { bestDay, totalProfit } = useMemo(() => {
