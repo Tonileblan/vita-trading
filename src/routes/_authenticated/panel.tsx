@@ -20,7 +20,6 @@ import {
   accountResult,
   accountsCurveStart,
   buildEquityCurve,
-  computeMetrics,
   effectiveStrategyId,
   filterByRange,
   formatCurrency,
