@@ -58,7 +58,7 @@ export function KpiCards({
   );
   const streak = useMemo(() => computeStreaks(streakTrades), [streakTrades]);
   const cur = streak.current;
-  const streakIcon = cur.type === "loss" ? Snowflake : Flame;
+  const StreakIcon = cur.type === "loss" ? Snowflake : Flame;
   const streakTone =
     cur.type !== "none"
       ? cur.type === "win"
@@ -107,7 +107,7 @@ export function KpiCards({
         <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           Racha actual
         </span>
-        <streakIcon className="size-4 text-brand-soft" />
+        <StreakIcon className="size-4 text-brand-soft" />
       </div>
 
       <div className="mt-2 flex flex-wrap items-center gap-3">
