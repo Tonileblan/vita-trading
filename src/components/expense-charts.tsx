@@ -1,4 +1,4 @@
-import { byCategory, monthlySeries, type Occurrence } from "@/lib/expense-metrics";
+import { byCategory, type Occurrence } from "@/lib/expense-metrics";
 import { categoryColor, categoryLabel } from "@/lib/expenses";
 import { formatCurrency } from "@/lib/metrics";
 
