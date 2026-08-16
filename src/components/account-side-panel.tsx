@@ -5,7 +5,7 @@ import { accountBalance, accountPnl, formatCurrency } from "@/lib/metrics";
 import { cn } from "@/lib/utils";
 
 export function AccountSidePanel() {
-  const { accounts, trades, selectedAccountIds, toggleAccount, selectAll } = useJournal();
+  const { accounts, trades, withdrawals, selectedAccountIds, toggleAccount, selectAll } = useJournal();
 
 
   return (
