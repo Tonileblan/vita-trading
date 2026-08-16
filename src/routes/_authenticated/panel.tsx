@@ -69,7 +69,8 @@ type Scope = (typeof SCOPES)[number]["key"];
 
 function Overview() {
   const { visibleTrades, accounts, strategies, selectedAccountIds, withdrawals } = useJournal();
-  const [range, setRange] = useState<(typeof RANGES)[number]["key"]>("all");
+  const [range, setRange] = useState<RangeKey>("all");
+  const [customRange, setCustomRange] = useState<DateRange>({});
   const [scope, setScope] = useState<Scope>("all");
   // Unified filter: "all" | account.id | `strategy:${strategyId}`
   const [filter, setFilter] = useState<string>("all");
