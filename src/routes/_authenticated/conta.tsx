@@ -77,27 +77,39 @@ function ContaPage() {
       }
     >
       <div className="space-y-4">
-        <div className="flex gap-2">
+        <div
+          className="flex gap-1 border-b border-border"
+          role="tablist"
+          aria-label="Sección de conta"
+        >
           {(
             [
               ["retiros", "Retiros"],
               ["gastos", "Gastos"],
             ] as [Tab, string][]
-          ).map(([key, label]) => (
-            <button
-              key={key}
-              type="button"
-              onClick={() => setTab(key)}
-              className={cn(
-                "rounded-full border px-4 py-1.5 text-sm font-semibold transition-colors",
-                tab === key
-                  ? "border-brand bg-brand/15 text-brand-soft"
-                  : "border-border text-muted-foreground hover:text-foreground",
-              )}
-            >
-              {label}
-            </button>
-          ))}
+          ).map(([key, label]) => {
+            const active = tab === key;
+            return (
+              <button
+                key={key}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                onClick={() => setTab(key)}
+                className={cn(
+                  "relative -mb-px rounded-t-lg border border-b-0 px-5 py-2 text-sm font-semibold transition-colors",
+                  active
+                    ? "border-border bg-surface text-foreground"
+                    : "border-transparent text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {label}
+                {active && (
+                  <span className="pointer-events-none absolute inset-x-0 -bottom-px h-px bg-surface" />
+                )}
+              </button>
+            );
+          })}
         </div>
 
         {tab === "retiros" ? (
