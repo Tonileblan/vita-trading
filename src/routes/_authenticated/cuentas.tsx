@@ -328,7 +328,7 @@ function AccountsPage() {
     const accTrades = trades.filter((t) => t.accountId === id);
     const m = computeMetrics(accTrades);
     const pnl = accountPnl(trades, id);
-    const balance = accountBalance(acc, trades);
+    const balance = accountBalance(acc, trades, withdrawals);
     const dd = accountDrawdown(acc, trades, withdrawals);
 
     return (
@@ -430,7 +430,7 @@ function AccountsPage() {
 
   const sum = (list: typeof accounts) => ({
     initial: list.reduce((s, a) => s + a.initialBalance, 0),
-    current: list.reduce((s, a) => s + accountBalance(a, trades), 0),
+    current: list.reduce((s, a) => s + accountBalance(a, trades, withdrawals), 0),
   });
   const fundedTotals = sum(funded);
   const realTotals = sum(personal);
