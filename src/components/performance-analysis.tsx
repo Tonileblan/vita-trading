@@ -70,9 +70,23 @@ export function PerformanceAnalysis({
   return (
     <section className="grid gap-3 lg:grid-cols-3">
       <div className="panel p-4">
-        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-          Rendimiento
-        </p>
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            Rendimiento
+          </p>
+          {target && (
+            <span
+              className={cn(
+                "rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider",
+                target.phase === "live"
+                  ? "bg-profit/15 text-profit"
+                  : "bg-amber-500/15 text-amber-600 dark:text-amber-400",
+              )}
+            >
+              {target.phase === "live" ? "Live" : "Eval"}
+            </span>
+          )}
+        </div>
         <div className="mt-4 flex items-center justify-around gap-3">
           <div className="text-center">
             <p className="num text-2xl font-bold">
