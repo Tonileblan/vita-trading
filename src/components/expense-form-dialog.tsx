@@ -96,10 +96,10 @@ export function ExpenseFormDialog({
         paid,
         notes: notes.trim() || null,
       });
-      toast.success(editing ? "Costo actualizado" : "Costo registrado");
+      toast.success(editing ? "Gasto actualizado" : "Gasto registrado");
       onOpenChange(false);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "No se pudo guardar el costo");
+      toast.error(e instanceof Error ? e.message : "No se pudo guardar el gasto");
     }
   }
 
@@ -107,7 +107,7 @@ export function ExpenseFormDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{editing ? "Editar costo" : "Nuevo costo"}</DialogTitle>
+          <DialogTitle>{editing ? "Editar gasto" : "Nuevo gasto"}</DialogTitle>
         </DialogHeader>
 
         <div className="grid gap-3 sm:grid-cols-2">

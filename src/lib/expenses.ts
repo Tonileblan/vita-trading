@@ -1,7 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
-export type ExpenseCategory = "propfirm" | "subscription" | "hardware" | "tax" | "other";
+export type ExpenseCategory =
+  | "propfirm"
+  | "subscription"
+  | "app"
+  | "utilities"
+  | "hardware"
+  | "tax"
+  | "other";
 export type Recurrence = "none" | "monthly" | "yearly";
 
 export const EXPENSE_CATEGORIES: {
@@ -21,6 +28,18 @@ export const EXPENSE_CATEGORIES: {
     label: "Suscripción",
     help: "Plataformas, datos de mercado, apps, VPS",
     color: "#5b8def",
+  },
+  {
+    key: "app",
+    label: "App",
+    help: "Aplicaciones y software de apoyo",
+    color: "#9b6dd6",
+  },
+  {
+    key: "utilities",
+    label: "Suministros",
+    help: "Luz, internet, teléfono y similares",
+    color: "#3fb8af",
   },
   {
     key: "hardware",

@@ -33,7 +33,7 @@ export const Route = createFileRoute("/_authenticated/conta")({
       { property: "og:title", content: "Conta: retiros y gastos" },
       {
         property: "og:description",
-        content: "Retiros de capital y costos de la operativa en un solo lugar, con rentabilidad neta.",
+        content: "Retiros de capital y gastos de la operativa en un solo lugar, con rentabilidad neta.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -376,7 +376,7 @@ function ExpensesSection({
   const onDelete = async (e: Expense) => {
     try {
       await remove.mutateAsync(e.id);
-      toast.success("Costo eliminado");
+      toast.success("Gasto eliminado");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "No se pudo eliminar");
     }
@@ -412,8 +412,8 @@ function ExpensesSection({
       </div>
 
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <Kpi label="Costos este mes" value={`−${formatCurrency(monthCost)}`} tone="loss" />
-        <Kpi label="Costos este año" value={`−${formatCurrency(yearCost)}`} tone="loss" />
+        <Kpi label="Gastos este mes" value={`−${formatCurrency(monthCost)}`} tone="loss" />
+        <Kpi label="Gastos este año" value={`−${formatCurrency(yearCost)}`} tone="loss" />
         <Kpi
           label="Coste fijo mensual"
           value={formatCurrency(fixedMonthly)}
