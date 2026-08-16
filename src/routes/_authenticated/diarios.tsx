@@ -94,6 +94,8 @@ function JournalsPage() {
       setBusyId(null);
     }
   }
+
+  async function handleExport(j: Journal) {
     setBusyId(j.id);
     try {
       const n = await exportJournalCsv(j.id, j.name);
