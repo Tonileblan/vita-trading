@@ -7,8 +7,14 @@ const inputSchema = z.object({
 });
 
 const extractedTrade = z.object({
-  symbol: z.string().min(1).max(20),
-  direction: z.enum(["long", "short"]),
+  symbol: z
+    .string()
+    .max(20)
+    .nullish()
+    .transform((v) => (v && v.trim() ? v.trim() : "N/D")),
+  direction: z
+    .union([z.enum(["long", "short"]), z.null(), z.undefined()])
+    .transform((v) => v ?? "long"),
   openedAt: z.string().min(4).optional().nullable(),
   closedAt: z.string().min(4).optional().nullable(),
   entryPrice: z.number().finite().optional().nullable(),
@@ -21,21 +27,29 @@ const responseSchema = z.object({ trades: z.array(extractedTrade).max(200) });
 
 export type ExtractedTrade = z.infer<typeof extractedTrade>;
 
-const PROMPT = `Eres un extractor de operaciones de trading a partir de capturas de pantalla
-(plataformas tipo Tradovate, NinjaTrader, TradingView, MetaTrader, apps de prop firms o tablas).
+const PROMPT = `Eres un extractor de operaciones de trading a partir de capturas de pantalla o fotos
+(plataformas tipo Tradovate, NinjaTrader, TradingView, MetaTrader, apps de prop firms, tablas,
+extractos de payout, listados diarios o incluso notas escritas a mano).
 
-Devuelve TODAS las operaciones cerradas visibles en las imágenes, una por fila/tarjeta.
+Devuelve TODAS las operaciones o resultados cerrados visibles, uno por fila/tarjeta/línea.
+
+MÍNIMO ACEPTABLE: si una fila solo muestra una FECHA y un IMPORTE (resultado del día u operación),
+recógela igualmente con ese pnl y esa fecha, dejando el resto de campos en null. NO la descartes.
+Cada importe con signo o color (verde/rojo, +/−, entre paréntesis = negativo) cuenta como una entrada.
+
 Reglas:
-- "direction": long para compras/buy/largo, short para ventas/sell/corto.
-- "pnl" es el resultado NETO en dólares como número (negativo si es pérdida). Quita símbolos y separadores de miles.
-- Fechas: SIEMPRE que aparezca una fecha o marca de tiempo en la imagen (columna, cabecera, tarjeta o pie), devuélvela.
-  Formato ISO 8601 con hora si está disponible (ej. 2026-05-14T15:32:00). Convierte 12h (am/pm) a 24h.
-  Si la fecha aparece como dd/mm o mm/dd y el año no se ve, usa el año actual.
-  Si la fecha solo aparece una vez para todo el bloque, aplícala a todas las operaciones de ese bloque.
-  "openedAt" y "closedAt" pueden ser iguales si solo hay una marca de tiempo.
-- Si un dato no aparece, usa null. Nunca inventes valores.
-- No incluyas resúmenes, totales, ni filas de balance/comisiones.
-Responde SOLO con JSON válido: {"trades":[{...}]}`;
+- "pnl" (obligatorio) es el resultado NETO en dólares como número; negativo si es pérdida.
+  Quita símbolos de moneda, separadores de miles y espacios. "(120,50)" → -120.5.
+- "symbol": el activo si es visible (MNQ, NQ, ES, GC, EURUSD…). Si no aparece, null.
+- "direction": long para compras/buy/largo, short para ventas/sell/corto. Si no aparece, null.
+- Fechas: SIEMPRE que aparezca una fecha o marca de tiempo (columna, cabecera, tarjeta, fila o pie),
+  devuélvela en ISO 8601 con hora si está disponible (ej. 2026-05-14T15:32:00). Convierte 12h (am/pm) a 24h.
+  Si el año no se ve, usa el año actual. Si la fecha aparece una sola vez para un bloque,
+  aplícala a todas las filas de ese bloque. "openedAt" y "closedAt" pueden coincidir.
+- Nunca inventes precios, tamaños ni fechas: lo que no se lee va como null.
+- No incluyas filas de resumen/total acumulado, balance, saldo, comisiones ni depósitos.
+  Sí incluye resultados diarios individuales aunque solo tengan fecha e importe.
+Responde SOLO con JSON válido: {"trades":[{"symbol":null,"direction":null,"openedAt":null,"closedAt":"2026-05-14T15:32:00","entryPrice":null,"exitPrice":null,"size":null,"pnl":-120.5}]}`;
 
 export const extractTradesFromImages = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => inputSchema.parse(data))
