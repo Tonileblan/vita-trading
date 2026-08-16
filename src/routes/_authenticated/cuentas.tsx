@@ -24,8 +24,9 @@ import {
 } from "@/components/ui/select";
 import { useJournal } from "@/lib/journal-store";
 import { accountBalance, accountPnl, computeMetrics, formatCurrency, accountDrawdown } from "@/lib/metrics";
-import { PROP_FIRMS, type Account, type AccountType, DRAWDOWN_TYPES, type DrawdownType } from "@/lib/types";
+import { PROP_FIRMS, BROKERS, type Account, type AccountType, DRAWDOWN_TYPES, type DrawdownType } from "@/lib/types";
 import { usePropFirms } from "@/lib/prop-firms";
+import { useBrokers } from "@/lib/brokers";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/cuentas")({
