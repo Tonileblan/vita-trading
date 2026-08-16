@@ -112,12 +112,14 @@ export function AppShell({
   subtitle,
   actions,
   children,
+  bareHeader,
 }: {
   title: ReactNode;
   subtitle?: string;
   actions?: ReactNode;
   children: ReactNode;
   showAccountPanel?: boolean;
+  bareHeader?: boolean;
 }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const { isSupervisor } = useAuth();
