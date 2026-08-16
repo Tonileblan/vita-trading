@@ -1,7 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
-export type ExpenseCategory = "propfirm" | "subscription" | "hardware" | "tax" | "other";
+export type ExpenseCategory =
+  | "propfirm"
+  | "subscription"
+  | "app"
+  | "utilities"
+  | "hardware"
+  | "tax"
+  | "other";
 export type Recurrence = "none" | "monthly" | "yearly";
 
 export const EXPENSE_CATEGORIES: {
