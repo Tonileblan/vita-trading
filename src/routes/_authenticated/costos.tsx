@@ -59,15 +59,38 @@ function CostosPage() {
 
   const occurrences = useMemo(() => expand(filtered), [filtered]);
 
-  const grossPnl = useMemo(
-    () => visibleTrades.reduce((s, t) => s + t.pnl, 0),
-    [visibleTrades],
+  // Ingreso real: de las cuentas de fondeo solo cuenta el dinero retirado (payouts);
+  // de las cuentas reales cuentan las ganancias de la operativa.
+  const fundedIds = useMemo(
+    () => new Set(accounts.filter((a) => a.type === "funded").map((a) => a.id)),
+    [accounts],
   );
+  const realIds = useMemo(
+    () => new Set(accounts.filter((a) => a.type === "personal").map((a) => a.id)),
+    [accounts],
+  );
+
+  const payouts = useMemo(
+    () =>
+      withdrawals
+        .filter((w) => w.accountId && fundedIds.has(w.accountId))
+        .reduce((s, w) => s + w.amount, 0),
+    [withdrawals, fundedIds],
+  );
+  const realPnl = useMemo(
+    () =>
+      visibleTrades
+        .filter((t) => t.accountId && realIds.has(t.accountId))
+        .reduce((s, t) => s + t.pnl, 0),
+    [visibleTrades, realIds],
+  );
+
+  const income = payouts + realPnl;
   const totalCost = sumOcc(occurrences);
   const monthCost = sumOcc(inMonth(occurrences));
   const yearCost = sumOcc(inYear(occurrences));
   const fixedMonthly = fixedMonthlyCost(filtered);
-  const net = grossPnl - totalCost;
+  const net = income - totalCost;
   const roi = totalCost > 0 ? (net / totalCost) * 100 : 0;
 
   const accountName = (id: string | null) =>
