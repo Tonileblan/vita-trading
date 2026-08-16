@@ -24,6 +24,7 @@ import {
 import { useJournal } from "@/lib/journal-store";
 import { extractTradesFromImages, type ExtractedTrade } from "@/lib/trade-vision.functions";
 import { formatCurrency } from "@/lib/metrics";
+import { parseDetectedDate } from "@/lib/parse-date";
 import { cn } from "@/lib/utils";
 
 /** Clave de deduplicación: mismo activo, dirección, día y PnL. */
@@ -33,21 +34,24 @@ function dedupeKey(t: {
   closedAt?: string | null | undefined;
   pnl: number;
 }) {
-  const day = t.closedAt ? new Date(t.closedAt).toISOString().slice(0, 10) : "sin-fecha";
+  const parsed = parseDetectedDate(t.closedAt);
+  const day = parsed ? parsed.slice(0, 10) : "sin-fecha";
   return [t.symbol.toUpperCase().trim(), t.direction, day, t.pnl.toFixed(2)].join("|");
 }
 
 const toIso = (value?: string | null) => {
-  if (!value) return new Date().toISOString();
-  const d = new Date(value);
-  return Number.isNaN(d.getTime()) ? new Date().toISOString() : d.toISOString();
+  const parsed = parseDetectedDate(value);
+  return parsed ? new Date(parsed).toISOString() : new Date().toISOString();
 };
 
 interface Row extends ExtractedTrade {
   key: string;
   duplicate: boolean;
   selected: boolean;
+  /** Fecha normalizada detectada en la captura (null si no había). */
+  detectedAt: string | null;
 }
+
 
 export function TradeImportDialog() {
   const { accounts, strategies, trades, addTrade } = useJournal();
@@ -93,7 +97,8 @@ export function TradeImportDialog() {
         if (seen.has(key)) continue;
         seen.add(key);
         const duplicate = existing.has(key);
-        parsedRows.push({ ...t, key, duplicate, selected: !duplicate });
+        const detectedAt = parseDetectedDate(t.closedAt ?? t.openedAt);
+        parsedRows.push({ ...t, key, duplicate, selected: !duplicate, detectedAt });
       }
       setRows(parsedRows);
       if (parsedRows.length === 0) toast.error("No se detectaron operaciones en las capturas");
@@ -285,8 +290,21 @@ export function TradeImportDialog() {
                   />
                   <span className="font-semibold">{r.symbol.toUpperCase()}</span>
                   <span className="uppercase text-muted-foreground">{r.direction}</span>
-                  <span className="text-muted-foreground">
-                    {r.closedAt ? new Date(r.closedAt).toLocaleString("es-ES") : "sin fecha"}
+                  <span
+                    className={cn(
+                      "text-muted-foreground",
+                      !r.detectedAt && "italic text-loss/80",
+                    )}
+                  >
+                    {r.detectedAt
+                      ? new Date(r.detectedAt).toLocaleString("es-ES", {
+                          day: "2-digit",
+                          month: "2-digit",
+                          year: "numeric",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })
+                      : "sin fecha"}
                   </span>
                   <span
                     className={cn("ml-auto font-semibold", r.pnl >= 0 ? "text-profit" : "text-loss")}
