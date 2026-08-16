@@ -318,7 +318,13 @@ function WithdrawalsSection({
   );
 }
 
-function ExpensesSection({ openEdit }: { openEdit: (e: Expense) => void }) {
+function ExpensesSection({
+  openEdit,
+  action,
+}: {
+  openEdit: (e: Expense) => void;
+  action: ReactNode;
+}) {
   const { accounts, visibleTrades, withdrawals, activeJournalId } = useJournal();
   const { data: expenses = [], isLoading } = useExpenses();
   const remove = useDeleteExpense();
