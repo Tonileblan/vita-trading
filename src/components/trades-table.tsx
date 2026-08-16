@@ -44,7 +44,7 @@ export function TradesTable({
               )}
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
-                  <span className="font-semibold">{t.symbol || "—"}</span>
+                  <span className="font-semibold">{symbolOf(t.symbol)}</span>
                   <span
                     className={cn(
                       "rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase",
