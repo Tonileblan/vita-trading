@@ -127,21 +127,29 @@ export function KpiCards({
   metrics,
   scope = "all",
   trades,
+  fusionEquity,
 }: {
   metrics: Metrics;
   scope?: "all" | "funded" | "real";
-  trades?: Trade[];
+  trades?: Trade[] | undefined;
+  fusionEquity?: number | undefined;
 }) {
-  const pnlLabel =
-    scope === "funded" ? "PnL Fondeo" : scope === "real" ? "PnL Real" : "PnL Total";
+  const pnlLabel = fusionEquity !== undefined
+    ? "Capital + PnL"
+    : scope === "funded"
+      ? "PnL Fondeo"
+      : scope === "real"
+        ? "PnL Real"
+        : "PnL Total";
+  const pnlValue = fusionEquity !== undefined ? fusionEquity : metrics.totalPnl;
   return (
     <div className="grid gap-3 sm:grid-cols-2">
       <Card
         label={pnlLabel}
-        value={formatCurrency(metrics.totalPnl, true)}
+        value={formatCurrency(pnlValue, true)}
         sub={`${metrics.total} operaciones cerradas`}
         icon={TrendingUp}
-        tone={metrics.totalPnl >= 0 ? "profit" : "loss"}
+        tone={pnlValue >= 0 ? "profit" : "loss"}
       />
       {trades ? <StreakCard trades={trades} /> : (
         <Card
