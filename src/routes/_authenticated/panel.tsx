@@ -89,19 +89,21 @@ function Overview() {
       visibleTrades.filter(
         (t) =>
           scopedIds.has(t.accountId) &&
-          (strategyFilter === "all" || t.strategyId === strategyFilter),
+          (strategyFilter === "all" || effectiveStrategyId(t, accounts) === strategyFilter),
       ),
-    [visibleTrades, scopedIds, strategyFilter],
+    [visibleTrades, scopedIds, strategyFilter, accounts],
   );
 
   const accountStrategies = useMemo(() => {
     if (accountFilter === "all") return strategies;
     const used = new Set(
-      visibleTrades.filter((t) => t.accountId === accountFilter).map((t) => t.strategyId),
+      visibleTrades
+        .filter((t) => t.accountId === accountFilter)
+        .map((t) => effectiveStrategyId(t, accounts)),
     );
     const filtered = strategies.filter((s) => used.has(s.id));
     return filtered.length ? filtered : strategies;
-  }, [strategies, visibleTrades, accountFilter]);
+  }, [strategies, visibleTrades, accountFilter, accounts]);
 
 
   const trades = useMemo(() => filterByRange(scopedTrades, range), [scopedTrades, range]);

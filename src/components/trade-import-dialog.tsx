@@ -60,6 +60,14 @@ export function TradeImportDialog() {
   const [cameraOpen, setCameraOpen] = useState(false);
   const [accountId, setAccountId] = useState(accounts[0]?.id ?? "");
   const [strategyId, setStrategyId] = useState(strategies[0]?.id ?? "");
+
+  // Al elegir cuenta, usa la estrategia asignada a esa cuenta.
+  useEffect(() => {
+    const acc = accounts.find((a) => a.id === accountId);
+    if (acc?.strategyId && strategies.some((s) => s.id === acc.strategyId)) {
+      setStrategyId(acc.strategyId);
+    }
+  }, [accountId, accounts, strategies]);
   const [images, setImages] = useState<string[]>([]);
   const [rows, setRows] = useState<Row[] | null>(null);
   const [loading, setLoading] = useState(false);

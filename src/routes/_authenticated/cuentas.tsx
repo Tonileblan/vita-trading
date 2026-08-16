@@ -139,7 +139,7 @@ function AccountDialog({ account, trigger }: { account?: Account; trigger: React
       type,
       firm: type === "funded" ? firm : undefined,
       broker: type === "personal" ? broker : undefined,
-      strategyId: strategyId || undefined,
+      strategyId: strategyId,
       initialBalance,
       currentBalance,
       drawdownLimit: type === "funded" ? Number(dd) || 0 : undefined,
@@ -496,7 +496,7 @@ function AccountsPage() {
             value={acc.strategyId || "none"}
             onValueChange={async (v) => {
               try {
-                await updateAccount(acc.id, { strategyId: v === "none" ? undefined : v });
+                await updateAccount(acc.id, { strategyId: v === "none" ? "" : v });
                 toast.success("Estrategia actualizada");
               } catch {
                 toast.error("No se pudo cambiar la estrategia");

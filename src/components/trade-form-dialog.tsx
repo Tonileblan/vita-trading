@@ -70,6 +70,14 @@ export function TradeFormDialog() {
     if (!strategies.some((s) => s.id === strategyId)) setStrategyId(strategies[0]!.id);
   }, [strategies, strategyId]);
 
+  // Al elegir cuenta, usa la estrategia asignada a esa cuenta.
+  useEffect(() => {
+    const acc = accounts.find((a) => a.id === accountId);
+    if (acc?.strategyId && strategies.some((s) => s.id === acc.strategyId)) {
+      setStrategyId(acc.strategyId);
+    }
+  }, [accountId, accounts, strategies]);
+
   useEffect(() => {
     setTags((prev) => prev.filter((t) => strategies.some((s) => s.name === t)));
   }, [strategies]);
