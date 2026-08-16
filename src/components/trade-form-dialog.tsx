@@ -23,7 +23,15 @@ import {
 } from "@/components/ui/select";
 import { useJournal } from "@/lib/journal-store";
 import { type Direction } from "@/lib/types";
+import {
+  EMOTIONS_AFTER,
+  EMOTIONS_BEFORE,
+  FOLLOWED_PLAN,
+  MISTAKES,
+  type FollowedPlan,
+} from "@/lib/emotions";
 import { cn } from "@/lib/utils";
+
 
 const nowLocal = () => new Date().toISOString().slice(0, 16);
 
