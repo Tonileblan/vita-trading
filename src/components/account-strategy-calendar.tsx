@@ -20,7 +20,7 @@ function formatDay(iso: string) {
  * Calendario de operaciones de una cuenta que permite asignar una estrategia
  * a un tramo de fechas (por ejemplo: del 1 al 15 fue la estrategia A).
  */
-export function AccountStrategyCalendar({ accountId }: { accountId: string }) {
+export function AccountStrategyCalendar({ accountIds }: { accountIds: string[] }) {
   const { trades, accounts, strategies, strategyPeriods, addStrategyPeriod, removeStrategyPeriod } =
     useJournal();
 
@@ -36,15 +36,15 @@ export function AccountStrategyCalendar({ accountId }: { accountId: string }) {
   const periods = useMemo(
     () =>
       strategyPeriods
-        .filter((p) => p.accountId === accountId)
+        .filter((p) => accountIds.includes(p.accountId))
         .sort((a, b) => b.startDate.localeCompare(a.startDate)),
-    [strategyPeriods, accountId],
+    [strategyPeriods, accountIds],
   );
 
   const byDay = useMemo(() => {
     const map = new Map<string, { pnl: number; count: number; strategyIds: Set<string> }>();
     for (const t of trades) {
-      if (t.accountId !== accountId) continue;
+      if (!accountIds.includes(t.accountId)) continue;
       const day = t.closedAt.slice(0, 10);
       const entry = map.get(day) ?? { pnl: 0, count: 0, strategyIds: new Set<string>() };
       entry.pnl += t.pnl;
@@ -54,7 +54,7 @@ export function AccountStrategyCalendar({ accountId }: { accountId: string }) {
       map.set(day, entry);
     }
     return map;
-  }, [trades, accountId, accounts, strategyPeriods]);
+  }, [trades, accountIds, accounts, strategyPeriods]);
 
   const year = cursor.getFullYear();
   const month = cursor.getMonth();
@@ -65,6 +65,7 @@ export function AccountStrategyCalendar({ accountId }: { accountId: string }) {
     ...Array.from({ length: daysInMonth }, (_, i) => i + 1),
   ];
 
+  const accountName = (id: string) => accounts.find((a) => a.id === id)?.name ?? "";
   const strategyName = (id: string) => strategies.find((s) => s.id === id)?.name ?? "Sin estrategia";
   const strategyColor = (id: string) => strategies.find((s) => s.id === id)?.color;
 
@@ -93,14 +94,20 @@ export function AccountStrategyCalendar({ accountId }: { accountId: string }) {
       toast.error("Elige un tramo de fechas y una estrategia");
       return;
     }
+    if (accountIds.length === 0) {
+      toast.error("Elige al menos una cuenta");
+      return;
+    }
     setSaving(true);
     try {
-      await addStrategyPeriod({
-        accountId,
-        strategyId,
-        startDate: from,
-        endDate: to || from,
-      });
+      for (const accountId of accountIds) {
+        await addStrategyPeriod({
+          accountId,
+          strategyId,
+          startDate: from,
+          endDate: to || from,
+        });
+      }
       toast.success("Tramo asignado");
       setFrom("");
       setTo("");
@@ -270,6 +277,9 @@ export function AccountStrategyCalendar({ accountId }: { accountId: string }) {
                   style={{ backgroundColor: strategyColor(p.strategyId) }}
                 />
                 <span className="truncate font-semibold">{strategyName(p.strategyId)}</span>
+                {accountIds.length > 1 ? (
+                  <span className="shrink-0 text-xs text-muted-foreground">{accountName(p.accountId)}</span>
+                ) : null}
                 <span className="num shrink-0 text-xs text-muted-foreground">
                   {formatDay(p.startDate)} → {p.endDate ? formatDay(p.endDate) : "hoy"}
                 </span>
