@@ -70,7 +70,6 @@ function EstrategiasPage() {
     >
       <div className="space-y-5">
         <MarketHours />
-        <CapitalSplit accounts={accounts} trades={trades} />
         {strategies.length === 0 ? (
           <div className="panel flex flex-col items-center gap-3 p-8 text-center">
             <Layers className="size-8 text-muted-foreground" />
