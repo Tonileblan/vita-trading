@@ -134,17 +134,30 @@ function Overview() {
     return filterByRange(scopedTrades, range);
   }, [scopedTrades, range, customRange]);
   // Accounts (capital + PnL) of the selected account/strategy.
+  const strategyAccounts = useMemo(() => {
+    if (!isStrategy) return [];
+    const ids = new Set<string>();
+    for (const a of selectedAccounts) {
+      if (a.strategyId === strategyFilter) ids.add(a.id);
+    }
+    for (const p of strategyPeriods) {
+      if (p.strategyId === strategyFilter) ids.add(p.accountId);
+    }
+    for (const t of scopedTrades) {
+      if (t.accountId) ids.add(t.accountId);
+    }
+    return selectedAccounts.filter((a) => ids.has(a.id));
+  }, [isStrategy, strategyFilter, selectedAccounts, strategyPeriods, scopedTrades]);
+
   const fusionAccounts = useMemo(
-    () =>
-      isStrategy
-        ? selectedAccounts.filter((a) => a.strategyId === strategyFilter)
-        : scopedAccounts,
-    [isStrategy, strategyFilter, selectedAccounts, scopedAccounts],
+    () => (isStrategy ? strategyAccounts : scopedAccounts),
+    [isStrategy, strategyAccounts, scopedAccounts],
   );
   const fusionEquity = useMemo(
     () => fusionAccounts.reduce((sum, account) => sum + accountBalance(account, visibleTrades, withdrawals), 0),
     [fusionAccounts, visibleTrades, withdrawals],
   );
+
 
   // Cuenta de fondeo concreta seleccionada → progreso hacia objetivo (eval / retiro).
   const fundedTarget = useMemo(() => {
