@@ -55,9 +55,10 @@ function ContaPage() {
 
   return (
     <AppShell
+      bareHeader
       title={
         <div
-          className="flex gap-1"
+          className="flex gap-1 border-b border-border"
           role="tablist"
           aria-label="Sección de conta"
         >
