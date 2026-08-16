@@ -4,7 +4,7 @@ import { format } from "date-fns";
 import { CalendarIcon } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { EquityChart } from "@/components/equity-chart";
-import { KpiCards } from "@/components/kpi-cards";
+
 import { RiskAlerts } from "@/components/risk-alerts";
 import { EmotionHighlights } from "@/components/emotion-stats";
 import { PnlCalendar } from "@/components/pnl-calendar";
@@ -20,7 +20,6 @@ import {
   accountResult,
   accountsCurveStart,
   buildEquityCurve,
-  computeMetrics,
   effectiveStrategyId,
   filterByRange,
   formatCurrency,
@@ -132,20 +131,7 @@ function Overview() {
     }
     return filterByRange(scopedTrades, range);
   }, [scopedTrades, range, customRange]);
-  const isAllRange = range === "all";
-  const metrics = useMemo(() => {
-    const operationMetrics = computeMetrics(trades);
-    const balanceResult = scopedAccounts.reduce(
-      (sum, account) => sum + accountResult(account, scopedTrades, withdrawals),
-      0,
-    );
-    return {
-      ...operationMetrics,
-      totalPnl: isAllRange ? balanceResult : operationMetrics.totalPnl,
-    };
-  }, [trades, scopedAccounts, scopedTrades, withdrawals, isAllRange]);
-
-  // Equity (capital total + PnL) of the selected account/strategy — shown fused in the PnL card.
+  // Accounts (capital + PnL) of the selected account/strategy.
   const fusionAccounts = useMemo(
     () =>
       isStrategy
@@ -157,28 +143,43 @@ function Overview() {
     () => fusionAccounts.reduce((sum, account) => sum + accountBalance(account, visibleTrades, withdrawals), 0),
     [fusionAccounts, visibleTrades, withdrawals],
   );
-  const fusionInitial = useMemo(
-    () => fusionAccounts.reduce((sum, account) => sum + (account.initialBalance ?? 0), 0),
-    [fusionAccounts],
-  );
-  const showFusion = accountFilter !== "all" || isStrategy;
 
   const curve = useMemo(
     () => buildEquityCurve(trades, accountsCurveStart(scopedAccounts, trades, withdrawals)),
     [trades, scopedAccounts, withdrawals],
   );
-  const fundedEquity = selectedAccounts
-    .filter((a) => a.type === "funded")
-    .reduce((s, a) => s + accountBalance(a, visibleTrades, withdrawals), 0);
-  const realEquity = selectedAccounts
-    .filter((a) => a.type !== "funded")
-    .reduce((s, a) => s + accountBalance(a, visibleTrades, withdrawals), 0);
-
+  const fundedAccounts = selectedAccounts.filter((a) => a.type === "funded");
+  const realAccounts = selectedAccounts.filter((a) => a.type !== "funded");
+  const fundedEquity = fundedAccounts.reduce(
+    (s, a) => s + accountBalance(a, visibleTrades, withdrawals),
+    0,
+  );
+  const realEquity = realAccounts.reduce(
+    (s, a) => s + accountBalance(a, visibleTrades, withdrawals),
+    0,
+  );
+  const fundedPnl = fundedAccounts.reduce(
+    (s, a) => s + accountResult(a, visibleTrades, withdrawals),
+    0,
+  );
+  const realPnl = realAccounts.reduce(
+    (s, a) => s + accountResult(a, visibleTrades, withdrawals),
+    0,
+  );
+  const fusionPnl = fusionAccounts.reduce(
+    (s, a) => s + accountResult(a, visibleTrades, withdrawals),
+    0,
+  );
 
   const scopeValue = (key: Scope) => {
     if (key === "funded") return fundedEquity;
     if (key === "real") return realEquity;
     return fundedEquity + realEquity;
+  };
+  const scopePnl = (key: Scope) => {
+    if (key === "funded") return fundedPnl;
+    if (key === "real") return realPnl;
+    return fundedPnl + realPnl;
   };
 
   return (
@@ -289,28 +290,57 @@ function Overview() {
     >
       <div className="space-y-5">
         <RiskAlerts />
-        {accountFilter === "all" && !isStrategy && (
+        {accountFilter === "all" && !isStrategy ? (
           <section className="grid gap-3 sm:grid-cols-3">
-            {SCOPES.map((s) => (
-              <button
-                key={s.key}
-                onClick={() => setScope(s.key)}
-                className={cn(
-                  "panel p-4 text-left transition-colors",
-                  scope === s.key
-                    ? "border-brand bg-brand/10"
-                    : "hover:border-foreground/30",
-                )}
-              >
-                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  {s.label}
-                </p>
-                <p className="num mt-1 text-lg font-semibold">{formatCurrency(scopeValue(s.key))}</p>
-              </button>
-            ))}
+            {SCOPES.map((s) => {
+              const pnl = scopePnl(s.key);
+              return (
+                <button
+                  key={s.key}
+                  onClick={() => setScope(s.key)}
+                  className={cn(
+                    "panel p-4 text-left transition-colors",
+                    scope === s.key
+                      ? "border-brand bg-brand/10"
+                      : "hover:border-foreground/30",
+                  )}
+                >
+                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    {s.label}
+                  </p>
+                  <p className="num mt-1 text-lg font-semibold">
+                    {formatCurrency(scopeValue(s.key))}
+                  </p>
+                  <p
+                    className={cn(
+                      "num mt-1 text-sm font-semibold tabular-nums",
+                      pnl >= 0 ? "text-profit" : "text-loss",
+                    )}
+                  >
+                    {pnl >= 0 ? "+" : "−"} {formatCurrency(Math.abs(pnl), false)}
+                  </p>
+                </button>
+              );
+            })}
+          </section>
+        ) : (
+          <section className="panel p-4">
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              {isStrategy ? "Estrategia" : "Cuenta"}
+            </p>
+            <p className="num mt-1 text-lg font-semibold">
+              {formatCurrency(fusionEquity)}
+            </p>
+            <p
+              className={cn(
+                "num mt-1 text-sm font-semibold tabular-nums",
+                fusionPnl >= 0 ? "text-profit" : "text-loss",
+              )}
+            >
+              {fusionPnl >= 0 ? "+" : "−"} {formatCurrency(Math.abs(fusionPnl), false)}
+            </p>
           </section>
         )}
-        <KpiCards metrics={metrics} scope={scope} trades={trades} fusionEquity={showFusion ? fusionEquity : undefined} fusionInitial={showFusion ? fusionInitial : undefined} />
         <PerformanceAnalysis trades={trades} />
         <EmotionHighlights trades={scopedTrades} />
 
