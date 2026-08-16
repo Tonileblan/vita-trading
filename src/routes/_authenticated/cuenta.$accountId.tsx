@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo } from "react";
 import { ArrowLeft, Building2, User } from "lucide-react";
+import { AccountCostCard } from "@/components/account-cost-card";
 import { AppShell } from "@/components/app-shell";
 import { EquityChart } from "@/components/equity-chart";
 import { KpiCards } from "@/components/kpi-cards";
@@ -116,6 +117,8 @@ function AccountDetail() {
             </p>
           </div>
         </section>
+
+        <AccountCostCard accountId={account.id} pnl={pnl} />
 
         {dd ? (
           <section className="panel space-y-2 p-4">
