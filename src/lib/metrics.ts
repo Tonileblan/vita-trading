@@ -1,4 +1,4 @@
-import type { Account, Trade } from "./types";
+import type { Account, AccountStrategyPeriod, Trade } from "./types";
 
 export function formatCurrency(value: number, withSign = false) {
   const sign = withSign && value > 0 ? "+" : value < 0 ? "-" : "";
