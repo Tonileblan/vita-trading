@@ -9,13 +9,18 @@ interface Totals {
   count: number;
 }
 
-function sum(list: Account[], trades: Trade[]): Totals {
+function sum(
+  list: Account[],
+  trades: Trade[],
+  withdrawals: { accountId?: string | undefined; amount: number }[] = [],
+): Totals {
   return {
     initial: list.reduce((s, a) => s + a.initialBalance, 0),
-    current: list.reduce((s, a) => s + accountBalance(a, trades), 0),
+    current: list.reduce((s, a) => s + accountBalance(a, trades, withdrawals), 0),
     count: list.length,
   };
 }
+
 
 function Block({
   label,
