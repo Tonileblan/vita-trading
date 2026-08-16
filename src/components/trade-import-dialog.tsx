@@ -33,21 +33,24 @@ function dedupeKey(t: {
   closedAt?: string | null | undefined;
   pnl: number;
 }) {
-  const day = t.closedAt ? new Date(t.closedAt).toISOString().slice(0, 10) : "sin-fecha";
+  const parsed = parseDetectedDate(t.closedAt);
+  const day = parsed ? parsed.slice(0, 10) : "sin-fecha";
   return [t.symbol.toUpperCase().trim(), t.direction, day, t.pnl.toFixed(2)].join("|");
 }
 
 const toIso = (value?: string | null) => {
-  if (!value) return new Date().toISOString();
-  const d = new Date(value);
-  return Number.isNaN(d.getTime()) ? new Date().toISOString() : d.toISOString();
+  const parsed = parseDetectedDate(value);
+  return parsed ? new Date(parsed).toISOString() : new Date().toISOString();
 };
 
 interface Row extends ExtractedTrade {
   key: string;
   duplicate: boolean;
   selected: boolean;
+  /** Fecha normalizada detectada en la captura (null si no había). */
+  detectedAt: string | null;
 }
+
 
 export function TradeImportDialog() {
   const { accounts, strategies, trades, addTrade } = useJournal();
