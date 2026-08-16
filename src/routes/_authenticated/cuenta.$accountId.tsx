@@ -194,9 +194,10 @@ function AccountDetail() {
                 </p>
               </div>
             </div>
-            {dd.breachedAt ? (
-              <p className="text-xs font-semibold text-loss">
-                Suelo perforado el {new Date(dd.breachedAt).toLocaleDateString("es-ES")}
+            {dd.breachedAt && !dd.breached ? (
+              <p className="text-xs text-muted-foreground">
+                Aviso: cierre por debajo del suelo el{" "}
+                {new Date(dd.breachedAt).toLocaleDateString("es-ES")} (recuperada)
               </p>
             ) : null}
 
