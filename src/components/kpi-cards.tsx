@@ -128,11 +128,13 @@ export function KpiCards({
   scope = "all",
   trades,
   fusionEquity,
+  fusionInitial,
 }: {
   metrics: Metrics;
   scope?: "all" | "funded" | "real";
   trades?: Trade[] | undefined;
   fusionEquity?: number | undefined;
+  fusionInitial?: number | undefined;
 }) {
   const pnlLabel = fusionEquity !== undefined
     ? "Capital"
@@ -142,18 +144,20 @@ export function KpiCards({
         ? "PnL Real"
         : "PnL Total";
   const pnlValue = fusionEquity !== undefined ? fusionEquity : metrics.totalPnl;
+  const fmtNoSign = (v: number) =>
+    `$${Math.abs(v).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   return (
     <div className="grid gap-3 sm:grid-cols-2">
       <Card
         label={pnlLabel}
-        value={formatCurrency(pnlValue, true)}
+        value={fusionEquity !== undefined && fusionInitial !== undefined ? fmtNoSign(fusionInitial) : formatCurrency(pnlValue, true)}
         sub={`${metrics.total} operaciones cerradas`}
         icon={TrendingUp}
         tone={fusionEquity === undefined && pnlValue >= 0 ? "profit" : fusionEquity === undefined ? "loss" : "neutral"}
       >
         {fusionEquity !== undefined && (
           <div className="mt-1.5 flex items-center gap-1.5 text-sm font-semibold">
-            <span className="text-muted-foreground">PnL:</span>
+            <span className="text-muted-foreground">Diferencia:</span>
             <span className={metrics.totalPnl >= 0 ? "text-profit" : "text-loss"}>
               {metrics.totalPnl >= 0 ? "+" : ""}
               {formatCurrency(metrics.totalPnl, true)}
