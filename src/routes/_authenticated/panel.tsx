@@ -294,7 +294,6 @@ function Overview() {
         <KpiCards metrics={metrics} scope={scope} trades={scopedTrades} />
         <PerformanceAnalysis trades={trades} />
         <EmotionHighlights trades={scopedTrades} />
-        <PnlCalendar trades={scopedTrades} />
 
 
 
