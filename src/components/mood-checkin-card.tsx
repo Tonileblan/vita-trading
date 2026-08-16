@@ -38,7 +38,10 @@ function Scale({
             type="button"
             onClick={() => onChange(n)}
             className={cn(
-              "h-9 flex-1 rounded-md border text-sm font-semibold transition-colors",
+              "flex-1 rounded-md border text-sm font-semibold transition-colors",
+              faces
+                ? "flex h-16 items-center justify-center text-3xl leading-none"
+                : "h-9",
               value === n
                 ? "border-brand bg-brand/15 text-brand-soft"
                 : "border-border text-muted-foreground hover:text-foreground",
