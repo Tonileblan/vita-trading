@@ -429,6 +429,8 @@ function ExpensesSection({
 
       <ExpenseBreakdown occurrences={occurrences} />
 
+      <ExpenseCharts occurrences={occurrences} />
+
       {isLoading ? (
         <div className="panel p-8 text-center text-sm text-muted-foreground">Cargando…</div>
       ) : (
