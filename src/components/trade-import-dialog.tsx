@@ -3,6 +3,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { Camera, ImagePlus, Loader2, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { CameraCapture } from "@/components/camera-capture";
 import {
   Dialog,
   DialogContent,
@@ -52,6 +53,7 @@ export function TradeImportDialog() {
   const { accounts, strategies, trades, addTrade } = useJournal();
   const extract = useServerFn(extractTradesFromImages);
   const [open, setOpen] = useState(false);
+  const [cameraOpen, setCameraOpen] = useState(false);
   const [accountId, setAccountId] = useState(accounts[0]?.id ?? "");
   const [strategyId, setStrategyId] = useState(strategies[0]?.id ?? "");
   const [images, setImages] = useState<string[]>([]);
@@ -59,7 +61,6 @@ export function TradeImportDialog() {
   const [loading, setLoading] = useState(false);
   const [dragging, setDragging] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
-  const cameraRef = useRef<HTMLInputElement>(null);
 
 
   const addFiles = (files: FileList | File[] | null) => {
