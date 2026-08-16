@@ -235,22 +235,6 @@ function Overview() {
                 Consolidada de las cuentas activas
               </p>
             </div>
-            <div className="flex gap-1 rounded-md border border-border p-1">
-              {RANGES.map((r) => (
-                <button
-                  key={r.key}
-                  onClick={() => setRange(r.key)}
-                  className={cn(
-                    "rounded px-3 py-1 text-xs font-semibold transition-colors",
-                    range === r.key
-                      ? "bg-brand text-primary-foreground"
-                      : "text-muted-foreground hover:text-foreground",
-                  )}
-                >
-                  {r.label}
-                </button>
-              ))}
-            </div>
           </div>
           <EquityChart data={curve} />
         </section>
