@@ -93,27 +93,6 @@ function ContaPage() {
         </div>
       }
       showAccountPanel={false}
-      actions={
-        tab === "gastos" ? (
-          <Button
-            onClick={() => {
-              setEditingExpense(null);
-              setExpenseDialogOpen(true);
-            }}
-          >
-            <Plus className="mr-1 size-4" /> Nuevo gasto
-          </Button>
-        ) : (
-          <Button
-            onClick={() => {
-              setEditingWithdrawal(null);
-              setWithdrawalDialogOpen(true);
-            }}
-          >
-            <Plus className="mr-1 size-4" /> Nuevo retiro
-          </Button>
-        )
-      }
     >
       <div className="space-y-4">
         {tab === "retiros" ? (
@@ -122,6 +101,16 @@ function ContaPage() {
               setEditingWithdrawal(w);
               setWithdrawalDialogOpen(true);
             }}
+            action={
+              <Button
+                onClick={() => {
+                  setEditingWithdrawal(null);
+                  setWithdrawalDialogOpen(true);
+                }}
+              >
+                <Plus className="mr-1 size-4" /> Nuevo retiro
+              </Button>
+            }
           />
         ) : (
           <ExpensesSection
@@ -129,6 +118,16 @@ function ContaPage() {
               setEditingExpense(e);
               setExpenseDialogOpen(true);
             }}
+            action={
+              <Button
+                onClick={() => {
+                  setEditingExpense(null);
+                  setExpenseDialogOpen(true);
+                }}
+              >
+                <Plus className="mr-1 size-4" /> Nuevo gasto
+              </Button>
+            }
           />
         )}
       </div>
