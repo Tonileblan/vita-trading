@@ -84,7 +84,7 @@ const FEATURES = [
   {
     icon: ShieldCheck,
     title: "Supervisión y chat interno",
-    text: "Acceso restringido al supervisor para ver el resumen de todos y comentar el desempeño en un chat interno con el equipo.",
+    text: "Acceso restringido al supervisor para ver el resumen de todos y comentar el desempeño en un chat interno con el equipo. Cada usuario puede activar un modo de perfil privado.",
   },
 ];
 
