@@ -176,10 +176,8 @@ function ContaPage() {
 
 function WithdrawalsSection({
   openEdit,
-  action,
 }: {
   openEdit: (w: Withdrawal) => void;
-  action: ReactNode;
 }) {
   const { accounts, allWithdrawals, updateWithdrawal, removeWithdrawal } = useJournal();
 
