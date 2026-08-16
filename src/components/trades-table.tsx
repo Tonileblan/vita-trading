@@ -42,7 +42,7 @@ export function TradesTable({
               )}
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
-                  <span className="font-semibold">{t.symbol}</span>
+                  <span className="font-semibold">{t.symbol || "—"}</span>
                   <span
                     className={cn(
                       "rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase",
@@ -75,11 +75,13 @@ export function TradesTable({
                 </button>
               )}
             </div>
-            <div className="num flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-              <span>Entrada {t.entryPrice}</span>
-              <span>Salida {t.exitPrice}</span>
-              <span>Tam. {t.size}</span>
-            </div>
+            {(t.entryPrice || t.exitPrice || t.size) > 0 && (
+              <div className="num flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                {t.entryPrice > 0 && <span>Entrada {t.entryPrice}</span>}
+                {t.exitPrice > 0 && <span>Salida {t.exitPrice}</span>}
+                {t.size > 0 && <span>Tam. {t.size}</span>}
+              </div>
+            )}
             {t.tags.length > 0 && (
               <div className="flex flex-wrap gap-1">
                 {t.tags.map((tag) => (
