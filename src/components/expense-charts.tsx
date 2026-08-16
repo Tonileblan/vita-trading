@@ -143,33 +143,158 @@ export function ExpenseCharts({ occurrences }: { occurrences: Occurrence[] }) {
 
         <div>
           <p className="text-xs uppercase tracking-wider text-muted-foreground">Por mes</p>
-          <div className="mt-4 flex h-44 items-end gap-1.5">
-            {series.map((m) => (
-              <div key={m.key} className="flex flex-1 flex-col items-center gap-1">
-                <span className="num text-[9px] text-muted-foreground">
-                  {m.amount ? Math.round(m.amount) : ""}
-                </span>
-                <div
-                  className="relative w-full"
-                  style={{ height: `${Math.max((m.amount / max) * 100, m.amount ? 4 : 0)}%` }}
-                  title={`${m.label}: ${formatCurrency(m.amount)}`}
-                >
-                  {m.amount > 0 && (
-                    <>
+          {(() => {
+            const W = 440;
+            const H = 250;
+            const L = 52;
+            const R = 14;
+            const T = 16;
+            const B = 34;
+            const D = 9; // profundidad 3D
+            const plotW = W - L - R - D;
+            const plotH = H - T - B - D;
+            const step = plotW / series.length;
+            const bw = step * 0.58;
+            const ticks = 5;
+            const niceMax = (() => {
+              const raw = max / ticks;
+              const mag = Math.pow(10, Math.floor(Math.log10(raw || 1)));
+              const norm = raw / mag;
+              const unit = (norm <= 1 ? 1 : norm <= 2 ? 2 : norm <= 5 ? 5 : 10) * mag;
+              return unit * ticks;
+            })();
+            const y = (v: number) => T + D + plotH - (v / niceMax) * plotH;
+
+            return (
+              <svg viewBox={`0 0 ${W} ${H}`} className="mt-3 w-full">
+                {/* fondo del plot */}
+                <polygon
+                  points={`${L},${T} ${L + D},${T - 0} ${L + D},${T} ${L + D},${T}`}
+                  fill="none"
+                />
+                <rect
+                  x={L + D}
+                  y={T}
+                  width={plotW}
+                  height={plotH + D}
+                  fill="var(--card)"
+                  stroke="var(--border)"
+                />
+                {/* pared lateral / suelo en perspectiva */}
+                <polygon
+                  points={`${L},${T + D} ${L + D},${T} ${L + D},${T + plotH + D} ${L},${T + plotH + D + D}`}
+                  fill="var(--muted)"
+                  opacity={0.5}
+                  stroke="var(--border)"
+                />
+                <polygon
+                  points={`${L},${T + plotH + D + D} ${L + D},${T + plotH + D} ${L + D + plotW},${T + plotH + D} ${L + plotW},${T + plotH + D + D}`}
+                  fill="var(--muted)"
+                  opacity={0.35}
+                  stroke="var(--border)"
+                />
+
+                {/* líneas guía + etiquetas */}
+                {Array.from({ length: ticks + 1 }, (_, i) => {
+                  const v = (niceMax / ticks) * i;
+                  const yy = y(v);
+                  return (
+                    <g key={i}>
+                      <line
+                        x1={L + D}
+                        x2={L + D + plotW}
+                        y1={yy}
+                        y2={yy}
+                        stroke="var(--border)"
+                        strokeWidth={0.75}
+                      />
+                      <line
+                        x1={L}
+                        x2={L + D}
+                        y1={yy + D}
+                        y2={yy}
+                        stroke="var(--border)"
+                        strokeWidth={0.75}
+                      />
+                      <text
+                        x={L - 6}
+                        y={yy + D + 3.5}
+                        textAnchor="end"
+                        fontSize={10}
+                        fill="var(--muted-foreground)"
+                      >
+                        {Math.round(v).toLocaleString("es-ES")}
+                      </text>
+                    </g>
+                  );
+                })}
+
+                {/* barras 3D */}
+                {series.map((m, i) => {
+                  const x = L + D + i * step + (step - bw) / 2;
+                  const yTop = y(m.amount);
+                  const base = T + D + plotH;
+                  const h = base - yTop;
+                  if (m.amount <= 0) {
+                    return (
+                      <text
+                        key={m.key}
+                        x={x + bw / 2}
+                        y={H - 12}
+                        textAnchor="middle"
+                        fontSize={10}
+                        fill="var(--muted-foreground)"
+                      >
+                        {m.label}
+                      </text>
+                    );
+                  }
+                  return (
+                    <g key={m.key}>
+                      <title>{`${m.label}: ${formatCurrency(m.amount)}`}</title>
                       {/* cara superior */}
-                      <div className="absolute -top-[5px] left-[5px] h-[5px] w-full origin-bottom-left skew-x-[-45deg] bg-loss/90" />
+                      <polygon
+                        points={`${x},${yTop} ${x + D},${yTop - D} ${x + bw + D},${yTop - D} ${x + bw},${yTop}`}
+                        fill="var(--chart-2)"
+                        opacity={0.9}
+                        stroke="var(--border)"
+                        strokeWidth={0.5}
+                      />
                       {/* lateral derecho */}
-                      <div className="absolute -right-[5px] top-[-5px] h-full w-[5px] origin-bottom-left skew-y-[-45deg] bg-loss/40" />
+                      <polygon
+                        points={`${x + bw},${yTop} ${x + bw + D},${yTop - D} ${x + bw + D},${base - D} ${x + bw},${base}`}
+                        fill="var(--chart-2)"
+                        opacity={0.55}
+                        stroke="var(--border)"
+                        strokeWidth={0.5}
+                      />
                       {/* cara frontal */}
-                      <div className="absolute inset-0 bg-gradient-to-b from-loss/85 to-loss/45" />
-                    </>
-                  )}
-                </div>
-                <span className="text-[10px] uppercase text-muted-foreground">{m.label}</span>
-              </div>
-            ))}
-          </div>
+                      <rect
+                        x={x}
+                        y={yTop}
+                        width={bw}
+                        height={h}
+                        fill="var(--chart-2)"
+                        stroke="var(--border)"
+                        strokeWidth={0.5}
+                      />
+                      <text
+                        x={x + bw / 2}
+                        y={H - 12}
+                        textAnchor="middle"
+                        fontSize={10}
+                        fill="var(--muted-foreground)"
+                      >
+                        {m.label}
+                      </text>
+                    </g>
+                  );
+                })}
+              </svg>
+            );
+          })()}
         </div>
+
       </div>
     </section>
   );
