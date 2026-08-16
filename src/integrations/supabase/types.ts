@@ -226,6 +226,7 @@ export type Database = {
           description: string | null
           id: string
           is_archived: boolean
+          is_template: boolean
           name: string
           owner_id: string
           updated_at: string
@@ -236,6 +237,7 @@ export type Database = {
           description?: string | null
           id?: string
           is_archived?: boolean
+          is_template?: boolean
           name: string
           owner_id: string
           updated_at?: string
@@ -246,6 +248,7 @@ export type Database = {
           description?: string | null
           id?: string
           is_archived?: boolean
+          is_template?: boolean
           name?: string
           owner_id?: string
           updated_at?: string

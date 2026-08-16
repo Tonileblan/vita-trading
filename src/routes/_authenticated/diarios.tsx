@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Archive, ArchiveRestore, Check, Download, Pencil, Plus, Sparkles, Trash2, Upload } from "lucide-react";
+import { Archive, ArchiveRestore, Check, Copy, Download, Globe, Pencil, Plus, Sparkles, Trash2, Upload } from "lucide-react";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/app-shell";
@@ -19,12 +19,16 @@ import {
   useCreateJournal,
   useDeleteJournal,
   useJournals,
+  useTemplateJournals,
+  useToggleTemplate,
   useUpdateJournal,
   type Journal,
 } from "@/lib/journals";
 import { useJournal } from "@/lib/journal-store";
 import { exportAllJournalsCsv, exportJournalCsv, importJournalCsv } from "@/lib/journal-csv";
+import { useAuth } from "@/lib/auth-context";
 import { createExampleJournal } from "@/lib/example-journal";
+import { cloneTemplateJournal } from "@/lib/template-clone";
 import { useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
 
@@ -48,9 +52,12 @@ export const Route = createFileRoute("/_authenticated/diarios")({
 
 function JournalsPage() {
   const { data: journals = [], isLoading } = useJournals();
+  const { data: templates = [] } = useTemplateJournals();
   const create = useCreateJournal();
   const update = useUpdateJournal();
   const remove = useDeleteJournal();
+  const toggleTemplate = useToggleTemplate();
+  const { user } = useAuth();
   const { activeJournalId, setActiveJournalId } = useJournal();
   const qc = useQueryClient();
   const fileRef = useRef<HTMLInputElement>(null);
@@ -66,6 +73,23 @@ function JournalsPage() {
       toast.success(`Diario de ejemplo creado con datos de muestra`);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "No se pudo crear el diario de ejemplo");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function handleClone(tpl: Journal) {
+    const name = prompt("Nombre para tu copia del diario", tpl.name);
+    if (!name?.trim()) return;
+    setBusyId("clone-" + tpl.id);
+    try {
+      const created = await cloneTemplateJournal(tpl.id, name.trim());
+      await qc.invalidateQueries({ queryKey: ["journals"] });
+      await qc.invalidateQueries({ queryKey: ["journal-data"] });
+      setActiveJournalId(created.id);
+      toast.success(`Diario "${name.trim()}" creado a partir del ejemplo`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "No se pudo clonar el diario");
     } finally {
       setBusyId(null);
     }
@@ -237,11 +261,18 @@ function JournalsPage() {
                       {j.base_currency} · {new Date(j.created_at).toLocaleDateString("es-ES")}
                     </p>
                   </div>
-                  {active && (
-                    <span className="rounded bg-brand/15 px-2 py-0.5 text-[11px] font-semibold text-brand">
-                      Activo
-                    </span>
-                  )}
+                  <div className="flex flex-col items-end gap-1">
+                    {active && (
+                      <span className="rounded bg-brand/15 px-2 py-0.5 text-[11px] font-semibold text-brand">
+                        Activo
+                      </span>
+                    )}
+                    {j.is_template && (
+                      <span className="rounded bg-profit/15 px-2 py-0.5 text-[11px] font-semibold text-profit">
+                        Ejemplo público
+                      </span>
+                    )}
+                  </div>
                 </div>
                 {j.description && (
                   <p className="line-clamp-2 text-sm text-muted-foreground">{j.description}</p>
@@ -289,6 +320,23 @@ function JournalsPage() {
                       <Archive className="size-4" />
                     )}
                   </Button>
+                  {j.owner_id === user?.id && (
+                    <Button
+                      size="sm"
+                      variant={j.is_template ? "default" : "outline"}
+                      title={
+                        j.is_template
+                          ? "Quitar de ejemplos públicos"
+                          : "Publicar como ejemplo público (clonable por todos)"
+                      }
+                      disabled={toggleTemplate.isPending}
+                      onClick={() =>
+                        toggleTemplate.mutate({ id: j.id, value: !j.is_template })
+                      }
+                    >
+                      <Globe className="size-4" />
+                    </Button>
+                  )}
                   <Button
                     size="sm"
                     variant="outline"
@@ -304,6 +352,43 @@ function JournalsPage() {
             );
           })}
         </div>
+      )}
+
+      {templates.filter((t) => t.owner_id !== user?.id).length > 0 && (
+        <section className="mt-8">
+          <div className="mb-3 flex items-center gap-2">
+            <Globe className="size-4 text-profit" />
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+              Ejemplos públicos
+            </h2>
+          </div>
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {templates
+              .filter((t) => t.owner_id !== user?.id)
+              .map((t) => (
+                <article key={t.id} className="panel flex flex-col gap-3 p-4">
+                  <div className="min-w-0">
+                    <h3 className="truncate text-base font-semibold">{t.name}</h3>
+                    <p className="text-xs text-muted-foreground">
+                      {t.base_currency} · {new Date(t.created_at).toLocaleDateString("es-ES")}
+                    </p>
+                  </div>
+                  {t.description && (
+                    <p className="line-clamp-2 text-sm text-muted-foreground">{t.description}</p>
+                  )}
+                  <div className="mt-auto">
+                    <Button
+                      size="sm"
+                      disabled={busyId === "clone-" + t.id}
+                      onClick={() => handleClone(t)}
+                    >
+                      <Copy className="size-4" /> Clonar diario
+                    </Button>
+                  </div>
+                </article>
+              ))}
+          </div>
+        </section>
       )}
 
       <input

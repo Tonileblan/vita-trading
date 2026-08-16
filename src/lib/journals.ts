@@ -8,6 +8,7 @@ export interface Journal {
   description: string | null;
   base_currency: string;
   is_archived: boolean;
+  is_template: boolean;
   created_at: string;
 }
 
@@ -17,7 +18,27 @@ export function useJournals() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("journals")
-        .select("id, owner_id, name, description, base_currency, is_archived, created_at")
+        .select(
+          "id, owner_id, name, description, base_currency, is_archived, is_template, created_at",
+        )
+        .order("created_at", { ascending: true });
+      if (error) throw error;
+      return (data ?? []) as Journal[];
+    },
+  });
+}
+
+/** Diarios publicados como plantilla pública por cualquier usuario. */
+export function useTemplateJournals() {
+  return useQuery({
+    queryKey: ["journals", "templates"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("journals")
+        .select(
+          "id, owner_id, name, description, base_currency, is_archived, is_template, created_at",
+        )
+        .eq("is_template", true)
         .order("created_at", { ascending: true });
       if (error) throw error;
       return (data ?? []) as Journal[];
@@ -68,5 +89,22 @@ export function useDeleteJournal() {
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["journals"] }),
+  });
+}
+
+/** Publica o despublica el diario propio como plantilla pública clonable. */
+export function useToggleTemplate() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, value }: { id: string; value: boolean }) => {
+      const { error } = await supabase
+        .from("journals")
+        .update({ is_template: value })
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["journals"] });
+    },
   });
 }
