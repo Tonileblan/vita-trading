@@ -3,6 +3,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { Camera, ImagePlus, Loader2, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { CameraCapture } from "@/components/camera-capture";
 import {
   Dialog,
   DialogContent,
@@ -52,6 +53,7 @@ export function TradeImportDialog() {
   const { accounts, strategies, trades, addTrade } = useJournal();
   const extract = useServerFn(extractTradesFromImages);
   const [open, setOpen] = useState(false);
+  const [cameraOpen, setCameraOpen] = useState(false);
   const [accountId, setAccountId] = useState(accounts[0]?.id ?? "");
   const [strategyId, setStrategyId] = useState(strategies[0]?.id ?? "");
   const [images, setImages] = useState<string[]>([]);
@@ -59,7 +61,6 @@ export function TradeImportDialog() {
   const [loading, setLoading] = useState(false);
   const [dragging, setDragging] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
-  const cameraRef = useRef<HTMLInputElement>(null);
 
 
   const addFiles = (files: FileList | File[] | null) => {
@@ -215,7 +216,7 @@ export function TradeImportDialog() {
           <ImagePlus className="mx-auto mb-2 size-6" />
           Arrastra, pega (Ctrl+V) o usa los botones (máx. 6)
           <div className="mt-3 flex flex-wrap justify-center gap-2">
-            <Button type="button" variant="secondary" onClick={() => cameraRef.current?.click()}>
+            <Button type="button" variant="secondary" onClick={() => setCameraOpen(true)}>
               <Camera className="size-4" /> Hacer foto
             </Button>
             <Button type="button" variant="outline" onClick={() => fileRef.current?.click()}>
@@ -230,15 +231,16 @@ export function TradeImportDialog() {
             hidden
             onChange={(e) => addFiles(e.target.files)}
           />
-          <input
-            ref={cameraRef}
-            type="file"
-            accept="image/*"
-            capture="environment"
-            hidden
-            onChange={(e) => addFiles(e.target.files)}
-          />
         </div>
+
+        <CameraCapture
+          open={cameraOpen}
+          onOpenChange={setCameraOpen}
+          onCapture={(dataUrl) => {
+            setImages((prev) => [...prev, dataUrl].slice(0, 6));
+            setCameraOpen(false);
+          }}
+        />
 
 
         {images.length > 0 && (
