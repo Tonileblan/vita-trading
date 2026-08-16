@@ -151,13 +151,12 @@ export function KpiCards({
       <Card
         label={pnlLabel}
         value={fusionEquity !== undefined && fusionInitial !== undefined ? fmtNoSign(fusionInitial) : formatCurrency(pnlValue, true)}
-        sub={`${metrics.total} operaciones cerradas`}
+        sub={fusionEquity === undefined ? `${metrics.total} operaciones cerradas` : undefined}
         icon={TrendingUp}
         tone={fusionEquity === undefined && pnlValue >= 0 ? "profit" : fusionEquity === undefined ? "loss" : "neutral"}
       >
         {fusionEquity !== undefined && (
-          <div className="mt-1.5 flex items-center gap-1.5 text-sm font-semibold">
-            <span className="text-muted-foreground">Diferencia:</span>
+          <div className="mt-1.5 text-sm font-semibold">
             <span className={metrics.totalPnl >= 0 ? "text-profit" : "text-loss"}>
               {metrics.totalPnl >= 0 ? "+" : ""}
               {formatCurrency(metrics.totalPnl, true)}
