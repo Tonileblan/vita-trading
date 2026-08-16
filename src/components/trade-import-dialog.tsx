@@ -216,7 +216,7 @@ export function TradeImportDialog() {
           <ImagePlus className="mx-auto mb-2 size-6" />
           Arrastra, pega (Ctrl+V) o usa los botones (máx. 6)
           <div className="mt-3 flex flex-wrap justify-center gap-2">
-            <Button type="button" variant="secondary" onClick={() => cameraRef.current?.click()}>
+            <Button type="button" variant="secondary" onClick={() => setCameraOpen(true)}>
               <Camera className="size-4" /> Hacer foto
             </Button>
             <Button type="button" variant="outline" onClick={() => fileRef.current?.click()}>
@@ -231,15 +231,16 @@ export function TradeImportDialog() {
             hidden
             onChange={(e) => addFiles(e.target.files)}
           />
-          <input
-            ref={cameraRef}
-            type="file"
-            accept="image/*"
-            capture="environment"
-            hidden
-            onChange={(e) => addFiles(e.target.files)}
-          />
         </div>
+
+        <CameraCapture
+          open={cameraOpen}
+          onOpenChange={setCameraOpen}
+          onCapture={(dataUrl) => {
+            setImages((prev) => [...prev, dataUrl].slice(0, 6));
+            setCameraOpen(false);
+          }}
+        />
 
 
         {images.length > 0 && (
