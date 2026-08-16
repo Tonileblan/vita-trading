@@ -418,6 +418,7 @@ export async function importJournalCsv(
           name,
           type: at(r, "tipo_cuenta") === "funded" ? "funded" : "personal",
           firm: at(r, "firma") || null,
+          broker: at(r, "broker") || null,
           initial_balance: num(at(r, "balance_inicial")),
           current_balance: num(at(r, "balance_inicial")),
           drawdown_limit: at(r, "limite_drawdown") ? num(at(r, "limite_drawdown")) : null,
