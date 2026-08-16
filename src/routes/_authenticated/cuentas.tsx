@@ -82,6 +82,7 @@ function AccountDialog({ account, trigger }: { account?: Account; trigger: React
       setType(account.type);
       setName(account.name);
       setFirm(account.firm ?? PROP_FIRMS[0]!);
+      setBroker(account.broker ?? BROKERS[0]!);
       setInitial(String(account.initialBalance));
       setCurrent(String(account.currentBalance));
       setDd(String(account.drawdownLimit ?? 0));
