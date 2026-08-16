@@ -4,7 +4,6 @@ import { ArrowUpDown, History as HistoryIcon, List as ListIcon, Search, Trash2, 
 import { toast } from "sonner";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Input } from "@/components/ui/input";
 import {
   AlertDialog,
