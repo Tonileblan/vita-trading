@@ -343,9 +343,15 @@ export function JournalProvider({ children }: { children: ReactNode }) {
       addTrades: async (list) => {
         if (list.length === 0) return;
         const base = await ownerFields();
+        const batchId =
+          typeof crypto !== "undefined" && "randomUUID" in crypto
+            ? crypto.randomUUID()
+            : String(Date.now());
         const { error } = await supabase
           .from("trades")
-          .insert(list.map((t) => ({ ...fromTrade(t), ...base })) as never);
+          .insert(
+            list.map((t) => ({ ...fromTrade(t), ...base, import_batch_id: batchId })) as never,
+          );
         if (error) throw error;
         // Suma del PnL por cuenta para actualizar cada balance una única vez.
         const deltas = new Map<string, number>();
@@ -353,19 +359,22 @@ export function JournalProvider({ children }: { children: ReactNode }) {
           if (!t.accountId) continue;
           deltas.set(t.accountId, (deltas.get(t.accountId) ?? 0) + t.pnl);
         }
-        await Promise.all(
-          [...deltas].map(([id, delta]) => {
-            const account = data.accounts.find((a) => a.id === id);
-            if (!account) return Promise.resolve();
-            return supabase
-              .from("accounts")
-              .update({ current_balance: account.currentBalance + delta } as never)
-              .eq("id", id)
-              .then(() => undefined);
-          }),
-        );
+        await applyBalanceDeltas(data.accounts, deltas);
         await refresh();
       },
+      removeTrade: async (id) => {
+        await deleteTradeIds([id]);
+      },
+      removeTrades: async (ids) => {
+        await deleteTradeIds(ids);
+      },
+      removeImportBatch: async (batchId) => {
+        const ids = data.trades.filter((t) => t.importBatchId === batchId).map((t) => t.id);
+        await deleteTradeIds(ids);
+      },
+      importBatches,
+
+
 
 
 
