@@ -7,7 +7,7 @@ import { AccountStrategyCalendar } from "@/components/account-strategy-calendar"
 import { StrategyDialog } from "@/components/strategy-dialog";
 import { Button } from "@/components/ui/button";
 import { useJournal } from "@/lib/journal-store";
-import { computeStrategyStats, formatCurrency, monthlyNet } from "@/lib/metrics";
+import { computeStrategyStats, formatCurrency } from "@/lib/metrics";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/estrategias")({
@@ -60,7 +60,6 @@ function EstrategiasPage() {
     return { initial, net, withdrawn, ops, current };
   }, [stats]);
 
-  const months = useMemo(() => monthlyNet(trades, totals.initial), [trades, totals.initial]);
 
 
   return (
@@ -244,36 +243,6 @@ function EstrategiasPage() {
           </table>
         </section>
 
-        <section className="panel overflow-x-auto p-4">
-          <h2 className="mb-3 text-base font-semibold">Neto mensual combinado</h2>
-          <table className="w-full min-w-[520px] text-sm">
-            <thead className="text-xs uppercase text-muted-foreground">
-              <tr className="border-b border-border">
-                <th className="py-2 text-left">Mes</th>
-                <th className="py-2 text-right">Neto</th>
-                <th className="py-2 text-right">Acumulado</th>
-                <th className="py-2 text-right">Capital</th>
-              </tr>
-            </thead>
-            <tbody>
-              {months.map((m) => (
-                <tr key={m.month} className="border-b border-border/60">
-                  <td className="py-2">{m.month}</td>
-                  <td
-                    className={cn(
-                      "py-2 text-right tabular-nums",
-                      m.net > 0 ? "text-profit" : m.net < 0 ? "text-loss" : "text-muted-foreground",
-                    )}
-                  >
-                    {m.net ? formatCurrency(m.net, true) : "—"}
-                  </td>
-                  <td className="py-2 text-right tabular-nums">{formatCurrency(m.acc, true)}</td>
-                  <td className="py-2 text-right tabular-nums">{formatCurrency(m.capital)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </section>
         <section className="panel p-4">
           <h2 className="text-xl leading-none">Calendario</h2>
           <p className="mb-3 text-xs text-muted-foreground">
