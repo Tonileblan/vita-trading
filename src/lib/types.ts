@@ -73,6 +73,9 @@ export interface Trade {
   notes?: string | undefined;
   screenshots: string[];
   source: "manual" | "webhook";
+  /** Identificador del lote de importación (capturas/fotos). */
+  importBatchId?: string | undefined;
+  createdAt?: string | undefined;
   /* Gestión emocional (opcional). */
   emotionBefore?: string | undefined;
   emotionAfter?: string | undefined;
