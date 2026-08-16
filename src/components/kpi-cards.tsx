@@ -131,8 +131,8 @@ export function KpiCards({
 }: {
   metrics: Metrics;
   scope?: "all" | "funded" | "real";
-  trades?: Trade[];
-  fusionEquity?: number;
+  trades?: Trade[] | undefined;
+  fusionEquity?: number | undefined;
 }) {
   const pnlLabel = fusionEquity !== undefined
     ? "Capital + PnL"
