@@ -231,6 +231,7 @@ export async function exportJournalCsv(journalId: string, journalName: string) {
     description: null,
     base_currency: "EUR",
     is_archived: false,
+    is_template: false,
     created_at: "",
   };
   const rows = await journalRows(journal);
