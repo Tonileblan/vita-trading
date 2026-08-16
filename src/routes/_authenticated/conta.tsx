@@ -372,7 +372,7 @@ function ExpensesSection({ openEdit }: { openEdit: (e: Expense) => void }) {
 
   return (
     <div className="space-y-4">
-      <div className="mb-10 flex gap-2">
+      <div className="mt-6 flex gap-2">
         {(
           [
             ["all", "Todos"],
