@@ -36,6 +36,7 @@ const nav = [
   { to: "/operaciones", label: "Operaciones", icon: ListOrdered },
   { to: "/estrategias", label: "Estrategias", icon: Layers },
   { to: "/retiros", label: "Retiros", icon: Banknote },
+  { to: "/costos", label: "Costos", icon: Receipt },
   { to: "/mente", label: "Mente", icon: Brain },
 
   { to: "/usuarios", label: "Usuarios", icon: Users },
