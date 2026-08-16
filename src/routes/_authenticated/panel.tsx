@@ -144,6 +144,19 @@ function Overview() {
       totalPnl: isAllRange ? balanceResult : operationMetrics.totalPnl,
     };
   }, [trades, scopedAccounts, scopedTrades, withdrawals, isAllRange]);
+
+  // Equity (capital total + PnL) of the selected account/strategy — shown fused in the PnL card.
+  const fusionEquity = useMemo(() => {
+    const equityAccounts = isStrategy
+      ? selectedAccounts.filter((a) => a.strategyId === strategyFilter)
+      : scopedAccounts;
+    return equityAccounts.reduce(
+      (sum, account) => sum + accountBalance(account, visibleTrades, withdrawals),
+      0,
+    );
+  }, [isStrategy, strategyFilter, selectedAccounts, scopedAccounts, visibleTrades, withdrawals]);
+  const showFusion = accountFilter !== "all" || isStrategy;
+
   const curve = useMemo(
     () => buildEquityCurve(trades, accountsCurveStart(scopedAccounts, trades, withdrawals)),
     [trades, scopedAccounts, withdrawals],
