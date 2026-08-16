@@ -25,7 +25,7 @@ export function AccountSidePanel() {
         {accounts.map((acc) => {
           const active = selectedAccountIds.includes(acc.id);
           const pnl = accountPnl(trades, acc.id);
-          const balance = accountBalance(acc, trades);
+          const balance = accountBalance(acc, trades, withdrawals);
 
           return (
             <button
