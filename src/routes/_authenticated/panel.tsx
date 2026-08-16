@@ -218,7 +218,7 @@ function Overview() {
                   }
                   onSelect={(sel) => {
                     if (!sel) {
-                      setCustomRange({});
+                      setCustomRange({ from: undefined, to: undefined });
                       return;
                     }
                     setCustomRange({ from: sel.from, to: "to" in sel ? sel.to : undefined });
@@ -233,7 +233,7 @@ function Overview() {
                     {customRange.to ? format(customRange.to, "dd/MM/yyyy") : "Fin"}
                   </span>
                   <button
-                    onClick={() => setCustomRange({})}
+                    onClick={() => setCustomRange({ from: undefined, to: undefined })}
                     className="text-xs font-semibold text-muted-foreground hover:text-foreground"
                   >
                     Limpiar
