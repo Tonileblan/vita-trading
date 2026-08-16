@@ -214,7 +214,7 @@ export function MarketHours() {
         <div className="flex items-center gap-2">
           <Activity className="size-4 text-muted-foreground" />
           <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            Volatilidad VXN
+            Volatilidad
           </span>
           <span className="font-display text-xl tracking-wide tabular-nums">
             {pulse?.vxn.value != null ? pulse.vxn.value.toFixed(2) : error ? "—" : "…"}
@@ -224,7 +224,7 @@ export function MarketHours() {
         <div className="flex items-center gap-2">
           <BarChart3 className="size-4 text-muted-foreground" />
           <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            Volumen del día (NQ)
+            Volumen
           </span>
           <span className="font-display text-xl tracking-wide tabular-nums">
             {pulse?.volume.value != null
