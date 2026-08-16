@@ -11,7 +11,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { mockStrategies } from "./mock-data";
 import { useJournals } from "./journals";
-import type { Account, Strategy, Trade, Withdrawal } from "./types";
+import type { Account, AccountStrategyPeriod, Strategy, Trade, Withdrawal } from "./types";
 
 const STORAGE_KEY = "tj:active-journal";
 
@@ -154,6 +154,17 @@ function toWithdrawal(r: Row): Withdrawal {
   };
 }
 
+function toPeriod(r: Row): AccountStrategyPeriod {
+  return {
+    id: String(r["id"]),
+    accountId: String(r["account_id"] ?? ""),
+    strategyId: String(r["strategy_id"] ?? ""),
+    startDate: String(r["start_date"] ?? ""),
+    endDate: (r["end_date"] as string | null) ?? undefined,
+    note: (r["note"] as string | null) ?? undefined,
+  };
+}
+
 /* ----------------------------------- data ----------------------------------- */
 
 export interface JournalData {
@@ -161,6 +172,7 @@ export interface JournalData {
   strategies: Strategy[];
   trades: Trade[];
   withdrawals: Withdrawal[];
+  strategyPeriods: AccountStrategyPeriod[];
 }
 
 /** Agrupación de operaciones creadas juntas (captura) o por separado (manual). */
@@ -219,11 +231,17 @@ async function applyBalanceDeltas(accounts: Account[], deltas: Map<string, numbe
   );
 }
 
-const EMPTY: JournalData = { accounts: [], strategies: [], trades: [], withdrawals: [] };
+const EMPTY: JournalData = {
+  accounts: [],
+  strategies: [],
+  trades: [],
+  withdrawals: [],
+  strategyPeriods: [],
+};
 
 /** Lee todos los datos de un diario (usado también por la vista de supervisión). */
 export async function fetchJournalData(journalId: string): Promise<JournalData> {
-  const [accounts, strategies, trades, withdrawals] = await Promise.all([
+  const [accounts, strategies, trades, withdrawals, periods] = await Promise.all([
     supabase
       .from("accounts")
       .select("*")
@@ -232,14 +250,21 @@ export async function fetchJournalData(journalId: string): Promise<JournalData> 
     supabase.from("strategies").select("*").eq("journal_id", journalId),
     supabase.from("trades").select("*").eq("journal_id", journalId).order("closed_at", { ascending: false }),
     supabase.from("withdrawals").select("*").eq("journal_id", journalId).order("date", { ascending: false }),
+    supabase
+      .from("account_strategy_periods")
+      .select("*")
+      .eq("journal_id", journalId)
+      .order("start_date", { ascending: true }),
   ]);
-  const err = accounts.error || strategies.error || trades.error || withdrawals.error;
+  const err =
+    accounts.error || strategies.error || trades.error || withdrawals.error || periods.error;
   if (err) throw err;
   return {
     accounts: (accounts.data ?? []).map((r) => toAccount(r as Row)),
     strategies: (strategies.data ?? []).map((r) => toStrategy(r as Row)),
     trades: (trades.data ?? []).map((r) => toTrade(r as Row)),
     withdrawals: (withdrawals.data ?? []).map((r) => toWithdrawal(r as Row)),
+    strategyPeriods: (periods.data ?? []).map((r) => toPeriod(r as Row)),
   };
 }
 
@@ -281,6 +306,8 @@ interface JournalState extends JournalData {
   addStrategy: (strategy: Omit<Strategy, "id">) => Promise<void>;
   removeStrategy: (id: string) => Promise<void>;
   restoreDefaultStrategies: () => Promise<void>;
+  addStrategyPeriod: (period: Omit<AccountStrategyPeriod, "id">) => Promise<void>;
+  removeStrategyPeriod: (id: string) => Promise<void>;
   visibleTrades: Trade[];
 }
 
@@ -508,6 +535,24 @@ export function JournalProvider({ children }: { children: ReactNode }) {
       },
       removeStrategy: async (id) => {
         const { error } = await supabase.from("strategies").delete().eq("id", id);
+        if (error) throw error;
+        await refresh();
+      },
+      addStrategyPeriod: async (period) => {
+        const base = await ownerFields();
+        const { error } = await supabase.from("account_strategy_periods").insert({
+          account_id: period.accountId,
+          strategy_id: period.strategyId,
+          start_date: period.startDate,
+          end_date: period.endDate || null,
+          note: period.note ?? null,
+          ...base,
+        } as never);
+        if (error) throw error;
+        await refresh();
+      },
+      removeStrategyPeriod: async (id) => {
+        const { error } = await supabase.from("account_strategy_periods").delete().eq("id", id);
         if (error) throw error;
         await refresh();
       },
