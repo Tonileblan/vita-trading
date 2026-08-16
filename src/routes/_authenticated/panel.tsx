@@ -5,6 +5,7 @@ import { EquityChart } from "@/components/equity-chart";
 import { KpiCards } from "@/components/kpi-cards";
 import { RiskAlerts } from "@/components/risk-alerts";
 import { EmotionHighlights } from "@/components/emotion-stats";
+import { PnlCalendar } from "@/components/pnl-calendar";
 import { PerformanceAnalysis } from "@/components/performance-analysis";
 
 
@@ -194,6 +195,7 @@ function Overview() {
         <KpiCards metrics={metrics} scope={scope} trades={scopedTrades} />
         <PerformanceAnalysis trades={trades} />
         <EmotionHighlights trades={scopedTrades} />
+        <PnlCalendar trades={scopedTrades} />
 
 
 
