@@ -134,17 +134,30 @@ function Overview() {
     return filterByRange(scopedTrades, range);
   }, [scopedTrades, range, customRange]);
   // Accounts (capital + PnL) of the selected account/strategy.
+  const strategyAccounts = useMemo(() => {
+    if (!isStrategy) return [];
+    const ids = new Set<string>();
+    for (const a of selectedAccounts) {
+      if (a.strategyId === strategyFilter) ids.add(a.id);
+    }
+    for (const p of strategyPeriods) {
+      if (p.strategyId === strategyFilter) ids.add(p.accountId);
+    }
+    for (const t of scopedTrades) {
+      if (t.accountId) ids.add(t.accountId);
+    }
+    return selectedAccounts.filter((a) => ids.has(a.id));
+  }, [isStrategy, strategyFilter, selectedAccounts, strategyPeriods, scopedTrades]);
+
   const fusionAccounts = useMemo(
-    () =>
-      isStrategy
-        ? selectedAccounts.filter((a) => a.strategyId === strategyFilter)
-        : scopedAccounts,
-    [isStrategy, strategyFilter, selectedAccounts, scopedAccounts],
+    () => (isStrategy ? strategyAccounts : scopedAccounts),
+    [isStrategy, strategyAccounts, scopedAccounts],
   );
   const fusionEquity = useMemo(
     () => fusionAccounts.reduce((sum, account) => sum + accountBalance(account, visibleTrades, withdrawals), 0),
     [fusionAccounts, visibleTrades, withdrawals],
   );
+
 
   // Cuenta de fondeo concreta seleccionada → progreso hacia objetivo (eval / retiro).
   const fundedTarget = useMemo(() => {
@@ -154,10 +167,12 @@ function Overview() {
     return accountTarget(account, visibleTrades, withdrawals);
   }, [isStrategy, accountFilter, selectedAccounts, visibleTrades, withdrawals]);
 
+  const curveAccounts = isStrategy ? strategyAccounts : scopedAccounts;
   const curve = useMemo(
-    () => buildEquityCurve(trades, accountsCurveStart(scopedAccounts, trades, withdrawals)),
-    [trades, scopedAccounts, withdrawals],
+    () => buildEquityCurve(trades, accountsCurveStart(curveAccounts, trades, withdrawals)),
+    [trades, curveAccounts, withdrawals],
   );
+
   const fundedAccounts = selectedAccounts.filter((a) => a.type === "funded");
   const realAccounts = selectedAccounts.filter((a) => a.type !== "funded");
   const fundedEquity = fundedAccounts.reduce(
@@ -176,10 +191,12 @@ function Overview() {
     (s, a) => s + accountResult(a, visibleTrades, withdrawals),
     0,
   );
-  const fusionPnl = fusionAccounts.reduce(
-    (s, a) => s + accountResult(a, visibleTrades, withdrawals),
-    0,
-  );
+  // PnL del recuadro: estrategia o rango concreto → PnL de las operaciones filtradas.
+  const fusionPnl =
+    isStrategy || range !== "all"
+      ? trades.reduce((s, t) => s + t.pnl, 0)
+      : fusionAccounts.reduce((s, a) => s + accountResult(a, visibleTrades, withdrawals), 0);
+
 
   const scopeValue = (key: Scope) => {
     if (key === "funded") return fundedEquity;
@@ -399,7 +416,7 @@ function Overview() {
           </section>
         )}
         <PerformanceAnalysis trades={trades} />
-        <EmotionHighlights trades={scopedTrades} />
+        <EmotionHighlights trades={trades} />
 
 
 
@@ -426,7 +443,7 @@ function Overview() {
           <EquityChart data={curve} />
         </section>
 
-        <PnlCalendar trades={scopedTrades} />
+        <PnlCalendar trades={trades} />
 
         <section className="space-y-3">
           <h2 className="text-base font-semibold">Últimas operaciones</h2>
