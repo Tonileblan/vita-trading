@@ -183,6 +183,65 @@ function Overview() {
               </button>
             ))}
           </div>
+          <Popover>
+            <PopoverTrigger asChild>
+              <button
+                onClick={() => setRange("custom")}
+                className={cn(
+                  "flex h-9 items-center gap-1.5 rounded-md border border-border px-2.5 text-xs font-semibold transition-colors",
+                  range === "custom"
+                    ? "border-brand bg-brand/10 text-foreground"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                <CalendarIcon className="h-3.5 w-3.5" />
+                Fechas
+                {(customRange.from || customRange.to) && (
+                  <span className="text-[10px] text-muted-foreground">
+                    {customRange.from ? format(customRange.from, "dd/MM") : "…"}–
+                    {customRange.to ? format(customRange.to, "dd/MM") : "…"}
+                  </span>
+                )}
+              </button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <div className="p-3 pointer-events-auto">
+                <Calendar
+                  mode="range"
+                  numberOfMonths={1}
+                  selected={
+                    customRange.from && customRange.to
+                      ? { from: customRange.from, to: customRange.to }
+                      : customRange.from
+                        ? { from: customRange.from }
+                        : undefined
+                  }
+                  onSelect={(sel) => {
+                    if (!sel) {
+                      setCustomRange({});
+                      return;
+                    }
+                    setCustomRange({ from: sel.from, to: "to" in sel ? sel.to : undefined });
+                  }}
+                />
+                <div className="flex items-center justify-between gap-2 px-1 pt-2">
+                  <span className="text-xs text-muted-foreground">
+                    {customRange.from
+                      ? format(customRange.from, "dd/MM/yyyy")
+                      : "Inicio"}
+                    {" → "}
+                    {customRange.to ? format(customRange.to, "dd/MM/yyyy") : "Fin"}
+                  </span>
+                  <button
+                    onClick={() => setCustomRange({})}
+                    className="text-xs font-semibold text-muted-foreground hover:text-foreground"
+                  >
+                    Limpiar
+                  </button>
+                </div>
+              </div>
+            </PopoverContent>
+          </Popover>
           <select
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
