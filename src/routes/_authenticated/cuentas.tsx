@@ -23,8 +23,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useJournal } from "@/lib/journal-store";
-import { accountBalance, accountResult, computeMetrics, formatCurrency, accountDrawdown } from "@/lib/metrics";
-import { PROP_FIRMS, BROKERS, type Account, type AccountType, DRAWDOWN_TYPES, type DrawdownType } from "@/lib/types";
+import { accountBalance, accountResult, computeMetrics, formatCurrency, accountDrawdown, accountTarget } from "@/lib/metrics";
+import { TargetProgress, PhaseChip } from "@/components/target-progress";
+import { PROP_FIRMS, BROKERS, type Account, type AccountType, DRAWDOWN_TYPES, type DrawdownType, ACCOUNT_PHASES, type AccountPhase } from "@/lib/types";
 import { usePropFirms } from "@/lib/prop-firms";
 import { useBrokers } from "@/lib/brokers";
 import { cn } from "@/lib/utils";
@@ -96,6 +97,10 @@ function AccountDialog({ account, trigger }: { account?: Account; trigger: React
 
   const [dd, setDd] = useState(String(account?.drawdownLimit ?? 2500));
   const [ddType, setDdType] = useState<DrawdownType>(account?.drawdownType ?? "static");
+  const [phase, setPhase] = useState<AccountPhase>(account?.phase ?? "eval");
+  const [target, setTarget] = useState(
+    account?.profitTarget ? String(account.profitTarget) : "",
+  );
 
   const onOpenChange = (v: boolean) => {
     setOpen(v);
@@ -109,6 +114,8 @@ function AccountDialog({ account, trigger }: { account?: Account; trigger: React
       
       setDd(String(account.drawdownLimit ?? 0));
       setDdType(account.drawdownType ?? "static");
+      setPhase(account.phase ?? "eval");
+      setTarget(account.profitTarget ? String(account.profitTarget) : "");
     }
   };
 
@@ -132,6 +139,11 @@ function AccountDialog({ account, trigger }: { account?: Account; trigger: React
       currentBalance,
       drawdownLimit: type === "funded" ? Number(dd) || 0 : undefined,
       drawdownType: type === "funded" ? ddType : undefined,
+      phase: type === "funded" ? phase : undefined,
+      profitTarget:
+        type === "funded" && Number.isFinite(parseMoneyInput(target)) && parseMoneyInput(target) > 0
+          ? parseMoneyInput(target)
+          : undefined,
       currency: account?.currency ?? "USD",
     };
     try {
@@ -313,6 +325,47 @@ function AccountDialog({ account, trigger }: { account?: Account; trigger: React
           {type === "funded" && (
             <>
               <div className="space-y-2">
+                <Label>Fase de la cuenta</Label>
+                <div className="grid grid-cols-2 gap-2">
+                  {ACCOUNT_PHASES.map((p) => (
+                    <button
+                      key={p.key}
+                      type="button"
+                      onClick={() => setPhase(p.key)}
+                      className={cn(
+                        "rounded-md border px-3 py-2 text-sm font-medium transition-colors",
+                        phase === p.key
+                          ? "border-brand bg-brand/10 text-brand-soft"
+                          : "border-border text-muted-foreground hover:text-foreground",
+                      )}
+                    >
+                      {p.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>
+                  {phase === "live" ? "Objetivo para retiro" : "Objetivo de evaluación"}
+                </Label>
+                <Input
+                  value={target}
+                  onChange={(e) => setTarget(e.target.value)}
+                  inputMode="decimal"
+                  placeholder="53000"
+                />
+                <p className="text-xs text-muted-foreground">
+                  {ACCOUNT_PHASES.find((p) => p.key === phase)?.help}
+                  {(() => {
+                    const t = parseMoneyInput(target);
+                    const base = parseMoneyInput(initial);
+                    if (!Number.isFinite(t) || !Number.isFinite(base) || !base || t <= base)
+                      return null;
+                    return ` (+${(((t - base) / base) * 100).toFixed(1)}% sobre el inicial)`;
+                  })()}
+                </p>
+              </div>
+              <div className="space-y-2">
                 <Label>Límite de drawdown</Label>
                 <Input value={dd} onChange={(e) => setDd(e.target.value)} inputMode="decimal" />
               </div>
@@ -370,6 +423,7 @@ function AccountsPage() {
     const result = accountResult(acc, trades, withdrawals);
     const balance = accountBalance(acc, trades, withdrawals);
     const dd = accountDrawdown(acc, trades, withdrawals);
+    const target = accountTarget(acc, trades, withdrawals);
 
     return (
       <div className="panel p-4">
@@ -379,7 +433,10 @@ function AccountsPage() {
             params={{ accountId: acc.id }}
             className="min-w-0 flex-1 group"
           >
-            <h3 className="truncate font-semibold group-hover:text-brand">{acc.name}</h3>
+            <h3 className="flex items-center gap-2 font-semibold group-hover:text-brand">
+              <span className="truncate">{acc.name}</span>
+              {acc.type === "funded" && <PhaseChip phase={acc.phase ?? "eval"} />}
+            </h3>
               <p className="text-xs text-muted-foreground">
                 {acc.type === "funded"
                   ? (acc.firm ?? "Prop firm")
@@ -421,6 +478,8 @@ function AccountsPage() {
             <p className="num font-semibold">{m.winRate.toFixed(1)}%</p>
           </div>
         </div>
+
+        {target && <TargetProgress status={target} />}
 
         {dd && (
           <div className="mt-4">
