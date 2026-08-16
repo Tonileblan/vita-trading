@@ -55,34 +55,9 @@ function ContaPage() {
 
   return (
     <AppShell
-      title="Conta"
-      subtitle="Retiros de capital y gastos de la operativa"
-      showAccountPanel={false}
-      actions={
-        tab === "gastos" ? (
-          <Button
-            onClick={() => {
-              setEditingExpense(null);
-              setExpenseDialogOpen(true);
-            }}
-          >
-            <Plus className="mr-1 size-4" /> Nuevo gasto
-          </Button>
-        ) : (
-          <Button
-            onClick={() => {
-              setEditingWithdrawal(null);
-              setWithdrawalDialogOpen(true);
-            }}
-          >
-            <Plus className="mr-1 size-4" /> Nuevo retiro
-          </Button>
-        )
-      }
-    >
-      <div className="space-y-4">
+      title={
         <div
-          className="flex gap-1 border-b border-border"
+          className="flex gap-1"
           role="tablist"
           aria-label="Sección de conta"
         >
@@ -115,7 +90,31 @@ function ContaPage() {
             );
           })}
         </div>
-
+      }
+      showAccountPanel={false}
+      actions={
+        tab === "gastos" ? (
+          <Button
+            onClick={() => {
+              setEditingExpense(null);
+              setExpenseDialogOpen(true);
+            }}
+          >
+            <Plus className="mr-1 size-4" /> Nuevo gasto
+          </Button>
+        ) : (
+          <Button
+            onClick={() => {
+              setEditingWithdrawal(null);
+              setWithdrawalDialogOpen(true);
+            }}
+          >
+            <Plus className="mr-1 size-4" /> Nuevo retiro
+          </Button>
+        )
+      }
+    >
+      <div className="space-y-4">
         {tab === "retiros" ? (
           <WithdrawalsSection
             openEdit={(w) => {
