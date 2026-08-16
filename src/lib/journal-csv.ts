@@ -161,6 +161,7 @@ async function journalRows(j: Journal): Promise<CsvRow[]> {
       moneda: a.currency,
       tipo_cuenta: a.type,
       firma: a.firm ?? "",
+      broker: a.broker ?? "",
       balance_inicial: a.initialBalance,
       limite_drawdown: a.drawdownLimit ?? "",
       tipo_drawdown: a.drawdownType ?? "static",
