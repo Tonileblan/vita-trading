@@ -210,7 +210,7 @@ export function MarketHours() {
         ))}
       </div>
 
-      <div className="flex flex-wrap items-center gap-4">
+      <div className="flex flex-wrap items-center justify-center gap-4">
         <div className="flex items-center gap-2">
           <Activity className="size-4 text-muted-foreground" />
           <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
@@ -235,7 +235,7 @@ export function MarketHours() {
           </span>
         </div>
 
-        <Button variant="outline" size="sm" onClick={() => void refresh()} disabled={loading} className="ml-auto">
+        <Button variant="outline" size="sm" onClick={() => void refresh()} disabled={loading}>
           <RefreshCw className={cn("size-4", loading && "animate-spin")} /> Actualizar
         </Button>
       </div>
