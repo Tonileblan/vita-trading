@@ -185,13 +185,17 @@ export function accountWithdrawn(
     .reduce((s, w) => s + Math.abs(w.amount), 0);
 }
 
-/** Balance real = balance actual guardado − retiros aprobados de la cuenta. */
+/** Balance vigente = capital inicial + PnL de operaciones − retiros aprobados. */
 export function accountBalance(
   account: Account,
   trades: Trade[],
   withdrawals: { accountId?: string | undefined; amount: number }[] = [],
 ) {
-  return account.currentBalance - accountWithdrawn(withdrawals, account.id);
+  return (
+    account.initialBalance +
+    accountPnl(trades, account.id) -
+    accountWithdrawn(withdrawals, account.id)
+  );
 }
 
 /** Resultado real de la cuenta = balance vigente − capital inicial. */
@@ -211,6 +215,7 @@ export function accountCurveStart(
 ) {
   return accountBalance(account, trades, withdrawals) - accountPnl(trades, account.id);
 }
+
 
 export function accountsCurveStart(
   accounts: Account[],
