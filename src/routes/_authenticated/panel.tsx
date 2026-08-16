@@ -342,7 +342,7 @@ function Overview() {
             </p>
           </section>
         )}
-        <PerformanceAnalysis trades={trades} />
+        <PerformanceAnalysis trades={trades} target={fundedTarget} />
         <EmotionHighlights trades={scopedTrades} />
 
 
