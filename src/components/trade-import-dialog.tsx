@@ -113,7 +113,7 @@ export function TradeImportDialog() {
     }
   };
 
-  const importSelected = () => {
+  const importSelected = async () => {
     if (!accountId) {
       toast.error("Selecciona una cuenta");
       return;
@@ -123,31 +123,38 @@ export function TradeImportDialog() {
       toast.error("No hay operaciones seleccionadas");
       return;
     }
-    chosen.forEach((r) => {
-      addTrade({
-        accountId,
-        strategyId,
-        symbol: r.symbol.toUpperCase(),
-        direction: r.direction,
-        openedAt: toIso(r.openedAt ?? r.closedAt),
-        closedAt: toIso(r.closedAt ?? r.openedAt),
-        entryPrice: r.entryPrice ?? 0,
-        exitPrice: r.exitPrice ?? 0,
-        size: r.size ?? 1,
-        pnl: r.pnl,
-        mistakes: [],
-        tags: [],
-
-        notes: "Importada desde captura",
-        screenshots: images.slice(0, 1),
-        source: "manual",
-      });
-    });
-    toast.success(`${chosen.length} operaciones importadas`);
-    setOpen(false);
-    setImages([]);
-    setRows(null);
+    setImporting(true);
+    try {
+      await addTrades(
+        chosen.map((r) => ({
+          accountId,
+          strategyId,
+          symbol: r.symbol.toUpperCase(),
+          direction: r.direction,
+          openedAt: toIso(r.openedAt ?? r.closedAt),
+          closedAt: toIso(r.closedAt ?? r.openedAt),
+          entryPrice: r.entryPrice ?? 0,
+          exitPrice: r.exitPrice ?? 0,
+          size: r.size ?? 1,
+          pnl: r.pnl,
+          mistakes: [],
+          tags: [],
+          notes: "Importada desde captura",
+          screenshots: images.slice(0, 1),
+          source: "manual" as const,
+        })),
+      );
+      toast.success(`${chosen.length} operaciones importadas`);
+      setOpen(false);
+      setImages([]);
+      setRows(null);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "No se pudieron importar las operaciones");
+    } finally {
+      setImporting(false);
+    }
   };
+
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
