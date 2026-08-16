@@ -1,10 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { ArrowUpDown, ChevronDown, History as HistoryIcon, Search, Trash2, Undo2 } from "lucide-react";
+import { ArrowUpDown, History as HistoryIcon, List as ListIcon, Search, Trash2, Undo2 } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Input } from "@/components/ui/input";
 import {
   AlertDialog,
@@ -55,6 +54,7 @@ function TradesPage() {
   const [pending, setPending] = useState<Pending | null>(null);
   const [working, setWorking] = useState(false);
   const [sortBy, setSortBy] = useState<"created" | "closed">("created");
+  const [tab, setTab] = useState<"operaciones" | "importaciones">("operaciones");
 
   const filtered = useMemo(
     () =>
@@ -108,54 +108,82 @@ function TradesPage() {
       }
     >
       <div className="space-y-4">
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="relative w-full max-w-xs">
-            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              className="pl-9"
-              placeholder="Buscar activo (NQ, EURUSD…)"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-            />
-          </div>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => setSortBy((s) => (s === "created" ? "closed" : "created"))}
+        <div className="flex gap-1 border-b border-border">
+          <button
+            onClick={() => setTab("operaciones")}
+            className={cn(
+              "flex items-center gap-2 rounded-t-lg border border-b-0 px-4 py-2 text-sm font-semibold transition-colors",
+              tab === "operaciones"
+                ? "border-border bg-card text-foreground"
+                : "border-transparent text-muted-foreground hover:text-foreground",
+            )}
           >
-            <ArrowUpDown className="size-4" />
-            {sortBy === "created" ? "Orden: introducción" : "Orden: fecha operación"}
-          </Button>
-
-          <div className="flex flex-wrap gap-2">
-            {strategies.map(({ id, name: t }) => (
-              <button
-                key={id}
-                onClick={() => setTag(tag === t ? null : t)}
-                className={cn(
-                  "rounded-full border px-3 py-1 text-xs font-medium transition-colors",
-                  tag === t
-                    ? "border-brand bg-brand/15 text-brand-soft"
-                    : "border-border text-muted-foreground hover:text-foreground",
-                )}
-              >
-                {t}
-              </button>
-            ))}
-          </div>
+            <ListIcon className="size-4" /> Operaciones
+          </button>
+          <button
+            onClick={() => setTab("importaciones")}
+            className={cn(
+              "flex items-center gap-2 rounded-t-lg border border-b-0 px-4 py-2 text-sm font-semibold transition-colors",
+              tab === "importaciones"
+                ? "border-border bg-card text-foreground"
+                : "border-transparent text-muted-foreground hover:text-foreground",
+            )}
+          >
+            <HistoryIcon className="size-4" /> Importaciones
+            {importBatches.length > 0 && (
+              <span className="rounded-full bg-brand/15 px-1.5 text-xs text-brand-soft">
+                {importBatches.length}
+              </span>
+            )}
+          </button>
         </div>
 
-        {importBatches.length > 0 && (
-          <Collapsible>
-            <CollapsibleTrigger asChild>
-              <Button size="sm" variant="outline">
-                <HistoryIcon className="size-4" />
-                Historial de importaciones
-                <ChevronDown className="size-4 transition-transform duration-200 group-data-[state=open]:rotate-180" />
-              </Button>
-            </CollapsibleTrigger>
-            <CollapsibleContent>
-              <div className="panel mt-2 space-y-2 p-4">
+        {tab === "operaciones" && (
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="relative w-full max-w-xs">
+              <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                className="pl-9"
+                placeholder="Buscar activo (NQ, EURUSD…)"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+              />
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setSortBy((s) => (s === "created" ? "closed" : "created"))}
+            >
+              <ArrowUpDown className="size-4" />
+              {sortBy === "created" ? "Orden: introducción" : "Orden: fecha operación"}
+            </Button>
+
+            <div className="flex flex-wrap gap-2">
+              {strategies.map(({ id, name: t }) => (
+                <button
+                  key={id}
+                  onClick={() => setTag(tag === t ? null : t)}
+                  className={cn(
+                    "rounded-full border px-3 py-1 text-xs font-medium transition-colors",
+                    tag === t
+                      ? "border-brand bg-brand/15 text-brand-soft"
+                      : "border-border text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  {t}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {tab === "importaciones" && (
+          <div className="panel space-y-2 p-4">
+            <p className="font-display text-lg">Historial de importaciones</p>
+            {importBatches.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Aún no hay importaciones registradas.</p>
+            ) : (
+              <div className="space-y-2">
                 {importBatches.map((b) => (
                   <div
                     key={b.id}
@@ -196,50 +224,54 @@ function TradesPage() {
                   </div>
                 ))}
               </div>
-            </CollapsibleContent>
-          </Collapsible>
-        )}
-
-
-        {selected.length > 0 && (
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-border bg-accent/30 px-3 py-2 text-sm">
-            <span>{selected.length} seleccionadas</span>
-            <div className="flex gap-2">
-              <Button size="sm" variant="ghost" onClick={() => setSelected([])}>
-                Cancelar
-              </Button>
-              <Button
-                size="sm"
-                variant="destructive"
-                onClick={() =>
-                  setPending({
-                    kind: "trades",
-                    ids: selected,
-                    label: `Se eliminarán ${selected.length} operaciones y se ajustarán los balances.`,
-                  })
-                }
-              >
-                <Trash2 className="size-4" /> Eliminar seleccionadas
-              </Button>
-            </div>
+            )}
           </div>
         )}
 
-        <TradesTable
-          trades={filtered}
-          accounts={accounts}
-          selectedIds={selected}
-          onToggleSelect={(id) =>
-            setSelected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]))
-          }
-          onDelete={(t) =>
-            setPending({
-              kind: "trades",
-              ids: [t.id],
-              label: `Se eliminará la operación de ${t.symbol} (${formatCurrency(t.pnl, true)}) y se ajustará el balance.`,
-            })
-          }
-        />
+
+        {tab === "operaciones" && (
+          <>
+            {selected.length > 0 && (
+              <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-border bg-accent/30 px-3 py-2 text-sm">
+                <span>{selected.length} seleccionadas</span>
+                <div className="flex gap-2">
+                  <Button size="sm" variant="ghost" onClick={() => setSelected([])}>
+                    Cancelar
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    onClick={() =>
+                      setPending({
+                        kind: "trades",
+                        ids: selected,
+                        label: `Se eliminarán ${selected.length} operaciones y se ajustarán los balances.`,
+                      })
+                    }
+                  >
+                    <Trash2 className="size-4" /> Eliminar seleccionadas
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            <TradesTable
+              trades={filtered}
+              accounts={accounts}
+              selectedIds={selected}
+              onToggleSelect={(id) =>
+                setSelected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]))
+              }
+              onDelete={(t) =>
+                setPending({
+                  kind: "trades",
+                  ids: [t.id],
+                  label: `Se eliminará la operación de ${t.symbol} (${formatCurrency(t.pnl, true)}) y se ajustará el balance.`,
+                })
+              }
+            />
+          </>
+        )}
       </div>
 
       <AlertDialog open={!!pending} onOpenChange={(o) => !o && setPending(null)}>
