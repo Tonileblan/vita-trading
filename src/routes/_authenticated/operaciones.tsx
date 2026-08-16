@@ -55,6 +55,7 @@ function TradesPage() {
   const [pending, setPending] = useState<Pending | null>(null);
   const [working, setWorking] = useState(false);
   const [sortBy, setSortBy] = useState<"created" | "closed">("created");
+  const [tab, setTab] = useState<"operaciones" | "importaciones">("operaciones");
 
   const filtered = useMemo(
     () =>
