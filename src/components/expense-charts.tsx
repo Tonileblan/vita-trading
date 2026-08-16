@@ -156,13 +156,8 @@ export function ExpenseCharts({ occurrences }: { occurrences: Occurrence[] }) {
             const step = plotW / series.length;
             const bw = step * 0.58;
             const ticks = 5;
-            const niceMax = (() => {
-              const raw = max / ticks;
-              const mag = Math.pow(10, Math.floor(Math.log10(raw || 1)));
-              const norm = raw / mag;
-              const unit = (norm <= 1 ? 1 : norm <= 2 ? 2 : norm <= 5 ? 5 : 10) * mag;
-              return unit * ticks;
-            })();
+            const niceMax = max + 200;
+            const tickStep = niceMax / ticks;
             const y = (v: number) => T + D + plotH - (v / niceMax) * plotH;
 
             return (
@@ -210,7 +205,7 @@ export function ExpenseCharts({ occurrences }: { occurrences: Occurrence[] }) {
 
                 {/* líneas guía + etiquetas */}
                 {Array.from({ length: ticks + 1 }, (_, i) => {
-                  const v = (niceMax / ticks) * i;
+                  const v = tickStep * i;
                   const yy = y(v);
                   const baseline = i === 0;
                   return (
