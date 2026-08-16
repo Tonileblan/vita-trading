@@ -17,6 +17,8 @@ export const FULL_COLUMNS = [
   "balance_actual",
   "limite_drawdown",
   "tipo_drawdown",
+  "fase",
+  "objetivo",
   "capital_inicial",
   "riesgo_pct",
   "simbolo_principal",
@@ -168,6 +170,8 @@ async function journalRows(j: Journal): Promise<CsvRow[]> {
       balance_actual: a.currentBalance,
       limite_drawdown: a.drawdownLimit ?? "",
       tipo_drawdown: a.drawdownType ?? "static",
+      fase: a.phase ?? "eval",
+      objetivo: a.profitTarget ?? "",
     });
   }
   for (const s of data.strategies) {
@@ -427,6 +431,8 @@ export async function importJournalCsv(
           drawdown_type: ["static", "trailing", "eod"].includes(at(r, "tipo_drawdown"))
             ? at(r, "tipo_drawdown")
             : "static",
+          phase: at(r, "fase") === "live" ? "live" : "eval",
+          profit_target: at(r, "objetivo") ? num(at(r, "objetivo")) : null,
           currency: at(r, "moneda") || "USD",
         } as never)
         .select("id")

@@ -18,6 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useJournal } from "@/lib/journal-store";
+import { accountTarget, formatCurrency } from "@/lib/metrics";
 import { cn } from "@/lib/utils";
 import type { Withdrawal, WithdrawalStatus } from "@/lib/types";
 
@@ -30,7 +31,7 @@ export function WithdrawalFormDialog({
   onOpenChange: (v: boolean) => void;
   editing?: Withdrawal | null;
 }) {
-  const { accounts, addWithdrawal, updateWithdrawal } = useJournal();
+  const { accounts, trades, withdrawals, addWithdrawal, updateWithdrawal } = useJournal();
 
   const [accountId, setAccountId] = useState("");
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
@@ -114,6 +115,18 @@ export function WithdrawalFormDialog({
               </SelectContent>
             </Select>
           </div>
+
+          {(() => {
+            const acc = accounts.find((a) => a.id === accountId);
+            const status = acc ? accountTarget(acc, trades, withdrawals) : null;
+            if (!status || status.phase !== "live" || status.reached) return null;
+            return (
+              <p className="rounded-md border border-border bg-accent px-3 py-2 text-xs text-muted-foreground">
+                Esta cuenta aún no alcanza el objetivo de retiro: faltan{" "}
+                <span className="num font-semibold">{formatCurrency(status.remaining)}</span>.
+              </p>
+            );
+          })()}
 
           <div className="space-y-2">
             <Label>Estado</Label>

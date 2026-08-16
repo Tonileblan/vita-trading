@@ -27,6 +27,8 @@ export type Database = {
           initial_balance: number
           journal_id: string
           name: string
+          phase: string
+          profit_target: number | null
           type: string
           updated_at: string
           user_id: string
@@ -43,6 +45,8 @@ export type Database = {
           initial_balance?: number
           journal_id: string
           name: string
+          phase?: string
+          profit_target?: number | null
           type?: string
           updated_at?: string
           user_id: string
@@ -59,6 +63,8 @@ export type Database = {
           initial_balance?: number
           journal_id?: string
           name?: string
+          phase?: string
+          profit_target?: number | null
           type?: string
           updated_at?: string
           user_id?: string

@@ -1,7 +1,8 @@
 import { Link } from "@tanstack/react-router";
 import { Building2, User } from "lucide-react";
 import { useJournal } from "@/lib/journal-store";
-import { accountBalance, accountResult, formatCurrency } from "@/lib/metrics";
+import { accountBalance, accountResult, accountTarget, formatCurrency } from "@/lib/metrics";
+import { TargetProgress } from "@/components/target-progress";
 import { cn } from "@/lib/utils";
 
 export function AccountSidePanel() {
@@ -26,6 +27,7 @@ export function AccountSidePanel() {
           const active = selectedAccountIds.includes(acc.id);
           const result = accountResult(acc, trades, withdrawals);
           const balance = accountBalance(acc, trades, withdrawals);
+          const target = accountTarget(acc, trades, withdrawals);
 
           return (
             <button
@@ -60,6 +62,7 @@ export function AccountSidePanel() {
                    {formatCurrency(result, true)}
                 </span>
               </div>
+              {target && <TargetProgress status={target} compact />}
             </button>
           );
         })}
