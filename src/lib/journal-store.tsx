@@ -26,6 +26,8 @@ function toAccount(r: Row): Account {
     type: (r["type"] === "funded" ? "funded" : "personal") as Account["type"],
     firm: (r["firm"] as string | null) ?? undefined,
     broker: (r["broker"] as string | null) ?? undefined,
+    phase: (r["phase"] === "live" ? "live" : "eval") as Account["phase"],
+    profitTarget: r["profit_target"] == null ? undefined : Number(r["profit_target"]),
     initialBalance: Number(r["initial_balance"] ?? 0),
     currentBalance: Number(r["current_balance"] ?? 0),
     drawdownLimit: r["drawdown_limit"] == null ? undefined : Number(r["drawdown_limit"]),
