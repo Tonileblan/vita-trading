@@ -213,6 +213,52 @@ function AccountDialog({ account, trigger }: { account?: Account; trigger: React
             </div>
           )}
 
+          {type === "personal" && (
+            <div className="space-y-2">
+              <Label>Broker</Label>
+              <Select value={broker} onValueChange={setBroker}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="max-h-64">
+                  {brokers.map((b) => (
+                    <SelectItem key={b} value={b}>
+                      {b}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <div className="flex gap-2">
+                <Input
+                  value={newBroker}
+                  onChange={(e) => setNewBroker(e.target.value)}
+                  placeholder="Añadir otro broker"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      handleAddBroker();
+                    }
+                  }}
+                />
+                <Button type="button" variant="outline" onClick={handleAddBroker}>
+                  Añadir
+                </Button>
+              </div>
+              {customBrokers.includes(broker) && (
+                <button
+                  type="button"
+                  className="text-xs text-muted-foreground underline"
+                  onClick={() => {
+                    removeBroker(broker);
+                    setBroker(BROKERS[0]!);
+                  }}
+                >
+                  Eliminar "{broker}" de la lista
+                </button>
+              )}
+            </div>
+          )}
+
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
               <Label>Balance inicial</Label>
