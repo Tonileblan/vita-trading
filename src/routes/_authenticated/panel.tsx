@@ -57,10 +57,11 @@ const SCOPES = [
 type Scope = (typeof SCOPES)[number]["key"];
 
 function Overview() {
-  const { visibleTrades, accounts, selectedAccountIds, withdrawals } = useJournal();
+  const { visibleTrades, accounts, strategies, selectedAccountIds, withdrawals } = useJournal();
   const [range, setRange] = useState<(typeof RANGES)[number]["key"]>("all");
   const [scope, setScope] = useState<Scope>("all");
   const [accountFilter, setAccountFilter] = useState<string>("all");
+  const [strategyFilter, setStrategyFilter] = useState<string>("all");
 
   const selectedAccounts = useMemo(
     () =>
@@ -80,9 +81,24 @@ function Overview() {
   );
   const scopedIds = useMemo(() => new Set(scopedAccounts.map((a) => a.id)), [scopedAccounts]);
   const scopedTrades = useMemo(
-    () => visibleTrades.filter((t) => scopedIds.has(t.accountId)),
-    [visibleTrades, scopedIds],
+    () =>
+      visibleTrades.filter(
+        (t) =>
+          scopedIds.has(t.accountId) &&
+          (strategyFilter === "all" || t.strategyId === strategyFilter),
+      ),
+    [visibleTrades, scopedIds, strategyFilter],
   );
+
+  const accountStrategies = useMemo(() => {
+    if (accountFilter === "all") return strategies;
+    const used = new Set(
+      visibleTrades.filter((t) => t.accountId === accountFilter).map((t) => t.strategyId),
+    );
+    const filtered = strategies.filter((s) => used.has(s.id));
+    return filtered.length ? filtered : strategies;
+  }, [strategies, visibleTrades, accountFilter]);
+
 
   const trades = useMemo(() => filterByRange(scopedTrades, range), [scopedTrades, range]);
   const metrics = useMemo(() => {
@@ -129,6 +145,19 @@ function Overview() {
             {accounts.map((a) => (
               <option key={a.id} value={a.id}>
                 {a.name}
+              </option>
+            ))}
+          </select>
+          <select
+            value={strategyFilter}
+            onChange={(e) => setStrategyFilter(e.target.value)}
+            className="h-9 rounded-md border border-border bg-card px-2 text-sm font-sans"
+            aria-label="Estrategia"
+          >
+            <option value="all">TODAS LAS ESTRATEGIAS</option>
+            {accountStrategies.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name}
               </option>
             ))}
           </select>
