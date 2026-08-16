@@ -416,7 +416,7 @@ function Overview() {
           </section>
         )}
         <PerformanceAnalysis trades={trades} />
-        <EmotionHighlights trades={scopedTrades} />
+        <EmotionHighlights trades={trades} />
 
 
 
@@ -443,7 +443,7 @@ function Overview() {
           <EquityChart data={curve} />
         </section>
 
-        <PnlCalendar trades={scopedTrades} />
+        <PnlCalendar trades={trades} />
 
         <section className="space-y-3">
           <h2 className="text-base font-semibold">Últimas operaciones</h2>
