@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { checkRules } from "@/lib/emotion-metrics";
 import { todayKey } from "@/lib/emotions";
 import { useJournal } from "@/lib/journal-store";
+import { accountTarget } from "@/lib/metrics";
 import { useCheckins, useJournalRules, DEFAULT_RULES } from "@/lib/mood";
 import { cn } from "@/lib/utils";
 
@@ -10,7 +11,7 @@ const MUTE_KEY = "tj:mute-alerts";
 
 /** Banner de avisos de disciplina para el día en curso. */
 export function RiskAlerts() {
-  const { activeJournalId, visibleTrades } = useJournal();
+  const { activeJournalId, visibleTrades, accounts, trades, withdrawals } = useJournal();
   const { data: rules = DEFAULT_RULES } = useJournalRules(activeJournalId);
   const { data: checkins = [] } = useCheckins(activeJournalId);
   const [muted, setMuted] = useState(false);
@@ -20,11 +21,22 @@ export function RiskAlerts() {
     setMuted(window.localStorage.getItem(MUTE_KEY) === todayKey());
   }, []);
 
-  const alerts = checkRules(
-    visibleTrades,
-    rules,
-    checkins.some((c) => c.date === todayKey()),
-  );
+  const targetAlerts = accounts
+    .map((a) => ({ account: a, status: accountTarget(a, trades, withdrawals) }))
+    .filter((x) => x.status?.reached)
+    .map((x) => ({
+      key: `target-${x.account.id}`,
+      tone: "info" as const,
+      message:
+        x.status!.phase === "live"
+          ? `${x.account.name} ha alcanzado el objetivo de retiro: ya puedes solicitar payout.`
+          : `${x.account.name} ha alcanzado el objetivo de evaluación.`,
+    }));
+
+  const alerts = [
+    ...targetAlerts,
+    ...checkRules(visibleTrades, rules, checkins.some((c) => c.date === todayKey())),
+  ];
   if (muted || alerts.length === 0) return null;
 
   return (

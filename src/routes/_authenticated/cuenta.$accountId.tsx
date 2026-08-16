@@ -16,7 +16,9 @@ import {
   computeMetrics,
   formatCurrency,
   accountDrawdown,
+  accountTarget,
 } from "@/lib/metrics";
+import { TargetProgress, PhaseChip } from "@/components/target-progress";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/cuenta/$accountId")({
@@ -124,6 +126,34 @@ function AccountDetail() {
             </p>
           </div>
         </section>
+
+        {(() => {
+          const target = accountTarget(account, trades, withdrawals);
+          if (!target) return null;
+          return (
+            <section className="panel p-4">
+              <div className="flex items-center gap-2">
+                <PhaseChip phase={target.phase} />
+                <h2 className="text-base font-semibold">{target.label}</h2>
+              </div>
+              <div className="mt-3 grid grid-cols-3 gap-3 text-sm">
+                <div>
+                  <p className="text-xs text-muted-foreground">Inicial</p>
+                  <p className="num font-semibold">{formatCurrency(account.initialBalance)}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Actual</p>
+                  <p className="num font-semibold">{formatCurrency(target.balance)}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Objetivo</p>
+                  <p className="num font-semibold">{formatCurrency(target.target)}</p>
+                </div>
+              </div>
+              <TargetProgress status={target} />
+            </section>
+          );
+        })()}
 
         <AccountCostCard accountId={account.id} pnl={pnl} />
 
