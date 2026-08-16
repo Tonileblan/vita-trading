@@ -127,10 +127,9 @@ export function KpiCards({
         tone={fusionEquity === undefined && pnlValue >= 0 ? "profit" : fusionEquity === undefined ? "loss" : "neutral"}
       >
         {fusionEquity !== undefined && (
-          <div className="mt-1.5 text-sm font-semibold">
+          <div className="mt-1.5 text-lg font-bold">
             <span className={metrics.totalPnl >= 0 ? "text-profit" : "text-loss"}>
-              {metrics.totalPnl >= 0 ? "+" : ""}
-              {formatCurrency(metrics.totalPnl, true)}
+              {metrics.totalPnl >= 0 ? "+" : "−"}
             </span>
           </div>
         )}
