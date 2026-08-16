@@ -235,7 +235,7 @@ export function MarketHours() {
           </span>
         </div>
 
-        <Button variant="outline" size="sm" onClick={() => void refresh()} disabled={loading} className="ml-auto">
+        <Button variant="outline" size="sm" onClick={() => void refresh()} disabled={loading}>
           <RefreshCw className={cn("size-4", loading && "animate-spin")} /> Actualizar
         </Button>
       </div>
