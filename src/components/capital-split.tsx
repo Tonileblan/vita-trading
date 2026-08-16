@@ -9,13 +9,18 @@ interface Totals {
   count: number;
 }
 
-function sum(list: Account[], trades: Trade[]): Totals {
+function sum(
+  list: Account[],
+  trades: Trade[],
+  withdrawals: { accountId?: string | undefined; amount: number }[] = [],
+): Totals {
   return {
     initial: list.reduce((s, a) => s + a.initialBalance, 0),
-    current: list.reduce((s, a) => s + accountBalance(a, trades), 0),
+    current: list.reduce((s, a) => s + accountBalance(a, trades, withdrawals), 0),
     count: list.length,
   };
 }
+
 
 function Block({
   label,
@@ -55,9 +60,11 @@ function Block({
 export function CapitalSplit({
   accounts,
   trades,
+  withdrawals = [],
 }: {
   accounts: Account[];
   trades: Trade[];
+  withdrawals?: { accountId?: string | undefined; amount: number }[];
 }) {
   const funded = accounts.filter((a) => a.type === "funded");
   const personal = accounts.filter((a) => a.type !== "funded");
@@ -67,18 +74,19 @@ export function CapitalSplit({
       <Block
         label="Capital combinado"
         icon={<Wallet className="size-4" />}
-        totals={sum(accounts, trades)}
+        totals={sum(accounts, trades, withdrawals)}
       />
       <Block
         label="Capital fondeo"
         icon={<Building2 className="size-4" />}
-        totals={sum(funded, trades)}
+        totals={sum(funded, trades, withdrawals)}
       />
       <Block
         label="Capital real"
         icon={<User className="size-4" />}
-        totals={sum(personal, trades)}
+        totals={sum(personal, trades, withdrawals)}
       />
+
     </section>
   );
 }

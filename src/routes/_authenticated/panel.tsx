@@ -54,7 +54,7 @@ const SCOPES = [
 type Scope = (typeof SCOPES)[number]["key"];
 
 function Overview() {
-  const { visibleTrades, accounts, selectedAccountIds } = useJournal();
+  const { visibleTrades, accounts, selectedAccountIds, withdrawals } = useJournal();
   const [range, setRange] = useState<(typeof RANGES)[number]["key"]>("all");
   const [scope, setScope] = useState<Scope>("all");
 
@@ -83,10 +83,11 @@ function Overview() {
   );
   const fundedEquity = selectedAccounts
     .filter((a) => a.type === "funded")
-    .reduce((s, a) => s + accountBalance(a, visibleTrades), 0);
+    .reduce((s, a) => s + accountBalance(a, visibleTrades, withdrawals), 0);
   const realEquity = selectedAccounts
     .filter((a) => a.type !== "funded")
-    .reduce((s, a) => s + accountBalance(a, visibleTrades), 0);
+    .reduce((s, a) => s + accountBalance(a, visibleTrades, withdrawals), 0);
+
 
   const scopeValue = (key: Scope) => {
     if (key === "funded") return fundedEquity;
