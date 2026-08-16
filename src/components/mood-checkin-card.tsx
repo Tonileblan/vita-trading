@@ -40,7 +40,7 @@ function Scale({
             className={cn(
               "flex-1 rounded-md border text-sm font-semibold transition-colors",
               faces
-                ? "flex h-16 items-center justify-center text-3xl leading-none"
+                ? "flex h-9 items-center justify-center text-2xl leading-none"
                 : "h-9",
               value === n
                 ? "border-brand bg-brand/15 text-brand-soft"
