@@ -334,9 +334,23 @@ function Overview() {
           </section>
         ) : (
           <section className="panel p-4">
-            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              {isStrategy ? "Estrategia" : "Cuenta"}
-            </p>
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                {isStrategy ? "Estrategia" : "Cuenta"}
+              </p>
+              {fundedTarget && (
+                <span
+                  className={cn(
+                    "rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider",
+                    fundedTarget.phase === "live"
+                      ? "bg-profit/15 text-profit"
+                      : "bg-amber-500/15 text-amber-600 dark:text-amber-400",
+                  )}
+                >
+                  {fundedTarget.phase === "live" ? "Live" : "Eval"}
+                </span>
+              )}
+            </div>
             <p className="num mt-1 text-lg font-semibold">
               {formatCurrency(fusionEquity)}
             </p>
@@ -348,9 +362,42 @@ function Overview() {
             >
               {fusionPnl >= 0 ? "+" : "−"} {formatCurrency(Math.abs(fusionPnl), false)}
             </p>
+            {fundedTarget && (
+              <div className="mt-3 border-t border-border pt-3">
+                <div className="flex items-baseline justify-between text-xs">
+                  <span className="font-semibold text-muted-foreground">{fundedTarget.label}</span>
+                  <span className="num font-bold">{fundedTarget.pct.toFixed(0)}%</span>
+                </div>
+                <div className="mt-2 h-2.5 overflow-hidden rounded-full bg-muted">
+                  <div
+                    className={cn("h-full", fundedTarget.reached ? "bg-profit" : "bg-amber-500")}
+                    style={{ width: `${Math.min(100, fundedTarget.pct)}%` }}
+                  />
+                </div>
+                <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
+                  <span>
+                    {fundedTarget.reached ? (
+                      <span className="font-semibold text-profit">
+                        {fundedTarget.phase === "live" ? "Listo para retirar" : "Evaluación superada"}
+                      </span>
+                    ) : (
+                      <>
+                        Faltan{" "}
+                        <span className="num font-semibold text-foreground">
+                          {formatCurrency(fundedTarget.remaining)}
+                        </span>
+                      </>
+                    )}
+                  </span>
+                  <span className="num">
+                    {formatCurrency(fundedTarget.balance)} / {formatCurrency(fundedTarget.target)}
+                  </span>
+                </div>
+              </div>
+            )}
           </section>
         )}
-        <PerformanceAnalysis trades={trades} target={fundedTarget} />
+        <PerformanceAnalysis trades={trades} />
         <EmotionHighlights trades={scopedTrades} />
 
 
