@@ -21,10 +21,30 @@ export const DRAWDOWN_TYPES: { key: DrawdownType; label: string; help: string }[
   },
 ];
 
+/** Fase de una cuenta de fondeo. */
+export type AccountPhase = "eval" | "live";
+
+export const ACCOUNT_PHASES: { key: AccountPhase; label: string; help: string }[] = [
+  {
+    key: "eval",
+    label: "Evaluación",
+    help: "Objetivo: capital que hay que alcanzar para superar la prueba.",
+  },
+  {
+    key: "live",
+    label: "Live (fondeada)",
+    help: "Objetivo: capital a partir del cual puedes solicitar retiro.",
+  },
+];
+
 export interface Account {
   id: string;
   name: string;
   type: AccountType;
+  /** Solo cuentas de fondeo: evaluación o live. */
+  phase?: AccountPhase | undefined;
+  /** Capital objetivo (superar evaluación o umbral de payout). */
+  profitTarget?: number | undefined;
   firm?: string | undefined;
   /** Broker para cuentas personales (type=personal). */
   broker?: string | undefined;
