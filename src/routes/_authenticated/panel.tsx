@@ -10,7 +10,7 @@ import { TradesTable } from "@/components/trades-table";
 import { useJournal } from "@/lib/journal-store";
 import {
   accountBalance,
-  accountsStartBalance,
+  accountsCurveStart,
   buildEquityCurve,
   computeMetrics,
   filterByRange,
@@ -78,8 +78,8 @@ function Overview() {
   const trades = useMemo(() => filterByRange(scopedTrades, range), [scopedTrades, range]);
   const metrics = useMemo(() => computeMetrics(trades), [trades]);
   const curve = useMemo(
-    () => buildEquityCurve(trades, accountsStartBalance(scopedAccounts)),
-    [trades, scopedAccounts],
+    () => buildEquityCurve(trades, accountsCurveStart(scopedAccounts, trades, withdrawals)),
+    [trades, scopedAccounts, withdrawals],
   );
   const fundedEquity = selectedAccounts
     .filter((a) => a.type === "funded")
