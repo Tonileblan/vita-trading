@@ -35,11 +35,12 @@ function pct(v: number) {
 }
 
 function EstrategiasPage() {
-  const { strategies, trades, withdrawals, accounts, restoreDefaultStrategies } = useJournal();
+  const { strategies, trades, withdrawals, accounts, strategyPeriods, restoreDefaultStrategies } =
+    useJournal();
 
   const stats = useMemo(
-    () => strategies.map((s) => computeStrategyStats(s, trades, withdrawals, accounts)),
-    [strategies, trades, withdrawals, accounts],
+    () => strategies.map((s) => computeStrategyStats(s, trades, withdrawals, accounts, strategyPeriods)),
+    [strategies, trades, withdrawals, accounts, strategyPeriods],
   );
 
   const statById = useMemo(

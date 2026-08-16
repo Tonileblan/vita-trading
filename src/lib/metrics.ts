@@ -1,4 +1,4 @@
-import type { Account, Trade } from "./types";
+import type { Account, AccountStrategyPeriod, Trade } from "./types";
 
 export function formatCurrency(value: number, withSign = false) {
   const sign = withSign && value > 0 ? "+" : value < 0 ? "-" : "";
@@ -177,11 +177,29 @@ export function filterByRange(
 }
 
 /** PnL acumulado de las operaciones de una cuenta. */
-/** Estrategia efectiva de una operación: la suya o, si no tiene, la de su cuenta. */
-export function effectiveStrategyId(trade: Trade, accounts: Account[]) {
+/**
+ * Estrategia efectiva de una operación:
+ * 1) el tramo de fechas asignado a su cuenta (si lo hay),
+ * 2) la estrategia de la propia operación,
+ * 3) la estrategia por defecto de la cuenta.
+ */
+export function effectiveStrategyId(
+  trade: Trade,
+  accounts: Account[],
+  periods: AccountStrategyPeriod[] = [],
+) {
+  const day = trade.closedAt.slice(0, 10);
+  const period = periods.find(
+    (p) =>
+      p.accountId === trade.accountId &&
+      day >= p.startDate &&
+      (!p.endDate || day <= p.endDate),
+  );
+  if (period) return period.strategyId;
   if (trade.strategyId) return trade.strategyId;
   return accounts.find((a) => a.id === trade.accountId)?.strategyId ?? "";
 }
+
 
 export function accountPnl(trades: Trade[], accountId: string) {
   return trades
@@ -428,8 +446,9 @@ export function computeStrategyStats(
   trades: Trade[],
   withdrawals: Withdrawal[],
   accounts: Account[] = [],
+  periods: AccountStrategyPeriod[] = [],
 ): StrategyStats {
-  const own = trades.filter((t) => effectiveStrategyId(t, accounts) === strategy.id);
+  const own = trades.filter((t) => effectiveStrategyId(t, accounts, periods) === strategy.id);
   const m = computeMetrics(own);
   const mine = accounts.filter((a) => a.strategyId === strategy.id);
   const approved = withdrawals.filter((w) => w.status === "approved");

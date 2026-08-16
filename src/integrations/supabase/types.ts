@@ -14,6 +14,67 @@ export type Database = {
   }
   public: {
     Tables: {
+      account_strategy_periods: {
+        Row: {
+          account_id: string
+          created_at: string
+          end_date: string | null
+          id: string
+          journal_id: string
+          note: string | null
+          start_date: string
+          strategy_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          account_id: string
+          created_at?: string
+          end_date?: string | null
+          id?: string
+          journal_id: string
+          note?: string | null
+          start_date: string
+          strategy_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          account_id?: string
+          created_at?: string
+          end_date?: string | null
+          id?: string
+          journal_id?: string
+          note?: string | null
+          start_date?: string
+          strategy_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "account_strategy_periods_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "account_strategy_periods_journal_id_fkey"
+            columns: ["journal_id"]
+            isOneToOne: false
+            referencedRelation: "journals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "account_strategy_periods_strategy_id_fkey"
+            columns: ["strategy_id"]
+            isOneToOne: false
+            referencedRelation: "strategies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       accounts: {
         Row: {
           broker: string | null
