@@ -88,20 +88,16 @@ function CostosPage() {
   };
 
   return (
-    <AppShell>
+    <AppShell
+      title="Costos"
+      subtitle="Lo que te cuesta operar y cuánto queda de verdad."
+      actions={
+        <Button onClick={openNew}>
+          <Plus className="mr-1 size-4" /> Nuevo costo
+        </Button>
+      }
+    >
       <div className="space-y-4">
-        <header className="flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <h1 className="text-3xl leading-none">Costos</h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Lo que te cuesta operar y cuánto queda de verdad.
-            </p>
-          </div>
-          <Button onClick={openNew}>
-            <Plus className="mr-1 size-4" /> Nuevo costo
-          </Button>
-        </header>
-
         <div className="flex gap-2">
           {(
             [
