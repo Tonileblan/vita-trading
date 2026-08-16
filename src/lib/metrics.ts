@@ -446,8 +446,9 @@ export function computeStrategyStats(
   trades: Trade[],
   withdrawals: Withdrawal[],
   accounts: Account[] = [],
+  periods: AccountStrategyPeriod[] = [],
 ): StrategyStats {
-  const own = trades.filter((t) => effectiveStrategyId(t, accounts) === strategy.id);
+  const own = trades.filter((t) => effectiveStrategyId(t, accounts, periods) === strategy.id);
   const m = computeMetrics(own);
   const mine = accounts.filter((a) => a.strategyId === strategy.id);
   const approved = withdrawals.filter((w) => w.status === "approved");
