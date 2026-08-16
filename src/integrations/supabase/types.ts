@@ -419,6 +419,7 @@ export type Database = {
           exit_price: number
           followed_plan: string | null
           id: string
+          import_batch_id: string | null
           journal_id: string
           mistakes: string[]
           notes: string | null
@@ -445,6 +446,7 @@ export type Database = {
           exit_price?: number
           followed_plan?: string | null
           id?: string
+          import_batch_id?: string | null
           journal_id: string
           mistakes?: string[]
           notes?: string | null
@@ -471,6 +473,7 @@ export type Database = {
           exit_price?: number
           followed_plan?: string | null
           id?: string
+          import_batch_id?: string | null
           journal_id?: string
           mistakes?: string[]
           notes?: string | null
