@@ -185,18 +185,15 @@ export function accountWithdrawn(
     .reduce((s, w) => s + Math.abs(w.amount), 0);
 }
 
-/** Balance vigente = capital inicial + PnL de operaciones − retiros aprobados. */
+/** Balance real = balance actual guardado − retiros aprobados de la cuenta. */
 export function accountBalance(
   account: Account,
   trades: Trade[],
   withdrawals: { accountId?: string | undefined; amount: number }[] = [],
 ) {
-  return (
-    account.initialBalance +
-    accountPnl(trades, account.id) -
-    accountWithdrawn(withdrawals, account.id)
-  );
+  return account.currentBalance - accountWithdrawn(withdrawals, account.id);
 }
+
 
 /** Resultado real de la cuenta = balance vigente − capital inicial. */
 export function accountResult(
@@ -309,8 +306,9 @@ export function accountDrawdown(
   if (!limit) return null;
 
   const initial = account.initialBalance;
-  
-  const balanceBeforeEvents = initial;
+  const recordedPnl = accountPnl(trades, account.id);
+  const balanceBeforeEvents = account.currentBalance - recordedPnl;
+
 
   // El suelo dinámico deja de subir cuando la referencia alcanza inicial + límite.
   const maxReference = initial + limit;
