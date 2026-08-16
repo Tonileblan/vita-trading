@@ -35,7 +35,7 @@ function pct(v: number) {
 }
 
 function EstrategiasPage() {
-  const { strategies, trades, withdrawals, accounts, restoreDefaultStrategies } = useJournal();
+  const { strategies, trades, withdrawals, restoreDefaultStrategies } = useJournal();
 
   const stats = useMemo(
     () => strategies.map((s) => computeStrategyStats(s, trades, withdrawals)),
