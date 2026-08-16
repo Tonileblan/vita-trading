@@ -77,7 +77,7 @@ function ContaPage() {
                 aria-selected={active}
                 onClick={() => setTab(key)}
                 className={cn(
-                  "relative -mb-px rounded-t-lg border border-b-0 px-5 py-2 text-sm font-semibold transition-colors",
+                  "relative -mb-px rounded-t-lg border border-b-0 px-4 py-2 font-display text-lg leading-none tracking-wide transition-colors",
                   active
                     ? "border-border bg-card text-foreground"
                     : "border-transparent text-muted-foreground hover:text-foreground",
