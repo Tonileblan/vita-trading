@@ -136,26 +136,13 @@ export function KpiCards({
   const pnlLabel =
     scope === "funded" ? "PnL Fondeo" : scope === "real" ? "PnL Real" : "PnL Total";
   return (
-    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+    <div className="grid gap-3 sm:grid-cols-2">
       <Card
         label={pnlLabel}
         value={formatCurrency(metrics.totalPnl, true)}
         sub={`${metrics.total} operaciones cerradas`}
         icon={TrendingUp}
         tone={metrics.totalPnl >= 0 ? "profit" : "loss"}
-      />
-      <Card
-        label="Win Rate"
-        value={`${metrics.winRate.toFixed(1)}%`}
-        sub={`${metrics.wins}G / ${metrics.losses}P`}
-        icon={Percent}
-      />
-      <Card
-        label="Profit Factor"
-        value={Number.isFinite(pf) ? pf.toFixed(2) : "∞"}
-        sub={`Media G ${formatCurrency(metrics.avgWin)} · P ${formatCurrency(metrics.avgLoss)}`}
-        icon={Target}
-        tone={pf >= 1 ? "profit" : "loss"}
       />
       {trades ? <StreakCard trades={trades} /> : (
         <Card
