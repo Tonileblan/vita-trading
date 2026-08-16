@@ -259,16 +259,14 @@ function AccountDialog({ account, trigger }: { account?: Account; trigger: React
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <Label>Balance inicial</Label>
-              <Input value={initial} onChange={(e) => setInitial(e.target.value)} inputMode="decimal" />
-            </div>
-            <div className="space-y-2">
-              <Label>Balance actual</Label>
-              <Input value={current} onChange={(e) => setCurrent(e.target.value)} inputMode="decimal" />
-            </div>
+          <div className="space-y-2">
+            <Label>Balance inicial</Label>
+            <Input value={initial} onChange={(e) => setInitial(e.target.value)} inputMode="decimal" />
+            <p className="text-xs text-muted-foreground">
+              El balance actual se calcula solo: inicial + operaciones − retiros aprobados.
+            </p>
           </div>
+
 
           {type === "funded" && (
             <>
