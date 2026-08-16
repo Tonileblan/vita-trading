@@ -235,8 +235,8 @@ export function MarketHours() {
           </span>
         </div>
 
-        <Button variant="outline" size="sm" onClick={() => void refresh()} disabled={loading}>
-          <RefreshCw className={cn("size-4", loading && "animate-spin")} /> Actualizar
+        <Button variant="outline" size="icon" onClick={() => void refresh()} disabled={loading} aria-label="Actualizar">
+          <RefreshCw className={cn("size-4", loading && "animate-spin")} />
         </Button>
       </div>
 
