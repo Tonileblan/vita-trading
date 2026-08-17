@@ -1,20 +1,27 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { CalendarIcon } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { EquityChart } from "@/components/equity-chart";
-
 import { RiskAlerts } from "@/components/risk-alerts";
 import { EmotionHighlights } from "@/components/emotion-stats";
 import { PnlCalendar } from "@/components/pnl-calendar";
 import { PerformanceAnalysis } from "@/components/performance-analysis";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-
-
 import { TradesTable } from "@/components/trades-table";
-import { useJournal } from "@/lib/journal-store";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/lib/auth-context";
+import {
+  useJournal,
+  toAccount,
+  toStrategy,
+  toTrade,
+  toWithdrawal,
+  toPeriod,
+} from "@/lib/journal-store";
 import {
   accountBalance,
   accountTarget,
@@ -25,7 +32,6 @@ import {
   filterByRange,
   formatCurrency,
 } from "@/lib/metrics";
-
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/panel")({
@@ -68,8 +74,66 @@ const SCOPES = [
 type Scope = (typeof SCOPES)[number]["key"];
 
 function Overview() {
-  const { visibleTrades, accounts, strategies, selectedAccountIds, withdrawals, strategyPeriods } =
-    useJournal();
+  const { isSupervisor } = useAuth();
+  const journalStore = useJournal();
+
+  // Filtro de usuario para supervisores: "all" (todos los usuarios), "mine" (mi diario), o userId específico
+  const [supervisorUserFilter, setSupervisorUserFilter] = useState<string>("all");
+
+  const { data: svProfiles = [] } = useQuery({
+    queryKey: ["sv-profiles"],
+    enabled: isSupervisor,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("id, display_name, created_at")
+        .order("created_at", { ascending: true });
+      if (error) throw error;
+      return (data ?? []) as { id: string; display_name: string | null; created_at: string }[];
+    },
+  });
+
+  const { data: svData } = useQuery({
+    queryKey: ["sv-panel-data", supervisorUserFilter],
+    enabled: isSupervisor && supervisorUserFilter !== "mine",
+    queryFn: async () => {
+      let accQ = supabase.from("accounts").select("*");
+      let trdQ = supabase.from("trades").select("*").order("closed_at", { ascending: false });
+      let strQ = supabase.from("strategies").select("*");
+      let wdQ = supabase.from("withdrawals").select("*").order("date", { ascending: false });
+      let perQ = supabase
+        .from("account_strategy_periods")
+        .select("*")
+        .order("start_date", { ascending: true });
+
+      if (supervisorUserFilter !== "all") {
+        accQ = accQ.eq("user_id", supervisorUserFilter);
+        trdQ = trdQ.eq("user_id", supervisorUserFilter);
+        strQ = strQ.eq("user_id", supervisorUserFilter);
+        wdQ = wdQ.eq("user_id", supervisorUserFilter);
+        perQ = perQ.eq("user_id", supervisorUserFilter);
+      }
+
+      const [accs, trds, strats, wds, pers] = await Promise.all([accQ, trdQ, strQ, wdQ, perQ]);
+      return {
+        accounts: (accs.data ?? []).map((r) => toAccount(r as any)),
+        trades: (trds.data ?? []).map((r) => toTrade(r as any)),
+        strategies: (strats.data ?? []).map((r) => toStrategy(r as any)),
+        withdrawals: (wds.data ?? []).map((r) => toWithdrawal(r as any)).filter((w) => w.status === "approved"),
+        strategyPeriods: (pers.data ?? []).map((r) => toPeriod(r as any)),
+      };
+    },
+  });
+
+  const isSupervisedView = isSupervisor && supervisorUserFilter !== "mine";
+  const accounts = isSupervisedView ? (svData?.accounts ?? []) : journalStore.accounts;
+  const strategies = isSupervisedView ? (svData?.strategies ?? []) : journalStore.strategies;
+  const allTrades = isSupervisedView ? (svData?.trades ?? []) : journalStore.trades;
+  const visibleTrades = isSupervisedView ? allTrades : journalStore.visibleTrades;
+  const withdrawals = isSupervisedView ? (svData?.withdrawals ?? []) : journalStore.withdrawals;
+  const strategyPeriods = isSupervisedView ? (svData?.strategyPeriods ?? []) : journalStore.strategyPeriods;
+  const selectedAccountIds = isSupervisedView ? accounts.map((a) => a.id) : journalStore.selectedAccountIds;
+
   const [range, setRange] = useState<RangeKey>("all");
   const [customRange, setCustomRange] = useState<DateRange>({ from: undefined, to: undefined });
   const [scope, setScope] = useState<Scope>("all");
@@ -118,7 +182,6 @@ function Overview() {
     return filtered.length ? filtered : strategies;
   }, [strategies, visibleTrades, accountFilter, accounts, strategyPeriods]);
 
-
   const trades = useMemo(() => {
     if (range === "custom") {
       const from = customRange.from;
@@ -133,6 +196,7 @@ function Overview() {
     }
     return filterByRange(scopedTrades, range);
   }, [scopedTrades, range, customRange]);
+
   // Accounts (capital + PnL) of the selected account/strategy.
   const strategyAccounts = useMemo(() => {
     if (!isStrategy) return [];
@@ -164,9 +228,6 @@ function Overview() {
     const ids = new Set(strategyAccounts.map((a) => a.id));
     return visibleTrades.filter((t) => t.accountId && ids.has(t.accountId));
   }, [isStrategy, scopedTrades, strategyAccounts, visibleTrades]);
-
-
-
 
   // Cuenta de fondeo concreta seleccionada → progreso hacia objetivo (eval / retiro).
   const fundedTarget = useMemo(() => {
@@ -206,7 +267,6 @@ function Overview() {
       ? trades.reduce((s, t) => s + t.pnl, 0)
       : fusionAccounts.reduce((s, a) => s + accountResult(a, visibleTrades, withdrawals), 0);
 
-
   const scopeValue = (key: Scope) => {
     if (key === "funded") return fundedEquity;
     if (key === "real") return realEquity;
@@ -221,8 +281,29 @@ function Overview() {
   return (
     <AppShell
       title={
-        <span className="flex flex-wrap items-center gap-3 w-full">
+        <span className="flex flex-wrap items-center gap-2 w-full">
           <span>Resumen</span>
+          {isSupervisor && (
+            <select
+              value={supervisorUserFilter}
+              onChange={(e) => {
+                setSupervisorUserFilter(e.target.value);
+                setFilter("all");
+              }}
+              className="h-7 rounded-md border border-brand/50 bg-card px-2 text-xs font-semibold text-brand"
+              aria-label="Ver resumen de usuario"
+            >
+              <option value="all">👥 Todos los usuarios</option>
+              <option value="mine">👤 Mi diario personal</option>
+              <optgroup label="Usuarios supervisados">
+                {svProfiles.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.display_name ?? `Usuario ${p.id.slice(0, 6)}`}
+                  </option>
+                ))}
+              </optgroup>
+            </select>
+          )}
           <select
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
@@ -322,7 +403,13 @@ function Overview() {
           </div>
         </span>
       }
-      subtitle={`${selectedAccounts.length} cuenta(s) · Fondeo ${formatCurrency(fundedEquity)} · Real ${formatCurrency(realEquity)}`}
+      subtitle={
+        isSupervisedView && supervisorUserFilter === "all"
+          ? `Supervisión global (Todos los usuarios) · ${accounts.length} cuenta(s) · Fondeo ${formatCurrency(fundedEquity)} · Real ${formatCurrency(realEquity)}`
+          : isSupervisedView
+            ? `Supervisión de usuario · ${accounts.length} cuenta(s) · Fondeo ${formatCurrency(fundedEquity)} · Real ${formatCurrency(realEquity)}`
+            : `${selectedAccounts.length} cuenta(s) · Fondeo ${formatCurrency(fundedEquity)} · Real ${formatCurrency(realEquity)}`
+      }
     >
       <div className="space-y-5">
         <RiskAlerts />
@@ -426,9 +513,6 @@ function Overview() {
         )}
         <PerformanceAnalysis trades={trades} />
         <EmotionHighlights trades={trades} />
-
-
-
 
         <section className="panel p-4">
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">

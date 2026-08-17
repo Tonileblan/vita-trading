@@ -19,7 +19,7 @@ const STORAGE_KEY = "tj:active-journal";
 
 type Row = Record<string, unknown>;
 
-function toAccount(r: Row): Account {
+export function toAccount(r: Row): Account {
   return {
     id: String(r["id"]),
     name: String(r["name"] ?? ""),
@@ -56,7 +56,7 @@ function fromAccount(a: Partial<Omit<Account, "id">>): Row {
   return out;
 }
 
-function toStrategy(r: Row): Strategy {
+export function toStrategy(r: Row): Strategy {
   return {
     id: String(r["id"]),
     name: String(r["name"] ?? ""),
@@ -140,7 +140,7 @@ function fromTrade(t: Partial<Omit<Trade, "id">>): Row {
 }
 
 
-function toWithdrawal(r: Row): Withdrawal {
+export function toWithdrawal(r: Row): Withdrawal {
   return {
     id: String(r["id"]),
     strategyId: String(r["strategy_id"] ?? ""),
@@ -154,7 +154,7 @@ function toWithdrawal(r: Row): Withdrawal {
   };
 }
 
-function toPeriod(r: Row): AccountStrategyPeriod {
+export function toPeriod(r: Row): AccountStrategyPeriod {
   return {
     id: String(r["id"]),
     accountId: String(r["account_id"] ?? ""),
