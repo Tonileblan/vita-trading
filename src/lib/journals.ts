@@ -16,11 +16,15 @@ export function useJournals() {
   return useQuery({
     queryKey: ["journals"],
     queryFn: async () => {
+      const { data: userData } = await supabase.auth.getUser();
+      const uid = userData.user?.id;
+      if (!uid) return [];
       const { data, error } = await supabase
         .from("journals")
         .select(
           "id, owner_id, name, description, base_currency, is_archived, is_template, created_at",
         )
+        .eq("owner_id", uid)
         .order("created_at", { ascending: true });
       if (error) throw error;
       return (data ?? []) as Journal[];

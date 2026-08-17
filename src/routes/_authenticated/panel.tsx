@@ -77,8 +77,8 @@ function Overview() {
   const { isSupervisor } = useAuth();
   const journalStore = useJournal();
 
-  // Filtro de usuario para supervisores: "all" (todos los usuarios), "mine" (mi diario), o userId específico
-  const [supervisorUserFilter, setSupervisorUserFilter] = useState<string>("all");
+  // Filtro de usuario para supervisores: "mine" (mi diario) o userId específico
+  const [supervisorUserFilter, setSupervisorUserFilter] = useState<string>("mine");
 
   const { data: svProfiles = [] } = useQuery({
     queryKey: ["sv-profiles"],
@@ -97,24 +97,18 @@ function Overview() {
     queryKey: ["sv-panel-data", supervisorUserFilter],
     enabled: isSupervisor && supervisorUserFilter !== "mine",
     queryFn: async () => {
-      let accQ = supabase.from("accounts").select("*");
-      let trdQ = supabase.from("trades").select("*").order("closed_at", { ascending: false });
-      let strQ = supabase.from("strategies").select("*");
-      let wdQ = supabase.from("withdrawals").select("*").order("date", { ascending: false });
-      let perQ = supabase
-        .from("account_strategy_periods")
-        .select("*")
-        .order("start_date", { ascending: true });
-
-      if (supervisorUserFilter !== "all") {
-        accQ = accQ.eq("user_id", supervisorUserFilter);
-        trdQ = trdQ.eq("user_id", supervisorUserFilter);
-        strQ = strQ.eq("user_id", supervisorUserFilter);
-        wdQ = wdQ.eq("user_id", supervisorUserFilter);
-        perQ = perQ.eq("user_id", supervisorUserFilter);
-      }
-
-      const [accs, trds, strats, wds, pers] = await Promise.all([accQ, trdQ, strQ, wdQ, perQ]);
+      const targetUserId = supervisorUserFilter;
+      const [accs, trds, strats, wds, pers] = await Promise.all([
+        supabase.from("accounts").select("*").eq("user_id", targetUserId),
+        supabase.from("trades").select("*").eq("user_id", targetUserId).order("closed_at", { ascending: false }),
+        supabase.from("strategies").select("*").eq("user_id", targetUserId),
+        supabase.from("withdrawals").select("*").eq("user_id", targetUserId).order("date", { ascending: false }),
+        supabase
+          .from("account_strategy_periods")
+          .select("*")
+          .eq("user_id", targetUserId)
+          .order("start_date", { ascending: true }),
+      ]);
       return {
         accounts: (accs.data ?? []).map((r) => toAccount(r as any)),
         trades: (trds.data ?? []).map((r) => toTrade(r as any)),
@@ -293,7 +287,6 @@ function Overview() {
               className="h-7 rounded-md border border-brand/50 bg-card px-2 text-xs font-semibold text-brand"
               aria-label="Ver resumen de usuario"
             >
-              <option value="all">👥 Todos los usuarios</option>
               <option value="mine">👤 Mi diario personal</option>
               <optgroup label="Usuarios supervisados">
                 {svProfiles.map((p) => (
@@ -404,11 +397,9 @@ function Overview() {
         </span>
       }
       subtitle={
-        isSupervisedView && supervisorUserFilter === "all"
-          ? `Supervisión global (Todos los usuarios) · ${accounts.length} cuenta(s) · Fondeo ${formatCurrency(fundedEquity)} · Real ${formatCurrency(realEquity)}`
-          : isSupervisedView
-            ? `Supervisión de usuario · ${accounts.length} cuenta(s) · Fondeo ${formatCurrency(fundedEquity)} · Real ${formatCurrency(realEquity)}`
-            : `${selectedAccounts.length} cuenta(s) · Fondeo ${formatCurrency(fundedEquity)} · Real ${formatCurrency(realEquity)}`
+        isSupervisedView
+          ? `Supervisando a ${svProfiles.find((p) => p.id === supervisorUserFilter)?.display_name ?? "usuario"} · ${accounts.length} cuenta(s) · Fondeo ${formatCurrency(fundedEquity)} · Real ${formatCurrency(realEquity)}`
+          : `${selectedAccounts.length} cuenta(s) · Fondeo ${formatCurrency(fundedEquity)} · Real ${formatCurrency(realEquity)}`
       }
     >
       <div className="space-y-5">
