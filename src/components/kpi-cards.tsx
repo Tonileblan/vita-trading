@@ -9,6 +9,7 @@ const STREAK_RANGES = [
   { key: "7", label: "7d" },
   { key: "30", label: "30d" },
   { key: "180", label: "180d" },
+  { key: "all", label: "Todo" },
 ] as const;
 
 type StreakRange = (typeof STREAK_RANGES)[number]["key"];
@@ -52,10 +53,12 @@ export function KpiCards({
   const fmtNoSign = (v: number) =>
     `$${Math.abs(v).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-  const streakTrades = useMemo(
-    () => (trades ? filterByDays(trades, Number(streakRange)) : []),
-    [trades, streakRange],
-  );
+  const streakTrades = useMemo(() => {
+    if (!trades || trades.length === 0) return [];
+    if (streakRange === "all") return trades;
+    const days = Number(streakRange);
+    return Number.isFinite(days) && days > 0 ? filterByDays(trades, days) : trades;
+  }, [trades, streakRange]);
   const streak = useMemo(() => computeStreaks(streakTrades), [streakTrades]);
   const cur = streak.current;
   const StreakIcon = cur.type === "loss" ? Snowflake : Flame;

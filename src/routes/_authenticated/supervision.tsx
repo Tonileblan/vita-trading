@@ -173,7 +173,7 @@ function SupervisionPage() {
             <h2 className="text-xl leading-none">
               {selectedProfile?.display_name ?? "Usuario"} · resumen
             </h2>
-            <KpiCards metrics={metrics} />
+            <KpiCards metrics={metrics} trades={selectedTrades} />
             <div className="panel p-4">
               <EquityChart data={curve} />
             </div>

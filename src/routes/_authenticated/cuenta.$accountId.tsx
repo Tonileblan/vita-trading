@@ -205,7 +205,7 @@ function AccountDetail() {
           </section>
         ) : null}
 
-        <KpiCards metrics={metrics} />
+        <KpiCards metrics={metrics} trades={accTrades} />
 
         <section className="panel p-4">
           <h2 className="text-xl leading-none">Curva de capital</h2>
