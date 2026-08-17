@@ -1,5 +1,4 @@
 import { useMemo } from "react";
-import { Check, X } from "lucide-react";
 import type { Trade } from "@/lib/types";
 import { computeMetrics, formatCurrency } from "@/lib/metrics";
 import { cn } from "@/lib/utils";
@@ -116,14 +115,6 @@ export function PerformanceAnalysis({ trades }: { trades: Trade[] }) {
             <span className="num text-sm font-bold">
               {consistency.toFixed(0)}
               <span className="text-xs font-medium text-muted-foreground">/{CONSISTENCY_LIMIT}%</span>
-            </span>
-            <span
-              className={cn(
-                "flex size-6 items-center justify-center rounded-full",
-                ok ? "bg-profit/15 text-profit" : "bg-loss/15 text-loss",
-              )}
-            >
-              {ok ? <Check className="size-3.5" /> : <X className="size-3.5" />}
             </span>
           </div>
         </div>
