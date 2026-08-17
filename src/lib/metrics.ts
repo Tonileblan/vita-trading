@@ -75,56 +75,114 @@ export function computeMetrics(trades: Trade[]): Metrics {
 }
 
 export interface StreakInfo {
-  current: { type: "win" | "loss" | "none"; count: number };
+  current: { type: "win" | "loss" | "none"; count: number; pnl: number };
   maxWin: number;
+  maxWinPnl: number;
   maxLoss: number;
+  maxLossPnl: number;
   wins: number;
   losses: number;
+  winsPnl: number;
+  lossesPnl: number;
 }
 
-/** Rachas (consecutivas) sobre un conjunto de operaciones ya filtradas por ventana. */
+/** Rachas (consecutivas) sobre un conjunto de operaciones ya filtradas por ventana, con capital acumulado. */
 export function computeStreaks(trades: Trade[]): StreakInfo {
-  const wins = trades.filter((t) => t.pnl > 0).length;
-  const losses = trades.filter((t) => t.pnl < 0).length;
+  const winTrades = trades.filter((t) => t.pnl > 0);
+  const lossTrades = trades.filter((t) => t.pnl < 0);
+  const wins = winTrades.length;
+  const losses = lossTrades.length;
+  const winsPnl = winTrades.reduce((s, t) => s + t.pnl, 0);
+  const lossesPnl = lossTrades.reduce((s, t) => s + t.pnl, 0);
+
   if (!trades.length) {
-    return { current: { type: "none", count: 0 }, maxWin: 0, maxLoss: 0, wins, losses };
+    return {
+      current: { type: "none", count: 0, pnl: 0 },
+      maxWin: 0,
+      maxWinPnl: 0,
+      maxLoss: 0,
+      maxLossPnl: 0,
+      wins: 0,
+      losses: 0,
+      winsPnl: 0,
+      lossesPnl: 0,
+    };
   }
+
   const desc = [...trades].sort((a, b) => {
     const diff = new Date(b.closedAt).getTime() - new Date(a.closedAt).getTime();
     if (diff !== 0) return diff;
     return String(b.id ?? "").localeCompare(String(a.id ?? ""));
   });
+
   // Racha actual (más reciente)
   let curType: "win" | "loss" | "none" = "none";
   let curCount = 0;
+  let curPnl = 0;
   for (const t of desc) {
-    if (t.pnl === 0) continue;
+    if (t.pnl === 0) continue; // breakeven no rompe ni suma racha
     const type: "win" | "loss" = t.pnl > 0 ? "win" : "loss";
     if (curType === "none") {
       curType = type;
       curCount = 1;
+      curPnl = t.pnl;
     } else if (type === curType) {
       curCount++;
+      curPnl += t.pnl;
     } else break;
   }
-  // Mejor racha de ganancias y de pérdidas (recorriendo de antiguo a nuevo)
+
+  // Mejor racha de ganancias y de pérdidas (recorriendo cronológicamente de antiguo a nuevo)
+  const asc = [...desc].reverse();
   let maxWin = 0;
+  let maxWinPnl = 0;
   let maxLoss = 0;
-  let runType: "win" | "loss" = "win";
-  let runCount = 0;
-  for (const t of [...desc].reverse()) {
+  let maxLossPnl = 0;
+
+  let currentRunType: "win" | "loss" | "none" = "none";
+  let currentRunCount = 0;
+  let currentRunPnl = 0;
+
+  for (const t of asc) {
     if (t.pnl === 0) continue;
     const type: "win" | "loss" = t.pnl > 0 ? "win" : "loss";
-    if (runType === type) {
-      runCount++;
+    if (currentRunType === type) {
+      currentRunCount++;
+      currentRunPnl += t.pnl;
     } else {
-      runType = type;
-      runCount = 1;
+      currentRunType = type;
+      currentRunCount = 1;
+      currentRunPnl = t.pnl;
     }
-    if (type === "win") maxWin = Math.max(maxWin, runCount);
-    else maxLoss = Math.max(maxLoss, runCount);
+
+    if (type === "win") {
+      if (currentRunCount > maxWin) {
+        maxWin = currentRunCount;
+        maxWinPnl = currentRunPnl;
+      } else if (currentRunCount === maxWin && currentRunPnl > maxWinPnl) {
+        maxWinPnl = currentRunPnl;
+      }
+    } else {
+      if (currentRunCount > maxLoss) {
+        maxLoss = currentRunCount;
+        maxLossPnl = currentRunPnl;
+      } else if (currentRunCount === maxLoss && currentRunPnl < maxLossPnl) {
+        maxLossPnl = currentRunPnl;
+      }
+    }
   }
-  return { current: { type: curType, count: curCount }, maxWin, maxLoss, wins, losses };
+
+  return {
+    current: { type: curType, count: curCount, pnl: curPnl },
+    maxWin,
+    maxWinPnl,
+    maxLoss,
+    maxLossPnl,
+    wins,
+    losses,
+    winsPnl,
+    lossesPnl,
+  };
 }
 
 /** Filtra operaciones a una ventana de días respecto a la operación más reciente. */

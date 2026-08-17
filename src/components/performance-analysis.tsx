@@ -1,6 +1,7 @@
 import { useMemo } from "react";
+import { Flame, Snowflake } from "lucide-react";
 import type { Trade } from "@/lib/types";
-import { computeMetrics, formatCurrency } from "@/lib/metrics";
+import { computeMetrics, computeStreaks, formatCurrency } from "@/lib/metrics";
 import { cn } from "@/lib/utils";
 
 const CONSISTENCY_LIMIT = 15; // % máximo que puede pesar el mejor día
@@ -41,6 +42,7 @@ function pfLabel(pf: number) {
 
 export function PerformanceAnalysis({ trades }: { trades: Trade[] }) {
   const m = useMemo(() => computeMetrics(trades), [trades]);
+  const streak = useMemo(() => computeStreaks(trades), [trades]);
 
   const { bestDay, totalProfit } = useMemo(() => {
     const byDay = new Map<string, number>();
@@ -58,9 +60,11 @@ export function PerformanceAnalysis({ trades }: { trades: Trade[] }) {
 
   const winShare = m.avgWin || m.avgLoss ? (m.avgWin / (m.avgWin + Math.abs(m.avgLoss))) * 100 : 50;
   const pf = pfLabel(m.profitFactor);
+  const cur = streak.current;
 
   return (
-    <section className="grid gap-3 lg:grid-cols-3">
+    <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      {/* 1. Rendimiento */}
       <div className="panel p-4">
         <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           Rendimiento
@@ -80,6 +84,7 @@ export function PerformanceAnalysis({ trades }: { trades: Trade[] }) {
         </div>
       </div>
 
+      {/* 2. Operaciones */}
       <div className="panel p-4">
         <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           Análisis de operaciones
@@ -106,6 +111,81 @@ export function PerformanceAnalysis({ trades }: { trades: Trade[] }) {
         </div>
       </div>
 
+      {/* 3. Rachas y Capital */}
+      <div className="panel p-4">
+        <div className="flex items-center justify-between">
+          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            Rachas y Capital
+          </p>
+          <div className="flex items-center gap-1.5">
+            {cur.type === "win" ? (
+              <span className="flex items-center gap-1 rounded-full bg-profit/15 px-2 py-0.5 text-[11px] font-bold text-profit">
+                <Flame className="size-3.5" />
+                {cur.count} {cur.count === 1 ? "ganada" : "ganadas"}
+              </span>
+            ) : cur.type === "loss" ? (
+              <span className="flex items-center gap-1 rounded-full bg-loss/15 px-2 py-0.5 text-[11px] font-bold text-loss">
+                <Snowflake className="size-3.5" />
+                {cur.count} {cur.count === 1 ? "perdida" : "perdidas"}
+              </span>
+            ) : (
+              <span className="text-[11px] text-muted-foreground">Sin racha activa</span>
+            )}
+          </div>
+        </div>
+
+        <div className="mt-2 flex items-baseline justify-between">
+          <span className="text-xs text-muted-foreground">Racha actual</span>
+          <span
+            className={cn(
+              "num text-base font-bold tabular-nums",
+              cur.pnl > 0 ? "text-profit" : cur.pnl < 0 ? "text-loss" : "text-muted-foreground",
+            )}
+          >
+            {cur.pnl > 0 ? "+" : cur.pnl < 0 ? "−" : ""}
+            {formatCurrency(Math.abs(cur.pnl), false)}
+          </span>
+        </div>
+
+        <dl className="mt-3 space-y-2 border-t border-border pt-3 text-sm">
+          <div className="flex items-center justify-between">
+            <dt className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <span className="size-2 rounded-full bg-profit" />
+              Ganadas seguidas
+            </dt>
+            <dd className="text-right">
+              <span className="num text-xs font-semibold">{streak.maxWin} seguidas</span>
+              <span className="num ml-2 text-xs font-bold text-profit tabular-nums">
+                +{formatCurrency(streak.maxWinPnl, false)}
+              </span>
+            </dd>
+          </div>
+
+          <div className="flex items-center justify-between">
+            <dt className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <span className="size-2 rounded-full bg-loss" />
+              Pérdidas seguidas
+            </dt>
+            <dd className="text-right">
+              <span className="num text-xs font-semibold">{streak.maxLoss} seguidas</span>
+              <span className="num ml-2 text-xs font-bold text-loss tabular-nums">
+                −{formatCurrency(Math.abs(streak.maxLossPnl), false)}
+              </span>
+            </dd>
+          </div>
+
+          <div className="flex items-center justify-between border-t border-border/60 pt-2 text-[11px] text-muted-foreground">
+            <span>
+              Ganadas: <strong className="num text-profit font-semibold">+{formatCurrency(streak.winsPnl, false)}</strong> ({streak.wins})
+            </span>
+            <span>
+              Pérdidas: <strong className="num text-loss font-semibold">−{formatCurrency(Math.abs(streak.lossesPnl), false)}</strong> ({streak.losses})
+            </span>
+          </div>
+        </dl>
+      </div>
+
+      {/* 4. Consistencia */}
       <div className="panel p-4">
         <div className="flex items-center justify-between">
           <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -142,7 +222,7 @@ export function PerformanceAnalysis({ trades }: { trades: Trade[] }) {
             <dd className="num font-semibold">{formatCurrency(totalProfit)}</dd>
           </div>
           <div className="flex justify-between">
-            <dt className="text-muted-foreground">Beneficio mínimo requerido</dt>
+            <dt className="text-muted-foreground">Beneficio mín. req.</dt>
             <dd className="num font-semibold">{formatCurrency(minRequired)}</dd>
           </div>
         </dl>

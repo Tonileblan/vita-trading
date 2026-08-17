@@ -127,15 +127,23 @@ export function KpiCards({
             <span className="inline-flex items-center gap-1 text-profit">
               <ArrowUp className="size-4" />
               {streak.wins}
+              <span className="text-xs font-medium text-profit/80">
+                (+{formatCurrency(streak.winsPnl, false)})
+              </span>
             </span>
             <span className="inline-flex items-center gap-1 text-loss">
               <ArrowDown className="size-4" />
               {streak.losses}
+              <span className="text-xs font-medium text-loss/80">
+                (−{formatCurrency(Math.abs(streak.lossesPnl), false)})
+              </span>
             </span>
           </span>
         )}
         <span className="text-xs text-muted-foreground tabular-nums">
-          {noOps ? "" : `Racha: ${streakLabel(cur)}`}
+          {noOps
+            ? ""
+            : `Racha: ${streakLabel(cur)}${cur.pnl !== 0 ? ` (${cur.pnl > 0 ? "+" : "−"}${formatCurrency(Math.abs(cur.pnl), false)})` : ""}`}
         </span>
       </div>
 
@@ -157,7 +165,7 @@ export function KpiCards({
           ))}
         </div>
         <p className="text-[11px] text-muted-foreground tabular-nums">
-          Mejor racha: {streak.maxWin} ganadas · {streak.maxLoss} perdidas
+          Mejor racha: {streak.maxWin} ganadas (+{formatCurrency(streak.maxWinPnl, false)}) · {streak.maxLoss} perdidas (−{formatCurrency(Math.abs(streak.maxLossPnl), false)})
         </p>
       </div>
     </div>
