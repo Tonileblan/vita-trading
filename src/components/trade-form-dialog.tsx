@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { ImagePlus, Plus, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -22,7 +22,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useJournal } from "@/lib/journal-store";
-import { type Direction } from "@/lib/types";
+import { type Direction, type Trade } from "@/lib/types";
 import {
   EMOTIONS_AFTER,
   EMOTIONS_BEFORE,
@@ -32,55 +32,149 @@ import {
 } from "@/lib/emotions";
 import { cn } from "@/lib/utils";
 
+function toDatetimeLocal(isoString?: string | null) {
+  if (!isoString) {
+    const d = new Date();
+    const pad = (n: number) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  }
+  const date = new Date(isoString);
+  if (isNaN(date.getTime())) {
+    const d = new Date();
+    const pad = (n: number) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  }
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const y = date.getFullYear();
+  const m = pad(date.getMonth() + 1);
+  const d = pad(date.getDate());
+  const hh = pad(date.getHours());
+  const mm = pad(date.getMinutes());
+  return `${y}-${m}-${d}T${hh}:${mm}`;
+}
 
-const nowLocal = () => new Date().toISOString().slice(0, 16);
+function fromDatetimeLocal(value: string) {
+  if (!value) return new Date().toISOString();
+  const d = new Date(value);
+  return isNaN(d.getTime()) ? new Date().toISOString() : d.toISOString();
+}
 
-export function TradeFormDialog() {
-  const { accounts, strategies, addTrade } = useJournal();
-  const [open, setOpen] = useState(false);
-  const [accountId, setAccountId] = useState(accounts[0]?.id ?? "");
-  const [strategyId, setStrategyId] = useState(strategies[0]?.id ?? "");
-  const [symbol, setSymbol] = useState("NQ1!");
-  const [direction, setDirection] = useState<Direction>("long");
-  const [openedAt, setOpenedAt] = useState(nowLocal());
-  const [closedAt, setClosedAt] = useState(nowLocal());
-  const [entryPrice, setEntryPrice] = useState("");
-  const [exitPrice, setExitPrice] = useState("");
-  const [size, setSize] = useState("1");
-  const [pnl, setPnl] = useState("");
-  const [tags, setTags] = useState<string[]>([]);
-  const [notes, setNotes] = useState("");
-  const [shots, setShots] = useState<string[]>([]);
+export function TradeFormDialog({
+  trade,
+  trigger,
+  open: controlledOpen,
+  onOpenChange: setControlledOpen,
+  onSuccess,
+}: {
+  trade?: Trade | null;
+  trigger?: ReactNode;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  onSuccess?: () => void;
+} = {}) {
+  const { accounts, strategies, addTrade, updateTrade } = useJournal();
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
+  const isControlled = controlledOpen !== undefined;
+  const open = isControlled ? controlledOpen : uncontrolledOpen;
+  const setOpen = (v: boolean) => {
+    if (setControlledOpen) setControlledOpen(v);
+    setUncontrolledOpen(v);
+  };
+
+  const isEditing = Boolean(trade);
+
+  const [accountId, setAccountId] = useState(trade?.accountId ?? accounts[0]?.id ?? "");
+  const [strategyId, setStrategyId] = useState(trade?.strategyId ?? strategies[0]?.id ?? "");
+  const [symbol, setSymbol] = useState(trade?.symbol ?? "NQ1!");
+  const [direction, setDirection] = useState<Direction>(trade?.direction ?? "long");
+  const [openedAt, setOpenedAt] = useState(() => toDatetimeLocal(trade?.openedAt));
+  const [closedAt, setClosedAt] = useState(() => toDatetimeLocal(trade?.closedAt));
+  const [entryPrice, setEntryPrice] = useState(trade?.entryPrice ? String(trade.entryPrice) : "");
+  const [exitPrice, setExitPrice] = useState(trade?.exitPrice ? String(trade.exitPrice) : "");
+  const [size, setSize] = useState(trade?.size ? String(trade.size) : "1");
+  const [pnl, setPnl] = useState(trade?.pnl !== undefined && trade?.pnl !== null ? String(trade.pnl) : "");
+  const [tags, setTags] = useState<string[]>(trade?.tags ?? []);
+  const [notes, setNotes] = useState(trade?.notes ?? "");
+  const [shots, setShots] = useState<string[]>(trade?.screenshots ?? []);
   const [dragging, setDragging] = useState(false);
-  const [showMood, setShowMood] = useState(false);
-  const [emotionBefore, setEmotionBefore] = useState("");
-  const [emotionAfter, setEmotionAfter] = useState("");
-  const [followedPlan, setFollowedPlan] = useState<FollowedPlan | "">("");
-  const [mistakes, setMistakes] = useState<string[]>([]);
-  const [emotionNote, setEmotionNote] = useState("");
+  const [showMood, setShowMood] = useState(
+    Boolean(
+      trade?.emotionBefore ||
+      trade?.emotionAfter ||
+      trade?.followedPlan ||
+      (trade?.mistakes && trade.mistakes.length > 0) ||
+      trade?.emotionNote
+    )
+  );
+  const [emotionBefore, setEmotionBefore] = useState(trade?.emotionBefore ?? "");
+  const [emotionAfter, setEmotionAfter] = useState(trade?.emotionAfter ?? "");
+  const [followedPlan, setFollowedPlan] = useState<FollowedPlan | "">((trade?.followedPlan as FollowedPlan) ?? "");
+  const [mistakes, setMistakes] = useState<string[]>(trade?.mistakes ?? []);
+  const [emotionNote, setEmotionNote] = useState(trade?.emotionNote ?? "");
+  const [saving, setSaving] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
-
-  // Mantiene la selección alineada con las estrategias del diario activo.
+  // Sincroniza los estados cuando se abre el diálogo o cambia la operación a editar.
   useEffect(() => {
-    if (strategies.length === 0) {
-      if (strategyId) setStrategyId("");
-      return;
+    if (!open) return;
+    if (trade) {
+      setAccountId(trade.accountId || accounts[0]?.id || "");
+      setStrategyId(trade.strategyId || strategies[0]?.id || "");
+      setSymbol(trade.symbol || "");
+      setDirection(trade.direction || "long");
+      setOpenedAt(toDatetimeLocal(trade.openedAt));
+      setClosedAt(toDatetimeLocal(trade.closedAt));
+      setEntryPrice(trade.entryPrice > 0 ? String(trade.entryPrice) : "");
+      setExitPrice(trade.exitPrice > 0 ? String(trade.exitPrice) : "");
+      setSize(trade.size > 0 ? String(trade.size) : "1");
+      setPnl(trade.pnl !== undefined && trade.pnl !== null ? String(trade.pnl) : "");
+      setTags(trade.tags ?? []);
+      setNotes(trade.notes ?? "");
+      setShots(trade.screenshots ?? []);
+      const hasMood = Boolean(
+        trade.emotionBefore ||
+        trade.emotionAfter ||
+        trade.followedPlan ||
+        (trade.mistakes && trade.mistakes.length > 0) ||
+        trade.emotionNote
+      );
+      setShowMood(hasMood);
+      setEmotionBefore(trade.emotionBefore ?? "");
+      setEmotionAfter(trade.emotionAfter ?? "");
+      setFollowedPlan((trade.followedPlan as FollowedPlan) ?? "");
+      setMistakes(trade.mistakes ?? []);
+      setEmotionNote(trade.emotionNote ?? "");
+    } else {
+      setAccountId(accounts[0]?.id ?? "");
+      setStrategyId(strategies[0]?.id ?? "");
+      setSymbol("NQ1!");
+      setDirection("long");
+      setOpenedAt(toDatetimeLocal());
+      setClosedAt(toDatetimeLocal());
+      setEntryPrice("");
+      setExitPrice("");
+      setSize("1");
+      setPnl("");
+      setTags([]);
+      setNotes("");
+      setShots([]);
+      setShowMood(false);
+      setEmotionBefore("");
+      setEmotionAfter("");
+      setFollowedPlan("");
+      setMistakes([]);
+      setEmotionNote("");
     }
-    if (!strategies.some((s) => s.id === strategyId)) setStrategyId(strategies[0]!.id);
-  }, [strategies, strategyId]);
+  }, [open, trade, accounts, strategies]);
 
-  // Al elegir cuenta, usa la estrategia asignada a esa cuenta.
+  // Al elegir cuenta en modo creación, usa la estrategia asignada a esa cuenta.
   useEffect(() => {
+    if (isEditing || !accountId) return;
     const acc = accounts.find((a) => a.id === accountId);
     if (acc?.strategyId && strategies.some((s) => s.id === acc.strategyId)) {
       setStrategyId(acc.strategyId);
     }
-  }, [accountId, accounts, strategies]);
-
-  useEffect(() => {
-    setTags((prev) => prev.filter((t) => strategies.some((s) => s.name === t)));
-  }, [strategies]);
+  }, [accountId, accounts, strategies, isEditing]);
 
   const addFiles = (files: FileList | File[] | null) => {
     if (!files) return;
@@ -93,59 +187,84 @@ export function TradeFormDialog() {
       });
   };
 
-  const submit = () => {
-    if (!accountId || !symbol || !pnl) {
+  const submit = async () => {
+    if (!accountId || !symbol || pnl === "") {
       toast.error("Completa cuenta, activo y PnL");
       return;
     }
-    addTrade({
-      accountId,
-      strategyId,
-      symbol: symbol.toUpperCase(),
-      direction,
-      openedAt: new Date(openedAt).toISOString(),
-      closedAt: new Date(closedAt).toISOString(),
-      entryPrice: Number(entryPrice) || 0,
-      exitPrice: Number(exitPrice) || 0,
-      size: Number(size) || 1,
-      pnl: Number(pnl),
-      tags,
-      notes,
-      screenshots: shots,
-      source: "manual",
-      ...(emotionBefore ? { emotionBefore } : {}),
-      ...(emotionAfter ? { emotionAfter } : {}),
-      ...(followedPlan ? { followedPlan } : {}),
-      mistakes,
-      ...(emotionNote ? { emotionNote } : {}),
-    });
-    toast.success("Operación registrada");
-    setOpen(false);
-    setPnl("");
-    setEntryPrice("");
-    setExitPrice("");
-    setNotes("");
-    setShots([]);
-    setEmotionBefore("");
-    setEmotionAfter("");
-    setFollowedPlan("");
-    setMistakes([]);
-    setEmotionNote("");
+    setSaving(true);
+    try {
+      if (isEditing && trade) {
+        await updateTrade(trade.id, {
+          accountId,
+          strategyId,
+          symbol: symbol.toUpperCase().trim(),
+          direction,
+          openedAt: fromDatetimeLocal(openedAt),
+          closedAt: fromDatetimeLocal(closedAt),
+          entryPrice: Number(entryPrice) || 0,
+          exitPrice: Number(exitPrice) || 0,
+          size: Number(size) || 1,
+          pnl: Number(pnl),
+          tags,
+          notes: notes.trim() || undefined,
+          screenshots: shots,
+          emotionBefore: emotionBefore || undefined,
+          emotionAfter: emotionAfter || undefined,
+          followedPlan: (followedPlan as FollowedPlan) || undefined,
+          mistakes,
+          emotionNote: emotionNote.trim() || undefined,
+        });
+        toast.success("Operación actualizada");
+      } else {
+        await addTrade({
+          accountId,
+          strategyId,
+          symbol: symbol.toUpperCase().trim(),
+          direction,
+          openedAt: fromDatetimeLocal(openedAt),
+          closedAt: fromDatetimeLocal(closedAt),
+          entryPrice: Number(entryPrice) || 0,
+          exitPrice: Number(exitPrice) || 0,
+          size: Number(size) || 1,
+          pnl: Number(pnl),
+          tags,
+          notes: notes.trim() || undefined,
+          screenshots: shots,
+          source: "manual",
+          ...(emotionBefore ? { emotionBefore } : {}),
+          ...(emotionAfter ? { emotionAfter } : {}),
+          ...(followedPlan ? { followedPlan } : {}),
+          mistakes,
+          ...(emotionNote ? { emotionNote } : {}),
+        });
+        toast.success("Operación registrada");
+      }
+      onSuccess?.();
+      setOpen(false);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Error al guardar la operación");
+    } finally {
+      setSaving(false);
+    }
   };
 
+  const defaultTrigger = trigger !== undefined ? trigger : (
+    <Button>
+      <Plus className="size-4" /> Nueva operación
+    </Button>
+  );
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button>
-          <Plus className="size-4" /> Nueva operación
-        </Button>
-      </DialogTrigger>
+      {defaultTrigger ? <DialogTrigger asChild>{defaultTrigger}</DialogTrigger> : null}
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Registro de operación</DialogTitle>
+          <DialogTitle>{isEditing ? "Editar operación" : "Registro de operación"}</DialogTitle>
           <DialogDescription>
-            Registro rápido manual. Los campos numéricos aceptan decimales.
+            {isEditing
+              ? "Modifica los datos, añade capturas, notas o completa el registro emocional."
+              : "Registro rápido manual. Los campos numéricos aceptan decimales."}
           </DialogDescription>
         </DialogHeader>
 
@@ -220,6 +339,16 @@ export function TradeFormDialog() {
           </div>
 
           <div className="space-y-2">
+            <Label>PnL neto ($)</Label>
+            <Input
+              value={pnl}
+              onChange={(e) => setPnl(e.target.value)}
+              inputMode="decimal"
+              placeholder="Positivo o negativo, ej. -180.50"
+            />
+          </div>
+
+          <div className="space-y-2">
             <Label>Apertura</Label>
             <Input
               type="datetime-local"
@@ -256,17 +385,7 @@ export function TradeFormDialog() {
           </div>
 
           <div className="space-y-2 sm:col-span-2">
-            <Label>PnL neto ($)</Label>
-            <Input
-              value={pnl}
-              onChange={(e) => setPnl(e.target.value)}
-              inputMode="decimal"
-              placeholder="Positivo o negativo, ej. -180.50"
-            />
-          </div>
-
-          <div className="space-y-2 sm:col-span-2">
-            <Label>Estrategias</Label>
+            <Label>Estrategias / Etiquetas</Label>
             <div className="flex flex-wrap gap-2">
               {strategies.map(({ id, name: tag }) => (
                 <button
@@ -291,7 +410,7 @@ export function TradeFormDialog() {
           </div>
 
           <div className="space-y-2 sm:col-span-2">
-            <Label>Galería de evidencia</Label>
+            <Label>Galería de evidencia (Capturas)</Label>
             <div
               onDragOver={(e) => {
                 e.preventDefault();
@@ -326,12 +445,13 @@ export function TradeFormDialog() {
             {shots.length > 0 && (
               <div className="grid grid-cols-4 gap-2">
                 {shots.map((src, i) => (
-                  <div key={i} className="group relative overflow-hidden rounded-md border">
+                  <div key={i} className="group relative overflow-hidden rounded-md border border-border">
                     <img src={src} alt={`Captura ${i + 1}`} className="h-20 w-full object-cover" />
                     <button
                       type="button"
                       onClick={() => setShots((prev) => prev.filter((_, j) => j !== i))}
-                      className="absolute right-1 top-1 rounded-full bg-background/80 p-1"
+                      className="absolute right-1 top-1 rounded-full bg-background/80 p-1 text-foreground hover:bg-destructive hover:text-destructive-foreground transition-colors"
+                      title="Eliminar captura"
                     >
                       <X className="size-3" />
                     </button>
@@ -347,7 +467,7 @@ export function TradeFormDialog() {
               rows={4}
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="Contexto, sesgo, ejecución, errores…"
+              placeholder="Contexto técnico, sesgo, ejecución, confirmaciones, qué funcionó o qué falló…"
             />
           </div>
 
@@ -472,10 +592,12 @@ export function TradeFormDialog() {
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => setOpen(false)}>
+          <Button variant="outline" disabled={saving} onClick={() => setOpen(false)}>
             Cancelar
           </Button>
-          <Button onClick={submit}>Guardar operación</Button>
+          <Button disabled={saving} onClick={submit}>
+            {saving ? "Guardando…" : isEditing ? "Guardar cambios" : "Guardar operación"}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

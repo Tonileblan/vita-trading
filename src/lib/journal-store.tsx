@@ -115,28 +115,28 @@ export function toTrade(r: Row): Trade {
   };
 }
 
-function fromTrade(t: Omit<Trade, "id">): Row {
-  return {
-    account_id: t.accountId || null,
-    strategy_id: t.strategyId || null,
-    symbol: t.symbol,
-    direction: t.direction,
-    opened_at: t.openedAt,
-    closed_at: t.closedAt,
-    entry_price: t.entryPrice,
-    exit_price: t.exitPrice,
-    size: t.size,
-    pnl: t.pnl,
-    tags: t.tags,
-    notes: t.notes ?? null,
-    screenshots: t.screenshots,
-    source: t.source,
-    emotion_before: t.emotionBefore ?? null,
-    emotion_after: t.emotionAfter ?? null,
-    followed_plan: t.followedPlan ?? null,
-    mistakes: t.mistakes ?? [],
-    emotion_note: t.emotionNote ?? null,
-  };
+function fromTrade(t: Partial<Omit<Trade, "id">>): Row {
+  const out: Row = {};
+  if (t.accountId !== undefined) out["account_id"] = t.accountId || null;
+  if (t.strategyId !== undefined) out["strategy_id"] = t.strategyId || null;
+  if (t.symbol !== undefined) out["symbol"] = t.symbol;
+  if (t.direction !== undefined) out["direction"] = t.direction;
+  if (t.openedAt !== undefined) out["opened_at"] = t.openedAt;
+  if (t.closedAt !== undefined) out["closed_at"] = t.closedAt;
+  if (t.entryPrice !== undefined) out["entry_price"] = t.entryPrice;
+  if (t.exitPrice !== undefined) out["exit_price"] = t.exitPrice;
+  if (t.size !== undefined) out["size"] = t.size;
+  if (t.pnl !== undefined) out["pnl"] = t.pnl;
+  if (t.tags !== undefined) out["tags"] = t.tags;
+  if (t.notes !== undefined) out["notes"] = t.notes ?? null;
+  if (t.screenshots !== undefined) out["screenshots"] = t.screenshots;
+  if (t.source !== undefined) out["source"] = t.source;
+  if (t.emotionBefore !== undefined) out["emotion_before"] = t.emotionBefore ?? null;
+  if (t.emotionAfter !== undefined) out["emotion_after"] = t.emotionAfter ?? null;
+  if (t.followedPlan !== undefined) out["followed_plan"] = t.followedPlan ?? null;
+  if (t.mistakes !== undefined) out["mistakes"] = t.mistakes ?? [];
+  if (t.emotionNote !== undefined) out["emotion_note"] = t.emotionNote ?? null;
+  return out;
 }
 
 
@@ -290,6 +290,8 @@ interface JournalState extends JournalData {
   updateAccount: (id: string, patch: Partial<Omit<Account, "id">>) => Promise<void>;
   removeAccount: (id: string) => Promise<void>;
   addTrade: (trade: Omit<Trade, "id">) => Promise<void>;
+  /** Modifica una operación y ajusta la diferencia de PnL en las cuentas correspondientes. */
+  updateTrade: (id: string, patch: Partial<Omit<Trade, "id">>) => Promise<void>;
   /** Inserta varias operaciones a la vez y ajusta el balance de cada cuenta una sola vez. */
   addTrades: (trades: Omit<Trade, "id">[]) => Promise<void>;
   removeTrade: (id: string) => Promise<void>;
@@ -444,6 +446,33 @@ export function JournalProvider({ children }: { children: ReactNode }) {
             .from("accounts")
             .update({ current_balance: account.currentBalance + trade.pnl } as never)
             .eq("id", account.id);
+        }
+        await refresh();
+      },
+      updateTrade: async (id, patch) => {
+        const oldTrade = data.trades.find((t) => t.id === id);
+        const row = fromTrade(patch);
+        const { error } = await supabase.from("trades").update(row as never).eq("id", id);
+        if (error) throw error;
+        if (oldTrade) {
+          const oldAccountId = oldTrade.accountId;
+          const newAccountId = patch.accountId !== undefined ? patch.accountId : oldAccountId;
+          const oldPnl = oldTrade.pnl ?? 0;
+          const newPnl = patch.pnl !== undefined ? patch.pnl : oldPnl;
+
+          const deltas = new Map<string, number>();
+          if (oldAccountId === newAccountId) {
+            const delta = newPnl - oldPnl;
+            if (delta !== 0 && newAccountId) {
+              deltas.set(newAccountId, delta);
+            }
+          } else {
+            if (oldAccountId) deltas.set(oldAccountId, -oldPnl);
+            if (newAccountId) deltas.set(newAccountId, (deltas.get(newAccountId) ?? 0) + newPnl);
+          }
+          if (deltas.size > 0) {
+            await applyBalanceDeltas(data.accounts, deltas);
+          }
         }
         await refresh();
       },
