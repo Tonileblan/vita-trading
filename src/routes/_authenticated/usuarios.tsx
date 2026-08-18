@@ -41,17 +41,15 @@ import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { ChatThread } from "@/components/chat-thread";
 import { deleteUserAdminFn } from "@/lib/admin.functions";
-import { testAiConnectionServerFn } from "@/lib/ai-test.functions";
 import {
-  AI_PROVIDERS,
-  type AiProviderId,
-  getActiveAiProvider,
-  setActiveAiProvider,
-  getAiApiKey,
-  setAiApiKey,
-  getAiModel,
-  setAiModel,
-} from "@/lib/ai-providers";
+  getLocalGoogleAiKey,
+  setLocalGoogleAiKey,
+  getLocalGoogleAiModel,
+  setLocalGoogleAiModel,
+  DEFAULT_GEMINI_MODEL,
+  AVAILABLE_GEMINI_MODELS,
+  testGoogleAiConnection,
+} from "@/lib/google-ai";
 import {
   Dialog,
   DialogContent,
@@ -587,9 +585,17 @@ function UsersPage() {
           </div>
         </section>
 
-        {/* ESTRUCTURA POR PESTAÑAS (DIRECTORIO, PERFIL Y CHAT) */}
-        <Tabs defaultValue={isAdmin || isSupervisor ? "admin" : "profile"} className="space-y-6">
+        {/* ESTRUCTURA POR PESTAÑAS (PERFIL, CHAT Y DIRECTORIO) */}
+        <Tabs defaultValue="profile" className="space-y-6">
           <TabsList className="grid w-full grid-cols-3 p-1 bg-muted/60 max-w-lg">
+            <TabsTrigger value="profile" className="gap-2 font-semibold text-xs md:text-sm">
+              <Sliders className="size-4" />
+              <span className="truncate">Mi Perfil</span>
+            </TabsTrigger>
+            <TabsTrigger value="chat" className="gap-2 font-semibold text-xs md:text-sm">
+              <MessageSquare className="size-4" />
+              <span className="truncate">Chat</span>
+            </TabsTrigger>
             <TabsTrigger value="admin" className="gap-2 font-semibold text-xs md:text-sm">
               <Users className="size-4" />
               <span className="truncate">{isAdmin ? "Gestión" : "Directorio"}</span>
@@ -598,14 +604,6 @@ function UsersPage() {
                   {pendingRequests.length}
                 </span>
               )}
-            </TabsTrigger>
-            <TabsTrigger value="profile" className="gap-2 font-semibold text-xs md:text-sm">
-              <Sliders className="size-4" />
-              <span className="truncate">Mi Perfil</span>
-            </TabsTrigger>
-            <TabsTrigger value="chat" className="gap-2 font-semibold text-xs md:text-sm">
-              <MessageSquare className="size-4" />
-              <span className="truncate">Chat</span>
             </TabsTrigger>
           </TabsList>
 
@@ -1176,44 +1174,34 @@ function UsersPage() {
   );
 }
 
-/** COMPONENTE REUTILIZABLE: CUADRÍCULA DE AJUSTES DEL PERFIL - IA UNIVERSAL */
-function UniversalAiSettingsCard() {
-  const testConn = useServerFn(testAiConnectionServerFn);
-  const [provider, setProvider] = useState<AiProviderId>("google");
+/** COMPONENTE REUTILIZABLE: CUADRÍCULA DE AJUSTES DEL PERFIL - GOOGLE AI (GEMINI) */
+function GoogleAiSettingsCard() {
+  const testConn = useServerFn(testGoogleAiConnection);
   const [apiKey, setApiKey] = useState("");
-  const [model, setModel] = useState("");
+  const [model, setModel] = useState(DEFAULT_GEMINI_MODEL);
   const [showKey, setShowKey] = useState(false);
   const [testing, setTesting] = useState(false);
 
   useEffect(() => {
-    const currentProvider = getActiveAiProvider();
-    setProvider(currentProvider);
-    setApiKey(getAiApiKey(currentProvider));
-    setModel(getAiModel(currentProvider));
+    setApiKey(getLocalGoogleAiKey());
+    setModel(getLocalGoogleAiModel());
   }, []);
 
-  const handleProviderChange = (newProvider: AiProviderId) => {
-    setProvider(newProvider);
-    setApiKey(getAiApiKey(newProvider));
-    setModel(getAiModel(newProvider));
-  };
-
   const handleSave = () => {
-    setActiveAiProvider(provider);
-    setAiApiKey(apiKey, provider);
-    setAiModel(model, provider);
-    toast.success(`Configuración de ${AI_PROVIDERS[provider].name} guardada correctamente`);
+    setLocalGoogleAiKey(apiKey);
+    setLocalGoogleAiModel(model);
+    toast.success("Configuración de Google AI guardada correctamente");
   };
 
   const handleTest = async () => {
     if (!apiKey.trim()) {
-      toast.error(`Introduce tu clave API de ${AI_PROVIDERS[provider].name} antes de probar`);
+      toast.error("Introduce tu clave API de Google AI Studio antes de probar");
       return;
     }
     setTesting(true);
     try {
       const res = await testConn({
-        data: { provider, apiKey: apiKey.trim(), model: model || undefined },
+        data: { apiKey: apiKey.trim(), model },
       });
       if (res.success) {
         toast.success(res.message);
@@ -1221,25 +1209,23 @@ function UniversalAiSettingsCard() {
         toast.error(res.message);
       }
     } catch (e: any) {
-      toast.error(e?.message || "Error al conectar con el proveedor de IA");
+      toast.error(e?.message || "Error al conectar con Google AI");
     } finally {
       setTesting(false);
     }
   };
-
-  const currentConfig = AI_PROVIDERS[provider];
 
   return (
     <section className="panel flex flex-col justify-between p-5 md:col-span-2 xl:col-span-1">
       <div className="space-y-4">
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2.5">
-            <div className="flex size-9 items-center justify-center rounded-lg bg-indigo-500/10 text-indigo-500">
+            <div className="flex size-9 items-center justify-center rounded-lg bg-blue-500/10 text-blue-500">
               <Sparkles className="size-5" />
             </div>
             <div>
-              <h3 className="text-base font-bold">Inteligencia Artificial</h3>
-              <p className="text-xs text-muted-foreground">{currentConfig.name}</p>
+              <h3 className="text-base font-bold">Google AI (Gemini)</h3>
+              <p className="text-xs text-muted-foreground">Tu cuenta de Google AI Studio para capturas</p>
             </div>
           </div>
           {apiKey.trim() ? (
@@ -1253,53 +1239,22 @@ function UniversalAiSettingsCard() {
           )}
         </div>
 
-        {/* SELECTOR DE PROVEEDOR */}
-        <div className="space-y-1.5">
-          <Label className="text-xs font-semibold">Proveedor de IA</Label>
-          <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4">
-            {(Object.keys(AI_PROVIDERS) as AiProviderId[]).map((pId) => {
-              const p = AI_PROVIDERS[pId];
-              const isSelected = provider === pId;
-              return (
-                <button
-                  key={pId}
-                  type="button"
-                  onClick={() => handleProviderChange(pId)}
-                  className={cn(
-                    "flex flex-col items-center justify-center rounded-lg border p-2 text-center transition-all",
-                    isSelected
-                      ? "border-brand bg-brand/10 text-brand font-bold shadow-xs"
-                      : "border-border bg-card text-muted-foreground hover:bg-accent hover:text-foreground"
-                  )}
-                >
-                  <span className="text-xs leading-tight">{p.name.split(" ")[0]}</span>
-                  <span className="text-[9px] opacity-75 font-normal">{p.badge}</span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* DETALLE DEL PROVEEDOR SELECCIONADO */}
-        <div className="rounded-lg border border-border/70 bg-muted/40 p-2.5 text-xs space-y-1">
-          <div className="font-semibold text-foreground">{currentConfig.tagline}</div>
-          <p className="text-muted-foreground text-[11px] leading-relaxed">
-            {currentConfig.description}
-          </p>
-        </div>
-
         <div className="space-y-3 text-xs">
+          <p className="text-muted-foreground leading-relaxed">
+            Usa tu propia clave gratuita de Google AI Studio para procesar capturas de pantalla, fotos del historial y visión de operaciones con Gemini 2.0 Flash.
+          </p>
+
           <div className="space-y-1.5">
-            <Label htmlFor="ai-api-key" className="text-xs font-semibold">
-              Clave API de {currentConfig.name}
+            <Label htmlFor="google-api-key" className="text-xs font-semibold">
+              Clave API de Google AI Studio
             </Label>
             <div className="relative">
               <Input
-                id="ai-api-key"
+                id="google-api-key"
                 type={showKey ? "text" : "password"}
                 value={apiKey}
                 onChange={(e) => setApiKey(e.target.value)}
-                placeholder={provider === "google" ? "AIzaSy..." : provider === "groq" ? "gsk_..." : "sk-..."}
+                placeholder="AIzaSy..."
                 className="pr-10 text-xs font-mono"
               />
               <button
@@ -1314,30 +1269,30 @@ function UniversalAiSettingsCard() {
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="ai-model" className="text-xs font-semibold">
-              Modelo Seleccionado
+            <Label htmlFor="google-ai-model" className="text-xs font-semibold">
+              Modelo Gemini
             </Label>
             <select
-              id="ai-model"
+              id="google-ai-model"
               value={model}
               onChange={(e) => setModel(e.target.value)}
               className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-xs text-foreground focus:border-ring"
             >
-              {currentConfig.models.map((m) => (
+              {AVAILABLE_GEMINI_MODELS.map((m) => (
                 <option key={m.id} value={m.id}>
-                  {m.name} {m.hasVision ? "📷 (Visión)" : "🧠 (Texto)"} {m.isFree ? "— Gratis" : ""}
+                  {m.name}
                 </option>
               ))}
             </select>
           </div>
 
           <a
-            href={currentConfig.signupUrl}
+            href="https://aistudio.google.com/app/apikey"
             target="_blank"
             rel="noreferrer"
             className="inline-flex items-center gap-1 text-[11px] font-medium text-brand hover:underline"
           >
-            {currentConfig.signupLabel} <ExternalLink className="size-3" />
+            Obtener clave 100% gratuita en Google AI Studio <ExternalLink className="size-3" />
           </a>
         </div>
       </div>
@@ -1630,8 +1585,8 @@ function ProfileSettingsGrid({
           </div>
         </section>
 
-        {/* Card 4: Proveedor de Inteligencia Artificial (Google AI, Groq, OpenRouter, DeepSeek) */}
-        <UniversalAiSettingsCard />
+        {/* Card 4: Google AI Studio (Gemini) */}
+        <GoogleAiSettingsCard />
 
         {/* Card 5: Apariencia del Sistema */}
         <section className="panel flex flex-col justify-between p-5 md:col-span-2 xl:col-span-1">

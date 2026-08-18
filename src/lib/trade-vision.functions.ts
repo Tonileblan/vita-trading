@@ -5,7 +5,6 @@ import { executeGeminiGenerateContent } from "@/lib/google-ai";
 const inputSchema = z.object({
   images: z.array(z.string().startsWith("data:image/").max(8_000_000)).min(1).max(6),
   symbols: z.array(z.string().max(20)).max(30).optional(),
-  provider: z.enum(["google", "groq", "openrouter", "deepseek"]).optional(),
   apiKey: z.string().optional(),
   model: z.string().optional(),
 });
@@ -70,7 +69,6 @@ function parseDataUrl(dataUrl: string): { mime_type: string; data: string } {
 export const extractTradesFromImages = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => inputSchema.parse(data))
   .handler(async ({ data }) => {
-    const provider = data.provider || "google";
     const userApiKey = data.apiKey?.trim();
     const serverGeminiKey =
       process.env["GEMINI_API_KEY"] ||
@@ -84,131 +82,8 @@ export const extractTradesFromImages = createServerFn({ method: "POST" })
 
     let content = "{}";
 
-    // 1. PROVEEDOR: DEEPSEEK (Aviso claro sobre ausencia de visión en la API oficial)
-    if (provider === "deepseek") {
-      throw new Error(
-        "La API oficial de DeepSeek (V3/R1) está optimizada para razonamiento y texto, pero no admite lectura directa de imágenes. Para capturas, selecciona en tu Perfil Google AI (Gemini Flash), Groq Cloud (Llama Vision) o OpenRouter, que son 100% gratuitos.",
-      );
-    }
-    // 2. PROVEEDOR: GROQ CLOUD (Aviso sobre modelos de visión retirados en Groq)
-    else if (provider === "groq" && userApiKey) {
-      const groqModel = data.model || "llama-3.3-70b-versatile";
-      
-      // Intentar llamada si el usuario especificó un modelo
-      const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${userApiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: groqModel,
-          messages: [
-            { role: "system", content: `${PROMPT}\n${hint}` },
-            {
-              role: "user",
-              content: [
-                { type: "text", text: "Extrae todas las operaciones de estas capturas en formato JSON." },
-                ...data.images.map((url) => ({ type: "image_url", image_url: { url } })),
-              ],
-            },
-          ],
-          response_format: { type: "json_object" },
-          temperature: 0.1,
-        }),
-      });
-
-      if (!res.ok) {
-        const err = await res.json().catch(() => null);
-        const errMsg = (err as any)?.error?.message || "";
-        if (errMsg.includes("decommissioned") || errMsg.includes("vision") || errMsg.includes("not supported")) {
-          throw new Error(
-            "Groq ha retirado sus modelos de visión en preview. Para extraer operaciones de fotos y capturas, selecciona en tu perfil Google AI (Gemini 2.0 Flash) u OpenRouter (Llama 3.2 Vision), que son 100% gratuitos y tienen soporte nativo de imágenes.",
-          );
-        }
-        throw new Error(errMsg || `Error en Groq Cloud (${res.status})`);
-      }
-
-      const json = (await res.json()) as { choices?: { message?: { content?: string } }[] };
-      content = json.choices?.[0]?.message?.content ?? "{}";
-    }
-    // 3. PROVEEDOR: OPENROUTER (Modelos con visión como Gemini 2.0 Flash o Qwen VL)
-    else if (provider === "openrouter" && userApiKey) {
-      let openRouterModel =
-        data.model && data.model !== "meta-llama/llama-3.2-11b-vision-instruct:free"
-          ? data.model
-          : "google/gemini-2.0-flash-exp:free";
-
-      let res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${userApiKey}`,
-          "Content-Type": "application/json",
-          "HTTP-Referer": "https://vita-trading.app",
-          "X-Title": "Vita-Trading",
-        },
-        body: JSON.stringify({
-          model: openRouterModel,
-          messages: [
-            { role: "system", content: `${PROMPT}\n${hint}` },
-            {
-              role: "user",
-              content: [
-                { type: "text", text: "Extrae todas las operaciones de estas capturas en formato JSON." },
-                ...data.images.map((url) => ({ type: "image_url", image_url: { url } })),
-              ],
-            },
-          ],
-          response_format: { type: "json_object" },
-          temperature: 0.1,
-        }),
-      });
-
-      // Si el modelo seleccionado no tiene endpoints activos, probar Qwen 2.5 VL
-      if (!res.ok) {
-        try {
-          const fallbackRes = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-            method: "POST",
-            headers: {
-              "Authorization": `Bearer ${userApiKey}`,
-              "Content-Type": "application/json",
-              "HTTP-Referer": "https://vita-trading.app",
-              "X-Title": "Vita-Trading",
-            },
-            body: JSON.stringify({
-              model: "qwen/qwen-2.5-vl-72b-instruct:free",
-              messages: [
-                { role: "system", content: `${PROMPT}\n${hint}` },
-                {
-                  role: "user",
-                  content: [
-                    { type: "text", text: "Extrae todas las operaciones de estas capturas en formato JSON." },
-                    ...data.images.map((url) => ({ type: "image_url", image_url: { url } })),
-                  ],
-                },
-              ],
-              response_format: { type: "json_object" },
-              temperature: 0.1,
-            }),
-          });
-          if (fallbackRes.ok) {
-            res = fallbackRes;
-          }
-        } catch {
-          // Continuar con el error original
-        }
-      }
-
-      if (!res.ok) {
-        const err = await res.json().catch(() => null);
-        throw new Error((err as any)?.error?.message || `Error en OpenRouter (${res.status})`);
-      }
-
-      const json = (await res.json()) as { choices?: { message?: { content?: string } }[] };
-      content = json.choices?.[0]?.message?.content ?? "{}";
-    }
-    // 4. PROVEEDOR: GOOGLE AI (Gemini Flash / Pro)
-    else if (userApiKey || serverGeminiKey) {
+    // 1. GOOGLE AI (GEMINI) DIRECTO
+    if (userApiKey || serverGeminiKey) {
       const key = userApiKey || serverGeminiKey!;
       const geminiModel = data.model || "gemini-2.0-flash";
 
@@ -241,7 +116,7 @@ export const extractTradesFromImages = createServerFn({ method: "POST" })
 
       content = text;
     }
-    // 5. FALLBACK: GATEWAY DE RESPALDO
+    // 2. FALLBACK: GATEWAY DE RESPALDO
     else if (lovableKey) {
       const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
         method: "POST",
@@ -271,7 +146,7 @@ export const extractTradesFromImages = createServerFn({ method: "POST" })
       content = json.choices?.[0]?.message?.content ?? "{}";
     } else {
       throw new Error(
-        "Falta configurar tu clave de IA. Puedes configurarla gratuitamente (Google AI, Groq o OpenRouter) en tu Perfil.",
+        "Falta configurar tu clave de Google AI Studio. Puedes configurarla gratuitamente en Mi Perfil.",
       );
     }
 

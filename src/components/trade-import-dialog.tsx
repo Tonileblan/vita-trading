@@ -24,11 +24,10 @@ import {
 import { useJournal } from "@/lib/journal-store";
 import { extractTradesFromImages, type ExtractedTrade } from "@/lib/trade-vision.functions";
 import {
-  AI_PROVIDERS,
-  getActiveAiProvider,
-  getAiApiKey,
-  getAiModel,
-} from "@/lib/ai-providers";
+  getLocalGoogleAiKey,
+  getLocalGoogleAiModel,
+  DEFAULT_GEMINI_MODEL,
+} from "@/lib/google-ai";
 import { formatCurrency } from "@/lib/metrics";
 import { parseDetectedDate } from "@/lib/parse-date";
 import { cn } from "@/lib/utils";
@@ -116,10 +115,8 @@ export function TradeImportDialog() {
   const [dragging, setDragging] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const activeProvider = typeof window !== "undefined" ? getActiveAiProvider() : "google";
-  const activeApiKey = typeof window !== "undefined" ? getAiApiKey(activeProvider) : "";
-  const activeModel = typeof window !== "undefined" ? getAiModel(activeProvider) : "";
-  const providerInfo = AI_PROVIDERS[activeProvider] || AI_PROVIDERS.google;
+  const googleAiKey = typeof window !== "undefined" ? getLocalGoogleAiKey() : "";
+  const googleAiModel = typeof window !== "undefined" ? getLocalGoogleAiModel() : DEFAULT_GEMINI_MODEL;
 
   const addFiles = async (files: FileList | File[] | null) => {
     if (!files) return;
@@ -146,9 +143,8 @@ export function TradeImportDialog() {
         data: {
           images,
           symbols: strategies.map((s) => s.mainSymbol),
-          provider: activeProvider,
-          apiKey: activeApiKey || undefined,
-          model: activeModel || undefined,
+          apiKey: googleAiKey || undefined,
+          model: googleAiModel,
         },
       });
       // Cuenta cuántas operaciones idénticas ya existen para no descartar repeticiones legítimas.
@@ -174,7 +170,7 @@ export function TradeImportDialog() {
           `${parsedRows.length} operaciones detectadas · ${parsedRows.filter((r) => r.duplicate).length} ya existentes`,
         );
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : `No se pudo analizar la captura con ${providerInfo.name}`);
+      toast.error(e instanceof Error ? e.message : "No se pudo analizar la captura con Google AI Gemini");
     } finally {
       setLoading(false);
     }
@@ -235,18 +231,18 @@ export function TradeImportDialog() {
         <DialogHeader>
           <div className="flex flex-wrap items-center justify-between gap-2">
             <DialogTitle>Importar operaciones desde imagen</DialogTitle>
-            {activeApiKey ? (
+            {googleAiKey ? (
               <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-600">
-                <Sparkles className="size-3" /> {providerInfo.name} ({activeModel})
+                <Sparkles className="size-3" /> Tu Google AI ({googleAiModel})
               </span>
             ) : (
               <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
-                <Sparkles className="size-3 text-brand" /> {providerInfo.name}
+                <Sparkles className="size-3 text-brand" /> Google AI Gemini
               </span>
             )}
           </div>
           <DialogDescription>
-            Sube capturas o fotos del historial. El modelo {providerInfo.name} analiza la imagen y extrae todas las
+            Sube capturas o fotos del historial. El modelo Google Gemini analiza la imagen y extrae todas las
             operaciones automáticamente.
           </DialogDescription>
         </DialogHeader>
