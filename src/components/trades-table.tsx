@@ -141,29 +141,8 @@ export function TradesTable({
                   </td>
 
                   {/* 5. Estrategia */}
-                  <td className="whitespace-nowrap px-2 py-2 md:px-4 md:py-3">
-                    {strat ? (
-                      <span
-                        className="inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-xs font-semibold"
-                        style={{
-                          borderColor: strat.color ? `${strat.color}50` : "var(--border)",
-                          backgroundColor: strat.color ? `${strat.color}15` : "var(--muted)",
-                          color: strat.color || "inherit",
-                        }}
-                      >
-                        {strat.color && (
-                          <span
-                            className="size-2 shrink-0 rounded-full"
-                            style={{ backgroundColor: strat.color }}
-                          />
-                        )}
-                        <span className="max-w-[130px] truncate">{strat.name}</span>
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center rounded-md border border-border/50 bg-muted/30 px-2 py-0.5 text-xs font-medium text-muted-foreground">
-                        Sin estrategia
-                      </span>
-                    )}
+                  <td className="whitespace-nowrap px-2 py-2 font-medium text-foreground md:px-4 md:py-3">
+                    {strat ? strat.name : "—"}
                   </td>
 
                   {/* 6. Dirección */}
