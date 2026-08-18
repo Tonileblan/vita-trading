@@ -75,7 +75,7 @@ const SCOPES = [
 type Scope = (typeof SCOPES)[number]["key"];
 
 function Overview() {
-  const { isSupervisor } = useAuth();
+  const { isSupervisor, isAdmin, user } = useAuth();
   const journalStore = useJournal();
 
   // Filtro de usuario para supervisores: "mine" (mi diario) o userId específico
@@ -85,13 +85,21 @@ function Overview() {
   const [selectedCalendarDate, setSelectedCalendarDate] = useState<string | null>(null);
 
   const { data: svProfiles = [] } = useQuery({
-    queryKey: ["sv-profiles"],
+    queryKey: ["sv-profiles", user?.id, isAdmin],
     enabled: isSupervisor,
     queryFn: async () => {
-      const { data, error } = await supabase
+      let q = supabase
         .from("profiles")
-        .select("id, display_name, created_at")
+        .select("id, display_name, created_at, assigned_supervisor_id, is_private")
+        .eq("is_private", false)
         .order("created_at", { ascending: true });
+
+      if (!isAdmin && user?.id) {
+        // Los supervisores solo ven a los usuarios que los han elegido expresamente
+        q = q.eq("assigned_supervisor_id", user.id);
+      }
+
+      const { data, error } = await q;
       if (error) throw error;
       return (data ?? []) as { id: string; display_name: string | null; created_at: string }[];
     },

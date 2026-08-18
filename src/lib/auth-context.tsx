@@ -8,6 +8,8 @@ export interface Profile {
   display_name: string | null;
   avatar_url: string | null;
   is_private: boolean;
+  supervisor_status?: "none" | "pending" | "approved" | "rejected" | null;
+  assigned_supervisor_id?: string | null;
 }
 
 interface AuthState {
@@ -56,7 +58,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const [profRes, roleRes] = await Promise.all([
         supabase
           .from("profiles")
-          .select("id, display_name, avatar_url, is_private")
+          .select("id, display_name, avatar_url, is_private, supervisor_status, assigned_supervisor_id")
           .eq("id", userId!)
           .maybeSingle(),
         supabase.from("user_roles").select("role").eq("user_id", userId!),

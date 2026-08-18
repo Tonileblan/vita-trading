@@ -37,13 +37,8 @@ const nav = [
   { to: "/estrategias", label: "Estrategias", icon: Layers },
   { to: "/conta", label: "Conta", icon: Receipt },
   { to: "/mente", label: "Mente", icon: Brain },
-
   { to: "/usuarios", label: "Usuarios", icon: Users },
   { to: "/chat", label: "Chat", icon: MessageSquare },
-] as const;
-
-const supervisorNav = [
-  { to: "/supervision", label: "Supervisión", icon: ShieldCheck },
 ] as const;
 
 function JournalSwitcher() {
@@ -125,8 +120,7 @@ export function AppShell({
   bareHeader?: boolean;
 }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const { isSupervisor } = useAuth();
-  const items = isSupervisor ? [...nav, ...supervisorNav] : nav;
+  const items = nav;
 
   return (
     <div className="min-h-screen bg-background">

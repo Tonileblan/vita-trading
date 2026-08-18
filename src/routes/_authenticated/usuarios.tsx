@@ -2,15 +2,19 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Check,
+  CheckCircle2,
+  Clock,
   Coffee,
   Copy,
   Eye,
   EyeOff,
+  GraduationCap,
   KeyRound,
   Lock,
   Mail,
   Moon,
   Search,
+  Send,
   Shield,
   ShieldAlert,
   ShieldCheck,
@@ -18,12 +22,15 @@ import {
   Sliders,
   Sparkles,
   Sun,
+  Save,
   Trash2,
   Unlock,
   User,
   UserCheck,
+  UserPlus,
   Users,
   Webhook,
+  XCircle,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -47,6 +54,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -64,12 +78,12 @@ export const Route = createFileRoute("/_authenticated/usuarios")({
       { title: "Usuarios & Configuración — Vita-Trading" },
       {
         name: "description",
-        content: "Gestiona tu perfil, preferencias de privacidad, integraciones y administración de usuarios.",
+        content: "Gestiona tu perfil, preferencias de supervisión, solicitudes y administración de usuarios.",
       },
       { property: "og:title", content: "Usuarios & Configuración — Vita-Trading" },
       {
         property: "og:description",
-        content: "Perfiles, nombres visibles, credenciales y permisos de administrador.",
+        content: "Perfiles, asignación de supervisores, credenciales y permisos.",
       },
     ],
   }),
@@ -83,6 +97,15 @@ interface UserRow {
   avatar_url: string | null;
   created_at: string;
   is_private?: boolean;
+  supervisor_status?: "none" | "pending" | "approved" | "rejected";
+  assigned_supervisor_id?: string | null;
+}
+
+interface AvailableSupervisor {
+  id: string;
+  display_name: string;
+  avatar_url: string | null;
+  email?: string;
 }
 
 function UsersPage() {
@@ -92,11 +115,13 @@ function UsersPage() {
 
   const [name, setName] = useState("");
   const [avatar, setAvatar] = useState("");
+  const [hasSupervisor, setHasSupervisor] = useState(false);
+  const [selectedSupervisorId, setSelectedSupervisorId] = useState<string>("none");
   const isPrivate = profile?.is_private ?? false;
 
   // Filtros y búsqueda para la tabla de administración
   const [searchQuery, setSearchQuery] = useState("");
-  const [roleFilter, setRoleFilter] = useState<"all" | "admin" | "supervisor" | "user">("all");
+  const [roleFilter, setRoleFilter] = useState<"all" | "admin" | "supervisor" | "pending" | "user">("all");
 
   // Estados para diálogos de administración
   const [editingUser, setEditingUser] = useState<UserRow | null>(null);
@@ -107,8 +132,65 @@ function UsersPage() {
   useEffect(() => {
     setName(profile?.display_name ?? "");
     setAvatar(profile?.avatar_url ?? "");
+    const assigned = profile?.assigned_supervisor_id;
+    if (assigned) {
+      setHasSupervisor(true);
+      setSelectedSupervisorId(assigned);
+    } else {
+      setHasSupervisor(false);
+      setSelectedSupervisorId("none");
+    }
   }, [profile]);
 
+  // Query: Supervisores disponibles
+  const { data: availableSupervisors = [] } = useQuery({
+    queryKey: ["available-supervisors"],
+    queryFn: async () => {
+      const { data: rpcData, error: rpcError } = await (supabase.rpc as any)("get_available_supervisors");
+      if (!rpcError && Array.isArray(rpcData)) {
+        return rpcData as AvailableSupervisor[];
+      }
+      // Fallback
+      const { data: roles } = await supabase
+        .from("user_roles")
+        .select("user_id")
+        .in("role", ["supervisor", "admin"]);
+      const supIds = (roles ?? []).map((r) => r.user_id);
+      if (supIds.length === 0) return [];
+      const { data: profs, error } = await supabase
+        .from("profiles")
+        .select("id, display_name, avatar_url")
+        .in("id", supIds);
+      if (error) throw error;
+      return (profs ?? []).map((p) => ({
+        id: p.id,
+        display_name: p.display_name ?? "Supervisor",
+        avatar_url: p.avatar_url,
+      })) as AvailableSupervisor[];
+    },
+  });
+
+  // Mutación: Guardar perfil personal
+  const saveProfile = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase
+        .from("profiles")
+        .update({
+          display_name: name.trim() || null,
+          avatar_url: avatar.trim() || null,
+        })
+        .eq("id", user!.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Perfil actualizado con éxito");
+      qc.invalidateQueries({ queryKey: ["user-meta"] });
+      qc.invalidateQueries({ queryKey: ["all-profiles"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  // Mutación: Cambiar privacidad
   const togglePrivate = useMutation({
     mutationFn: async (next: boolean) => {
       const { error } = await supabase
@@ -119,41 +201,102 @@ function UsersPage() {
       return next;
     },
     onSuccess: (next) => {
-      toast.success(next ? "Perfil privado activado" : "Perfil visible para supervisores");
-      qc.invalidateQueries({ queryKey: ["profile"] });
+      toast.success(next ? "Perfil privado activado" : "Perfil visible para supervisión");
+      qc.invalidateQueries({ queryKey: ["user-meta"] });
     },
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const saveProfile = useMutation({
-    mutationFn: async () => {
+  // Mutación: Guardar supervisor asignado
+  const saveAssignedSupervisor = useMutation({
+    mutationFn: async ({ enabled, supId }: { enabled: boolean; supId: string }) => {
+      const targetId = enabled && supId && supId !== "none" ? supId : null;
       const { error } = await supabase
         .from("profiles")
-        .update({ display_name: name.trim() || null, avatar_url: avatar.trim() || null })
+        .update({
+          assigned_supervisor_id: targetId,
+          is_private: targetId ? false : isPrivate,
+        })
         .eq("id", user!.id);
       if (error) throw error;
+      return targetId;
     },
-    onSuccess: () => {
-      toast.success("Perfil actualizado con éxito");
-      qc.invalidateQueries({ queryKey: ["profile"] });
+    onSuccess: (targetId) => {
+      if (targetId) {
+        toast.success("Supervisor asignado correctamente");
+      } else {
+        toast.success("Has desactivado la supervisión de tu cuenta");
+      }
+      qc.invalidateQueries({ queryKey: ["user-meta"] });
       qc.invalidateQueries({ queryKey: ["all-profiles"] });
     },
     onError: (e: Error) => toast.error(e.message),
   });
 
+  // Mutación: Solicitar ser supervisor
+  const applyForSupervisor = useMutation({
+    mutationFn: async () => {
+      const { error: rpcErr } = await (supabase.rpc as any)("apply_for_supervisor");
+      if (rpcErr) {
+        // Fallback update
+        const { error } = await supabase
+          .from("profiles")
+          .update({ supervisor_status: "pending" })
+          .eq("id", user!.id);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      toast.success("Solicitud enviada al Administrador con éxito");
+      qc.invalidateQueries({ queryKey: ["user-meta"] });
+      qc.invalidateQueries({ queryKey: ["all-profiles"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  // Mutación: Administrador revisa solicitud de supervisor
+  const adminReviewSupervisor = useMutation({
+    mutationFn: async ({ userId, approve }: { userId: string; approve: boolean }) => {
+      const { error: rpcErr } = await (supabase.rpc as any)("admin_review_supervisor", {
+        target_user_id: userId,
+        approve,
+      });
+      if (rpcErr) {
+        // Fallback
+        if (approve) {
+          await supabase.from("user_roles").upsert({ user_id: userId, role: "supervisor" });
+          await supabase.from("profiles").update({ supervisor_status: "approved" }).eq("id", userId);
+        } else {
+          await supabase.from("user_roles").delete().eq("user_id", userId).eq("role", "supervisor");
+          await supabase.from("profiles").update({ supervisor_status: "rejected" }).eq("id", userId);
+        }
+      }
+    },
+    onSuccess: (_, variables) => {
+      toast.success(
+        variables.approve
+          ? "Supervisor aprobado y activado"
+          : "Solicitud de supervisor rechazada",
+      );
+      qc.invalidateQueries({ queryKey: ["all-profiles"] });
+      qc.invalidateQueries({ queryKey: ["all-roles"] });
+      qc.invalidateQueries({ queryKey: ["available-supervisors"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  // Queries de Administración
   const { data: users = [] } = useQuery({
     queryKey: ["all-profiles"],
     enabled: isAdmin,
     queryFn: async () => {
-      // Intentar primero la función RPC de administración que devuelve emails reales
       const { data: rpcData, error: rpcError } = await (supabase.rpc as any)("admin_get_users");
       if (!rpcError && Array.isArray(rpcData)) {
         return rpcData as UserRow[];
       }
-      // Fallback a profiles directo
       const { data, error } = await supabase
         .from("profiles")
-        .select("id, display_name, avatar_url, created_at, is_private")
+        .select("id, display_name, avatar_url, created_at, is_private, supervisor_status, assigned_supervisor_id")
         .order("created_at", { ascending: true });
       if (error) throw error;
       return (data ?? []) as UserRow[];
@@ -183,6 +326,9 @@ function UsersPage() {
       if (grant) {
         const { error } = await supabase.from("user_roles").insert({ user_id: userId, role });
         if (error) throw error;
+        if (role === "supervisor") {
+          await supabase.from("profiles").update({ supervisor_status: "approved" }).eq("id", userId);
+        }
       } else {
         const { error } = await supabase
           .from("user_roles")
@@ -190,12 +336,16 @@ function UsersPage() {
           .eq("user_id", userId)
           .eq("role", role);
         if (error) throw error;
+        if (role === "supervisor") {
+          await supabase.from("profiles").update({ supervisor_status: "none" }).eq("id", userId);
+        }
       }
     },
     onSuccess: () => {
       toast.success("Roles actualizados correctamente");
       qc.invalidateQueries({ queryKey: ["all-roles"] });
-      qc.invalidateQueries({ queryKey: ["roles"] });
+      qc.invalidateQueries({ queryKey: ["all-profiles"] });
+      qc.invalidateQueries({ queryKey: ["available-supervisors"] });
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -239,6 +389,7 @@ function UsersPage() {
       setDeletingUser(null);
       qc.invalidateQueries({ queryKey: ["all-profiles"] });
       qc.invalidateQueries({ queryKey: ["all-roles"] });
+      qc.invalidateQueries({ queryKey: ["available-supervisors"] });
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -254,136 +405,138 @@ function UsersPage() {
     return supIds.size;
   }, [roles]);
 
+  const pendingRequests = useMemo(() => {
+    return users.filter((u) => u.supervisor_status === "pending");
+  }, [users]);
+
   const privateCount = useMemo(() => {
     return users.filter((u) => u.is_private).length;
   }, [users]);
 
-  // Lista de usuarios filtrada
+  // Lista filtrada de usuarios para la tabla admin
   const filteredUsers = useMemo(() => {
     return users.filter((u) => {
+      const q = searchQuery.toLowerCase().trim();
+      const matchesSearch =
+        !q ||
+        (u.display_name?.toLowerCase().includes(q) ?? false) ||
+        (u.email?.toLowerCase().includes(q) ?? false) ||
+        u.id.toLowerCase().includes(q);
+
+      if (!matchesSearch) return false;
+
       const userRoles = roles.filter((r) => r.user_id === u.id).map((r) => r.role);
       const isUAdmin = userRoles.includes("admin");
       const isUSupervisor = userRoles.includes("supervisor");
-      const isStandard = !isUAdmin && !isUSupervisor;
+      const isUPending = u.supervisor_status === "pending";
 
       if (roleFilter === "admin" && !isUAdmin) return false;
       if (roleFilter === "supervisor" && !isUSupervisor) return false;
-      if (roleFilter === "user" && !isStandard) return false;
+      if (roleFilter === "pending" && !isUPending) return false;
+      if (roleFilter === "user" && (isUAdmin || isUSupervisor)) return false;
 
-      if (!searchQuery.trim()) return true;
-      const q = searchQuery.toLowerCase();
-      const nameMatch = (u.display_name ?? "").toLowerCase().includes(q);
-      const emailMatch = (u.email ?? "").toLowerCase().includes(q);
-      const idMatch = u.id.toLowerCase().includes(q);
-      return nameMatch || emailMatch || idMatch;
+      return true;
     });
-  }, [users, roles, roleFilter, searchQuery]);
+  }, [users, roles, searchQuery, roleFilter]);
 
-  const getInitials = (displayName?: string | null, email?: string | null) => {
-    if (displayName?.trim()) {
-      return displayName
-        .split(" ")
-        .map((p) => p[0])
-        .slice(0, 2)
-        .join("")
-        .toUpperCase();
-    }
-    if (email?.trim()) {
-      return email.slice(0, 2).toUpperCase();
-    }
-    return "VT";
-  };
+  const currentSupervisorStatus = profile?.supervisor_status ?? "none";
+  const assignedSupervisorObj = availableSupervisors.find(
+    (s) => s.id === profile?.assigned_supervisor_id,
+  );
 
   return (
     <AppShell
-      title="Usuarios y Configuración"
-      subtitle={
-        isAdmin
-          ? "Panel de administración · Gestión de usuarios, accesos y ajustes del perfil"
-          : "Gestión de tu perfil personal, privacidad y preferencias de la aplicación"
-      }
+      title="Usuarios & Configuración"
+      subtitle="Gestiona tu perfil personal, asignación de supervisión, tema y administración del sistema"
       showAccountPanel={false}
     >
       <div className="space-y-6">
-        {/* Banner de perfil del usuario actual */}
-        <section className="relative overflow-hidden rounded-2xl border border-border/80 bg-linear-to-r from-card via-card to-accent/20 p-5 shadow-xs md:p-6">
-          <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+        {/* HERO CARD DEL USUARIO */}
+        <section className="panel relative overflow-hidden p-6 md:p-8">
+          <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-4">
-              <Avatar className="size-16 border-2 border-brand/40 shadow-md">
-                <AvatarImage src={avatar || profile?.avatar_url || ""} alt={name || "Usuario"} />
-                <AvatarFallback className="bg-brand text-base font-bold text-primary-foreground">
-                  {getInitials(profile?.display_name, user?.email)}
+              <Avatar className="size-16 border-2 border-brand/40 shadow-md md:size-20">
+                <AvatarImage src={profile?.avatar_url ?? ""} alt={profile?.display_name ?? ""} />
+                <AvatarFallback className="bg-brand/10 text-xl font-bold text-brand md:text-2xl">
+                  {profile?.display_name
+                    ? profile.display_name.slice(0, 2).toUpperCase()
+                    : user?.email?.slice(0, 2).toUpperCase() ?? "TR"}
                 </AvatarFallback>
               </Avatar>
 
               <div className="space-y-1">
                 <div className="flex flex-wrap items-center gap-2">
-                  <h2 className="text-xl font-bold tracking-tight text-foreground">
-                    {profile?.display_name || "Mi Cuenta"}
+                  <h2 className="text-xl font-bold tracking-tight text-foreground md:text-2xl">
+                    {profile?.display_name || "Trader Sin Nombre"}
                   </h2>
-                  <div className="flex flex-wrap items-center gap-1.5">
+                  <div className="flex flex-wrap gap-1.5">
                     {isAdmin && (
-                      <span className="inline-flex items-center gap-1 rounded-full border border-primary/30 bg-primary/10 px-2.5 py-0.5 text-xs font-semibold text-primary">
-                        <Shield className="size-3" />
-                        Admin
+                      <span className="inline-flex items-center gap-1 rounded-full bg-brand/15 px-2.5 py-0.5 text-xs font-bold text-brand">
+                        <Shield className="size-3" /> Admin
                       </span>
                     )}
-                    {isSupervisor && (
-                      <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 py-0.5 text-xs font-semibold text-amber-600 dark:text-amber-400">
-                        <Eye className="size-3" />
-                        Supervisor
+                    {isSupervisor && !isAdmin && (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2.5 py-0.5 text-xs font-bold text-amber-500">
+                        <ShieldCheck className="size-3" /> Supervisor
                       </span>
                     )}
                     {!isAdmin && !isSupervisor && (
-                      <span className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/60 px-2.5 py-0.5 text-xs font-medium text-muted-foreground">
-                        <User className="size-3" />
-                        Trader
+                      <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-0.5 text-xs font-semibold text-muted-foreground">
+                        <User className="size-3" /> Trader
                       </span>
                     )}
                   </div>
                 </div>
 
                 <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-                  <span className="flex items-center gap-1 font-mono">
-                    <Mail className="size-3.5" /> {user?.email}
-                  </span>
-                  <span>•</span>
                   <span className="flex items-center gap-1">
-                    {isPrivate ? (
-                      <span className="inline-flex items-center gap-1 text-amber-500">
-                        <Lock className="size-3" /> Perfil privado
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1 text-emerald-500">
-                        <Eye className="size-3" /> Visible a supervisores
-                      </span>
-                    )}
+                    <Mail className="size-3.5" />
+                    {user?.email}
                   </span>
+                  <span>·</span>
+                  <span className="font-mono text-[11px] opacity-70">ID: {user?.id.slice(0, 8)}</span>
+                </div>
+
+                <div className="pt-1">
+                  {assignedSupervisorObj ? (
+                    <span className="inline-flex items-center gap-1.5 rounded-md bg-brand/10 px-2 py-0.5 text-xs font-semibold text-brand">
+                      <UserCheck className="size-3.5" /> Supervisado por: {assignedSupervisorObj.display_name}
+                    </span>
+                  ) : (
+                    <span className="text-xs text-muted-foreground">
+                      Sin supervisor asignado
+                    </span>
+                  )}
                 </div>
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <Button
-                variant={theme === "dark" ? "outline" : "default"}
+                variant="outline"
                 size="sm"
                 className="gap-1.5"
                 onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
               >
                 {theme === "dark" ? <Sun className="size-4 text-amber-400" /> : <Moon className="size-4" />}
-                <span>{theme === "dark" ? "Modo claro" : "Modo oscuro"}</span>
+                <span className="capitalize">{theme}</span>
               </Button>
             </div>
           </div>
         </section>
 
-        {/* Pestañas para Admin o Grid directo para usuario regular */}
+        {/* ESTRUCTURA POR PESTAÑAS (ADMIN vs USUARIO) */}
         {isAdmin ? (
-          <Tabs defaultValue="admin" className="w-full space-y-6">
-            <TabsList className="grid h-11 w-full max-w-md grid-cols-2 rounded-xl bg-muted/60 p-1">
+          <Tabs defaultValue="admin" className="space-y-6">
+            <TabsList className="grid w-full grid-cols-2 p-1 bg-muted/60 max-w-md">
               <TabsTrigger value="admin" className="gap-2 font-semibold">
                 <Users className="size-4" />
-                <span>Gestión de Usuarios ({users.length})</span>
+                <span>Gestión de Usuarios</span>
+                {pendingRequests.length > 0 && (
+                  <span className="rounded-full bg-amber-500 px-1.5 text-[10px] font-bold text-white">
+                    {pendingRequests.length}
+                  </span>
+                )}
               </TabsTrigger>
               <TabsTrigger value="profile" className="gap-2 font-semibold">
                 <Sliders className="size-4" />
@@ -391,515 +544,614 @@ function UsersPage() {
               </TabsTrigger>
             </TabsList>
 
-            {/* Pestaña: Gestión de Usuarios (Admin) */}
-            <TabsContent value="admin" className="space-y-5 focus-visible:outline-none">
-              {/* Tarjetas KPI de métricas de usuarios */}
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                <div className="panel flex flex-col justify-between p-4">
-                  <div className="flex items-center justify-between text-muted-foreground">
-                    <span className="text-xs font-semibold uppercase tracking-wider">Total</span>
+            {/* TAB ADMIN: GESTIÓN DE USUARIOS */}
+            <TabsContent value="admin" className="space-y-6">
+              {/* Solicitudes de supervisor pendientes */}
+              {pendingRequests.length > 0 && (
+                <section className="panel border-amber-500/40 bg-amber-500/5 p-5 space-y-4">
+                  <div className="flex items-center gap-2.5">
+                    <div className="flex size-9 items-center justify-center rounded-lg bg-amber-500/20 text-amber-500">
+                      <GraduationCap className="size-5" />
+                    </div>
+                    <div>
+                      <h3 className="text-base font-bold text-foreground">
+                        Solicitudes para ser Supervisor ({pendingRequests.length})
+                      </h3>
+                      <p className="text-xs text-muted-foreground">
+                        Los siguientes usuarios han solicitado ser supervisores en la plataforma.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                    {pendingRequests.map((req) => (
+                      <div
+                        key={req.id}
+                        className="flex flex-col justify-between rounded-xl border border-border bg-card p-4 space-y-3"
+                      >
+                        <div className="flex items-center gap-3">
+                          <Avatar className="size-10 border border-border">
+                            <AvatarImage src={req.avatar_url ?? ""} />
+                            <AvatarFallback className="bg-amber-500/10 text-amber-600 font-bold">
+                              {req.display_name ? req.display_name.slice(0, 2).toUpperCase() : "TR"}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-bold text-foreground">
+                              {req.display_name || "Sin nombre"}
+                            </p>
+                            <p className="truncate text-xs text-muted-foreground">{req.email}</p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 pt-2 border-t border-border/60">
+                          <Button
+                            size="sm"
+                            className="flex-1 gap-1 bg-emerald-600 hover:bg-emerald-700 text-white text-xs"
+                            disabled={adminReviewSupervisor.isPending}
+                            onClick={() =>
+                              adminReviewSupervisor.mutate({ userId: req.id, approve: true })
+                            }
+                          >
+                            <CheckCircle2 className="size-3.5" /> Aprobar
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="flex-1 gap-1 text-destructive hover:bg-destructive/10 text-xs"
+                            disabled={adminReviewSupervisor.isPending}
+                            onClick={() =>
+                              adminReviewSupervisor.mutate({ userId: req.id, approve: false })
+                            }
+                          >
+                            <XCircle className="size-3.5" /> Rechazar
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              )}
+
+              {/* KPIs de Administración */}
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                <div className="panel p-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold text-muted-foreground uppercase">
+                      Total Usuarios
+                    </span>
                     <Users className="size-4 text-brand" />
                   </div>
-                  <div className="num mt-2 text-2xl font-bold text-foreground">{users.length}</div>
-                  <span className="text-[11px] text-muted-foreground">Usuarios registrados</span>
+                  <div className="num mt-2 text-2xl font-bold">{users.length}</div>
+                  <span className="text-[11px] text-muted-foreground">Cuentas registradas</span>
                 </div>
 
-                <div className="panel flex flex-col justify-between p-4">
-                  <div className="flex items-center justify-between text-muted-foreground">
-                    <span className="text-xs font-semibold uppercase tracking-wider">Admins</span>
-                    <ShieldCheck className="size-4 text-primary" />
+                <div className="panel p-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold text-muted-foreground uppercase">
+                      Administradores
+                    </span>
+                    <Shield className="size-4 text-brand" />
                   </div>
-                  <div className="num mt-2 text-2xl font-bold text-primary">{adminCount}</div>
+                  <div className="num mt-2 text-2xl font-bold text-brand">{adminCount}</div>
                   <span className="text-[11px] text-muted-foreground">Control total</span>
                 </div>
 
-                <div className="panel flex flex-col justify-between p-4">
-                  <div className="flex items-center justify-between text-muted-foreground">
-                    <span className="text-xs font-semibold uppercase tracking-wider">Supervisores</span>
-                    <Eye className="size-4 text-amber-500" />
+                <div className="panel p-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold text-muted-foreground uppercase">
+                      Supervisores
+                    </span>
+                    <ShieldCheck className="size-4 text-amber-500" />
                   </div>
                   <div className="num mt-2 text-2xl font-bold text-amber-500">{supervisorCount}</div>
-                  <span className="text-[11px] text-muted-foreground">Vista de resumen</span>
+                  <span className="text-[11px] text-muted-foreground">Aprobados activos</span>
                 </div>
 
-                <div className="panel flex flex-col justify-between p-4">
-                  <div className="flex items-center justify-between text-muted-foreground">
-                    <span className="text-xs font-semibold uppercase tracking-wider">Privados</span>
-                    <Lock className="size-4 text-muted-foreground" />
+                <div className="panel p-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold text-muted-foreground uppercase">
+                      Solicitudes Pendientes
+                    </span>
+                    <Clock className="size-4 text-purple-500" />
                   </div>
-                  <div className="num mt-2 text-2xl font-bold text-foreground">{privateCount}</div>
-                  <span className="text-[11px] text-muted-foreground">Ocultos a supervisores</span>
+                  <div className="num mt-2 text-2xl font-bold text-purple-500">
+                    {pendingRequests.length}
+                  </div>
+                  <span className="text-[11px] text-muted-foreground">En espera de revisión</span>
                 </div>
               </div>
 
-              {/* Panel principal de tabla con buscador y filtros */}
-              <section className="panel space-y-4 p-5">
-                <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                  <div>
-                    <h3 className="text-lg font-bold">Listado de Usuarios</h3>
-                    <p className="text-xs text-muted-foreground">
-                      Administra permisos, modifica credenciales de acceso o elimina cuentas registradas.
-                    </p>
-                  </div>
-
-                  <div className="flex flex-wrap items-center gap-2">
-                    {/* Buscador */}
-                    <div className="relative min-w-[200px]">
-                      <Search className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                      <Input
-                        placeholder="Buscar por nombre o correo…"
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="h-8 pl-8 text-xs"
-                      />
-                    </div>
-
-                    {/* Filtro por Rol */}
-                    <div className="flex rounded-md border border-border bg-card p-0.5 text-xs">
-                      <button
-                        type="button"
-                        onClick={() => setRoleFilter("all")}
-                        className={cn(
-                          "rounded px-2.5 py-1 font-medium transition-colors",
-                          roleFilter === "all" ? "bg-brand text-primary-foreground" : "text-muted-foreground hover:text-foreground",
-                        )}
-                      >
-                        Todos
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setRoleFilter("admin")}
-                        className={cn(
-                          "rounded px-2.5 py-1 font-medium transition-colors",
-                          roleFilter === "admin" ? "bg-brand text-primary-foreground" : "text-muted-foreground hover:text-foreground",
-                        )}
-                      >
-                        Admins
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setRoleFilter("supervisor")}
-                        className={cn(
-                          "rounded px-2.5 py-1 font-medium transition-colors",
-                          roleFilter === "supervisor" ? "bg-brand text-primary-foreground" : "text-muted-foreground hover:text-foreground",
-                        )}
-                      >
-                        Supervisores
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setRoleFilter("user")}
-                        className={cn(
-                          "rounded px-2.5 py-1 font-medium transition-colors",
-                          roleFilter === "user" ? "bg-brand text-primary-foreground" : "text-muted-foreground hover:text-foreground",
-                        )}
-                      >
-                        Traders
-                      </button>
-                    </div>
-                  </div>
+              {/* Barra de Filtros & Búsqueda */}
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="relative w-full max-w-sm">
+                  <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    placeholder="Buscar por nombre, correo o ID..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-9 text-xs"
+                  />
                 </div>
 
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setRoleFilter("all")}
+                    className={cn(
+                      "rounded-full px-3 py-1 text-xs font-semibold transition-colors",
+                      roleFilter === "all"
+                        ? "bg-brand text-brand-foreground shadow-xs"
+                        : "border border-border text-muted-foreground hover:text-foreground",
+                    )}
+                  >
+                    Todos ({users.length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setRoleFilter("admin")}
+                    className={cn(
+                      "rounded-full px-3 py-1 text-xs font-semibold transition-colors",
+                      roleFilter === "admin"
+                        ? "bg-brand text-brand-foreground shadow-xs"
+                        : "border border-border text-muted-foreground hover:text-foreground",
+                    )}
+                  >
+                    Admins ({adminCount})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setRoleFilter("supervisor")}
+                    className={cn(
+                      "rounded-full px-3 py-1 text-xs font-semibold transition-colors",
+                      roleFilter === "supervisor"
+                        ? "bg-brand text-brand-foreground shadow-xs"
+                        : "border border-border text-muted-foreground hover:text-foreground",
+                    )}
+                  >
+                    Supervisores ({supervisorCount})
+                  </button>
+                  {pendingRequests.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setRoleFilter("pending")}
+                      className={cn(
+                        "rounded-full px-3 py-1 text-xs font-semibold transition-colors",
+                        roleFilter === "pending"
+                          ? "bg-amber-500 text-white shadow-xs"
+                          : "border border-amber-500/40 text-amber-600 hover:text-amber-500",
+                      )}
+                    >
+                      Solicitudes ({pendingRequests.length})
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setRoleFilter("user")}
+                    className={cn(
+                      "rounded-full px-3 py-1 text-xs font-semibold transition-colors",
+                      roleFilter === "user"
+                        ? "bg-brand text-brand-foreground shadow-xs"
+                        : "border border-border text-muted-foreground hover:text-foreground",
+                    )}
+                  >
+                    Traders ({users.length - adminCount - supervisorCount})
+                  </button>
+                </div>
+              </div>
+
+              {/* Tabla de Usuarios */}
+              <div className="panel overflow-hidden">
                 <div className="overflow-x-auto">
-                  <table className="w-full min-w-[700px] text-sm">
+                  <table className="w-full text-left text-xs md:text-sm">
                     <thead>
-                      <tr className="border-b border-border text-left text-xs uppercase tracking-wider text-muted-foreground">
-                        <th className="py-3 px-3">Usuario</th>
-                        <th className="py-3 px-3">Correo electrónico</th>
-                        <th className="py-3 px-3">Privacidad</th>
-                        <th className="py-3 px-3">Roles</th>
-                        <th className="py-3 px-3">Fecha de alta</th>
-                        <th className="py-3 px-3 text-right">Acciones</th>
+                      <tr className="border-b border-border bg-muted/30 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                        <th className="px-4 py-3">Usuario</th>
+                        <th className="px-4 py-3">Roles</th>
+                        <th className="px-4 py-3">Supervisión</th>
+                        <th className="px-4 py-3">Privacidad</th>
+                        <th className="px-4 py-3 text-right">Acciones</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-border/60">
-                      {filteredUsers.map((u) => {
-                        const userRoles = roles.filter((r) => r.user_id === u.id).map((r) => r.role);
-                        const isUAdmin = userRoles.includes("admin");
-                        const isUSupervisor = userRoles.includes("supervisor");
-                        const isSelf = u.id === user?.id;
-
-                        return (
-                          <tr
-                            key={u.id}
-                            className={cn(
-                              "group transition-colors hover:bg-accent/40",
-                              isSelf && "bg-brand/5",
-                            )}
-                          >
-                            <td className="py-3 px-3">
-                              <div className="flex items-center gap-3">
-                                <Avatar className="size-8 border border-border">
-                                  <AvatarImage src={u.avatar_url || ""} />
-                                  <AvatarFallback className="text-xs font-semibold">
-                                    {getInitials(u.display_name, u.email)}
-                                  </AvatarFallback>
-                                </Avatar>
-                                <div>
-                                  <div className="flex items-center gap-1.5 font-semibold text-foreground">
-                                    <span>{u.display_name || "Sin nombre asignado"}</span>
-                                    {isSelf && (
-                                      <span className="rounded bg-brand/20 px-1.5 py-0.2 text-[10px] font-bold text-brand">
-                                        TÚ
-                                      </span>
-                                    )}
-                                  </div>
-                                  <div className="font-mono text-[10px] text-muted-foreground">
-                                    ID: {u.id.slice(0, 8)}…
-                                  </div>
-                                </div>
-                              </div>
-                            </td>
-
-                            <td className="py-3 px-3">
-                              <div className="flex items-center gap-1.5 text-foreground">
-                                <span className="font-mono text-xs">
-                                  {u.email || (isSelf ? user?.email : "No visible")}
-                                </span>
-                                {u.email && (
-                                  <button
-                                    onClick={() => {
-                                      void navigator.clipboard.writeText(u.email!);
-                                      toast.success("Correo copiado");
-                                    }}
-                                    className="opacity-0 transition-opacity group-hover:opacity-100 p-1 hover:text-brand"
-                                    title="Copiar correo"
-                                  >
-                                    <Copy className="size-3" />
-                                  </button>
-                                )}
-                              </div>
-                            </td>
-
-                            <td className="py-3 px-3">
-                              {u.is_private ? (
-                                <span className="inline-flex items-center gap-1 rounded-md border border-amber-500/20 bg-amber-500/10 px-2 py-0.5 text-[11px] font-medium text-amber-500">
-                                  <Lock className="size-3" /> Privado
-                                </span>
-                              ) : (
-                                <span className="inline-flex items-center gap-1 rounded-md border border-emerald-500/20 bg-emerald-500/10 px-2 py-0.5 text-[11px] font-medium text-emerald-500">
-                                  <Eye className="size-3" /> Público
-                                </span>
-                              )}
-                            </td>
-
-                            <td className="py-3 px-3">
-                              <div className="flex flex-wrap gap-1">
-                                {isUAdmin && (
-                                  <span className="inline-flex items-center gap-1 rounded bg-primary/10 px-2 py-0.5 text-[11px] font-semibold text-primary">
-                                    <ShieldCheck className="size-3" />
-                                    Admin
-                                  </span>
-                                )}
-                                {isUSupervisor && (
-                                  <span className="inline-flex items-center gap-1 rounded bg-amber-500/10 px-2 py-0.5 text-[11px] font-semibold text-amber-600 dark:text-amber-400">
-                                    <Eye className="size-3" />
-                                    Supervisor
-                                  </span>
-                                )}
-                                {!isUAdmin && !isUSupervisor && (
-                                  <span className="rounded bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
-                                    Trader
-                                  </span>
-                                )}
-                              </div>
-                            </td>
-
-                            <td className="py-3 px-3 text-xs text-muted-foreground">
-                              {new Date(u.created_at).toLocaleDateString("es-ES", {
-                                day: "2-digit",
-                                month: "short",
-                                year: "numeric",
-                              })}
-                            </td>
-
-                            <td className="py-3 px-3 text-right">
-                              <div className="flex items-center justify-end gap-1.5">
-                                {/* Botón Credenciales */}
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="h-8 gap-1 px-2 text-xs"
-                                  onClick={() => {
-                                    setEditingUser(u);
-                                    setEditEmail(u.email ?? (isSelf ? (user?.email ?? "") : ""));
-                                    setEditPassword("");
-                                  }}
-                                  title="Modificar correo y contraseña"
-                                >
-                                  <KeyRound className="size-3.5 text-brand" />
-                                  <span className="hidden lg:inline">Credenciales</span>
-                                </Button>
-
-                                {/* Botón Alternar Supervisor */}
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="h-8 gap-1 px-2 text-xs"
-                                  onClick={() =>
-                                    toggleRole.mutate({
-                                      userId: u.id,
-                                      role: "supervisor",
-                                      grant: !isUSupervisor,
-                                    })
-                                  }
-                                  title={isUSupervisor ? "Revocar rol supervisor" : "Hacer supervisor"}
-                                >
-                                  <Eye className="size-3.5" />
-                                  <span className="hidden xl:inline">
-                                    {isUSupervisor ? "Quitar Sup." : "Hacer Sup."}
-                                  </span>
-                                </Button>
-
-                                {/* Botón Alternar Admin */}
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="h-8 gap-1 px-2 text-xs"
-                                  disabled={isSelf}
-                                  onClick={() =>
-                                    toggleRole.mutate({ userId: u.id, role: "admin", grant: !isUAdmin })
-                                  }
-                                  title={isSelf ? "No puedes revocar tu propio rol de admin" : isUAdmin ? "Revocar rol admin" : "Hacer admin"}
-                                >
-                                  {isUAdmin ? (
-                                    <>
-                                      <ShieldOff className="size-3.5 text-amber-500" />
-                                      <span className="hidden xl:inline">Quitar Admin</span>
-                                    </>
-                                  ) : (
-                                    <>
-                                      <ShieldCheck className="size-3.5 text-primary" />
-                                      <span className="hidden xl:inline">Hacer Admin</span>
-                                    </>
-                                  )}
-                                </Button>
-
-                                {/* Botón Borrar Usuario */}
-                                <Button
-                                  size="sm"
-                                  variant="destructive"
-                                  className="h-8 px-2"
-                                  disabled={isSelf}
-                                  onClick={() => setDeletingUser(u)}
-                                  title={isSelf ? "No puedes borrar tu propia cuenta" : "Eliminar usuario"}
-                                >
-                                  <Trash2 className="size-3.5" />
-                                </Button>
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      })}
-
-                      {filteredUsers.length === 0 && (
+                    <tbody className="divide-y divide-border">
+                      {filteredUsers.length === 0 ? (
                         <tr>
-                          <td colSpan={6} className="py-8 text-center text-muted-foreground">
-                            No se encontraron usuarios con los filtros aplicados.
+                          <td colSpan={5} className="py-8 text-center text-muted-foreground">
+                            No se encontraron usuarios con ese criterio.
                           </td>
                         </tr>
+                      ) : (
+                        filteredUsers.map((u) => {
+                          const userRoles = roles.filter((r) => r.user_id === u.id).map((r) => r.role);
+                          const isUAdmin = userRoles.includes("admin");
+                          const isUSupervisor = userRoles.includes("supervisor");
+                          const isCurrent = u.id === user?.id;
+                          const assignedSup = availableSupervisors.find(
+                            (s) => s.id === u.assigned_supervisor_id,
+                          );
+
+                          return (
+                            <tr key={u.id} className="transition-colors hover:bg-muted/20">
+                              <td className="px-4 py-3">
+                                <div className="flex items-center gap-3">
+                                  <Avatar className="size-9 border border-border">
+                                    <AvatarImage src={u.avatar_url ?? ""} />
+                                    <AvatarFallback className="bg-brand/10 text-xs font-bold text-brand">
+                                      {u.display_name
+                                        ? u.display_name.slice(0, 2).toUpperCase()
+                                        : u.email?.slice(0, 2).toUpperCase() ?? "TR"}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                  <div className="min-w-0">
+                                    <p className="truncate font-semibold text-foreground">
+                                      {u.display_name || "Sin nombre visible"}
+                                      {isCurrent && (
+                                        <span className="ml-1.5 rounded-full bg-brand/10 px-1.5 py-0.2 text-[10px] font-bold text-brand">
+                                          Tú
+                                        </span>
+                                      )}
+                                    </p>
+                                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                                      <span className="truncate">{u.email || "Sin correo"}</span>
+                                      {u.email && (
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            navigator.clipboard.writeText(u.email!);
+                                            toast.success("Correo copiado al portapapeles");
+                                          }}
+                                          className="text-muted-foreground hover:text-foreground"
+                                          title="Copiar correo"
+                                        >
+                                          <Copy className="size-3" />
+                                        </button>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              </td>
+
+                              <td className="px-4 py-3">
+                                <div className="flex flex-wrap gap-1">
+                                  {isUAdmin && (
+                                    <span className="rounded-full bg-brand/15 px-2 py-0.5 text-[11px] font-bold text-brand">
+                                      Admin
+                                    </span>
+                                  )}
+                                  {isUSupervisor && (
+                                    <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[11px] font-bold text-amber-500">
+                                      Supervisor
+                                    </span>
+                                  )}
+                                  {!isUAdmin && !isUSupervisor && (
+                                    <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
+                                      Trader
+                                    </span>
+                                  )}
+                                </div>
+                              </td>
+
+                              <td className="px-4 py-3 text-xs">
+                                {u.supervisor_status === "pending" ? (
+                                  <span className="inline-flex items-center gap-1 rounded-md bg-amber-500/15 px-2 py-0.5 font-bold text-amber-600">
+                                    <Clock className="size-3" /> Solicitud pendiente
+                                  </span>
+                                ) : assignedSup ? (
+                                  <span className="inline-flex items-center gap-1 text-muted-foreground">
+                                    <UserCheck className="size-3 text-brand" /> {assignedSup.display_name}
+                                  </span>
+                                ) : (
+                                  <span className="text-muted-foreground/60">—</span>
+                                )}
+                              </td>
+
+                              <td className="px-4 py-3">
+                                {u.is_private ? (
+                                  <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2 py-0.5 text-[11px] font-medium text-amber-600">
+                                    <Lock className="size-3" /> Privado
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[11px] font-medium text-emerald-600">
+                                    <Unlock className="size-3" /> Visible
+                                  </span>
+                                )}
+                              </td>
+
+                              <td className="px-4 py-3 text-right">
+                                <div className="flex items-center justify-end gap-1">
+                                  {u.supervisor_status === "pending" && (
+                                    <>
+                                      <Button
+                                        size="sm"
+                                        className="h-8 bg-emerald-600 hover:bg-emerald-700 text-white text-xs gap-1"
+                                        disabled={adminReviewSupervisor.isPending}
+                                        onClick={() =>
+                                          adminReviewSupervisor.mutate({ userId: u.id, approve: true })
+                                        }
+                                        title="Aprobar supervisor"
+                                      >
+                                        <CheckCircle2 className="size-3.5" /> Aprobar
+                                      </Button>
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        className="h-8 text-destructive text-xs gap-1"
+                                        disabled={adminReviewSupervisor.isPending}
+                                        onClick={() =>
+                                          adminReviewSupervisor.mutate({ userId: u.id, approve: false })
+                                        }
+                                        title="Rechazar solicitud"
+                                      >
+                                        <XCircle className="size-3.5" /> Rechazar
+                                      </Button>
+                                    </>
+                                  )}
+
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-8 gap-1 text-xs"
+                                    onClick={() => {
+                                      setEditingUser(u);
+                                      setEditEmail(u.email ?? "");
+                                      setEditPassword("");
+                                    }}
+                                  >
+                                    <KeyRound className="size-3.5" />
+                                    <span className="hidden sm:inline">Credenciales</span>
+                                  </Button>
+
+                                  <Button
+                                    variant={isUSupervisor ? "default" : "outline"}
+                                    size="sm"
+                                    className={cn(
+                                      "h-8 text-xs",
+                                      isUSupervisor && "bg-amber-500 hover:bg-amber-600 text-white",
+                                    )}
+                                    disabled={toggleRole.isPending}
+                                    onClick={() =>
+                                      toggleRole.mutate({
+                                        userId: u.id,
+                                        role: "supervisor",
+                                        grant: !isUSupervisor,
+                                      })
+                                    }
+                                    title={isUSupervisor ? "Quitar rol supervisor" : "Hacer supervisor"}
+                                  >
+                                    <ShieldCheck className="size-3.5" />
+                                    <span className="hidden sm:inline">
+                                      {isUSupervisor ? "Supervisor" : "+ Sup"}
+                                    </span>
+                                  </Button>
+
+                                  <Button
+                                    variant={isUAdmin ? "default" : "outline"}
+                                    size="sm"
+                                    className="h-8 text-xs"
+                                    disabled={isCurrent || toggleRole.isPending}
+                                    onClick={() =>
+                                      toggleRole.mutate({
+                                        userId: u.id,
+                                        role: "admin",
+                                        grant: !isUAdmin,
+                                      })
+                                    }
+                                    title={isUAdmin ? "Quitar rol administrador" : "Hacer administrador"}
+                                  >
+                                    <Shield className="size-3.5" />
+                                    <span className="hidden sm:inline">
+                                      {isUAdmin ? "Admin" : "+ Admin"}
+                                    </span>
+                                  </Button>
+
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="size-8 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                                    disabled={isCurrent}
+                                    onClick={() => setDeletingUser(u)}
+                                    title={
+                                      isCurrent
+                                        ? "No puedes eliminar tu propia cuenta"
+                                        : "Eliminar usuario definitivamente"
+                                    }
+                                  >
+                                    <Trash2 className="size-3.5" />
+                                  </Button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })
                       )}
                     </tbody>
                   </table>
                 </div>
-              </section>
+              </div>
             </TabsContent>
 
-            {/* Pestaña: Mi Perfil y Ajustes */}
-            <TabsContent value="profile" className="space-y-6 focus-visible:outline-none">
+            {/* TAB MI PERFIL (Para administradores) */}
+            <TabsContent value="profile">
               <ProfileSettingsGrid
+                user={user}
                 name={name}
                 setName={setName}
                 avatar={avatar}
                 setAvatar={setAvatar}
+                saveProfile={saveProfile}
                 isPrivate={isPrivate}
+                togglePrivate={togglePrivate}
+                hasSupervisor={hasSupervisor}
+                setHasSupervisor={setHasSupervisor}
+                selectedSupervisorId={selectedSupervisorId}
+                setSelectedSupervisorId={setSelectedSupervisorId}
+                saveAssignedSupervisor={saveAssignedSupervisor}
+                availableSupervisors={availableSupervisors}
+                currentSupervisorStatus={currentSupervisorStatus}
+                applyForSupervisor={applyForSupervisor}
+                isSupervisor={isSupervisor}
+                isAdmin={isAdmin}
                 theme={theme}
                 setTheme={setTheme}
-                user={user}
-                saveProfile={saveProfile}
-                togglePrivate={togglePrivate}
               />
             </TabsContent>
           </Tabs>
         ) : (
-          /* Vista normal sin pestañas para usuarios no administradores */
+          /* VISTA DIRECTA PARA NO-ADMINS */
           <ProfileSettingsGrid
+            user={user}
             name={name}
             setName={setName}
             avatar={avatar}
             setAvatar={setAvatar}
+            saveProfile={saveProfile}
             isPrivate={isPrivate}
+            togglePrivate={togglePrivate}
+            hasSupervisor={hasSupervisor}
+            setHasSupervisor={setHasSupervisor}
+            selectedSupervisorId={selectedSupervisorId}
+            setSelectedSupervisorId={setSelectedSupervisorId}
+            saveAssignedSupervisor={saveAssignedSupervisor}
+            availableSupervisors={availableSupervisors}
+            currentSupervisorStatus={currentSupervisorStatus}
+            applyForSupervisor={applyForSupervisor}
+            isSupervisor={isSupervisor}
+            isAdmin={isAdmin}
             theme={theme}
             setTheme={setTheme}
-            user={user}
-            saveProfile={saveProfile}
-            togglePrivate={togglePrivate}
           />
         )}
+      </div>
 
-        {/* Diálogo para editar correo y contraseña */}
-        <Dialog open={Boolean(editingUser)} onOpenChange={(open) => !open && setEditingUser(null)}>
-          <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2">
-                <KeyRound className="size-5 text-brand" />
-                Cambiar credenciales de acceso
-              </DialogTitle>
-              <DialogDescription>
-                Modifica el correo electrónico o asigna una nueva contraseña para{" "}
-                <strong className="text-foreground">
-                  {editingUser?.display_name || editingUser?.email || "el usuario"}
-                </strong>
-                .
-              </DialogDescription>
-            </DialogHeader>
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
+      {/* DIÁLOGO: EDITAR CREDENCIALES (ADMIN) */}
+      <Dialog open={!!editingUser} onOpenChange={(open) => !open && setEditingUser(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Modificar Credenciales de Acceso</DialogTitle>
+            <DialogDescription>
+              Actualiza el correo electrónico y/o la contraseña de {editingUser?.display_name || "este usuario"}.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-email">Correo electrónico</Label>
+              <Input
+                id="edit-email"
+                type="email"
+                value={editEmail}
+                onChange={(e) => setEditEmail(e.target.value)}
+                placeholder="nuevo@correo.com"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-password">Nueva contraseña</Label>
+              <Input
+                id="edit-password"
+                type="password"
+                value={editPassword}
+                onChange={(e) => setEditPassword(e.target.value)}
+                placeholder="Mínimo 6 caracteres (dejar en blanco para no cambiar)"
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditingUser(null)}>
+              Cancelar
+            </Button>
+            <Button
+              disabled={updateCredentials.isPending}
+              onClick={() => {
                 if (!editingUser) return;
-                if (!editEmail.trim() && !editPassword.trim()) {
-                  toast.info("No has realizado ningún cambio");
-                  return;
-                }
                 updateCredentials.mutate({
                   userId: editingUser.id,
-                  newEmail: editEmail.trim() || undefined,
-                  newPassword: editPassword.trim() || undefined,
+                  newEmail: editEmail,
+                  newPassword: editPassword,
                 });
               }}
-              className="space-y-4 py-2"
             >
-              <div className="space-y-1.5">
-                <Label htmlFor="edit-email" className="flex items-center gap-1.5 text-xs font-semibold">
-                  <Mail className="size-3.5 text-brand" /> Correo electrónico
-                </Label>
-                <Input
-                  id="edit-email"
-                  type="email"
-                  placeholder="usuario@ejemplo.com"
-                  value={editEmail}
-                  onChange={(e) => setEditEmail(e.target.value)}
-                />
-              </div>
+              {updateCredentials.isPending ? "Guardando…" : "Guardar credenciales"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
-              <div className="space-y-1.5">
-                <Label htmlFor="edit-pass" className="flex items-center gap-1.5 text-xs font-semibold">
-                  <Lock className="size-3.5 text-brand" /> Nueva contraseña
-                </Label>
-                <Input
-                  id="edit-pass"
-                  type="password"
-                  minLength={6}
-                  placeholder="Dejar en blanco para conservar la actual"
-                  value={editPassword}
-                  onChange={(e) => setEditPassword(e.target.value)}
-                />
-                <p className="text-[11px] text-muted-foreground">
-                  Mínimo 6 caracteres. Si no deseas modificar la contraseña existente, déjalo vacío.
-                </p>
-              </div>
-
-              <DialogFooter className="pt-3">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setEditingUser(null)}
-                  disabled={updateCredentials.isPending}
-                >
-                  Cancelar
-                </Button>
-                <Button type="submit" disabled={updateCredentials.isPending} className="gap-1.5">
-                  {updateCredentials.isPending ? "Guardando…" : "Guardar credenciales"}
-                </Button>
-              </DialogFooter>
-            </form>
-          </DialogContent>
-        </Dialog>
-
-        {/* Diálogo de confirmación para eliminar usuario */}
-        <AlertDialog
-          open={Boolean(deletingUser)}
-          onOpenChange={(open) => !open && setDeletingUser(null)}
-        >
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle className="flex items-center gap-2 text-destructive">
-                <Trash2 className="size-5" />
-                ¿Eliminar usuario definitivamente?
-              </AlertDialogTitle>
-              <AlertDialogDescription className="space-y-2 text-sm">
-                <span>
-                  Estás a punto de eliminar a{" "}
-                  <strong className="text-foreground">
-                    {deletingUser?.display_name ?? deletingUser?.email ?? "este usuario"}
-                  </strong>
-                  .
-                </span>
-                <span className="block rounded-md border border-destructive/20 bg-destructive/10 p-3 font-medium text-destructive">
-                  ⚠️ Esta acción no se puede deshacer. Se eliminarán de forma irreversible todos sus diarios, cuentas, estrategias y operaciones registradas.
-                </span>
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel disabled={deleteUser.isPending}>Cancelar</AlertDialogCancel>
-              <AlertDialogAction
-                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                disabled={deleteUser.isPending}
-                onClick={() => {
-                  if (deletingUser) {
-                    deleteUser.mutate(deletingUser.id);
-                  }
-                }}
-              >
-                {deleteUser.isPending ? "Eliminando…" : "Sí, eliminar definitivamente"}
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-
-        {/* Footer elegante */}
-        <footer className="mt-12 flex flex-col items-center gap-3 border-t border-border pt-6 text-center">
-          <p className="font-hand text-xl text-foreground/80">
-            Creado por Toni
-          </p>
-          <a
-            href="https://www.buymeacoffee.com/leblangarcs"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 rounded-full bg-[#ff813f] px-5 py-2 text-sm font-semibold text-white shadow-md transition-transform hover:scale-105 hover:bg-[#ff7a2e]"
-          >
-            <Coffee className="size-4" />
-            Invítame a un café
-          </a>
-        </footer>
-      </div>
+      {/* DIÁLOGO: CONFIRMAR ELIMINACIÓN DE USUARIO (ADMIN) */}
+      <AlertDialog open={!!deletingUser} onOpenChange={(open) => !open && setDeletingUser(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Eliminar definitivamente a este usuario?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta acción eliminará la cuenta de{" "}
+              <strong>{deletingUser?.display_name || deletingUser?.email}</strong>, sus diarios,
+              operaciones, cuentas e historial de la base de datos de forma irreversible.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={deleteUser.isPending}
+              onClick={() => {
+                if (deletingUser) {
+                  deleteUser.mutate(deletingUser.id);
+                }
+              }}
+            >
+              {deleteUser.isPending ? "Eliminando…" : "Sí, eliminar usuario"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AppShell>
   );
 }
 
-/** Componente estructurado para la cuadrícula de perfil, privacidad, tema e integraciones */
+/** COMPONENTE REUTILIZABLE: CUADRÍCULA DE AJUSTES DEL PERFIL */
 function ProfileSettingsGrid({
+  user,
   name,
   setName,
   avatar,
   setAvatar,
+  saveProfile,
   isPrivate,
+  togglePrivate,
+  hasSupervisor,
+  setHasSupervisor,
+  selectedSupervisorId,
+  setSelectedSupervisorId,
+  saveAssignedSupervisor,
+  availableSupervisors,
+  currentSupervisorStatus,
+  applyForSupervisor,
+  isSupervisor,
+  isAdmin,
   theme,
   setTheme,
-  user,
-  saveProfile,
-  togglePrivate,
 }: {
+  user: any;
   name: string;
   setName: (v: string) => void;
   avatar: string;
   setAvatar: (v: string) => void;
-  isPrivate: boolean;
-  theme: string;
-  setTheme: (v: "light" | "dark") => void;
-  user: any;
   saveProfile: any;
+  isPrivate: boolean;
   togglePrivate: any;
+  hasSupervisor: boolean;
+  setHasSupervisor: (v: boolean) => void;
+  selectedSupervisorId: string;
+  setSelectedSupervisorId: (v: string) => void;
+  saveAssignedSupervisor: any;
+  availableSupervisors: AvailableSupervisor[];
+  currentSupervisorStatus: string;
+  applyForSupervisor: any;
+  isSupervisor: boolean;
+  isAdmin: boolean;
+  theme: string;
+  setTheme: (t: "light" | "dark") => void;
 }) {
   return (
     <div className="space-y-6">
@@ -950,70 +1202,180 @@ function ProfileSettingsGrid({
               disabled={saveProfile.isPending}
               className="w-full"
             >
-              {saveProfile.isPending ? "Guardando…" : "Guardar cambios"}
+              {saveProfile.isPending ? "Guardando…" : "Guardar datos"}
             </Button>
           </div>
         </section>
 
-        {/* Card 2: Privacidad y Visibilidad */}
+        {/* Card 2: Supervisión y Asignación Voluntaria */}
         <section className="panel flex flex-col justify-between p-5">
           <div className="space-y-4">
             <div className="flex items-center gap-2.5">
-              <div className="flex size-9 items-center justify-center rounded-lg bg-amber-500/10 text-amber-500">
-                {isPrivate ? <Lock className="size-5" /> : <Unlock className="size-5" />}
+              <div className="flex size-9 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-500">
+                <UserCheck className="size-5" />
               </div>
               <div>
-                <h3 className="text-base font-bold">Privacidad de la Cuenta</h3>
-                <p className="text-xs text-muted-foreground">Visibilidad ante supervisores</p>
+                <h3 className="text-base font-bold">Supervisión de mi Cuenta</h3>
+                <p className="text-xs text-muted-foreground">Elige tu supervisor asignado</p>
               </div>
             </div>
 
-            <div className="rounded-xl border border-border bg-muted/40 p-3.5 text-xs text-muted-foreground space-y-2">
-              <p className="leading-relaxed">
-                {isPrivate ? (
-                  <>
-                    <strong className="text-foreground">Modo Privado:</strong> Ningún supervisor puede ver tus cuentas, operaciones, diarios ni chat interno.
-                  </>
-                ) : (
-                  <>
-                    <strong className="text-foreground">Modo Visible:</strong> Los supervisores autorizados pueden consultar tu pestaña de Resumen y apoyarte en el chat.
-                  </>
-                )}
-              </p>
-            </div>
-
-            <div className="flex items-center justify-between rounded-xl border border-border/80 p-3">
-              <div className="space-y-0.5">
-                <span className="text-xs font-bold text-foreground">
-                  {isPrivate ? "Perfil Privado" : "Perfil Público"}
-                </span>
-                <p className="text-[11px] text-muted-foreground">
-                  {isPrivate ? "Acceso restringido a ti" : "Supervisión permitida"}
-                </p>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between rounded-xl border border-border/80 p-3">
+                <div className="space-y-0.5">
+                  <span className="text-xs font-bold text-foreground">
+                    {hasSupervisor ? "Supervisión Activada" : "Sin Supervisor"}
+                  </span>
+                  <p className="text-[11px] text-muted-foreground">
+                    {hasSupervisor ? "Compartir con un supervisor" : "No compartir operaciones"}
+                  </p>
+                </div>
+                <Switch
+                  checked={hasSupervisor}
+                  onCheckedChange={(checked) => {
+                    setHasSupervisor(checked);
+                    if (!checked) {
+                      setSelectedSupervisorId("none");
+                    }
+                  }}
+                />
               </div>
-              <Switch
-                checked={isPrivate}
-                disabled={togglePrivate.isPending}
-                onCheckedChange={(checked) => togglePrivate.mutate(checked)}
-              />
+
+              {hasSupervisor && (
+                <div className="space-y-1.5 pt-1">
+                  <Label className="text-xs font-semibold">
+                    Selecciona tu supervisor en la lista:
+                  </Label>
+                  <Select
+                    value={selectedSupervisorId}
+                    onValueChange={(val) => setSelectedSupervisorId(val)}
+                  >
+                    <SelectTrigger className="text-xs">
+                      <SelectValue placeholder="Elige un supervisor..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Sin supervisor seleccionado</SelectItem>
+                      {availableSupervisors.map((sup) => (
+                        <SelectItem key={sup.id} value={sup.id}>
+                          {sup.display_name} {sup.email ? `(${sup.email})` : ""}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-[11px] text-muted-foreground">
+                    Solo este supervisor podrá consultar tus resultados en el panel y apoyarte.
+                  </p>
+                </div>
+              )}
             </div>
           </div>
 
           <div className="mt-5 pt-3 border-t border-border/60">
             <Button
-              variant={isPrivate ? "default" : "outline"}
-              className="w-full gap-2"
-              disabled={togglePrivate.isPending}
-              onClick={() => togglePrivate.mutate(!isPrivate)}
+              className="w-full gap-1.5"
+              disabled={saveAssignedSupervisor.isPending}
+              onClick={() =>
+                saveAssignedSupervisor.mutate({
+                  enabled: hasSupervisor,
+                  supId: selectedSupervisorId,
+                })
+              }
             >
-              {isPrivate ? <Lock className="size-4" /> : <Unlock className="size-4" />}
-              {isPrivate ? "Perfil Privado Activado" : "Hacer Perfil Privado"}
+              <Save className="size-4" />
+              {saveAssignedSupervisor.isPending ? "Guardando…" : "Guardar preferencia de supervisión"}
             </Button>
           </div>
         </section>
 
-        {/* Card 3: Apariencia del Sistema */}
+        {/* Card 3: Solicitud de Rol Supervisor */}
         <section className="panel flex flex-col justify-between p-5 md:col-span-2 xl:col-span-1">
+          <div className="space-y-4">
+            <div className="flex items-center gap-2.5">
+              <div className="flex size-9 items-center justify-center rounded-lg bg-amber-500/10 text-amber-500">
+                <GraduationCap className="size-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold">Candidatura a Supervisor</h3>
+                <p className="text-xs text-muted-foreground">Supervisa el progreso de otros traders</p>
+              </div>
+            </div>
+
+            <div className="space-y-2.5">
+              {isAdmin ? (
+                <div className="rounded-xl border border-brand/30 bg-brand/5 p-3.5 text-xs space-y-1.5">
+                  <div className="flex items-center gap-1.5 font-bold text-brand">
+                    <Shield className="size-4" /> Eres Administrador Principal
+                  </div>
+                  <p className="text-muted-foreground text-[11px] leading-relaxed">
+                    Tienes permisos completos para supervisar cuentas y aprobar solicitudes de otros usuarios.
+                  </p>
+                </div>
+              ) : isSupervisor ? (
+                <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-3.5 text-xs space-y-1.5">
+                  <div className="flex items-center gap-1.5 font-bold text-emerald-600">
+                    <CheckCircle2 className="size-4" /> Eres Supervisor Aprobado
+                  </div>
+                  <p className="text-muted-foreground text-[11px] leading-relaxed">
+                    Los usuarios pueden seleccionarte en su lista desplegable para que supervises su operativa.
+                  </p>
+                </div>
+              ) : currentSupervisorStatus === "pending" ? (
+                <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-3.5 text-xs space-y-2">
+                  <div className="flex items-center gap-1.5 font-bold text-amber-600">
+                    <Clock className="size-4" /> Solicitud en Revisión
+                  </div>
+                  <p className="text-muted-foreground text-[11px] leading-relaxed">
+                    Tu solicitud para ser supervisor ha sido enviada y está a la espera de ser aprobada por el administrador.
+                  </p>
+                </div>
+              ) : currentSupervisorStatus === "rejected" ? (
+                <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-3.5 text-xs space-y-2">
+                  <div className="flex items-center gap-1.5 font-bold text-destructive">
+                    <XCircle className="size-4" /> Solicitud Anterior Rechazada
+                  </div>
+                  <p className="text-muted-foreground text-[11px] leading-relaxed">
+                    Puedes volver a solicitar la candidatura a supervisor cuando lo desees.
+                  </p>
+                </div>
+              ) : (
+                <div className="rounded-xl border border-border bg-muted/30 p-3.5 text-xs space-y-2">
+                  <p className="text-muted-foreground leading-relaxed">
+                    Como supervisor podrás ver el resumen de los traders que te elijan como su tutor y apoyarlos en su crecimiento.
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="mt-5 pt-3 border-t border-border/60">
+            {!isAdmin && !isSupervisor && (
+              <Button
+                variant={currentSupervisorStatus === "pending" ? "secondary" : "default"}
+                className="w-full gap-2"
+                disabled={currentSupervisorStatus === "pending" || applyForSupervisor.isPending}
+                onClick={() => applyForSupervisor.mutate()}
+              >
+                {currentSupervisorStatus === "pending" ? (
+                  <>
+                    <Clock className="size-4" /> Solicitud Enviada
+                  </>
+                ) : (
+                  <>
+                    <Send className="size-4" /> Solicitar ser Supervisor
+                  </>
+                )}
+              </Button>
+            )}
+            {(isAdmin || isSupervisor) && (
+              <div className="text-center text-xs text-muted-foreground">
+                Rol supervisor activo
+              </div>
+            )}
+          </div>
+        </section>
+
+        {/* Card 4: Apariencia del Sistema */}
+        <section className="panel flex flex-col justify-between p-5">
           <div className="space-y-4">
             <div className="flex items-center gap-2.5">
               <div className="flex size-9 items-center justify-center rounded-lg bg-indigo-500/10 text-indigo-500">
@@ -1026,7 +1388,6 @@ function ProfileSettingsGrid({
             </div>
 
             <div className="grid grid-cols-2 gap-3">
-              {/* Opción Claro */}
               <button
                 type="button"
                 onClick={() => setTheme("light")}
@@ -1044,7 +1405,6 @@ function ProfileSettingsGrid({
                 {theme === "light" && <Check className="size-4 text-brand" />}
               </button>
 
-              {/* Opción Oscuro */}
               <button
                 type="button"
                 onClick={() => setTheme("dark")}
@@ -1070,7 +1430,7 @@ function ProfileSettingsGrid({
         </section>
       </div>
 
-      {/* Card 4: Integraciones de Trading */}
+      {/* Card 5: Integraciones de Trading */}
       <section className="panel space-y-4 p-5 md:p-6">
         <div className="flex items-center gap-3">
           <div className="flex size-10 items-center justify-center rounded-xl bg-brand/10 text-brand">
