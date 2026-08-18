@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { Camera, ImagePlus, Loader2, X } from "lucide-react";
+import { Camera, ImagePlus, Loader2, Sparkles, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { CameraCapture } from "@/components/camera-capture";
@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/select";
 import { useJournal } from "@/lib/journal-store";
 import { extractTradesFromImages, type ExtractedTrade } from "@/lib/trade-vision.functions";
+import { getLocalGoogleAiKey, getLocalGoogleAiModel } from "@/lib/google-ai";
 import { formatCurrency } from "@/lib/metrics";
 import { parseDetectedDate } from "@/lib/parse-date";
 import { cn } from "@/lib/utils";
@@ -75,6 +76,8 @@ export function TradeImportDialog() {
   const [dragging, setDragging] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
+  const googleAiKey = typeof window !== "undefined" ? getLocalGoogleAiKey() : "";
+  const googleAiModel = typeof window !== "undefined" ? getLocalGoogleAiModel() : "";
 
   const addFiles = (files: FileList | File[] | null) => {
     if (!files) return;
@@ -95,8 +98,16 @@ export function TradeImportDialog() {
     }
     setLoading(true);
     try {
+      const userApiKey = getLocalGoogleAiKey();
+      const userModel = getLocalGoogleAiModel();
+
       const found = await extract({
-        data: { images, symbols: strategies.map((s) => s.mainSymbol) },
+        data: {
+          images,
+          symbols: strategies.map((s) => s.mainSymbol),
+          apiKey: userApiKey || undefined,
+          model: userModel || undefined,
+        },
       });
       // Cuenta cuántas operaciones idénticas ya existen para no descartar repeticiones legítimas.
       const existingCounts = new Map<string, number>();
@@ -121,7 +132,7 @@ export function TradeImportDialog() {
           `${parsedRows.length} operaciones detectadas · ${parsedRows.filter((r) => r.duplicate).length} ya existentes`,
         );
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "No se pudo analizar la captura");
+      toast.error(e instanceof Error ? e.message : "No se pudo analizar la captura con Google AI");
     } finally {
       setLoading(false);
     }
@@ -180,10 +191,21 @@ export function TradeImportDialog() {
 
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Importar operaciones desde imagen</DialogTitle>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <DialogTitle>Importar operaciones desde imagen</DialogTitle>
+            {googleAiKey ? (
+              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-600">
+                <Sparkles className="size-3" /> Tu Google AI ({googleAiModel})
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
+                <Sparkles className="size-3 text-brand" /> Google AI Gemini
+              </span>
+            )}
+          </div>
           <DialogDescription>
-            Sube capturas o fotos del historial. Se extraen todas las operaciones y se omiten las
-            que ya están registradas.
+            Sube capturas o fotos del historial. El modelo Google Gemini analiza la imagen y extrae todas las
+            operaciones automáticamente.
           </DialogDescription>
         </DialogHeader>
 

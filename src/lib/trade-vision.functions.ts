@@ -4,6 +4,8 @@ import { z } from "zod";
 const inputSchema = z.object({
   images: z.array(z.string().startsWith("data:image/").max(8_000_000)).min(1).max(6),
   symbols: z.array(z.string().max(20)).max(30).optional(),
+  apiKey: z.string().optional(),
+  model: z.string().optional(),
 });
 
 const extractedTrade = z.object({
@@ -58,18 +60,43 @@ Responde SOLO con JSON válido: {"trades":[{"symbol":null,"direction":null,"open
 export const extractTradesFromImages = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => inputSchema.parse(data))
   .handler(async ({ data }) => {
-    const apiKey = process.env["LOVABLE_API_KEY"];
-    if (!apiKey) throw new Error("Falta la clave de IA en el servidor");
+    // Prioridad de API Keys:
+    // 1. Clave personalizada de Google AI del usuario (guardada en ajustes)
+    // 2. Variables de entorno del servidor (GEMINI_API_KEY, GOOGLE_AI_API_KEY, GOOGLE_API_KEY)
+    // 3. Clave del gateway Lovable (fallback)
+    const userGeminiKey = data.apiKey?.trim();
+    const serverGeminiKey =
+      process.env["GEMINI_API_KEY"] ||
+      process.env["GOOGLE_AI_API_KEY"] ||
+      process.env["GOOGLE_API_KEY"];
+    const lovableKey = process.env["LOVABLE_API_KEY"];
+
+    const isGoogleAi = Boolean(userGeminiKey || serverGeminiKey);
+    const apiKey = userGeminiKey || serverGeminiKey || lovableKey;
+
+    if (!apiKey) {
+      throw new Error(
+        "Falta la clave de Google AI (Gemini). Configúrala en Mi Perfil > Google AI o en las variables de entorno del servidor.",
+      );
+    }
 
     const hint = data.symbols?.length
       ? `Activos habituales del usuario: ${data.symbols.join(", ")}.`
       : "";
 
-    const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    let endpointUrl = "https://ai.gateway.lovable.dev/v1/chat/completions";
+    let modelName = "google/gemini-2.5-flash";
+
+    if (isGoogleAi) {
+      endpointUrl = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
+      modelName = data.model || "gemini-2.5-flash";
+    }
+
+    const res = await fetch(endpointUrl, {
       method: "POST",
       headers: { "content-type": "application/json", Authorization: `Bearer ${apiKey}` },
       body: JSON.stringify({
-        model: "google/gemini-3.6-flash",
+        model: modelName,
         messages: [
           { role: "system", content: `${PROMPT}\n${hint}` },
           {
@@ -84,9 +111,16 @@ export const extractTradesFromImages = createServerFn({ method: "POST" })
       }),
     });
 
-    if (res.status === 429) throw new Error("Demasiadas peticiones a la IA, inténtalo en un minuto");
-    if (res.status === 402) throw new Error("Se agotaron los créditos de IA del proyecto");
-    if (!res.ok) throw new Error(`Error de IA (${res.status})`);
+    if (res.status === 429) throw new Error("Límite de peticiones de Google AI alcanzado, inténtalo en unos segundos");
+    if (res.status === 402) throw new Error("Se agotaron los créditos de IA");
+    if (res.status === 401 || res.status === 403) {
+      const err = await res.json().catch(() => null);
+      throw new Error(err?.error?.message || "Clave de Google AI (Gemini) inválida o sin permisos");
+    }
+    if (!res.ok) {
+      const err = await res.json().catch(() => null);
+      throw new Error(err?.error?.message || `Error de Google AI (${res.status})`);
+    }
 
     const json = (await res.json()) as { choices?: { message?: { content?: string } }[] };
     const content = json.choices?.[0]?.message?.content ?? "{}";
@@ -103,6 +137,6 @@ export const extractTradesFromImages = createServerFn({ method: "POST" })
     }
 
     const parsed = responseSchema.safeParse(parsedJson);
-    if (!parsed.success) throw new Error("No se pudieron interpretar las operaciones");
+    if (!parsed.success) throw new Error("No se pudieron interpretar las operaciones de la imagen");
     return parsed.data.trades;
   });

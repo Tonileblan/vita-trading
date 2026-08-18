@@ -6,6 +6,7 @@ import {
   Clock,
   Coffee,
   Copy,
+  ExternalLink,
   Eye,
   EyeOff,
   GraduationCap,
@@ -33,9 +34,18 @@ import {
   XCircle,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
+import {
+  getLocalGoogleAiKey,
+  setLocalGoogleAiKey,
+  getLocalGoogleAiModel,
+  setLocalGoogleAiModel,
+  AVAILABLE_GEMINI_MODELS,
+  testGoogleAiConnection,
+} from "@/lib/google-ai";
 import {
   Dialog,
   DialogContent,
@@ -1104,6 +1114,148 @@ function UsersPage() {
 }
 
 /** COMPONENTE REUTILIZABLE: CUADRÍCULA DE AJUSTES DEL PERFIL */
+function GoogleAiSettingsCard() {
+  const testConn = useServerFn(testGoogleAiConnection);
+  const [apiKey, setApiKey] = useState("");
+  const [model, setModel] = useState("gemini-2.5-flash");
+  const [showKey, setShowKey] = useState(false);
+  const [testing, setTesting] = useState(false);
+
+  useEffect(() => {
+    setApiKey(getLocalGoogleAiKey());
+    setModel(getLocalGoogleAiModel());
+  }, []);
+
+  const handleSave = () => {
+    setLocalGoogleAiKey(apiKey);
+    setLocalGoogleAiModel(model);
+    toast.success("Configuración de Google AI guardada correctamente");
+  };
+
+  const handleTest = async () => {
+    if (!apiKey.trim()) {
+      toast.error("Introduce tu clave API de Google AI antes de probar");
+      return;
+    }
+    setTesting(true);
+    try {
+      const res = await testConn({
+        data: { apiKey: apiKey.trim(), model },
+      });
+      if (res.success) {
+        toast.success(res.message);
+      } else {
+        toast.error(res.message);
+      }
+    } catch (e: any) {
+      toast.error(e?.message || "Error al conectar con Google AI");
+    } finally {
+      setTesting(false);
+    }
+  };
+
+  return (
+    <section className="panel flex flex-col justify-between p-5 md:col-span-2 xl:col-span-1">
+      <div className="space-y-4">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2.5">
+            <div className="flex size-9 items-center justify-center rounded-lg bg-blue-500/10 text-blue-500">
+              <Sparkles className="size-5" />
+            </div>
+            <div>
+              <h3 className="text-base font-bold">Google AI (Gemini)</h3>
+              <p className="text-xs text-muted-foreground">Tu cuenta para capturas y análisis</p>
+            </div>
+          </div>
+          {apiKey.trim() && (
+            <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-bold text-emerald-600">
+              Conectado
+            </span>
+          )}
+        </div>
+
+        <div className="space-y-3 text-xs">
+          <p className="text-muted-foreground leading-relaxed">
+            Usa tu propia clave API de Google AI Studio para procesar capturas de pantalla, lectura de imágenes y visión de operaciones sin límites.
+          </p>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="google-api-key" className="text-xs font-semibold">
+              Clave API de Google AI (Gemini)
+            </Label>
+            <div className="relative">
+              <Input
+                id="google-api-key"
+                type={showKey ? "text" : "password"}
+                value={apiKey}
+                onChange={(e) => setApiKey(e.target.value)}
+                placeholder="AIzaSy..."
+                className="pr-10 text-xs font-mono"
+              />
+              <button
+                type="button"
+                onClick={() => setShowKey(!showKey)}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                aria-label={showKey ? "Ocultar clave" : "Mostrar clave"}
+              >
+                {showKey ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+              </button>
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="google-ai-model" className="text-xs font-semibold">
+              Modelo Gemini
+            </Label>
+            <select
+              id="google-ai-model"
+              value={model}
+              onChange={(e) => setModel(e.target.value)}
+              className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-xs text-foreground focus:border-ring"
+            >
+              {AVAILABLE_GEMINI_MODELS.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <a
+            href="https://aistudio.google.com/app/apikey"
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1 text-[11px] font-medium text-brand hover:underline"
+          >
+            Obtener clave gratuita en Google AI Studio <ExternalLink className="size-3" />
+          </a>
+        </div>
+      </div>
+
+      <div className="mt-5 flex items-center gap-2 pt-3 border-t border-border/60">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          disabled={testing || !apiKey.trim()}
+          onClick={handleTest}
+          className="flex-1 text-xs"
+        >
+          {testing ? "Comprobando…" : "Probar Conexión"}
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          onClick={handleSave}
+          className="flex-1 gap-1 text-xs"
+        >
+          <Save className="size-3.5" /> Guardar
+        </Button>
+      </div>
+    </section>
+  );
+}
+
 function ProfileSettingsGrid({
   user,
   name,
@@ -1368,8 +1520,11 @@ function ProfileSettingsGrid({
           </div>
         </section>
 
-        {/* Card 4: Apariencia del Sistema */}
-        <section className="panel flex flex-col justify-between p-5">
+        {/* Card 4: Cuenta de Google AI (Gemini) */}
+        <GoogleAiSettingsCard />
+
+        {/* Card 5: Apariencia del Sistema */}
+        <section className="panel flex flex-col justify-between p-5 md:col-span-2 xl:col-span-1">
           <div className="space-y-4">
             <div className="flex items-center gap-2.5">
               <div className="flex size-9 items-center justify-center rounded-lg bg-indigo-500/10 text-indigo-500">
@@ -1424,7 +1579,7 @@ function ProfileSettingsGrid({
         </section>
       </div>
 
-      {/* Card 5: Integraciones de Trading */}
+      {/* Card 6: Integraciones de Trading */}
       <section className="panel space-y-4 p-5 md:p-6">
         <div className="flex items-center gap-3">
           <div className="flex size-10 items-center justify-center rounded-xl bg-brand/10 text-brand">
