@@ -41,6 +41,7 @@ import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { ChatThread } from "@/components/chat-thread";
 import { deleteUserAdminFn } from "@/lib/admin.functions";
+import { testAiConnectionServerFn } from "@/lib/ai-test.functions";
 import {
   AI_PROVIDERS,
   type AiProviderId,
@@ -50,7 +51,6 @@ import {
   setAiApiKey,
   getAiModel,
   setAiModel,
-  testAiConnection,
 } from "@/lib/ai-providers";
 import {
   Dialog,
@@ -1178,6 +1178,7 @@ function UsersPage() {
 
 /** COMPONENTE REUTILIZABLE: CUADRÍCULA DE AJUSTES DEL PERFIL - IA UNIVERSAL */
 function UniversalAiSettingsCard() {
+  const testConn = useServerFn(testAiConnectionServerFn);
   const [provider, setProvider] = useState<AiProviderId>("google");
   const [apiKey, setApiKey] = useState("");
   const [model, setModel] = useState("");
@@ -1211,7 +1212,9 @@ function UniversalAiSettingsCard() {
     }
     setTesting(true);
     try {
-      const res = await testAiConnection(provider, apiKey, model);
+      const res = await testConn({
+        data: { provider, apiKey: apiKey.trim(), model: model || undefined },
+      });
       if (res.success) {
         toast.success(res.message);
       } else {

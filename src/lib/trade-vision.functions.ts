@@ -84,8 +84,14 @@ export const extractTradesFromImages = createServerFn({ method: "POST" })
 
     let content = "{}";
 
-    // 1. PROVEEDOR: GROQ CLOUD (Llama 3.2 Vision)
-    if (provider === "groq" && userApiKey) {
+    // 1. PROVEEDOR: DEEPSEEK (Aviso claro sobre ausencia de visión en la API oficial)
+    if (provider === "deepseek") {
+      throw new Error(
+        "La API oficial de DeepSeek (V3/R1) está optimizada para razonamiento y texto, pero no admite lectura directa de imágenes. Para capturas, selecciona en tu Perfil Google AI (Gemini Flash), Groq Cloud (Llama Vision) o OpenRouter, que son 100% gratuitos.",
+      );
+    }
+    // 2. PROVEEDOR: GROQ CLOUD (Llama 3.2 Vision)
+    else if (provider === "groq" && userApiKey) {
       const groqModel = data.model || "llama-3.2-11b-vision-preview";
       const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
         method: "POST",
@@ -118,7 +124,7 @@ export const extractTradesFromImages = createServerFn({ method: "POST" })
       const json = (await res.json()) as { choices?: { message?: { content?: string } }[] };
       content = json.choices?.[0]?.message?.content ?? "{}";
     }
-    // 2. PROVEEDOR: OPENROUTER (Modelos con visión como Llama 3.2 Vision o Qwen VL)
+    // 3. PROVEEDOR: OPENROUTER (Modelos con visión como Llama 3.2 Vision o Qwen VL)
     else if (provider === "openrouter" && userApiKey) {
       const openRouterModel = data.model || "meta-llama/llama-3.2-11b-vision-instruct:free";
       const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
@@ -154,7 +160,7 @@ export const extractTradesFromImages = createServerFn({ method: "POST" })
       const json = (await res.json()) as { choices?: { message?: { content?: string } }[] };
       content = json.choices?.[0]?.message?.content ?? "{}";
     }
-    // 3. PROVEEDOR: GOOGLE AI (Gemini Flash / Pro)
+    // 4. PROVEEDOR: GOOGLE AI (Gemini Flash / Pro)
     else if (userApiKey || serverGeminiKey) {
       const key = userApiKey || serverGeminiKey!;
       const geminiModel = data.model || "gemini-2.0-flash";
@@ -188,7 +194,7 @@ export const extractTradesFromImages = createServerFn({ method: "POST" })
 
       content = text;
     }
-    // 4. FALLBACK: GATEWAY DE RESPALDO
+    // 5. FALLBACK: GATEWAY DE RESPALDO
     else if (lovableKey) {
       const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
         method: "POST",
