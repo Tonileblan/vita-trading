@@ -171,8 +171,10 @@ function Overview() {
     () =>
       visibleTrades.filter(
         (t) =>
-          scopedIds.has(t.accountId) &&
-          (strategyFilter === "all" || effectiveStrategyId(t, accounts, strategyPeriods) === strategyFilter),
+          (scopedIds.size === 0 || scopedIds.has(t.accountId) || !t.accountId) &&
+          (strategyFilter === "all" ||
+            effectiveStrategyId(t, accounts, strategyPeriods) === strategyFilter ||
+            t.strategyId === strategyFilter),
       ),
     [visibleTrades, scopedIds, strategyFilter, accounts, strategyPeriods],
   );

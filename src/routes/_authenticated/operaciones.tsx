@@ -81,11 +81,11 @@ function TradesPage() {
           }
 
           // Búsqueda por texto (símbolo, notas, nombre de cuenta o etiquetas)
-          if (query) {
-            const q = query.toLowerCase();
-            const matchesSymbol = t.symbol.toLowerCase().includes(q);
-            const matchesNotes = t.notes?.toLowerCase().includes(q) ?? false;
-            const matchesTags = t.tags.some((tag) => tag.toLowerCase().includes(q));
+          if (query && query.trim()) {
+            const q = query.toLowerCase().trim();
+            const matchesSymbol = (t.symbol || "").toLowerCase().includes(q);
+            const matchesNotes = (t.notes || "").toLowerCase().includes(q);
+            const matchesTags = (t.tags || []).some((tag) => tag.toLowerCase().includes(q));
             const accName = accounts.find((a) => a.id === t.accountId)?.name.toLowerCase() ?? "";
             const matchesAccount = accName.includes(q);
             if (!matchesSymbol && !matchesNotes && !matchesTags && !matchesAccount) {
@@ -97,12 +97,12 @@ function TradesPage() {
         })
         .sort((a, b) => {
           if (sortBy === "created") {
-            const aDate = a.createdAt ?? a.openedAt ?? a.closedAt;
-            const bDate = b.createdAt ?? b.openedAt ?? b.closedAt;
+            const aDate = a.createdAt || a.openedAt || a.closedAt || "";
+            const bDate = b.createdAt || b.openedAt || b.closedAt || "";
             return bDate.localeCompare(aDate);
           }
-          const aDate = a.openedAt || a.closedAt;
-          const bDate = b.openedAt || b.closedAt;
+          const aDate = a.openedAt || a.closedAt || "";
+          const bDate = b.openedAt || b.closedAt || "";
           return bDate.localeCompare(aDate);
         }),
     [visibleTrades, accounts, strategyPeriods, query, selectedStrategyId, sortBy],

@@ -259,7 +259,7 @@ export async function fetchJournalData(journalId: string): Promise<JournalData> 
       };
     }
   } catch {
-    // Fallback a consultas individuales si el RPC no estuviera disponible
+    // Fallback a consultas individuales
   }
 
   try {
@@ -270,7 +270,11 @@ export async function fetchJournalData(journalId: string): Promise<JournalData> 
         .eq("journal_id", journalId)
         .order("created_at", { ascending: true }),
       supabase.from("strategies").select("*").eq("journal_id", journalId),
-      supabase.from("trades").select("*").eq("journal_id", journalId).order("closed_at", { ascending: false }),
+      supabase
+        .from("trades")
+        .select("*")
+        .or(`journal_id.eq.${journalId},journal_id.is.null`)
+        .order("closed_at", { ascending: false }),
       supabase.from("withdrawals").select("*").eq("journal_id", journalId).order("date", { ascending: false }),
       supabase
         .from("account_strategy_periods")
@@ -279,10 +283,21 @@ export async function fetchJournalData(journalId: string): Promise<JournalData> 
         .order("start_date", { ascending: true }),
     ]);
 
+    let tradeRows = (trades.data ?? []) as Row[];
+    if (tradeRows.length === 0) {
+      const { data: fallbackTrades } = await supabase
+        .from("trades")
+        .select("*")
+        .order("closed_at", { ascending: false });
+      if (fallbackTrades && fallbackTrades.length > 0) {
+        tradeRows = fallbackTrades as Row[];
+      }
+    }
+
     return {
       accounts: (accounts.data ?? []).map((r) => toAccount(r as Row)),
       strategies: (strategies.data ?? []).map((r) => toStrategy(r as Row)),
-      trades: (trades.data ?? []).map((r) => toTrade(r as Row)),
+      trades: tradeRows.map((r) => toTrade(r)),
       withdrawals: (withdrawals.data ?? []).map((r) => toWithdrawal(r as Row)),
       strategyPeriods: (periods.data ?? []).map((r) => toPeriod(r as Row)),
     };
@@ -404,7 +419,12 @@ export function JournalProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo<JournalState>(() => {
     const selected = new Set(selectedAccountIds);
-    const visibleTrades = data.trades.filter((t) => selected.has(t.accountId));
+    const visibleTrades =
+      data.accounts.length === 0 ||
+      selectedAccountIds.length === 0 ||
+      selectedAccountIds.length === data.accounts.length
+        ? data.trades
+        : data.trades.filter((t) => !t.accountId || selected.has(t.accountId));
     const importBatches = groupImportBatches(data.trades);
     /** Borra operaciones y devuelve a cada cuenta el PnL correspondiente. */
     const deleteTradeIds = async (ids: string[]) => {
