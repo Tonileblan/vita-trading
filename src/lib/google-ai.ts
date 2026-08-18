@@ -56,8 +56,8 @@ export function setLocalGoogleAiModel(model: string) {
 }
 
 /**
- * Ejecuta una llamada a Google Gemini API probando automáticamente los modelos disponibles
- * y resolviendo dinámicamente el endpoint compatible para la clave API del usuario.
+ * Ejecuta una llamada a Google Gemini API descubriendo primero los modelos disponibles
+ * para la clave del usuario mediante ListModels para garantizar compatibilidad total.
  */
 export async function executeGeminiGenerateContent(
   apiKey: string,
@@ -66,172 +66,132 @@ export async function executeGeminiGenerateContent(
   generationConfig?: any,
 ): Promise<{ text: string; modelUsed: string }> {
   const cleanKey = apiKey.trim();
-  const cleanModel = preferredModel.replace(/^models\//, "");
 
-  // Asegura que las partes tengan role "user" si no viene definido
+  // Asegura que las partes tengan role "user"
   const formattedContents = contents.map((c) => ({
     role: c.role || "user",
     parts: c.parts || [],
   }));
 
-  // Lista de modelos prioritarios para probar
-  const candidateModels = [
-    cleanModel,
-    "gemini-2.0-flash",
-    "gemini-1.5-flash-latest",
-    "gemini-1.5-flash",
-    "gemini-1.5-flash-002",
-    "gemini-1.5-flash-001",
-    "gemini-2.0-flash-exp",
-    "gemini-1.5-pro-latest",
-    "gemini-1.5-pro",
-    "gemini-pro",
-  ];
-
-  const uniqueCandidates = Array.from(new Set(candidateModels.filter(Boolean)));
   const payload = {
     contents: formattedContents,
     generationConfig: generationConfig || undefined,
   };
 
-  let lastGoogleError = "";
+  // 1. Consultar a Google la lista de modelos disponibles para esta clave API
+  let availableModelNames: string[] = [];
+  let listError = "";
 
-  // 1. Probar en cascada las versiones v1beta y v1 de los candidatos nativos
-  for (const m of uniqueCandidates) {
-    for (const version of ["v1beta", "v1"]) {
-      try {
-        const res = await fetch(
-          `https://generativelanguage.googleapis.com/${version}/models/${m}:generateContent?key=${cleanKey}`,
-          {
-            method: "POST",
-            headers: { "content-type": "application/json" },
-            body: JSON.stringify(payload),
-          },
-        );
-
-        if (res.ok) {
-          const json = await res.json();
-          const text = json.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
-          return { text, modelUsed: m };
-        }
-
-        const errJson = await res.json().catch(() => null);
-        const errMsg =
-          (errJson as any)?.error?.message ||
-          `Error ${res.status}: ${res.statusText || "Respuesta no válida de Google"}`;
-
-        lastGoogleError = errMsg;
-
-        // Errores terminales: clave inválida, permisos denegados o cuota
-        if (
-          res.status === 400 &&
-          (errMsg.includes("API key not valid") || errMsg.includes("INVALID_ARGUMENT"))
-        ) {
-          throw new Error("Clave API de Google AI inválida. Asegúrate de copiarla completa desde Google AI Studio (empieza por AIza...).");
-        }
-        if (res.status === 401 || res.status === 403) {
-          throw new Error(`Google AI: ${errMsg}`);
-        }
-        if (res.status === 429) {
-          throw new Error("Límite de peticiones de Google AI alcanzado. Espera unos segundos y vuelve a intentarlo.");
-        }
-      } catch (err: any) {
-        if (
-          err.message &&
-          (err.message.includes("inválida") ||
-            err.message.includes("Google AI:") ||
-            err.message.includes("Límite"))
-        ) {
-          throw err;
-        }
-      }
-    }
-  }
-
-  // 2. Probar mediante el endpoint OpenAI-compatible de Google
-  try {
-    const textPrompt =
-      formattedContents
-        .flatMap((c) => c.parts)
-        .map((p) => p.text)
-        .filter(Boolean)
-        .join("\n") || "OK";
-
-    const res = await fetch(
-      "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
-      {
-        method: "POST",
-        headers: {
-          "content-type": "application/json",
-          Authorization: `Bearer ${cleanKey}`,
-        },
-        body: JSON.stringify({
-          model: cleanModel || "gemini-2.0-flash",
-          messages: [{ role: "user", content: textPrompt }],
-        }),
-      },
-    );
-
-    if (res.ok) {
-      const json = await res.json();
-      const text = json.choices?.[0]?.message?.content ?? "";
-      return { text, modelUsed: cleanModel || "gemini-2.0-flash" };
-    }
-
-    const errJson = await res.json().catch(() => null);
-    if ((errJson as any)?.error?.message) {
-      lastGoogleError = (errJson as any).error.message;
-    }
-  } catch {
-    // Continuar con ListModels
-  }
-
-  // 3. Consultar ListModels para descubrir modelos disponibles en la cuenta
   try {
     const listRes = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models?key=${cleanKey}`,
     );
+
     if (listRes.ok) {
       const listData = await listRes.json();
-      const available = (listData.models ?? []).filter((m: any) =>
+      const models = (listData.models ?? []).filter((m: any) =>
         (m.supportedGenerationMethods ?? []).includes("generateContent"),
       );
-
-      const selected =
-        available.find((m: any) => m.name?.includes("flash")) ||
-        available.find((m: any) => m.name?.includes("gemini")) ||
-        available[0];
-
-      if (selected && selected.name) {
-        const modelPath = selected.name; // e.g. "models/gemini-1.5-flash"
-        const callRes = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/${modelPath}:generateContent?key=${cleanKey}`,
-          {
-            method: "POST",
-            headers: { "content-type": "application/json" },
-            body: JSON.stringify(payload),
-          },
-        );
-        if (callRes.ok) {
-          const json = await callRes.json();
-          const text = json.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
-          return { text, modelUsed: selected.displayName || selected.name };
-        }
-      }
+      availableModelNames = models.map((m: any) => m.name as string); // e.g. "models/gemini-2.0-flash"
     } else {
-      const listErr = await listRes.json().catch(() => null);
-      if ((listErr as any)?.error?.message) {
-        lastGoogleError = (listErr as any).error.message;
+      const errJson = await listRes.json().catch(() => null);
+      listError = (errJson as any)?.error?.message || `Error ${listRes.status}`;
+      if (listRes.status === 400 || listRes.status === 401 || listRes.status === 403) {
+        throw new Error(
+          (errJson as any)?.error?.message ||
+            "Clave API de Google AI no válida o sin permisos. Verifica que comience por AIza...",
+        );
       }
     }
-  } catch (e: any) {
-    if (e.message && e.message.includes("inválida")) throw e;
+  } catch (err: any) {
+    if (
+      err.message &&
+      (err.message.includes("no válida") ||
+        err.message.includes("sin permisos") ||
+        err.message.includes("AIza"))
+    ) {
+      throw err;
+    }
+  }
+
+  // 2. Determinar los modelos objetivo
+  const cleanPref = preferredModel.replace(/^models\//, "");
+  const targetCandidates: string[] = [];
+
+  if (availableModelNames.length > 0) {
+    // Si el preferido está en la lista devuelta por Google, va primero
+    const matchPref = availableModelNames.find(
+      (m) => m === `models/${cleanPref}` || m.includes(cleanPref),
+    );
+    if (matchPref) targetCandidates.push(matchPref);
+
+    // Modelos flash prioritarios
+    const flashModels = availableModelNames.filter(
+      (m) => m.includes("flash") && m !== matchPref,
+    );
+    targetCandidates.push(...flashModels);
+
+    // Resto de modelos disponibles
+    const otherModels = availableModelNames.filter(
+      (m) => !targetCandidates.includes(m),
+    );
+    targetCandidates.push(...otherModels);
+  } else {
+    // Fallback de candidatos comunes si ListModels no respondió
+    targetCandidates.push(
+      `models/${cleanPref}`,
+      "models/gemini-2.0-flash",
+      "models/gemini-1.5-flash-latest",
+      "models/gemini-1.5-flash",
+      "models/gemini-1.5-flash-002",
+      "models/gemini-1.5-flash-001",
+      "models/gemini-2.0-flash-exp",
+      "models/gemini-1.5-pro-latest",
+      "models/gemini-1.5-pro",
+    );
+  }
+
+  let lastError = listError;
+
+  // 3. Ejecutar la llamada con el primer modelo disponible
+  for (const modelPath of targetCandidates) {
+    const url = `https://generativelanguage.googleapis.com/v1beta/${modelPath}:generateContent?key=${cleanKey}`;
+    try {
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (res.ok) {
+        const json = await res.json();
+        const text = json.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
+        return { text, modelUsed: modelPath.replace(/^models\//, "") };
+      }
+
+      const errJson = await res.json().catch(() => null);
+      lastError = (errJson as any)?.error?.message || `Error ${res.status}: ${res.statusText}`;
+
+      if (res.status === 400 && lastError.includes("API key not valid")) {
+        throw new Error("Clave API de Google AI no válida. Asegúrate de copiarla completa desde Google AI Studio.");
+      }
+      if (res.status === 401 || res.status === 403) {
+        throw new Error(`Google AI: ${lastError}`);
+      }
+      if (res.status === 429) {
+        throw new Error("Límite de peticiones de Google AI alcanzado. Espera unos segundos.");
+      }
+    } catch (e: any) {
+      if (e.message && (e.message.includes("no válida") || e.message.includes("Google AI:"))) {
+        throw e;
+      }
+    }
   }
 
   throw new Error(
-    lastGoogleError
-      ? `Respuesta de Google AI: ${lastGoogleError}`
-      : "No se pudo conectar con ningún modelo de Google AI. Comprueba que tu clave API esté activa en Google AI Studio.",
+    lastError
+      ? `Respuesta de Google AI: ${lastError}`
+      : "No se pudo conectar con ningún modelo compatible de Google AI.",
   );
 }
 
