@@ -15,9 +15,10 @@ export interface Journal {
 export function useJournals() {
   return useQuery({
     queryKey: ["journals"],
+    staleTime: 60_000,
     queryFn: async () => {
-      const { data: userData } = await supabase.auth.getUser();
-      const uid = userData.user?.id;
+      const { data: sessionData } = await supabase.auth.getSession();
+      const uid = sessionData.session?.user?.id;
       if (!uid) return [];
       const { data, error } = await supabase
         .from("journals")
@@ -36,6 +37,7 @@ export function useJournals() {
 export function useTemplateJournals() {
   return useQuery({
     queryKey: ["journals", "templates"],
+    staleTime: 60_000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("journals")
@@ -54,8 +56,8 @@ export function useCreateJournal() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (input: { name: string; description?: string; base_currency: string }) => {
-      const { data: userData } = await supabase.auth.getUser();
-      const ownerId = userData.user?.id;
+      const { data: sessionData } = await supabase.auth.getSession();
+      const ownerId = sessionData.session?.user?.id;
       if (!ownerId) throw new Error("No hay sesión activa");
       const { data, error } = await supabase
         .from("journals")

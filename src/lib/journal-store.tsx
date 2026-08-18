@@ -241,6 +241,26 @@ const EMPTY: JournalData = {
 
 /** Lee todos los datos de un diario (usado también por la vista de supervisión). */
 export async function fetchJournalData(journalId: string): Promise<JournalData> {
+  if (!journalId) return EMPTY;
+
+  try {
+    const { data: bundle, error: rpcErr } = await (supabase.rpc as any)("get_journal_bundle", {
+      p_journal_id: journalId,
+    });
+
+    if (!rpcErr && bundle && typeof bundle === "object") {
+      return {
+        accounts: ((bundle as any).accounts ?? []).map((r: Row) => toAccount(r)),
+        strategies: ((bundle as any).strategies ?? []).map((r: Row) => toStrategy(r)),
+        trades: ((bundle as any).trades ?? []).map((r: Row) => toTrade(r)),
+        withdrawals: ((bundle as any).withdrawals ?? []).map((r: Row) => toWithdrawal(r)),
+        strategyPeriods: ((bundle as any).strategyPeriods ?? []).map((r: Row) => toPeriod(r)),
+      };
+    }
+  } catch {
+    // Fallback a consultas individuales si el RPC no estuviera disponible
+  }
+
   const [accounts, strategies, trades, withdrawals, periods] = await Promise.all([
     supabase
       .from("accounts")
@@ -318,18 +338,18 @@ const JournalContext = createContext<JournalState | null>(null);
 export function JournalProvider({ children }: { children: ReactNode }) {
   const qc = useQueryClient();
   const { data: journals = [] } = useJournals();
-  const [activeJournalId, setActive] = useState<string>("");
+  const [activeJournalId, setActive] = useState<string>(() => {
+    if (typeof window !== "undefined") {
+      return window.localStorage.getItem(STORAGE_KEY) || "";
+    }
+    return "";
+  });
   const [manualSelection, setManualSelection] = useState<string[] | null>(null);
 
-  useEffect(() => {
-    const stored = typeof window !== "undefined" ? window.localStorage.getItem(STORAGE_KEY) : null;
-    if (stored) setActive(stored);
-  }, []);
-
-  // Si no hay diario activo válido, usa el primero disponible.
+  // Si no hay diario activo válido o se desincroniza, usa el primero disponible.
   useEffect(() => {
     if (journals.length === 0) return;
-    if (!journals.some((j) => j.id === activeJournalId)) {
+    if (!activeJournalId || !journals.some((j) => j.id === activeJournalId)) {
       setActive(journals[0]!.id);
     }
   }, [journals, activeJournalId]);
@@ -343,12 +363,12 @@ export function JournalProvider({ children }: { children: ReactNode }) {
   const { data = EMPTY, isLoading } = useQuery({
     queryKey: ["journal-data", activeJournalId],
     enabled: !!activeJournalId,
+    staleTime: 60_000,
     queryFn: async () => {
       const result = await fetchJournalData(activeJournalId);
       if (result.strategies.length === 0) {
-        const { data: userData } = await supabase.auth.getUser();
-        const uid = userData.user?.id;
-        // Comprueba la propiedad directamente en la base para evitar carreras con la lista de diarios.
+        const { data: sessionData } = await supabase.auth.getSession();
+        const uid = sessionData.session?.user?.id;
         const { data: journal } = await supabase
           .from("journals")
           .select("owner_id")

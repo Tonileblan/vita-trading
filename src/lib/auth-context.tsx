@@ -41,35 +41,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const userId = session?.user.id ?? null;
 
-  const { data: profile = null } = useQuery({
-    queryKey: ["profile", userId],
+  const { data: userMeta = { profile: null, roles: [] } } = useQuery({
+    queryKey: ["user-meta", userId],
     enabled: !!userId,
+    staleTime: 5 * 60_000,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("id, display_name, avatar_url, is_private")
-        .eq("id", userId!)
-        .maybeSingle();
-      if (error) throw error;
-      return data as Profile | null;
+      const { data: rpcData, error: rpcErr } = await (supabase.rpc as any)("get_user_bootstrap");
+      if (!rpcErr && rpcData) {
+        return {
+          profile: (rpcData.profile as Profile | null) ?? null,
+          roles: (rpcData.roles ?? []) as string[],
+        };
+      }
+      const [profRes, roleRes] = await Promise.all([
+        supabase
+          .from("profiles")
+          .select("id, display_name, avatar_url, is_private")
+          .eq("id", userId!)
+          .maybeSingle(),
+        supabase.from("user_roles").select("role").eq("user_id", userId!),
+      ]);
+      return {
+        profile: (profRes.data as Profile | null) ?? null,
+        roles: (roleRes.data ?? []).map((r) => r.role as string),
+      };
     },
   });
 
-  const { data: roles = [] } = useQuery({
-    queryKey: ["roles", userId],
-    enabled: !!userId,
-    queryFn: async () => {
-      const { data, error } = await supabase.from("user_roles").select("role").eq("user_id", userId!);
-      if (error) throw error;
-      return (data ?? []).map((r) => r.role as string);
-    },
-  });
+  const roles = userMeta.roles;
 
   const value: AuthState = {
     session,
     user: session?.user ?? null,
     loading,
-    profile,
+    profile: userMeta.profile,
     isAdmin: roles.includes("admin"),
     isSupervisor: roles.includes("admin") || roles.includes("supervisor"),
     signOut: async () => {
