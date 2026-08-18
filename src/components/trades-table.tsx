@@ -44,20 +44,20 @@ export function TradesTable({
   return (
     <>
       <div className="panel overflow-x-auto">
-        <table className="w-full min-w-[680px] text-xs md:min-w-[860px] md:text-sm">
+        <table className="w-full min-w-[720px] text-xs md:min-w-[900px] md:text-sm">
           <thead>
             <tr className="border-b border-border text-left uppercase tracking-wider text-muted-foreground">
-              {selectable && <th className="w-10 px-2 py-2 md:px-3 md:py-3" />}
-              <th className="whitespace-nowrap px-2 py-2 font-semibold md:px-4 md:py-3">Cierre</th>
-              <th className="px-2 py-2 font-semibold md:px-4 md:py-3">Activo</th>
-              <th className="px-2 py-2 font-semibold md:px-4 md:py-3">Dir.</th>
-              <th className="hidden px-4 py-3 font-semibold md:table-cell">Cuenta</th>
-              <th className="px-2 py-2 text-right font-semibold md:px-4 md:py-3">Entrada</th>
-              <th className="px-2 py-2 text-right font-semibold md:px-4 md:py-3">Salida</th>
-              <th className="px-2 py-2 text-right font-semibold md:px-4 md:py-3">Tam.</th>
+              {selectable && <th className="w-8 px-2 py-2 md:px-3 md:py-3" />}
+              <th className="w-16 whitespace-nowrap px-2 py-2 font-semibold md:px-3 md:py-3">Acciones</th>
+              <th className="whitespace-nowrap px-2 py-2 font-semibold md:px-4 md:py-3">Fecha</th>
+              <th className="whitespace-nowrap px-2 py-2 font-semibold md:px-4 md:py-3">Cuenta</th>
+              <th className="whitespace-nowrap px-2 py-2 font-semibold md:px-4 md:py-3">Dir.</th>
+              <th className="whitespace-nowrap px-2 py-2 text-right font-semibold md:px-4 md:py-3">Tamaño</th>
+              <th className="whitespace-nowrap px-2 py-2 text-right font-semibold md:px-4 md:py-3">PnL</th>
+              <th className="whitespace-nowrap px-2 py-2 font-semibold md:px-4 md:py-3">Activo</th>
+              <th className="whitespace-nowrap px-2 py-2 text-right font-semibold md:px-4 md:py-3">Entrada</th>
+              <th className="whitespace-nowrap px-2 py-2 text-right font-semibold md:px-4 md:py-3">Salida</th>
               <th className="hidden px-4 py-3 font-semibold md:table-cell">Estrategia</th>
-              <th className="px-2 py-2 text-right font-semibold md:px-4 md:py-3">PnL</th>
-              <th className="w-20 px-2 py-2 text-right font-semibold md:px-3 md:py-3">Acciones</th>
             </tr>
           </thead>
           <tbody>
@@ -77,8 +77,9 @@ export function TradesTable({
                   key={t.id}
                   className="group border-b border-border/60 last:border-0 hover:bg-accent/40 transition-colors"
                 >
+                  {/* 1. Cuadro selector */}
                   {selectable && (
-                    <td className="px-2 py-2 md:px-3 md:py-3">
+                    <td className="w-8 px-2 py-2 md:px-3 md:py-3">
                       <Checkbox
                         checked={isSelected(t.id)}
                         onCheckedChange={() => onToggleSelect?.(t.id)}
@@ -86,12 +87,72 @@ export function TradesTable({
                       />
                     </td>
                   )}
+
+                  {/* 2. Acciones */}
+                  <td className="w-16 whitespace-nowrap px-2 py-2 md:px-3 md:py-3">
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => handleEdit(t)}
+                        className="rounded p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                        title="Editar / completar información"
+                        aria-label="Editar operación"
+                      >
+                        <Pencil className="size-4" />
+                      </button>
+                      {onDelete && (
+                        <button
+                          onClick={() => onDelete(t)}
+                          className="rounded p-1 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-loss"
+                          title="Eliminar operación"
+                          aria-label="Eliminar operación"
+                        >
+                          <Trash2 className="size-4" />
+                        </button>
+                      )}
+                    </div>
+                  </td>
+
+                  {/* 3. Fecha */}
                   <td className="whitespace-nowrap px-2 py-2 text-muted-foreground md:px-4 md:py-3">
                     <span className="num">{formatDateTime(t.closedAt)}</span>
                     {t.source === "webhook" && (
                       <Zap className="ml-1 inline size-3 text-brand-soft" aria-label="Vía webhook" />
                     )}
                   </td>
+
+                  {/* 4. Cuenta */}
+                  <td className="max-w-[160px] truncate px-2 py-2 text-muted-foreground md:px-4 md:py-3 font-medium">
+                    {nameOf(t.accountId)}
+                  </td>
+
+                  {/* 5. Dir */}
+                  <td className="whitespace-nowrap px-2 py-2 md:px-4 md:py-3">
+                    <span
+                      className={cn(
+                        "rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase md:text-xs",
+                        t.direction === "long" ? "bg-profit/15 text-profit" : "bg-loss/15 text-loss",
+                      )}
+                    >
+                      {t.direction}
+                    </span>
+                  </td>
+
+                  {/* 6. Tamaño */}
+                  <td className="num whitespace-nowrap px-2 py-2 text-right md:px-4 md:py-3">
+                    {t.size > 0 ? t.size : "—"}
+                  </td>
+
+                  {/* 7. PnL */}
+                  <td
+                    className={cn(
+                      "num whitespace-nowrap px-2 py-2 text-right font-semibold tabular-nums md:px-4 md:py-3",
+                      t.pnl >= 0 ? "text-profit" : "text-loss",
+                    )}
+                  >
+                    {formatCurrency(t.pnl, true)}
+                  </td>
+
+                  {/* 8. Resto: Activo */}
                   <td className="whitespace-nowrap px-2 py-2 font-semibold md:px-4 md:py-3">
                     <div className="flex items-center gap-1.5">
                       <span>{symbolOf(t.symbol)}</span>
@@ -116,28 +177,18 @@ export function TradesTable({
                       )}
                     </div>
                   </td>
-                  <td className="px-2 py-2 md:px-4 md:py-3">
-                    <span
-                      className={cn(
-                        "rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase md:text-xs",
-                        t.direction === "long" ? "bg-profit/15 text-profit" : "bg-loss/15 text-loss",
-                      )}
-                    >
-                      {t.direction}
-                    </span>
-                  </td>
-                  <td className="hidden max-w-[160px] truncate px-4 py-3 text-muted-foreground md:table-cell">
-                    {nameOf(t.accountId)}
-                  </td>
+
+                  {/* Entrada */}
                   <td className="num whitespace-nowrap px-2 py-2 text-right md:px-4 md:py-3">
                     {t.entryPrice > 0 ? t.entryPrice : "—"}
                   </td>
+
+                  {/* Salida */}
                   <td className="num whitespace-nowrap px-2 py-2 text-right md:px-4 md:py-3">
                     {t.exitPrice > 0 ? t.exitPrice : "—"}
                   </td>
-                  <td className="num whitespace-nowrap px-2 py-2 text-right md:px-4 md:py-3">
-                    {t.size > 0 ? t.size : "—"}
-                  </td>
+
+                  {/* Estrategia / Tags */}
                   <td className="hidden px-4 py-3 md:table-cell">
                     <div className="flex flex-wrap gap-1">
                       {t.tags.map((tag) => (
@@ -148,36 +199,6 @@ export function TradesTable({
                           {tag}
                         </span>
                       ))}
-                    </div>
-                  </td>
-                  <td
-                    className={cn(
-                      "num whitespace-nowrap px-2 py-2 text-right font-semibold tabular-nums md:px-4 md:py-3",
-                      t.pnl >= 0 ? "text-profit" : "text-loss",
-                    )}
-                  >
-                    {formatCurrency(t.pnl, true)}
-                  </td>
-                  <td className="px-2 py-2 text-right md:px-3 md:py-3">
-                    <div className="flex items-center justify-end gap-1">
-                      <button
-                        onClick={() => handleEdit(t)}
-                        className="rounded p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-                        title="Editar / completar información"
-                        aria-label="Editar operación"
-                      >
-                        <Pencil className="size-4" />
-                      </button>
-                      {onDelete && (
-                        <button
-                          onClick={() => onDelete(t)}
-                          className="rounded p-1 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-loss"
-                          title="Eliminar operación"
-                          aria-label="Eliminar operación"
-                        >
-                          <Trash2 className="size-4" />
-                        </button>
-                      )}
                     </div>
                   </td>
                 </tr>
