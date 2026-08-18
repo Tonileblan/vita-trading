@@ -51,8 +51,19 @@ export const followedPlanLabel = (k?: string | null) =>
 export const MOOD_FACES = ["😖", "🙁", "😐", "🙂", "😄"];
 
 /** Fecha local en formato YYYY-MM-DD. */
-export function todayKey(d = new Date()) {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
-    d.getDate(),
+export function todayKey(d: Date | string = new Date()): string {
+  const dateObj = typeof d === "string" ? new Date(d) : d;
+  if (isNaN(dateObj.getTime())) return "";
+  return `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, "0")}-${String(
+    dateObj.getDate(),
   ).padStart(2, "0")}`;
+}
+
+/** Clave local YYYY-MM-DD de una operación comercial. */
+export function tradeDayKey(t: { closedAt?: string | null; openedAt?: string | null }): string {
+  const iso = t.closedAt || t.openedAt;
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "";
+  return todayKey(d);
 }

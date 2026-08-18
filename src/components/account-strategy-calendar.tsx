@@ -3,6 +3,7 @@ import { ChevronLeft, ChevronRight, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { useJournal } from "@/lib/journal-store";
 import { effectiveStrategyId, formatCurrency } from "@/lib/metrics";
+import { tradeDayKey } from "@/lib/emotions";
 import { cn } from "@/lib/utils";
 
 const WEEKDAYS = ["L", "M", "X", "J", "V", "S", "D"];
@@ -45,7 +46,8 @@ export function AccountStrategyCalendar({ accountIds }: { accountIds: string[] }
     const map = new Map<string, { pnl: number; count: number; strategyIds: Set<string> }>();
     for (const t of trades) {
       if (!accountIds.includes(t.accountId)) continue;
-      const day = t.closedAt.slice(0, 10);
+      const day = tradeDayKey(t);
+      if (!day) continue;
       const entry = map.get(day) ?? { pnl: 0, count: 0, strategyIds: new Set<string>() };
       entry.pnl += t.pnl;
       entry.count += 1;

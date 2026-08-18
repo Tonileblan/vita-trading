@@ -32,6 +32,7 @@ import {
   filterByRange,
   formatCurrency,
 } from "@/lib/metrics";
+import { tradeDayKey } from "@/lib/emotions";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/panel")({
@@ -181,10 +182,7 @@ function Overview() {
 
   const trades = useMemo(() => {
     if (selectedCalendarDate) {
-      return scopedTrades.filter((t) => {
-        const key = (t.closedAt || t.openedAt).slice(0, 10);
-        return key === selectedCalendarDate;
-      });
+      return scopedTrades.filter((t) => tradeDayKey(t) === selectedCalendarDate);
     }
     if (range === "custom") {
       const from = customRange.from;

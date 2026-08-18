@@ -1,6 +1,8 @@
 import type { Trade } from "./types";
 import type { MoodCheckin } from "./mood";
-import { todayKey } from "./emotions";
+import { todayKey, tradeDayKey } from "./emotions";
+
+export { tradeDayKey };
 
 export interface Bucket {
   key: string;
@@ -56,9 +58,6 @@ export function mistakeCost(trades: Trade[], label: (key: string) => string): Bu
     .map(([k, list]) => bucket(k, label(k), list))
     .sort((a, b) => a.pnl - b.pnl);
 }
-
-/** Fecha local YYYY-MM-DD del cierre de una operación. */
-export const tradeDayKey = (t: Trade) => todayKey(new Date(t.closedAt));
 
 export function pnlByDay(trades: Trade[]) {
   const out = new Map<string, { pnl: number; trades: number }>();

@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { Flame, Snowflake } from "lucide-react";
 import type { Trade } from "@/lib/types";
 import { computeMetrics, computeStreaks, formatCurrency } from "@/lib/metrics";
+import { tradeDayKey } from "@/lib/emotions";
 import { cn } from "@/lib/utils";
 
 const CONSISTENCY_LIMIT = 15; // % máximo que puede pesar el mejor día
@@ -47,8 +48,8 @@ export function PerformanceAnalysis({ trades }: { trades: Trade[] }) {
   const { bestDay, totalProfit } = useMemo(() => {
     const byDay = new Map<string, number>();
     for (const t of trades) {
-      const key = (t.closedAt || t.openedAt).slice(0, 10);
-      byDay.set(key, (byDay.get(key) ?? 0) + t.pnl);
+      const key = tradeDayKey(t);
+      if (key) byDay.set(key, (byDay.get(key) ?? 0) + t.pnl);
     }
     const best = Math.max(0, ...Array.from(byDay.values()));
     return { bestDay: best, totalProfit: trades.reduce((s, t) => s + t.pnl, 0) };
