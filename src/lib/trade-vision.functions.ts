@@ -57,6 +57,14 @@ Reglas:
   visibles en las imágenes.
 Responde SOLO con JSON válido: {"trades":[{"symbol":null,"direction":null,"openedAt":null,"closedAt":"2026-05-14T15:32:00","entryPrice":null,"exitPrice":null,"size":null,"pnl":-120.5}]}`;
 
+function parseDataUrl(dataUrl: string): { mime_type: string; data: string } {
+  const match = dataUrl.match(/^data:([^;]+);base64,(.+)$/);
+  if (match && match[1] && match[2]) {
+    return { mime_type: match[1], data: match[2] };
+  }
+  return { mime_type: "image/jpeg", data: dataUrl.replace(/^data:[^;]+;base64,/, "") };
+}
+
 export const extractTradesFromImages = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => inputSchema.parse(data))
   .handler(async ({ data }) => {
@@ -84,46 +92,114 @@ export const extractTradesFromImages = createServerFn({ method: "POST" })
       ? `Activos habituales del usuario: ${data.symbols.join(", ")}.`
       : "";
 
-    let endpointUrl = "https://ai.gateway.lovable.dev/v1/chat/completions";
-    let modelName = "google/gemini-2.5-flash";
+    let content = "{}";
 
     if (isGoogleAi) {
-      endpointUrl = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
-      modelName = data.model || "gemini-2.5-flash";
-    }
+      // 1. Conexión nativa con Google Gemini REST API (Google AI Studio)
+      let geminiModel = data.model || "gemini-2.0-flash";
+      if (geminiModel === "gemini-2.5-flash") geminiModel = "gemini-2.0-flash";
 
-    const res = await fetch(endpointUrl, {
-      method: "POST",
-      headers: { "content-type": "application/json", Authorization: `Bearer ${apiKey}` },
-      body: JSON.stringify({
-        model: modelName,
-        messages: [
-          { role: "system", content: `${PROMPT}\n${hint}` },
-          {
-            role: "user",
-            content: [
-              { type: "text", text: "Extrae todas las operaciones de estas capturas." },
-              ...data.images.map((url) => ({ type: "image_url", image_url: { url } })),
-            ],
+      const imageParts = data.images.map((img) => {
+        const { mime_type, data: base64Data } = parseDataUrl(img);
+        return {
+          inline_data: {
+            mime_type,
+            data: base64Data,
           },
-        ],
-        response_format: { type: "json_object" },
-      }),
-    });
+        };
+      });
 
-    if (res.status === 429) throw new Error("Límite de peticiones de Google AI alcanzado, inténtalo en unos segundos");
-    if (res.status === 402) throw new Error("Se agotaron los créditos de IA");
-    if (res.status === 401 || res.status === 403) {
-      const err = await res.json().catch(() => null);
-      throw new Error(err?.error?.message || "Clave de Google AI (Gemini) inválida o sin permisos");
-    }
-    if (!res.ok) {
-      const err = await res.json().catch(() => null);
-      throw new Error(err?.error?.message || `Error de Google AI (${res.status})`);
-    }
+      let res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${apiKey}`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            contents: [
+              {
+                parts: [
+                  { text: `${PROMPT}\n${hint}\nExtrae todas las operaciones de estas capturas.` },
+                  ...imageParts,
+                ],
+              },
+            ],
+            generationConfig: {
+              response_mime_type: "application/json",
+              temperature: 0.1,
+            },
+          }),
+        },
+      );
 
-    const json = (await res.json()) as { choices?: { message?: { content?: string } }[] };
-    const content = json.choices?.[0]?.message?.content ?? "{}";
+      // Si el modelo da 404 (no disponible en esa región/cuenta), fallback a gemini-1.5-flash
+      if (res.status === 404 && geminiModel !== "gemini-1.5-flash") {
+        geminiModel = "gemini-1.5-flash";
+        res = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${apiKey}`,
+          {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              contents: [
+                {
+                  parts: [
+                    { text: `${PROMPT}\n${hint}\nExtrae todas las operaciones de estas capturas.` },
+                    ...imageParts,
+                  ],
+                },
+              ],
+              generationConfig: {
+                response_mime_type: "application/json",
+                temperature: 0.1,
+              },
+            }),
+          },
+        );
+      }
+
+      if (res.status === 429) {
+        throw new Error("Límite de peticiones de Google AI alcanzado. Espera unos segundos y vuelve a intentarlo.");
+      }
+      if (res.status === 401 || res.status === 403) {
+        const err = await res.json().catch(() => null);
+        throw new Error((err as any)?.error?.message || "Clave API de Google AI inválida o sin permisos.");
+      }
+      if (!res.ok) {
+        const err = await res.json().catch(() => null);
+        throw new Error((err as any)?.error?.message || `Error de Google AI (${res.status})`);
+      }
+
+      const json = await res.json();
+      content = json.candidates?.[0]?.content?.parts?.[0]?.text ?? "{}";
+    } else {
+      // 2. Gateway Lovable Fallback
+      const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: { "content-type": "application/json", Authorization: `Bearer ${apiKey}` },
+        body: JSON.stringify({
+          model: "google/gemini-2.5-flash",
+          messages: [
+            { role: "system", content: `${PROMPT}\n${hint}` },
+            {
+              role: "user",
+              content: [
+                { type: "text", text: "Extrae todas las operaciones de estas capturas." },
+                ...data.images.map((url) => ({ type: "image_url", image_url: { url } })),
+              ],
+            },
+          ],
+          response_format: { type: "json_object" },
+        }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => null);
+        throw new Error((err as any)?.error?.message || `Error de IA (${res.status})`);
+      }
+
+      const json = (await res.json()) as { choices?: { message?: { content?: string } }[] };
+      content = json.choices?.[0]?.message?.content ?? "{}";
+    }
     const cleaned = content
       .trim()
       .replace(/^```(?:json)?/i, "")
