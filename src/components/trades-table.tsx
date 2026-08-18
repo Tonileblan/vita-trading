@@ -112,9 +112,9 @@ export function TradesTable({
                     </div>
                   </td>
 
-                  {/* 3. Fecha */}
+                  {/* 3. Fecha (Apertura) */}
                   <td className="whitespace-nowrap px-2 py-2 text-muted-foreground md:px-4 md:py-3">
-                    <span className="num">{formatDateTime(t.closedAt)}</span>
+                    <span className="num">{formatDateTime(t.openedAt || t.closedAt)}</span>
                     {t.source === "webhook" && (
                       <Zap className="ml-1 inline size-3 text-brand-soft" aria-label="Vía webhook" />
                     )}

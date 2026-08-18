@@ -66,8 +66,8 @@ function TradesPage() {
         )
         .sort((a, b) =>
           sortBy === "created"
-            ? (b.createdAt ?? b.closedAt).localeCompare(a.createdAt ?? a.closedAt)
-            : b.closedAt.localeCompare(a.closedAt),
+            ? (b.createdAt ?? b.openedAt ?? b.closedAt).localeCompare(a.createdAt ?? a.openedAt ?? a.closedAt)
+            : (b.openedAt ?? b.closedAt).localeCompare(a.openedAt ?? a.closedAt),
         ),
     [visibleTrades, query, tag, sortBy],
   );
