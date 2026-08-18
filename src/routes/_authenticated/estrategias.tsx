@@ -36,7 +36,7 @@ function pct(v: number) {
 }
 
 function EstrategiasPage() {
-  const { strategies, trades, withdrawals, accounts, strategyPeriods, restoreDefaultStrategies } =
+  const { strategies, trades, withdrawals, accounts, strategyPeriods } =
     useJournal();
 
   const stats = useMemo(
@@ -85,16 +85,13 @@ function EstrategiasPage() {
             <div>
               <p className="text-lg font-semibold">No hay estrategias en este diario</p>
               <p className="text-sm text-muted-foreground">
-                Crea una nueva o restaura las estrategias por defecto (Principal, Fondeo, Asia, Oro, Lite).
+                Crea una nueva estrategia personalizada para tu operativa.
               </p>
             </div>
             <div className="flex flex-wrap items-center justify-center gap-2">
-              <Button onClick={() => restoreDefaultStrategies()}>
-                <Layers className="size-4" /> Restaurar estrategias por defecto
-              </Button>
               <StrategyDialog
                 trigger={
-                  <Button variant="outline">
+                  <Button>
                     <Plus className="size-4" /> Nueva estrategia
                   </Button>
                 }

@@ -377,6 +377,28 @@ export async function fetchJournalData(journalId: string): Promise<JournalData> 
       withdrawals: (withdrawals.data ?? []).map((r) => toWithdrawal(r as Row)),
       strategyPeriods: (periods.data ?? []).map((r) => toPeriod(r as Row)),
     };
+
+    // Si no hay estrategias creadas en este diario, sembrarlas automáticamente con las 6 del admin
+    if (parsed.strategies.length === 0 && journalId) {
+      try {
+        const { data: u } = await supabase.auth.getUser();
+        if (u.user?.id) {
+          await seedDefaultStrategies(journalId, u.user.id);
+          const { data: newStrats } = await supabase
+            .from("strategies")
+            .select("*")
+            .eq("journal_id", journalId);
+          if (newStrats && newStrats.length > 0) {
+            parsed.strategies = newStrats.map((r) => toStrategy(r as Row));
+          } else {
+            parsed.strategies = mockStrategies.map((s) => ({ ...s, isShared: true }));
+          }
+        }
+      } catch {
+        parsed.strategies = mockStrategies.map((s) => ({ ...s, isShared: true }));
+      }
+    }
+
     setLocalJournalDataCache(journalId, parsed);
     return parsed;
   } catch (err) {
