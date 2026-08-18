@@ -49,7 +49,7 @@ export function TradesTable({
             <tr className="border-b border-border text-left uppercase tracking-wider text-muted-foreground">
               {selectable && <th className="w-8 px-2 py-2 md:px-3 md:py-3" />}
               <th className="w-16 whitespace-nowrap px-2 py-2 font-semibold md:px-3 md:py-3">Acciones</th>
-              <th className="whitespace-nowrap px-2 py-2 font-semibold md:px-4 md:py-3">Apertura</th>
+              <th className="whitespace-nowrap px-2 py-2 font-semibold md:px-4 md:py-3">Fecha</th>
               <th className="whitespace-nowrap px-2 py-2 font-semibold md:px-4 md:py-3">Cuenta</th>
               <th className="whitespace-nowrap px-2 py-2 font-semibold md:px-4 md:py-3">Dir.</th>
               <th className="whitespace-nowrap px-2 py-2 text-right font-semibold md:px-4 md:py-3">Tamaño</th>
