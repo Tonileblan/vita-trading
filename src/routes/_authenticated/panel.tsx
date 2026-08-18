@@ -189,7 +189,7 @@ function Overview() {
       const to = customRange.to;
       if (!from && !to) return scopedTrades;
       return scopedTrades.filter((t) => {
-        const ts = new Date(t.closedAt).getTime();
+        const ts = new Date(t.openedAt || t.closedAt).getTime();
         if (from && ts < from.getTime()) return false;
         if (to && ts > new Date(to.getTime() + 86400000).getTime()) return false;
         return true;

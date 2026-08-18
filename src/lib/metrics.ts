@@ -40,7 +40,9 @@ export function computeMetrics(trades: Trade[]): Metrics {
   const grossProfit = wins.reduce((s, t) => s + t.pnl, 0);
   const grossLoss = Math.abs(losses.reduce((s, t) => s + t.pnl, 0));
   const sorted = [...trades].sort((a, b) => {
-    const diff = new Date(b.closedAt).getTime() - new Date(a.closedAt).getTime();
+    const aDate = a.openedAt || a.closedAt;
+    const bDate = b.openedAt || b.closedAt;
+    const diff = new Date(bDate).getTime() - new Date(aDate).getTime();
     if (diff !== 0) return diff;
     return String(b.id ?? "").localeCompare(String(a.id ?? ""));
   });
@@ -110,7 +112,9 @@ export function computeStreaks(trades: Trade[]): StreakInfo {
   }
 
   const desc = [...trades].sort((a, b) => {
-    const diff = new Date(b.closedAt).getTime() - new Date(a.closedAt).getTime();
+    const aDate = a.openedAt || a.closedAt;
+    const bDate = b.openedAt || b.closedAt;
+    const diff = new Date(bDate).getTime() - new Date(aDate).getTime();
     if (diff !== 0) return diff;
     return String(b.id ?? "").localeCompare(String(a.id ?? ""));
   });
@@ -189,23 +193,24 @@ export function computeStreaks(trades: Trade[]): StreakInfo {
 export function filterByDays(trades: Trade[], days: number) {
   if (!days) return trades;
   const latest = trades.reduce(
-    (max, t) => Math.max(max, new Date(t.closedAt).getTime()),
+    (max, t) => Math.max(max, new Date(t.openedAt || t.closedAt).getTime()),
     0,
   );
   const cutoff = latest - days * 86400000;
-  return trades.filter((t) => new Date(t.closedAt).getTime() >= cutoff);
+  return trades.filter((t) => new Date(t.openedAt || t.closedAt).getTime() >= cutoff);
 }
 
 export function buildEquityCurve(trades: Trade[], startBalance: number) {
   const sorted = [...trades].sort(
-    (a, b) => new Date(a.closedAt).getTime() - new Date(b.closedAt).getTime(),
+    (a, b) => new Date(a.openedAt || a.closedAt).getTime() - new Date(b.openedAt || b.closedAt).getTime(),
   );
   let equity = startBalance;
   return sorted.map((t, i) => {
     equity += t.pnl;
+    const dateStr = t.openedAt || t.closedAt;
     return {
       index: i + 1,
-      date: new Date(t.closedAt).toLocaleDateString("es-ES", {
+      date: new Date(dateStr).toLocaleDateString("es-ES", {
         day: "2-digit",
         month: "short",
         timeZone: "UTC",
@@ -223,15 +228,15 @@ export function filterByRange(
   const now = new Date();
   if (range === "month") {
     const start = new Date(now.getFullYear(), now.getMonth(), 1);
-    return trades.filter((t) => new Date(t.closedAt).getTime() >= start.getTime());
+    return trades.filter((t) => new Date(t.openedAt || t.closedAt).getTime() >= start.getTime());
   }
   const days = range === "7d" ? 7 : range === "30d" ? 30 : range === "180d" ? 180 : 90;
   const latest = trades.reduce(
-    (max, t) => Math.max(max, new Date(t.closedAt).getTime()),
+    (max, t) => Math.max(max, new Date(t.openedAt || t.closedAt).getTime()),
     now.getTime(),
   );
   const cutoff = latest - days * 86400000;
-  return trades.filter((t) => new Date(t.closedAt).getTime() >= cutoff);
+  return trades.filter((t) => new Date(t.openedAt || t.closedAt).getTime() >= cutoff);
 }
 
 /** PnL acumulado de las operaciones de una cuenta. */
