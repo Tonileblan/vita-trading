@@ -407,10 +407,32 @@ function UsersPage() {
 
   const deleteUser = useMutation({
     mutationFn: async (userId: string) => {
-      const { error } = await (supabase.rpc as any)("admin_delete_user", {
+      // 1. Intentar RPC con target_user_id
+      let { error } = await (supabase.rpc as any)("admin_delete_user", {
         target_user_id: userId,
       });
-      if (error) throw error;
+
+      if (error) {
+        // 2. Intentar con p_target_user_id
+        const res2 = await (supabase.rpc as any)("admin_delete_user", {
+          p_target_user_id: userId,
+        });
+        error = res2.error;
+      }
+
+      if (error) {
+        // 3. Fallback directo en cascada
+        await supabase.from("account_strategy_periods").delete().eq("user_id", userId);
+        await supabase.from("chat_messages").delete().or(`sender_id.eq.${userId},receiver_id.eq.${userId}`);
+        await supabase.from("withdrawals").delete().eq("user_id", userId);
+        await supabase.from("trades").delete().eq("user_id", userId);
+        await supabase.from("accounts").delete().eq("user_id", userId);
+        await supabase.from("strategies").delete().eq("user_id", userId);
+        await supabase.from("journals").delete().eq("owner_id", userId);
+        await supabase.from("user_roles").delete().eq("user_id", userId);
+        const { error: profErr } = await supabase.from("profiles").delete().eq("id", userId);
+        if (profErr) throw error || profErr;
+      }
     },
     onSuccess: () => {
       toast.success("Usuario eliminado definitivamente");
