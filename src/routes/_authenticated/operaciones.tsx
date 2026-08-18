@@ -314,6 +314,7 @@ function TradesPage() {
             <TradesTable
               trades={filtered}
               accounts={accounts}
+              strategies={strategies}
               selectedIds={selected}
               onToggleSelect={(id) =>
                 setSelected((prev) =>

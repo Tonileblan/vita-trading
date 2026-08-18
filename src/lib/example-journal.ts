@@ -116,7 +116,7 @@ export async function createExampleJournal(name = "Diario de ejemplo") {
   const sample = mockTrades.slice(0, 30);
   const tradeRows: Row[] = sample.map((t) => ({
     account_id: accIdMap.get(t.accountId) ?? null,
-    strategy_id: stratIdMap.get(t.strategyId) ?? null,
+    strategy_id: (t.strategyId ? stratIdMap.get(t.strategyId) : null) ?? null,
     symbol: t.symbol,
     direction: t.direction,
     opened_at: t.openedAt,

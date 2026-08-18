@@ -242,7 +242,7 @@ function AccountDetail() {
           ) : accTrades.length === 0 ? (
             <p className="text-sm text-muted-foreground">Todavía no hay operaciones.</p>
           ) : (
-            <TradesTable trades={accTrades} accounts={accounts} />
+            <TradesTable trades={accTrades} accounts={accounts} strategies={strategies} />
           )}
         </section>
       </div>

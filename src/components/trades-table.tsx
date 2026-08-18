@@ -1,14 +1,16 @@
 import { useState } from "react";
-import { FileText, Image as ImageIcon, Pencil, Smile, Trash2, Zap } from "lucide-react";
+import { FileText, Image as ImageIcon, Layers, Pencil, Smile, Trash2, Zap } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { formatCurrency, formatDateTime } from "@/lib/metrics";
-import type { Account, Trade } from "@/lib/types";
+import type { Account, Strategy, Trade } from "@/lib/types";
+import { useJournal } from "@/lib/journal-store";
 import { TradeFormDialog } from "@/components/trade-form-dialog";
 import { cn } from "@/lib/utils";
 
 export function TradesTable({
   trades,
   accounts,
+  strategies: propStrategies,
   limit,
   selectedIds,
   onToggleSelect,
@@ -17,12 +19,15 @@ export function TradesTable({
 }: {
   trades: Trade[];
   accounts: Account[];
+  strategies?: Strategy[] | undefined;
   limit?: number | undefined;
   selectedIds?: string[] | undefined;
   onToggleSelect?: ((id: string) => void) | undefined;
   onEdit?: ((trade: Trade) => void) | undefined;
   onDelete?: ((trade: Trade) => void) | undefined;
 }) {
+  const store = useJournal();
+  const strategies = propStrategies ?? store.strategies;
   const [editingTrade, setEditingTrade] = useState<Trade | null>(null);
 
   const rows = limit ? trades.slice(0, limit) : trades;
@@ -41,23 +46,35 @@ export function TradesTable({
     }
   };
 
+  const strategyOf = (trade: Trade) => {
+    if (trade.strategyId) {
+      const direct = strategies.find((s) => s.id === trade.strategyId);
+      if (direct) return direct;
+    }
+    const acc = accounts.find((a) => a.id === trade.accountId);
+    if (acc?.strategyId) {
+      return strategies.find((s) => s.id === acc.strategyId) ?? null;
+    }
+    return null;
+  };
+
   return (
     <>
       <div className="panel overflow-x-auto">
-        <table className="w-full min-w-[720px] text-xs md:min-w-[900px] md:text-sm">
+        <table className="w-full min-w-[760px] text-xs md:min-w-[950px] md:text-sm">
           <thead>
             <tr className="border-b border-border text-left uppercase tracking-wider text-muted-foreground">
               {selectable && <th className="w-8 px-2 py-2 md:px-3 md:py-3" />}
               <th className="w-16 whitespace-nowrap px-2 py-2 font-semibold md:px-3 md:py-3">Acciones</th>
               <th className="whitespace-nowrap px-2 py-2 font-semibold md:px-4 md:py-3">Fecha</th>
               <th className="whitespace-nowrap px-2 py-2 font-semibold md:px-4 md:py-3">Cuenta</th>
+              <th className="whitespace-nowrap px-2 py-2 font-semibold md:px-4 md:py-3">Estrategia</th>
               <th className="whitespace-nowrap px-2 py-2 font-semibold md:px-4 md:py-3">Dir.</th>
               <th className="whitespace-nowrap px-2 py-2 text-right font-semibold md:px-4 md:py-3">Tamaño</th>
               <th className="whitespace-nowrap px-2 py-2 text-right font-semibold md:px-4 md:py-3">PnL</th>
               <th className="whitespace-nowrap px-2 py-2 font-semibold md:px-4 md:py-3">Activo</th>
               <th className="whitespace-nowrap px-2 py-2 text-right font-semibold md:px-4 md:py-3">Entrada</th>
               <th className="whitespace-nowrap px-2 py-2 text-right font-semibold md:px-4 md:py-3">Salida</th>
-              <th className="hidden px-4 py-3 font-semibold md:table-cell">Estrategia</th>
             </tr>
           </thead>
           <tbody>
@@ -71,6 +88,7 @@ export function TradesTable({
                 (t.mistakes && t.mistakes.length > 0) ||
                 (t.emotionNote && t.emotionNote.trim())
               );
+              const strat = strategyOf(t);
 
               return (
                 <tr
@@ -102,7 +120,7 @@ export function TradesTable({
                       {onDelete && (
                         <button
                           onClick={() => onDelete(t)}
-                          className="rounded p-1 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-loss"
+                          className="rounded p-1 text-muted-foreground transition-colors hover:bg-loss/20 hover:text-loss"
                           title="Eliminar operación"
                           aria-label="Eliminar operación"
                         >
@@ -112,60 +130,93 @@ export function TradesTable({
                     </div>
                   </td>
 
-                  {/* 3. Fecha (Apertura) */}
-                  <td className="whitespace-nowrap px-2 py-2 text-muted-foreground md:px-4 md:py-3">
-                    <span className="num">{formatDateTime(t.openedAt || t.closedAt)}</span>
-                    {t.source === "webhook" && (
-                      <Zap className="ml-1 inline size-3 text-brand-soft" aria-label="Vía webhook" />
-                    )}
+                  {/* 3. Fecha */}
+                  <td className="whitespace-nowrap px-2 py-2 font-mono text-xs text-muted-foreground md:px-4 md:py-3">
+                    {formatDateTime(t.openedAt || t.closedAt)}
                   </td>
 
                   {/* 4. Cuenta */}
-                  <td className="max-w-[160px] truncate px-2 py-2 text-muted-foreground md:px-4 md:py-3 font-medium">
+                  <td className="whitespace-nowrap px-2 py-2 font-medium md:px-4 md:py-3">
                     {nameOf(t.accountId)}
                   </td>
 
-                  {/* 5. Dir */}
+                  {/* 5. Estrategia */}
+                  <td className="whitespace-nowrap px-2 py-2 md:px-4 md:py-3">
+                    {strat ? (
+                      <span
+                        className="inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-xs font-semibold"
+                        style={{
+                          borderColor: strat.color ? `${strat.color}50` : "var(--border)",
+                          backgroundColor: strat.color ? `${strat.color}15` : "var(--muted)",
+                          color: strat.color || "inherit",
+                        }}
+                      >
+                        {strat.color && (
+                          <span
+                            className="size-2 shrink-0 rounded-full"
+                            style={{ backgroundColor: strat.color }}
+                          />
+                        )}
+                        <span className="max-w-[130px] truncate">{strat.name}</span>
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center rounded-md border border-border/50 bg-muted/30 px-2 py-0.5 text-xs font-medium text-muted-foreground">
+                        Sin estrategia
+                      </span>
+                    )}
+                  </td>
+
+                  {/* 6. Dirección */}
                   <td className="whitespace-nowrap px-2 py-2 md:px-4 md:py-3">
                     <span
                       className={cn(
-                        "rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase md:text-xs",
-                        t.direction === "long" ? "bg-profit/15 text-profit" : "bg-loss/15 text-loss",
+                        "rounded px-1.5 py-0.5 text-xs font-semibold uppercase",
+                        t.direction === "long"
+                          ? "bg-profit/15 text-profit"
+                          : "bg-loss/15 text-loss",
                       )}
                     >
                       {t.direction}
                     </span>
                   </td>
 
-                  {/* 6. Tamaño */}
+                  {/* 7. Tamaño */}
                   <td className="num whitespace-nowrap px-2 py-2 text-right md:px-4 md:py-3">
-                    {t.size > 0 ? t.size : "—"}
+                    {t.size}
                   </td>
 
-                  {/* 7. PnL */}
+                  {/* 8. PnL */}
                   <td
                     className={cn(
-                      "num whitespace-nowrap px-2 py-2 text-right font-semibold tabular-nums md:px-4 md:py-3",
+                      "num whitespace-nowrap px-2 py-2 text-right font-semibold md:px-4 md:py-3",
                       t.pnl >= 0 ? "text-profit" : "text-loss",
                     )}
                   >
                     {formatCurrency(t.pnl, true)}
                   </td>
 
-                  {/* 8. Resto: Activo */}
-                  <td className="whitespace-nowrap px-2 py-2 font-semibold md:px-4 md:py-3">
+                  {/* 9. Activo + Badges */}
+                  <td className="whitespace-nowrap px-2 py-2 md:px-4 md:py-3">
                     <div className="flex items-center gap-1.5">
-                      <span>{symbolOf(t.symbol)}</span>
+                      <span className="font-semibold text-foreground">{symbolOf(t.symbol)}</span>
+                      {t.source === "webhook" && (
+                        <span
+                          title="Registrada vía webhook automático"
+                          className="inline-flex items-center text-primary"
+                        >
+                          <Zap className="size-3" />
+                        </span>
+                      )}
                       {(hasNotes || hasScreenshots || hasEmotion) && (
-                        <div className="flex items-center gap-0.5 text-muted-foreground">
-                          {hasScreenshots && (
-                            <span title={`${t.screenshots.length} captura(s)`}>
-                              <ImageIcon className="size-3 text-brand-soft" />
+                        <div className="flex items-center gap-1 ml-1">
+                          {hasNotes && (
+                            <span title={`Nota: ${t.notes}`}>
+                              <FileText className="size-3 text-muted-foreground" />
                             </span>
                           )}
-                          {hasNotes && (
-                            <span title="Tiene notas">
-                              <FileText className="size-3 text-sky-400" />
+                          {hasScreenshots && (
+                            <span title={`${t.screenshots?.length} captura(s)`}>
+                              <ImageIcon className="size-3 text-brand" />
                             </span>
                           )}
                           {hasEmotion && (
@@ -178,28 +229,14 @@ export function TradesTable({
                     </div>
                   </td>
 
-                  {/* Entrada */}
+                  {/* 10. Entrada */}
                   <td className="num whitespace-nowrap px-2 py-2 text-right md:px-4 md:py-3">
                     {t.entryPrice > 0 ? t.entryPrice : "—"}
                   </td>
 
-                  {/* Salida */}
+                  {/* 11. Salida */}
                   <td className="num whitespace-nowrap px-2 py-2 text-right md:px-4 md:py-3">
                     {t.exitPrice > 0 ? t.exitPrice : "—"}
-                  </td>
-
-                  {/* Estrategia / Tags */}
-                  <td className="hidden px-4 py-3 md:table-cell">
-                    <div className="flex flex-wrap gap-1">
-                      {t.tags.map((tag) => (
-                        <span
-                          key={tag}
-                          className="rounded-full border border-border px-2 py-0.5 text-[11px] text-muted-foreground"
-                        >
-                          {tag}
-                        </span>
-                      ))}
-                    </div>
                   </td>
                 </tr>
               );

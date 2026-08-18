@@ -62,7 +62,7 @@ export type Direction = "long" | "short";
 export interface Trade {
   id: string;
   accountId: string;
-  strategyId: string;
+  strategyId?: string | undefined;
   symbol: string;
   direction: Direction;
   openedAt: string;

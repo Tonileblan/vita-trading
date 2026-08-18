@@ -194,10 +194,11 @@ export function TradeFormDialog({
     }
     setSaving(true);
     try {
+      const cleanStrategyId = strategyId && strategyId !== "none" ? strategyId : undefined;
       if (isEditing && trade) {
         await updateTrade(trade.id, {
           accountId,
-          strategyId,
+          strategyId: cleanStrategyId,
           symbol: symbol.toUpperCase().trim(),
           direction,
           openedAt: fromDatetimeLocal(openedAt),
@@ -219,7 +220,7 @@ export function TradeFormDialog({
       } else {
         await addTrade({
           accountId,
-          strategyId,
+          strategyId: cleanStrategyId,
           symbol: symbol.toUpperCase().trim(),
           direction,
           openedAt: fromDatetimeLocal(openedAt),
@@ -271,7 +272,18 @@ export function TradeFormDialog({
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
             <Label>Cuenta</Label>
-            <Select value={accountId} onValueChange={setAccountId}>
+            <Select
+              value={accountId}
+              onValueChange={(accId) => {
+                setAccountId(accId);
+                if (!isEditing) {
+                  const acc = accounts.find((a) => a.id === accId);
+                  if (acc?.strategyId) {
+                    setStrategyId(acc.strategyId);
+                  }
+                }
+              }}
+            >
               <SelectTrigger>
                 <SelectValue placeholder="Selecciona" />
               </SelectTrigger>
@@ -287,14 +299,26 @@ export function TradeFormDialog({
 
           <div className="space-y-2">
             <Label>Estrategia</Label>
-            <Select value={strategyId} onValueChange={setStrategyId}>
+            <Select
+              value={strategyId || "none"}
+              onValueChange={(val) => setStrategyId(val === "none" ? "" : val)}
+            >
               <SelectTrigger>
-                <SelectValue placeholder="Selecciona" />
+                <SelectValue placeholder="Selecciona estrategia" />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="none">Sin estrategia asignada</SelectItem>
                 {strategies.map((s) => (
                   <SelectItem key={s.id} value={s.id}>
-                    {s.name}
+                    <div className="flex items-center gap-2">
+                      {s.color && (
+                        <span
+                          className="size-2 shrink-0 rounded-full"
+                          style={{ backgroundColor: s.color }}
+                        />
+                      )}
+                      <span>{s.name}</span>
+                    </div>
                   </SelectItem>
                 ))}
               </SelectContent>

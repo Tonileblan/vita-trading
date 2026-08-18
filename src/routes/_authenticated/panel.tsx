@@ -617,7 +617,7 @@ function Overview() {
               </button>
             )}
           </div>
-          <TradesTable trades={trades} accounts={accounts} limit={selectedCalendarDate ? undefined : 12} />
+          <TradesTable trades={trades} accounts={accounts} strategies={strategies} limit={selectedCalendarDate ? undefined : 12} />
         </section>
       </div>
     </AppShell>
