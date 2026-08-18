@@ -57,6 +57,8 @@ Reglas:
   visibles en las imágenes.
 Responde SOLO con JSON válido: {"trades":[{"symbol":null,"direction":null,"openedAt":null,"closedAt":"2026-05-14T15:32:00","entryPrice":null,"exitPrice":null,"size":null,"pnl":-120.5}]}`;
 
+import { executeGeminiGenerateContent } from "@/lib/google-ai";
+
 function parseDataUrl(dataUrl: string): { mime_type: string; data: string } {
   const match = dataUrl.match(/^data:([^;]+);base64,(.+)$/);
   if (match && match[1] && match[2]) {
@@ -95,9 +97,8 @@ export const extractTradesFromImages = createServerFn({ method: "POST" })
     let content = "{}";
 
     if (isGoogleAi) {
-      // 1. Conexión nativa con Google Gemini REST API (Google AI Studio)
-      let geminiModel = data.model || "gemini-2.0-flash";
-      if (geminiModel === "gemini-2.5-flash") geminiModel = "gemini-2.0-flash";
+      // 1. Conexión nativa con Google Gemini REST API (Google AI Studio con fallback inteligente)
+      const geminiModel = data.model || "gemini-2.0-flash";
 
       const imageParts = data.images.map((img) => {
         const { mime_type, data: base64Data } = parseDataUrl(img);
@@ -109,68 +110,24 @@ export const extractTradesFromImages = createServerFn({ method: "POST" })
         };
       });
 
-      let res = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${apiKey}`,
-        {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({
-            contents: [
-              {
-                parts: [
-                  { text: `${PROMPT}\n${hint}\nExtrae todas las operaciones de estas capturas.` },
-                  ...imageParts,
-                ],
-              },
+      const { text } = await executeGeminiGenerateContent(
+        apiKey,
+        geminiModel,
+        [
+          {
+            parts: [
+              { text: `${PROMPT}\n${hint}\nExtrae todas las operaciones de estas capturas.` },
+              ...imageParts,
             ],
-            generationConfig: {
-              response_mime_type: "application/json",
-              temperature: 0.1,
-            },
-          }),
+          },
+        ],
+        {
+          response_mime_type: "application/json",
+          temperature: 0.1,
         },
       );
 
-      // Si el modelo da 404 (no disponible en esa región/cuenta), fallback a gemini-1.5-flash
-      if (res.status === 404 && geminiModel !== "gemini-1.5-flash") {
-        geminiModel = "gemini-1.5-flash";
-        res = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${apiKey}`,
-          {
-            method: "POST",
-            headers: { "content-type": "application/json" },
-            body: JSON.stringify({
-              contents: [
-                {
-                  parts: [
-                    { text: `${PROMPT}\n${hint}\nExtrae todas las operaciones de estas capturas.` },
-                    ...imageParts,
-                  ],
-                },
-              ],
-              generationConfig: {
-                response_mime_type: "application/json",
-                temperature: 0.1,
-              },
-            }),
-          },
-        );
-      }
-
-      if (res.status === 429) {
-        throw new Error("Límite de peticiones de Google AI alcanzado. Espera unos segundos y vuelve a intentarlo.");
-      }
-      if (res.status === 401 || res.status === 403) {
-        const err = await res.json().catch(() => null);
-        throw new Error((err as any)?.error?.message || "Clave API de Google AI inválida o sin permisos.");
-      }
-      if (!res.ok) {
-        const err = await res.json().catch(() => null);
-        throw new Error((err as any)?.error?.message || `Error de Google AI (${res.status})`);
-      }
-
-      const json = await res.json();
-      content = json.candidates?.[0]?.content?.parts?.[0]?.text ?? "{}";
+      content = text;
     } else {
       // 2. Gateway Lovable Fallback
       const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
