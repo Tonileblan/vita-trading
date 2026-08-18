@@ -409,7 +409,30 @@ function UsersPage() {
 
   const deleteUser = useMutation({
     mutationFn: async (userId: string) => {
-      await deleteUserServer({ data: { userId } });
+      // 1. Intentar RPC delete_user_account
+      const { data: d1, error: e1 } = await (supabase.rpc as any)("delete_user_account", {
+        user_id: userId,
+      });
+      if (!e1 && d1) return;
+
+      // 2. Intentar RPC admin_delete_user con target_user_id
+      const { data: d2, error: e2 } = await (supabase.rpc as any)("admin_delete_user", {
+        target_user_id: userId,
+      });
+      if (!e2 && d2) return;
+
+      // 3. Intentar RPC admin_delete_user con p_target_user_id
+      const { data: d3, error: e3 } = await (supabase.rpc as any)("admin_delete_user", {
+        p_target_user_id: userId,
+      });
+      if (!e3 && d3) return;
+
+      // 4. Intentar Server Function
+      try {
+        await deleteUserServer({ data: { userId } });
+      } catch (err: any) {
+        throw new Error(e1?.message || e2?.message || e3?.message || err?.message || "No se pudo eliminar el usuario");
+      }
     },
     onMutate: async (userId) => {
       await qc.cancelQueries({ queryKey: ["all-profiles"] });
