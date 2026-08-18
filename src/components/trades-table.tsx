@@ -234,6 +234,7 @@ export function TradesTable({
       <TradeFormDialog
         trade={editingTrade}
         open={Boolean(editingTrade)}
+        trigger={null}
         onOpenChange={(isOpen) => {
           if (!isOpen) setEditingTrade(null);
         }}

@@ -261,11 +261,16 @@ export function TradeFormDialog({
     }
   };
 
-  const defaultTrigger = trigger !== undefined ? trigger : (
-    <Button>
-      <Plus className="size-4" /> Nueva operación
-    </Button>
-  );
+  const defaultTrigger =
+    trigger !== undefined
+      ? trigger
+      : controlledOpen !== undefined
+        ? null
+        : (
+            <Button>
+              <Plus className="size-4" /> Nueva operación
+            </Button>
+          );
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
