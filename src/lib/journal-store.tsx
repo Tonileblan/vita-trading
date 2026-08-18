@@ -11,6 +11,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { mockStrategies } from "./mock-data";
 import { useJournals } from "./journals";
+import { tradeDayKey } from "./emotions";
 import type { Account, AccountStrategyPeriod, Strategy, Trade, Withdrawal } from "./types";
 
 const STORAGE_KEY = "tj:active-journal";
@@ -598,6 +599,26 @@ export function JournalProvider({ children }: { children: ReactNode }) {
           ...base,
         } as never);
         if (error) throw error;
+
+        // Actualizar directamente todas las operaciones de esta cuenta dentro del tramo de fechas
+        const start = period.startDate;
+        const end = period.endDate || period.startDate;
+        const matchingTradeIds = data.trades
+          .filter((t) => {
+            if (t.accountId !== period.accountId) return false;
+            const day = tradeDayKey(t);
+            if (!day) return false;
+            return day >= start && day <= end;
+          })
+          .map((t) => t.id);
+
+        if (matchingTradeIds.length > 0) {
+          await supabase
+            .from("trades")
+            .update({ strategy_id: period.strategyId })
+            .in("id", matchingTradeIds);
+        }
+
         await refresh();
       },
       removeStrategyPeriod: async (id) => {

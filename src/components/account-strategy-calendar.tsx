@@ -102,15 +102,33 @@ export function AccountStrategyCalendar({ accountIds }: { accountIds: string[] }
     }
     setSaving(true);
     try {
+      const startDate = from;
+      const endDate = to || from;
+      let countUpdated = 0;
+
       for (const accountId of accountIds) {
         await addStrategyPeriod({
           accountId,
           strategyId,
-          startDate: from,
-          endDate: to || from,
+          startDate,
+          endDate,
         });
+
+        const affected = trades.filter((t) => {
+          if (t.accountId !== accountId) return false;
+          const day = tradeDayKey(t);
+          return day && day >= startDate && day <= endDate;
+        }).length;
+        countUpdated += affected;
       }
-      toast.success("Tramo asignado");
+
+      if (countUpdated > 0) {
+        toast.success(
+          `Tramo asignado y ${countUpdated} ${countUpdated === 1 ? "operación actualizada" : "operaciones actualizadas"} con la nueva estrategia`,
+        );
+      } else {
+        toast.success("Tramo asignado correctamente");
+      }
       setFrom("");
       setTo("");
     } catch {
