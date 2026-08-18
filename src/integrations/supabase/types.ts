@@ -389,8 +389,6 @@ export type Database = {
           display_name: string | null
           id: string
           is_private: boolean
-          supervisor_status: string | null
-          assigned_supervisor_id: string | null
           updated_at: string
         }
         Insert: {
@@ -399,8 +397,6 @@ export type Database = {
           display_name?: string | null
           id: string
           is_private?: boolean
-          supervisor_status?: string | null
-          assigned_supervisor_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -409,8 +405,6 @@ export type Database = {
           display_name?: string | null
           id?: string
           is_private?: boolean
-          supervisor_status?: string | null
-          assigned_supervisor_id?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -425,7 +419,6 @@ export type Database = {
           execution: string | null
           id: string
           initial_capital: number
-          is_shared: boolean
           journal_id: string
           main_symbol: string
           management: string | null
@@ -446,7 +439,6 @@ export type Database = {
           execution?: string | null
           id?: string
           initial_capital?: number
-          is_shared?: boolean
           journal_id: string
           main_symbol?: string
           management?: string | null
@@ -467,7 +459,6 @@ export type Database = {
           execution?: string | null
           id?: string
           initial_capital?: number
-          is_shared?: boolean
           journal_id?: string
           main_symbol?: string
           management?: string | null
