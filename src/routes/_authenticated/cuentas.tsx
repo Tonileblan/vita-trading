@@ -1,6 +1,17 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
-import { Building2, Pencil, Plus, Trash2, User } from "lucide-react";
+import { useMemo, useState } from "react";
+import {
+  Building2,
+  DollarSign,
+  Pencil,
+  Percent,
+  Plus,
+  ShieldAlert,
+  Sparkles,
+  TrendingUp,
+  User,
+  Wallet,
+} from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
@@ -23,9 +34,25 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useJournal } from "@/lib/journal-store";
-import { accountBalance, accountResult, computeMetrics, formatCurrency, accountDrawdown, accountTarget } from "@/lib/metrics";
-import { TargetProgress, PhaseChip } from "@/components/target-progress";
-import { PROP_FIRMS, BROKERS, type Account, type AccountType, DRAWDOWN_TYPES, type DrawdownType, ACCOUNT_PHASES, type AccountPhase } from "@/lib/types";
+import {
+  accountBalance,
+  accountDrawdown,
+  accountResult,
+  accountTarget,
+  computeMetrics,
+  formatCurrency,
+} from "@/lib/metrics";
+import { PhaseChip, TargetProgress } from "@/components/target-progress";
+import {
+  ACCOUNT_PHASES,
+  BROKERS,
+  DRAWDOWN_TYPES,
+  PROP_FIRMS,
+  type Account,
+  type AccountPhase,
+  type AccountType,
+  type DrawdownType,
+} from "@/lib/types";
 import { usePropFirms } from "@/lib/prop-firms";
 import { useBrokers } from "@/lib/brokers";
 import { cn } from "@/lib/utils";
@@ -68,7 +95,7 @@ function parseMoneyInput(value: string) {
   return Number(digitsAfter === 3 ? parts.join("") : parts.join("."));
 }
 
-function AccountDialog({ account, trigger }: { account?: Account; trigger: React.ReactNode }) {
+function AccountDialog({ account, trigger }: { account?: Account | undefined; trigger: React.ReactNode }) {
   const { addAccount, updateAccount, removeAccount, strategies } = useJournal();
   const editing = Boolean(account);
   const [open, setOpen] = useState(false);
@@ -113,7 +140,7 @@ function AccountDialog({ account, trigger }: { account?: Account; trigger: React
       setStrategyId(account.strategyId ?? "");
       setInitial(String(account.initialBalance));
       setCurrent(String(account.currentBalance));
-      
+
       setDd(String(account.drawdownLimit ?? 0));
       setDdType(account.drawdownType ?? "static");
       setPhase(account.phase ?? "eval");
@@ -132,7 +159,6 @@ function AccountDialog({ account, trigger }: { account?: Account; trigger: React
       toast.error("Revisa los balances introducidos");
       return;
     }
-
 
     const payload = {
       name: name.trim(),
@@ -176,13 +202,15 @@ function AccountDialog({ account, trigger }: { account?: Account; trigger: React
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogTrigger asChild>{trigger}</DialogTrigger>
-      <DialogContent>
+      <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>{editing ? "Editar cuenta" : "Crear cuenta"}</DialogTitle>
-          <DialogDescription>Elige el tipo y define los parámetros de riesgo.</DialogDescription>
+          <DialogTitle>{editing ? "Editar cuenta" : "Crear nueva cuenta"}</DialogTitle>
+          <DialogDescription>
+            Configura el tipo de cuenta, capital inicial y límites de riesgo.
+          </DialogDescription>
         </DialogHeader>
 
-        <div className="grid gap-4">
+        <div className="grid gap-4 py-2">
           <div className="grid grid-cols-2 gap-2">
             {(
               [
@@ -195,9 +223,9 @@ function AccountDialog({ account, trigger }: { account?: Account; trigger: React
                 type="button"
                 onClick={() => setType(opt.key)}
                 className={cn(
-                  "flex items-center gap-2 rounded-md border px-3 py-3 text-sm font-medium transition-colors",
+                  "flex items-center justify-center gap-2 rounded-xl border p-3 text-xs font-semibold transition-all",
                   type === opt.key
-                    ? "border-brand bg-brand/10 text-brand-soft"
+                    ? "border-brand bg-brand/10 text-brand shadow-xs"
                     : "border-border text-muted-foreground hover:text-foreground",
                 )}
               >
@@ -207,23 +235,27 @@ function AccountDialog({ account, trigger }: { account?: Account; trigger: React
             ))}
           </div>
 
-          <div className="space-y-2">
-            <Label>Nombre de la cuenta</Label>
+          <div className="space-y-1.5">
+            <Label htmlFor="acc-name">Nombre de la cuenta</Label>
             <Input
+              id="acc-name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Apex 100K — Eval"
+              placeholder="Ej. Apex 50K PA / FTMO 100K Eval"
             />
           </div>
 
-          <div className="space-y-2">
-            <Label>Estrategia de la cuenta</Label>
-            <Select value={strategyId || "none"} onValueChange={(v) => setStrategyId(v === "none" ? "" : v)}>
+          <div className="space-y-1.5">
+            <Label>Estrategia asignada (opcional)</Label>
+            <Select
+              value={strategyId || "none"}
+              onValueChange={(v) => setStrategyId(v === "none" ? "" : v)}
+            >
               <SelectTrigger>
-                <SelectValue placeholder="Sin estrategia" />
+                <SelectValue placeholder="Sin estrategia vinculada" />
               </SelectTrigger>
               <SelectContent className="max-h-64">
-                <SelectItem value="none">Sin estrategia</SelectItem>
+                <SelectItem value="none">Sin estrategia vinculada</SelectItem>
                 {strategies.map((s) => (
                   <SelectItem key={s.id} value={s.id}>
                     {s.name}
@@ -231,13 +263,10 @@ function AccountDialog({ account, trigger }: { account?: Account; trigger: React
                 ))}
               </SelectContent>
             </Select>
-            <p className="text-xs text-muted-foreground">
-              Las operaciones de esta cuenta cuentan para esta estrategia.
-            </p>
           </div>
 
           {type === "funded" && (
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <Label>Prop Firm</Label>
               <Select value={firm} onValueChange={setFirm}>
                 <SelectTrigger>
@@ -251,11 +280,11 @@ function AccountDialog({ account, trigger }: { account?: Account; trigger: React
                   ))}
                 </SelectContent>
               </Select>
-              <div className="flex gap-2">
+              <div className="flex gap-2 pt-1">
                 <Input
                   value={newFirm}
                   onChange={(e) => setNewFirm(e.target.value)}
-                  placeholder="Añadir otra prop firm"
+                  placeholder="Otra prop firm personalizada"
                   onKeyDown={(e) => {
                     if (e.key === "Enter") {
                       e.preventDefault();
@@ -263,14 +292,14 @@ function AccountDialog({ account, trigger }: { account?: Account; trigger: React
                     }
                   }}
                 />
-                <Button type="button" variant="outline" onClick={handleAddFirm}>
+                <Button type="button" variant="outline" size="sm" onClick={handleAddFirm}>
                   Añadir
                 </Button>
               </div>
               {customFirms.includes(firm) && (
                 <button
                   type="button"
-                  className="text-xs text-muted-foreground underline"
+                  className="text-xs text-destructive hover:underline"
                   onClick={() => {
                     removeFirm(firm);
                     setFirm(PROP_FIRMS[0]!);
@@ -283,7 +312,7 @@ function AccountDialog({ account, trigger }: { account?: Account; trigger: React
           )}
 
           {type === "personal" && (
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <Label>Broker</Label>
               <Select value={broker} onValueChange={setBroker}>
                 <SelectTrigger>
@@ -297,11 +326,11 @@ function AccountDialog({ account, trigger }: { account?: Account; trigger: React
                   ))}
                 </SelectContent>
               </Select>
-              <div className="flex gap-2">
+              <div className="flex gap-2 pt-1">
                 <Input
                   value={newBroker}
                   onChange={(e) => setNewBroker(e.target.value)}
-                  placeholder="Añadir otro broker"
+                  placeholder="Otro broker personalizado"
                   onKeyDown={(e) => {
                     if (e.key === "Enter") {
                       e.preventDefault();
@@ -309,14 +338,14 @@ function AccountDialog({ account, trigger }: { account?: Account; trigger: React
                     }
                   }}
                 />
-                <Button type="button" variant="outline" onClick={handleAddBroker}>
+                <Button type="button" variant="outline" size="sm" onClick={handleAddBroker}>
                   Añadir
                 </Button>
               </div>
               {customBrokers.includes(broker) && (
                 <button
                   type="button"
-                  className="text-xs text-muted-foreground underline"
+                  className="text-xs text-destructive hover:underline"
                   onClick={() => {
                     removeBroker(broker);
                     setBroker(BROKERS[0]!);
@@ -329,9 +358,10 @@ function AccountDialog({ account, trigger }: { account?: Account; trigger: React
           )}
 
           <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <Label>Balance inicial</Label>
+            <div className="space-y-1.5">
+              <Label htmlFor="acc-init">Balance inicial</Label>
               <Input
+                id="acc-init"
                 value={initial}
                 onChange={(e) => {
                   setInitial(e.target.value);
@@ -340,18 +370,20 @@ function AccountDialog({ account, trigger }: { account?: Account; trigger: React
                 inputMode="decimal"
               />
             </div>
-            <div className="space-y-2">
-              <Label>Balance actual</Label>
-              <Input value={current} onChange={(e) => setCurrent(e.target.value)} inputMode="decimal" />
+            <div className="space-y-1.5">
+              <Label htmlFor="acc-curr">Balance actual</Label>
+              <Input
+                id="acc-curr"
+                value={current}
+                onChange={(e) => setCurrent(e.target.value)}
+                inputMode="decimal"
+              />
             </div>
           </div>
 
-
-
-
           {type === "funded" && (
             <>
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 <Label>Fase de la cuenta</Label>
                 <div className="grid grid-cols-2 gap-2">
                   {ACCOUNT_PHASES.map((p) => (
@@ -360,9 +392,9 @@ function AccountDialog({ account, trigger }: { account?: Account; trigger: React
                       type="button"
                       onClick={() => setPhase(p.key)}
                       className={cn(
-                        "rounded-md border px-3 py-2 text-sm font-medium transition-colors",
+                        "rounded-xl border p-2.5 text-xs font-semibold transition-all",
                         phase === p.key
-                          ? "border-brand bg-brand/10 text-brand-soft"
+                          ? "border-brand bg-brand/10 text-brand shadow-xs"
                           : "border-border text-muted-foreground hover:text-foreground",
                       )}
                     >
@@ -371,17 +403,19 @@ function AccountDialog({ account, trigger }: { account?: Account; trigger: React
                   ))}
                 </div>
               </div>
-              <div className="space-y-2">
-                <Label>
-                  {phase === "live" ? "Objetivo para retiro" : "Objetivo de evaluación"}
+
+              <div className="space-y-1.5">
+                <Label htmlFor="acc-target">
+                  {phase === "live" ? "Objetivo para retiro ($)" : "Objetivo de evaluación ($)"}
                 </Label>
                 <Input
+                  id="acc-target"
                   value={target}
                   onChange={(e) => setTarget(e.target.value)}
                   inputMode="decimal"
-                  placeholder="53000"
+                  placeholder="Ej. 53000"
                 />
-                <p className="text-xs text-muted-foreground">
+                <p className="text-[11px] text-muted-foreground">
                   {ACCOUNT_PHASES.find((p) => p.key === phase)?.help}
                   {(() => {
                     const t = parseMoneyInput(target);
@@ -392,36 +426,46 @@ function AccountDialog({ account, trigger }: { account?: Account; trigger: React
                   })()}
                 </p>
               </div>
-              <div className="space-y-2">
-                <Label>Límite de drawdown</Label>
-                <Input value={dd} onChange={(e) => setDd(e.target.value)} inputMode="decimal" />
-              </div>
-              <div className="space-y-2">
-                <Label>Tipo de drawdown</Label>
-                <Select value={ddType} onValueChange={(v) => setDdType(v as DrawdownType)}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {DRAWDOWN_TYPES.map((d) => (
-                      <SelectItem key={d.key} value={d.key}>
-                        {d.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-muted-foreground">
-                  {DRAWDOWN_TYPES.find((d) => d.key === ddType)?.help}
-                </p>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="acc-dd">Límite de Drawdown ($)</Label>
+                  <Input
+                    id="acc-dd"
+                    value={dd}
+                    onChange={(e) => setDd(e.target.value)}
+                    inputMode="decimal"
+                    placeholder="2500"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Tipo de Drawdown</Label>
+                  <Select value={ddType} onValueChange={(v) => setDdType(v as DrawdownType)}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {DRAWDOWN_TYPES.map((d) => (
+                        <SelectItem key={d.key} value={d.key}>
+                          {d.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             </>
           )}
         </div>
 
-        <DialogFooter className="sm:justify-between">
+        <DialogFooter className="sm:justify-between pt-2">
           {editing ? (
-            <Button variant="destructive" onClick={remove}>
-              <Trash2 className="size-4" /> Eliminar
+            <Button
+              variant="destructive"
+              onClick={remove}
+              className="gap-1.5"
+            >
+              Eliminar
             </Button>
           ) : (
             <span />
@@ -440,12 +484,34 @@ function AccountDialog({ account, trigger }: { account?: Account; trigger: React
 
 function AccountsPage() {
   const { accounts, trades, withdrawals, strategies, updateAccount } = useJournal();
-  const funded = accounts.filter((a) => a.type === "funded");
-  const personal = accounts.filter((a) => a.type === "personal");
+  const [filterType, setFilterType] = useState<"all" | "funded" | "personal">("all");
 
-  const Card = ({ id }: { id: string }) => {
-    const acc = accounts.find((a) => a.id === id)!;
-    const accTrades = trades.filter((t) => t.accountId === id);
+  const funded = useMemo(() => accounts.filter((a) => a.type === "funded"), [accounts]);
+  const personal = useMemo(() => accounts.filter((a) => a.type === "personal"), [accounts]);
+
+  const displayedAccounts = useMemo(() => {
+    if (filterType === "funded") return funded;
+    if (filterType === "personal") return personal;
+    return accounts;
+  }, [accounts, funded, personal, filterType]);
+
+  const sumTotals = (list: typeof accounts) => {
+    const initial = list.reduce((s, a) => s + a.initialBalance, 0);
+    const current = list.reduce((s, a) => s + accountBalance(a, trades, withdrawals), 0);
+    const result = current - initial;
+    const pnlPct = initial > 0 ? (result / initial) * 100 : 0;
+    return { initial, current, result, pnlPct };
+  };
+
+  const grandTotals = useMemo(() => sumTotals(accounts), [accounts, trades, withdrawals]);
+  const fundedTotals = useMemo(() => sumTotals(funded), [funded, trades, withdrawals]);
+  const personalTotals = useMemo(() => sumTotals(personal), [personal, trades, withdrawals]);
+
+  const liveFundedCount = funded.filter((a) => a.phase === "live").length;
+  const evalFundedCount = funded.filter((a) => a.phase === "eval").length;
+
+  const AccountCard = ({ acc }: { acc: Account }) => {
+    const accTrades = trades.filter((t) => t.accountId === acc.id);
     const m = computeMetrics(accTrades);
     const result = accountResult(acc, trades, withdrawals);
     const balance = accountBalance(acc, trades, withdrawals);
@@ -453,233 +519,308 @@ function AccountsPage() {
     const target = accountTarget(acc, trades, withdrawals);
 
     return (
-      <div className="panel p-4">
-        <div className="flex items-start justify-between gap-3">
-          <Link
-            to="/cuenta/$accountId"
-            params={{ accountId: acc.id }}
-            className="min-w-0 flex-1 group"
-          >
-            <h3 className="flex items-center gap-2 font-semibold group-hover:text-brand">
-              <span className="truncate">{acc.name}</span>
-              {acc.type === "funded" && <PhaseChip phase={acc.phase ?? "eval"} />}
-            </h3>
-              <p className="text-xs text-muted-foreground">
+      <article className="panel flex flex-col justify-between p-5 transition-all hover:border-foreground/20">
+        <div className="space-y-4">
+          <div className="flex items-start justify-between gap-3">
+            <Link
+              to="/cuenta/$accountId"
+              params={{ accountId: acc.id }}
+              className="min-w-0 flex-1 group"
+            >
+              <div className="flex items-center gap-2">
+                <h3 className="truncate text-base font-bold group-hover:text-brand transition-colors">
+                  {acc.name}
+                </h3>
+                {acc.type === "funded" && <PhaseChip phase={acc.phase ?? "eval"} />}
+              </div>
+              <p className="text-xs text-muted-foreground mt-0.5">
                 {acc.type === "funded"
                   ? (acc.firm ?? "Prop firm")
                   : (acc.broker ?? "Cuenta personal")}{" "}
-                · {acc.currency}
+                · <span className="font-semibold text-foreground">{acc.currency}</span>
               </p>
-          </Link>
-          <div className="flex items-center gap-2">
-            <span
-              className={cn(
-                "num rounded-md px-2 py-1 text-sm font-bold",
-                 result >= 0 ? "bg-profit/15 text-profit" : "bg-loss/15 text-loss",
-              )}
-            >
-               {formatCurrency(result, true)}
-            </span>
-            <AccountDialog
-              account={acc}
-              trigger={
-                <Button variant="ghost" size="icon" aria-label={`Editar ${acc.name}`}>
-                  <Pencil className="size-4" />
-                </Button>
-              }
-            />
-          </div>
-        </div>
+            </Link>
 
-        <div className="mt-3">
-          <Select
-            value={acc.strategyId || "none"}
-            onValueChange={async (v) => {
-              try {
-                await updateAccount(acc.id, { strategyId: v === "none" ? "" : v });
-                toast.success("Estrategia actualizada");
-              } catch {
-                toast.error("No se pudo cambiar la estrategia");
-              }
-            }}
-          >
-            <SelectTrigger className="h-8 text-xs" aria-label={`Estrategia de ${acc.name}`}>
-              <SelectValue placeholder="Sin estrategia">
-                {strategies.find((s) => s.id === acc.strategyId)?.name ?? "Sin estrategia"}
-              </SelectValue>
-            </SelectTrigger>
-            <SelectContent className="max-h-64">
-              <SelectItem value="none">Sin estrategia</SelectItem>
-              {strategies.map((s) => (
-                <SelectItem key={s.id} value={s.id}>
-                  {s.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="mt-4 grid grid-cols-3 gap-3 text-sm">
-          <div>
-            <p className="text-xs text-muted-foreground">Inicial</p>
-            <p className="num font-semibold">{formatCurrency(acc.initialBalance)}</p>
-          </div>
-          <div>
-            <p className="text-xs text-muted-foreground">Actual</p>
-            <p className="num font-semibold">{formatCurrency(balance)}</p>
-          </div>
-          <div>
-            <p className="text-xs text-muted-foreground">Win rate</p>
-            <p className="num font-semibold">{m.winRate.toFixed(1)}%</p>
-          </div>
-        </div>
-
-        {target && <TargetProgress status={target} />}
-
-        {dd && (
-          <div className="mt-4">
-            <div className="flex flex-wrap justify-between gap-x-2 text-xs text-muted-foreground">
-              <span>Drawdown {dd.label.toLowerCase()}</span>
-              <span className="num">
-                {formatCurrency(dd.used)} / {formatCurrency(dd.limit)}
+            <div className="flex items-center gap-2">
+              <span
+                className={cn(
+                  "num rounded-lg px-2.5 py-1 text-xs font-bold",
+                  result >= 0
+                    ? "bg-profit/15 text-profit border border-profit/20"
+                    : "bg-loss/15 text-loss border border-loss/20",
+                )}
+              >
+                {formatCurrency(result, true)}
               </span>
-            </div>
-            <div className="mt-1 h-2 overflow-hidden rounded-full bg-muted">
-              <div
-                className={cn("h-full", dd.pct > 70 ? "bg-loss" : "bg-brand")}
-                style={{ width: `${dd.pct}%` }}
+              <AccountDialog
+                account={acc}
+                trigger={
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="size-8"
+                    aria-label={`Editar ${acc.name}`}
+                  >
+                    <Pencil className="size-3.5" />
+                  </Button>
+                }
               />
             </div>
-            <p
-              className={cn(
-                "mt-1 text-xs",
-                dd.breached ? "font-semibold text-loss" : "text-muted-foreground",
-              )}
-            >
-              {dd.breached
-                ? `Cuenta rota: límite en ${formatCurrency(dd.floor)}`
-                : `Puedes perder ${formatCurrency(dd.remaining)} más (suelo ${formatCurrency(dd.floor)})`}
-            </p>
           </div>
-        )}
 
-        <div className="mt-4 flex items-center justify-between text-xs text-muted-foreground">
+          {/* Strategy Selector */}
+          <div>
+            <Select
+              value={acc.strategyId || "none"}
+              onValueChange={async (v) => {
+                try {
+                  await updateAccount(acc.id, { strategyId: v === "none" ? "" : v });
+                  toast.success("Estrategia actualizada");
+                } catch {
+                  toast.error("No se pudo cambiar la estrategia");
+                }
+              }}
+            >
+              <SelectTrigger className="h-8 text-xs" aria-label={`Estrategia de ${acc.name}`}>
+                <SelectValue placeholder="Sin estrategia asignada">
+                  {strategies.find((s) => s.id === acc.strategyId)?.name ?? "Sin estrategia asignada"}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent className="max-h-64">
+                <SelectItem value="none">Sin estrategia asignada</SelectItem>
+                {strategies.map((s) => (
+                  <SelectItem key={s.id} value={s.id}>
+                    {s.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* 3 Metric Grid */}
+          <div className="grid grid-cols-3 gap-2 rounded-xl border border-border/80 bg-muted/30 p-3 text-center">
+            <div>
+              <p className="text-[11px] text-muted-foreground">Inicial</p>
+              <p className="num text-xs font-bold text-foreground">
+                {formatCurrency(acc.initialBalance)}
+              </p>
+            </div>
+            <div>
+              <p className="text-[11px] text-muted-foreground">Actual</p>
+              <p className="num text-xs font-bold text-foreground">{formatCurrency(balance)}</p>
+            </div>
+            <div>
+              <p className="text-[11px] text-muted-foreground">Win Rate</p>
+              <p className="num text-xs font-bold text-foreground">{m.winRate.toFixed(1)}%</p>
+            </div>
+          </div>
+
+          {/* Target Progress */}
+          {target && <TargetProgress status={target} />}
+
+          {/* Drawdown Progress */}
+          {dd && (
+            <div className="space-y-1.5 rounded-xl border border-border/80 bg-muted/20 p-3">
+              <div className="flex flex-wrap justify-between gap-x-2 text-xs text-muted-foreground">
+                <span className="font-semibold">Drawdown {dd.label.toLowerCase()}</span>
+                <span className="num font-semibold">
+                  {formatCurrency(dd.used)} / {formatCurrency(dd.limit)}
+                </span>
+              </div>
+              <div className="h-2 overflow-hidden rounded-full bg-muted">
+                <div
+                  className={cn("h-full transition-all", dd.pct > 70 ? "bg-loss" : "bg-brand")}
+                  style={{ width: `${Math.min(100, Math.max(0, dd.pct))}%` }}
+                />
+              </div>
+              <p
+                className={cn(
+                  "text-[11px]",
+                  dd.breached ? "font-bold text-loss" : "text-muted-foreground",
+                )}
+              >
+                {dd.breached
+                  ? `Cuenta rota: límite alcanzado en ${formatCurrency(dd.floor)}`
+                  : `Colchón disponible: ${formatCurrency(dd.remaining)} (suelo en ${formatCurrency(dd.floor)})`}
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="mt-5 flex items-center justify-between pt-3 border-t border-border/60 text-xs text-muted-foreground">
           <span>
-            {m.total} operaciones · Profit factor{" "}
-            <span className="num">
-              {Number.isFinite(m.profitFactor) ? m.profitFactor.toFixed(2) : "∞"}
-            </span>
+            {m.total} trades · PF:{" "}
+            <strong className="num text-foreground">
+              {Number.isFinite(m.profitFactor) ? m.profitFactor.toFixed(2) : "—"}
+            </strong>
           </span>
           <Link
             to="/cuenta/$accountId"
             params={{ accountId: acc.id }}
-            className="font-semibold text-brand hover:underline"
+            className="font-bold text-brand hover:underline"
           >
             Ver cuenta →
           </Link>
         </div>
-      </div>
+      </article>
     );
   };
-
-  const sum = (list: typeof accounts) => ({
-    initial: list.reduce((s, a) => s + a.initialBalance, 0),
-    current: list.reduce((s, a) => s + accountBalance(a, trades, withdrawals), 0),
-  });
-  const fundedTotals = sum(funded);
-  const realTotals = sum(personal);
-
-  const CapitalBlock = ({
-    label,
-    icon,
-    totals,
-    count,
-  }: {
-    label: string;
-    icon: React.ReactNode;
-    totals: { initial: number; current: number };
-    count: number;
-  }) => (
-    <div className="panel p-4">
-      <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-        {icon} {label} · {count}
-      </p>
-      <div className="mt-3 grid grid-cols-3 gap-3 text-sm">
-        <div>
-          <p className="text-xs text-muted-foreground">Capital inicial</p>
-          <p className="num font-semibold">{formatCurrency(totals.initial)}</p>
-        </div>
-        <div>
-          <p className="text-xs text-muted-foreground">Capital total</p>
-          <p className="num font-semibold">{formatCurrency(totals.current)}</p>
-        </div>
-        <div>
-          <p className="text-xs text-muted-foreground">Resultado</p>
-          <p
-            className={cn(
-              "num font-semibold",
-              totals.current - totals.initial >= 0 ? "text-profit" : "text-loss",
-            )}
-          >
-            {formatCurrency(totals.current - totals.initial, true)}
-          </p>
-        </div>
-      </div>
-    </div>
-  );
 
   return (
     <AppShell
       title="Gestión de Cuentas"
-      subtitle="Cuentas de fondeo y personales"
+      subtitle="Supervisa el capital, control de drawdown y evolución de tus cuentas de fondeo y personales"
       actions={
         <AccountDialog
           trigger={
-            <Button>
+            <Button className="gap-1.5">
               <Plus className="size-4" /> Nueva cuenta
             </Button>
           }
         />
       }
     >
-      <div className="space-y-8">
-        <section className="grid gap-3 md:grid-cols-2">
-          <CapitalBlock
-            label="Capital fondeo"
-            icon={<Building2 className="size-4" />}
-            totals={fundedTotals}
-            count={funded.length}
-          />
-          <CapitalBlock
-            label="Capital real"
-            icon={<User className="size-4" />}
-            totals={realTotals}
-            count={personal.length}
-          />
-        </section>
+      <div className="space-y-6">
+        {/* KPI Hero Counters */}
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="panel flex items-center gap-3 p-4">
+            <div className="flex size-10 items-center justify-center rounded-xl bg-brand/10 text-brand">
+              <Wallet className="size-5" />
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Capital Total Gestionado</p>
+              <p className="num text-lg font-bold">{formatCurrency(grandTotals.current)}</p>
+              <p className="text-[11px] text-muted-foreground">
+                Base inicial: {formatCurrency(grandTotals.initial)}
+              </p>
+            </div>
+          </div>
 
+          <div className="panel flex items-center gap-3 p-4">
+            <div className="flex size-10 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-500">
+              <TrendingUp className="size-5" />
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Resultado Global PnL</p>
+              <p
+                className={cn(
+                  "num text-lg font-bold",
+                  grandTotals.result >= 0 ? "text-profit" : "text-loss",
+                )}
+              >
+                {formatCurrency(grandTotals.result, true)}
+              </p>
+              <p className="text-[11px] text-muted-foreground">
+                Rentabilidad: {grandTotals.pnlPct >= 0 ? "+" : ""}
+                {grandTotals.pnlPct.toFixed(2)}%
+              </p>
+            </div>
+          </div>
 
-        <section className="space-y-3">
-          <h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-            <Building2 className="size-4" /> Cuentas de fondeo
-          </h2>
-          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-            {funded.map((a) => (
-              <Card key={a.id} id={a.id} />
+          <div className="panel flex items-center gap-3 p-4">
+            <div className="flex size-10 items-center justify-center rounded-xl bg-blue-500/10 text-blue-500">
+              <Building2 className="size-5" />
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Cuentas de Fondeo</p>
+              <p className="text-lg font-bold">
+                {funded.length}{" "}
+                <span className="text-xs font-normal text-muted-foreground">
+                  ({liveFundedCount} live / {evalFundedCount} eval)
+                </span>
+              </p>
+              <p className="num text-[11px] text-muted-foreground">
+                Cap: {formatCurrency(fundedTotals.current)}
+              </p>
+            </div>
+          </div>
+
+          <div className="panel flex items-center gap-3 p-4">
+            <div className="flex size-10 items-center justify-center rounded-xl bg-purple-500/10 text-purple-500">
+              <User className="size-5" />
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Cuentas Personales</p>
+              <p className="text-lg font-bold">{personal.length}</p>
+              <p className="num text-[11px] text-muted-foreground">
+                Cap: {formatCurrency(personalTotals.current)}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Filter Pills Toolbar */}
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => setFilterType("all")}
+              className={cn(
+                "rounded-full px-3.5 py-1.5 text-xs font-semibold transition-colors",
+                filterType === "all"
+                  ? "bg-brand text-brand-foreground shadow-xs"
+                  : "border border-border text-muted-foreground hover:text-foreground",
+              )}
+            >
+              Todas ({accounts.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setFilterType("funded")}
+              className={cn(
+                "rounded-full px-3.5 py-1.5 text-xs font-semibold transition-colors",
+                filterType === "funded"
+                  ? "bg-brand text-brand-foreground shadow-xs"
+                  : "border border-border text-muted-foreground hover:text-foreground",
+              )}
+            >
+              Fondeo ({funded.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setFilterType("personal")}
+              className={cn(
+                "rounded-full px-3.5 py-1.5 text-xs font-semibold transition-colors",
+                filterType === "personal"
+                  ? "bg-brand text-brand-foreground shadow-xs"
+                  : "border border-border text-muted-foreground hover:text-foreground",
+              )}
+            >
+              Personales ({personal.length})
+            </button>
+          </div>
+        </div>
+
+        {/* Account Cards Grid */}
+        {displayedAccounts.length === 0 ? (
+          <div className="panel p-10 text-center space-y-4">
+            <div className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-brand/10 text-brand">
+              <Wallet className="size-6" />
+            </div>
+            <div className="space-y-1">
+              <h3 className="text-lg font-bold">No hay cuentas para mostrar</h3>
+              <p className="text-sm text-muted-foreground">
+                Crea una cuenta de fondeo o personal para comenzar a registrar tus operaciones y controlar el drawdown.
+              </p>
+            </div>
+            <div className="pt-2">
+              <AccountDialog
+                trigger={
+                  <Button className="gap-1.5">
+                    <Plus className="size-4" /> Crear mi primera cuenta
+                  </Button>
+                }
+              />
+            </div>
+          </div>
+        ) : (
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {displayedAccounts.map((a) => (
+              <AccountCard key={a.id} acc={a} />
             ))}
           </div>
-        </section>
-
-        <section className="space-y-3">
-          <h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-            <User className="size-4" /> Cuentas personales
-          </h2>
-          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-            {personal.map((a) => (
-              <Card key={a.id} id={a.id} />
-            ))}
-          </div>
-        </section>
+        )}
       </div>
     </AppShell>
   );

@@ -1,5 +1,19 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Archive, ArchiveRestore, Check, Copy, Download, Globe, Pencil, Plus, Sparkles, Trash2, Upload } from "lucide-react";
+import {
+  Archive,
+  ArchiveRestore,
+  BookOpen,
+  Check,
+  Copy,
+  Download,
+  FolderArchive,
+  Globe,
+  Pencil,
+  Plus,
+  Sparkles,
+  Trash2,
+  Upload,
+} from "lucide-react";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/app-shell";
@@ -7,11 +21,22 @@ import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -63,6 +88,11 @@ function JournalsPage() {
   const fileRef = useRef<HTMLInputElement>(null);
   const [importTarget, setImportTarget] = useState<Journal | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [journalToDelete, setJournalToDelete] = useState<Journal | null>(null);
+
+  const activeJournal = journals.find((j) => j.id === activeJournalId);
+  const archivedCount = journals.filter((j) => j.is_archived).length;
+  const publicTemplates = templates.filter((t) => t.owner_id !== user?.id);
 
   async function handleExample() {
     setBusyId("example");
@@ -157,7 +187,6 @@ function JournalsPage() {
     }
   }
 
-
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Journal | null>(null);
   const [name, setName] = useState("");
@@ -211,13 +240,31 @@ function JournalsPage() {
 
   return (
     <AppShell
-      title="Diarios"
-      subtitle="Bitácoras independientes: cada una con sus cuentas, estrategias y operaciones"
+      title="Diarios de Trading"
+      subtitle="Bitácoras independientes: cada una con sus propias cuentas, estrategias y operaciones"
       showAccountPanel={false}
       actions={
-        <div className="flex flex-wrap gap-2">
-          <Button size="sm" variant="outline" title="Exportar todo" disabled={busyId === "all"} onClick={handleExportAll}>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            title="Exportar todo en un único CSV"
+            disabled={busyId === "all"}
+            onClick={handleExportAll}
+            className="gap-1.5"
+          >
             <Download className="size-4" />
+            <span className="hidden sm:inline">Exportar todo</span>
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            title="Importar CSV global"
+            onClick={() => pickFile(null)}
+            className="gap-1.5"
+          >
+            <Upload className="size-4" />
+            <span className="hidden sm:inline">Importar CSV</span>
           </Button>
           <Button
             size="sm"
@@ -225,178 +272,282 @@ function JournalsPage() {
             title="Crear diario de ejemplo con datos de muestra"
             disabled={busyId === "example"}
             onClick={handleExample}
+            className="gap-1.5"
           >
-            <Sparkles className="size-4" /> Ejemplo
+            <Sparkles className="size-4 text-brand" />
+            <span>Ejemplo</span>
           </Button>
-          <Button size="sm" onClick={openCreate}>
-            <Plus className="size-4" /> Nuevo diario
+          <Button size="sm" onClick={openCreate} className="gap-1.5">
+            <Plus className="size-4" />
+            <span>Nuevo diario</span>
           </Button>
         </div>
       }
     >
-      {isLoading ? (
-        <p className="text-sm text-muted-foreground">Cargando diarios…</p>
-      ) : journals.length === 0 ? (
-        <div className="panel p-8 text-center">
-          <p className="text-sm text-muted-foreground">Todavía no tienes diarios.</p>
-          <div className="mt-4 flex flex-wrap justify-center gap-2">
-            <Button onClick={openCreate}>
-              <Plus className="size-4" /> Crear el primero
-            </Button>
-            <Button variant="outline" disabled={busyId === "example"} onClick={handleExample}>
-              <Sparkles className="size-4" /> Diario de ejemplo
-            </Button>
+      <div className="space-y-6">
+        {/* KPI Cards */}
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="panel flex items-center gap-3 p-4">
+            <div className="flex size-10 items-center justify-center rounded-xl bg-brand/10 text-brand">
+              <BookOpen className="size-5" />
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Total de Diarios</p>
+              <p className="text-xl font-bold">{journals.length}</p>
+            </div>
           </div>
-        </div>
-      ) : (
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {journals.map((j) => {
-            const active = j.id === activeJournalId;
-            return (
-              <article
-                key={j.id}
-                className={cn(
-                  "panel flex flex-col gap-3 p-4",
-                  active && "ring-1 ring-brand",
-                  j.is_archived && "opacity-60",
-                )}
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <h2 className="truncate text-base font-semibold">{j.name}</h2>
-                    <p className="text-xs text-muted-foreground">
-                      {j.base_currency} · {new Date(j.created_at).toLocaleDateString("es-ES")}
-                    </p>
-                  </div>
-                  <div className="flex flex-col items-end gap-1">
-                    {active && (
-                      <span className="rounded bg-brand/15 px-2 py-0.5 text-[11px] font-semibold text-brand">
-                        Activo
-                      </span>
-                    )}
-                    {j.is_template && (
-                      <span className="rounded bg-profit/15 px-2 py-0.5 text-[11px] font-semibold text-profit">
-                        Ejemplo público
-                      </span>
-                    )}
-                  </div>
-                </div>
-                {j.description && (
-                  <p className="line-clamp-2 text-sm text-muted-foreground">{j.description}</p>
-                )}
-                <div className="mt-auto flex flex-wrap gap-2">
-                  <Button
-                    size="sm"
-                    variant={active ? "secondary" : "default"}
-                    onClick={() => setActiveJournalId(j.id)}
-                    disabled={active}
-                  >
-                    <Check className="size-4" /> {active ? "En uso" : "Usar"}
-                  </Button>
-                  <Button size="sm" variant="outline" onClick={() => openEdit(j)}>
-                    <Pencil className="size-4" />
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    title="Exportar operaciones a CSV"
-                    disabled={busyId === j.id}
-                    onClick={() => handleExport(j)}
-                  >
-                    <Download className="size-4" />
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    title="Importar operaciones desde CSV"
-                    disabled={busyId === j.id}
-                    onClick={() => pickFile(j)}
-                  >
-                    <Upload className="size-4" />
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() =>
-                      update.mutate({ id: j.id, is_archived: !j.is_archived })
-                    }
-                  >
-                    {j.is_archived ? (
-                      <ArchiveRestore className="size-4" />
-                    ) : (
-                      <Archive className="size-4" />
-                    )}
-                  </Button>
-                  {j.owner_id === user?.id && (
-                    <Button
-                      size="sm"
-                      variant={j.is_template ? "default" : "outline"}
-                      title={
-                        j.is_template
-                          ? "Quitar de ejemplos públicos"
-                          : "Publicar como ejemplo público (clonable por todos)"
-                      }
-                      disabled={toggleTemplate.isPending}
-                      onClick={() =>
-                        toggleTemplate.mutate({ id: j.id, value: !j.is_template })
-                      }
-                    >
-                      <Globe className="size-4" />
-                    </Button>
-                  )}
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="text-destructive"
-                    onClick={() => {
-                      if (confirm(`¿Eliminar el diario "${j.name}"?`)) remove.mutate(j.id);
-                    }}
-                  >
-                    <Trash2 className="size-4" />
-                  </Button>
-                </div>
-              </article>
-            );
-          })}
-        </div>
-      )}
 
-      {templates.filter((t) => t.owner_id !== user?.id).length > 0 && (
-        <section className="mt-8">
-          <div className="mb-3 flex items-center gap-2">
-            <Globe className="size-4 text-profit" />
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-              Ejemplos públicos
-            </h2>
+          <div className="panel flex items-center gap-3 p-4">
+            <div className="flex size-10 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-500">
+              <Check className="size-5" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-xs text-muted-foreground">Diario Activo</p>
+              <p className="truncate text-sm font-bold text-foreground">
+                {activeJournal ? activeJournal.name : "Ninguno"}
+              </p>
+            </div>
           </div>
-          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-            {templates
-              .filter((t) => t.owner_id !== user?.id)
-              .map((t) => (
-                <article key={t.id} className="panel flex flex-col gap-3 p-4">
-                  <div className="min-w-0">
-                    <h3 className="truncate text-base font-semibold">{t.name}</h3>
-                    <p className="text-xs text-muted-foreground">
-                      {t.base_currency} · {new Date(t.created_at).toLocaleDateString("es-ES")}
-                    </p>
-                  </div>
-                  {t.description && (
-                    <p className="line-clamp-2 text-sm text-muted-foreground">{t.description}</p>
+
+          <div className="panel flex items-center gap-3 p-4">
+            <div className="flex size-10 items-center justify-center rounded-xl bg-amber-500/10 text-amber-500">
+              <FolderArchive className="size-5" />
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Archivados</p>
+              <p className="text-xl font-bold">{archivedCount}</p>
+            </div>
+          </div>
+
+          <div className="panel flex items-center gap-3 p-4">
+            <div className="flex size-10 items-center justify-center rounded-xl bg-purple-500/10 text-purple-500">
+              <Globe className="size-5" />
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Plantillas Públicas</p>
+              <p className="text-xl font-bold">{templates.length}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Journals Grid */}
+        {isLoading ? (
+          <div className="panel p-8 text-center text-sm text-muted-foreground">
+            Cargando tus diarios…
+          </div>
+        ) : journals.length === 0 ? (
+          <div className="panel p-10 text-center space-y-4">
+            <div className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-brand/10 text-brand">
+              <BookOpen className="size-6" />
+            </div>
+            <div className="space-y-1">
+              <h3 className="text-lg font-bold">Todavía no tienes bitácoras</h3>
+              <p className="text-sm text-muted-foreground">
+                Crea un diario personalizado para empezar a registrar tus cuentas y operaciones, o carga uno de ejemplo.
+              </p>
+            </div>
+            <div className="flex flex-wrap justify-center gap-2 pt-2">
+              <Button onClick={openCreate} className="gap-1.5">
+                <Plus className="size-4" /> Crear mi primer diario
+              </Button>
+              <Button variant="outline" disabled={busyId === "example"} onClick={handleExample} className="gap-1.5">
+                <Sparkles className="size-4 text-brand" /> Cargar diario de ejemplo
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {journals.map((j) => {
+              const active = j.id === activeJournalId;
+              return (
+                <article
+                  key={j.id}
+                  className={cn(
+                    "panel flex flex-col justify-between p-5 transition-all",
+                    active
+                      ? "border-brand ring-1 ring-brand bg-brand/[0.02]"
+                      : "hover:border-foreground/20",
+                    j.is_archived && "opacity-60 bg-muted/20",
                   )}
-                  <div className="mt-auto">
+                >
+                  <div className="space-y-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <h2 className="truncate text-base font-bold text-foreground">{j.name}</h2>
+                          {active && (
+                            <span className="shrink-0 rounded-full bg-brand/15 px-2 py-0.5 text-[10px] font-bold text-brand">
+                              En uso
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          Moneda: <strong className="text-foreground">{j.base_currency}</strong> · Creado el{" "}
+                          {new Date(j.created_at).toLocaleDateString("es-ES")}
+                        </p>
+                      </div>
+                      <div className="flex flex-col items-end gap-1">
+                        {j.is_template && (
+                          <span className="shrink-0 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-semibold text-emerald-500">
+                            Público
+                          </span>
+                        )}
+                        {j.is_archived && (
+                          <span className="shrink-0 rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-semibold text-amber-500">
+                            Archivado
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {j.description ? (
+                      <p className="line-clamp-2 text-xs leading-relaxed text-muted-foreground">
+                        {j.description}
+                      </p>
+                    ) : (
+                      <p className="text-xs italic text-muted-foreground/60">Sin descripción</p>
+                    )}
+                  </div>
+
+                  <div className="mt-5 space-y-3 pt-3 border-t border-border/60">
+                    <div className="flex items-center justify-between gap-2">
+                      <Button
+                        size="sm"
+                        variant={active ? "secondary" : "default"}
+                        onClick={() => setActiveJournalId(j.id)}
+                        disabled={active}
+                        className="flex-1 gap-1.5"
+                      >
+                        <Check className="size-4" /> {active ? "Activo" : "Usar este diario"}
+                      </Button>
+
+                      <div className="flex items-center gap-1">
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="size-8"
+                          title="Editar diario"
+                          onClick={() => openEdit(j)}
+                        >
+                          <Pencil className="size-3.5" />
+                        </Button>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="size-8"
+                          title="Exportar CSV"
+                          disabled={busyId === j.id}
+                          onClick={() => handleExport(j)}
+                        >
+                          <Download className="size-3.5" />
+                        </Button>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="size-8"
+                          title="Importar CSV a este diario"
+                          disabled={busyId === j.id}
+                          onClick={() => pickFile(j)}
+                        >
+                          <Upload className="size-3.5" />
+                        </Button>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="size-8"
+                          title={j.is_archived ? "Desarchivar" : "Archivar"}
+                          onClick={() => update.mutate({ id: j.id, is_archived: !j.is_archived })}
+                        >
+                          {j.is_archived ? (
+                            <ArchiveRestore className="size-3.5" />
+                          ) : (
+                            <Archive className="size-3.5" />
+                          )}
+                        </Button>
+                        {j.owner_id === user?.id && (
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className={cn("size-8", j.is_template && "text-emerald-500")}
+                            title={
+                              j.is_template
+                                ? "Quitar de ejemplos públicos"
+                                : "Publicar como plantilla pública"
+                            }
+                            disabled={toggleTemplate.isPending}
+                            onClick={() =>
+                              toggleTemplate.mutate({ id: j.id, value: !j.is_template })
+                            }
+                          >
+                            <Globe className="size-3.5" />
+                          </Button>
+                        )}
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="size-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                          title="Eliminar diario"
+                          onClick={() => setJournalToDelete(j)}
+                        >
+                          <Trash2 className="size-3.5" />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Public Templates Section */}
+        {publicTemplates.length > 0 && (
+          <section className="space-y-3 pt-4 border-t border-border">
+            <div className="flex items-center gap-2">
+              <div className="flex size-7 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-500">
+                <Globe className="size-4" />
+              </div>
+              <div>
+                <h2 className="text-sm font-bold uppercase tracking-wider text-foreground">
+                  Plantillas y Ejemplos Públicos de la Comunidad
+                </h2>
+                <p className="text-xs text-muted-foreground">
+                  Clona bitácoras prediseñadas con cuentas y estrategias para tu uso personal.
+                </p>
+              </div>
+            </div>
+
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+              {publicTemplates.map((t) => (
+                <article key={t.id} className="panel flex flex-col justify-between p-4">
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <h3 className="truncate text-sm font-bold">{t.name}</h3>
+                      <span className="rounded bg-muted px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
+                        {t.base_currency}
+                      </span>
+                    </div>
+                    {t.description && (
+                      <p className="line-clamp-2 text-xs text-muted-foreground">{t.description}</p>
+                    )}
+                  </div>
+                  <div className="mt-4 pt-2 border-t border-border/60">
                     <Button
                       size="sm"
+                      variant="outline"
+                      className="w-full gap-2 text-xs"
                       disabled={busyId === "clone-" + t.id}
                       onClick={() => handleClone(t)}
                     >
-                      <Copy className="size-4" /> Clonar diario
+                      <Copy className="size-3.5" /> Clonar en mis diarios
                     </Button>
                   </div>
                 </article>
               ))}
-          </div>
-        </section>
-      )}
+            </div>
+          </section>
+        )}
+      </div>
 
       <input
         ref={fileRef}
@@ -410,31 +561,36 @@ function JournalsPage() {
         }}
       />
 
-      <p className="mt-4 text-xs text-muted-foreground">
-        El CSV incluye todo: diarios, cuentas, estrategias, operaciones y retiros (columna
-        <span className="font-mono"> tipo</span>). Al importar se crean los diarios, cuentas y
-        estrategias que falten y se omiten los registros ya existentes.
-      </p>
-
+      {/* Create / Edit Dialog */}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogTrigger asChild>
           <span className="hidden" />
         </DialogTrigger>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{editing ? "Editar diario" : "Nuevo diario"}</DialogTitle>
+            <DialogTitle>{editing ? "Editar diario" : "Crear nuevo diario"}</DialogTitle>
+            <DialogDescription>
+              Define el nombre, la moneda de referencia y una descripción opcional.
+            </DialogDescription>
           </DialogHeader>
-          <div className="space-y-3">
+          <div className="space-y-4 py-2">
             <div className="space-y-1.5">
-              <Label htmlFor="j-name">Nombre</Label>
-              <Input id="j-name" value={name} onChange={(e) => setName(e.target.value)} />
+              <Label htmlFor="j-name">Nombre del diario</Label>
+              <Input
+                id="j-name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Ej. Mi Bitácora Futures 2026"
+              />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="j-desc">Descripción</Label>
+              <Label htmlFor="j-desc">Descripción (opcional)</Label>
               <Textarea
                 id="j-desc"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
+                placeholder="Breve resumen del objetivo o estilo de trading..."
+                rows={3}
               />
             </div>
             <div className="space-y-1.5">
@@ -443,6 +599,7 @@ function JournalsPage() {
                 id="j-cur"
                 value={currency}
                 onChange={(e) => setCurrency(e.target.value.toUpperCase().slice(0, 3))}
+                placeholder="EUR, USD, GBP..."
               />
             </div>
           </div>
@@ -451,11 +608,38 @@ function JournalsPage() {
               Cancelar
             </Button>
             <Button onClick={submit} disabled={create.isPending || update.isPending}>
-              Guardar
+              {editing ? "Guardar cambios" : "Crear diario"}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Confirmation Alert Dialog */}
+      <AlertDialog open={!!journalToDelete} onOpenChange={(o) => !o && setJournalToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Eliminar el diario "{journalToDelete?.name}"?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta acción eliminará el diario junto con todas sus cuentas, estrategias y operaciones asociadas. Esta acción no se puede deshacer.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                if (journalToDelete) {
+                  remove.mutate(journalToDelete.id);
+                  setJournalToDelete(null);
+                  toast.success("Diario eliminado");
+                }
+              }}
+            >
+              Eliminar definitivamente
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AppShell>
   );
 }
