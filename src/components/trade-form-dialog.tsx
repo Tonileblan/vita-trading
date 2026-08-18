@@ -21,7 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useJournal } from "@/lib/journal-store";
+import { useJournal, fetchTradeScreenshots } from "@/lib/journal-store";
 import { type Direction, type Trade } from "@/lib/types";
 import {
   EMOTIONS_AFTER,
@@ -130,7 +130,18 @@ export function TradeFormDialog({
       setPnl(trade.pnl !== undefined && trade.pnl !== null ? String(trade.pnl) : "");
       setTags(trade.tags ?? []);
       setNotes(trade.notes ?? "");
-      setShots(trade.screenshots ?? []);
+      
+      // Carga diferida (Lazy loading) de capturas pesadas
+      const currentShots = (trade.screenshots ?? []).filter((s) => s !== "__has_screenshots__");
+      setShots(currentShots);
+      if (trade.id && (currentShots.length === 0 || trade.screenshots?.[0] === "__has_screenshots__")) {
+        fetchTradeScreenshots(trade.id).then((loaded) => {
+          if (loaded && loaded.length > 0) {
+            setShots(loaded);
+          }
+        });
+      }
+
       const hasMood = Boolean(
         trade.emotionBefore ||
         trade.emotionAfter ||

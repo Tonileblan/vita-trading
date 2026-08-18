@@ -54,6 +54,41 @@ interface Row extends ExtractedTrade {
 }
 
 
+function compressImageFile(file: File, maxDim = 1280, quality = 0.8): Promise<string> {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        let { width, height } = img;
+        if (width > maxDim || height > maxDim) {
+          if (width > height) {
+            height = Math.round((height * maxDim) / width);
+            width = maxDim;
+          } else {
+            width = Math.round((width * maxDim) / height);
+            height = maxDim;
+          }
+        }
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, width, height);
+          resolve(canvas.toDataURL("image/jpeg", quality));
+        } else {
+          resolve(String(e.target?.result || ""));
+        }
+      };
+      img.onerror = () => resolve(String(e.target?.result || ""));
+      img.src = String(e.target?.result || "");
+    };
+    reader.onerror = () => resolve("");
+    reader.readAsDataURL(file);
+  });
+}
+
 export function TradeImportDialog() {
   const { accounts, strategies, trades, addTrades } = useJournal();
   const extract = useServerFn(extractTradesFromImages);
@@ -79,16 +114,18 @@ export function TradeImportDialog() {
   const googleAiKey = typeof window !== "undefined" ? getLocalGoogleAiKey() : "";
   const googleAiModel = typeof window !== "undefined" ? getLocalGoogleAiModel() : "";
 
-  const addFiles = (files: FileList | File[] | null) => {
+  const addFiles = async (files: FileList | File[] | null) => {
     if (!files) return;
-    Array.from(files)
+    const fileList = Array.from(files)
       .filter((f) => f.type.startsWith("image/"))
-      .slice(0, 6)
-      .forEach((f) => {
-        const reader = new FileReader();
-        reader.onload = () => setImages((prev) => [...prev, String(reader.result)].slice(0, 6));
-        reader.readAsDataURL(f);
-      });
+      .slice(0, 6);
+
+    for (const f of fileList) {
+      const compressed = await compressImageFile(f);
+      if (compressed) {
+        setImages((prev) => [...prev, compressed].slice(0, 6));
+      }
+    }
   };
 
   const analyse = async () => {

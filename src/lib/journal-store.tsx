@@ -266,6 +266,48 @@ export function setLocalJournalDataCache(journalId: string, data: JournalData) {
   }
 }
 
+const tradeScreenshotsCache = new Map<string, string[]>();
+
+/** Carga las capturas completas de una operación bajo demanda (Lazy Loading) */
+export async function fetchTradeScreenshots(tradeId: string): Promise<string[]> {
+  if (!tradeId) return [];
+  const cached = tradeScreenshotsCache.get(tradeId);
+  if (cached && cached.length > 0 && cached[0] !== "__has_screenshots__") {
+    return cached;
+  }
+
+  try {
+    const { data: rpcData, error: rpcErr } = await (supabase.rpc as any)("get_trade_screenshots", {
+      p_trade_id: tradeId,
+    });
+    if (!rpcErr && Array.isArray(rpcData) && rpcData.length > 0) {
+      const clean = rpcData.filter((s) => s !== "__has_screenshots__");
+      tradeScreenshotsCache.set(tradeId, clean);
+      return clean;
+    }
+  } catch {
+    // Fallback a select directo
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from("trades")
+      .select("screenshots")
+      .eq("id", tradeId)
+      .maybeSingle();
+
+    if (!error && data && Array.isArray((data as any).screenshots)) {
+      const list = ((data as any).screenshots as string[]).filter((s) => s !== "__has_screenshots__");
+      tradeScreenshotsCache.set(tradeId, list);
+      return list;
+    }
+  } catch {
+    // ignore
+  }
+
+  return [];
+}
+
 /** Lee todos los datos de un diario (usado también por la vista de supervisión). */
 export async function fetchJournalData(journalId: string): Promise<JournalData> {
   if (!journalId) return EMPTY;
@@ -291,6 +333,9 @@ export async function fetchJournalData(journalId: string): Promise<JournalData> 
   }
 
   try {
+    const LIGHTWEIGHT_TRADE_SELECT =
+      "id, user_id, journal_id, account_id, strategy_id, symbol, direction, opened_at, closed_at, entry_price, exit_price, size, pnl, tags, notes, source, import_batch_id, created_at, emotion_before, emotion_after, followed_plan, mistakes, emotion_note";
+
     const [accounts, strategies, trades, withdrawals, periods] = await Promise.all([
       supabase
         .from("accounts")
@@ -300,7 +345,7 @@ export async function fetchJournalData(journalId: string): Promise<JournalData> 
       supabase.from("strategies").select("*").eq("journal_id", journalId),
       supabase
         .from("trades")
-        .select("*")
+        .select(LIGHTWEIGHT_TRADE_SELECT)
         .or(`journal_id.eq.${journalId},journal_id.is.null`)
         .order("closed_at", { ascending: false }),
       supabase.from("withdrawals").select("*").eq("journal_id", journalId).order("date", { ascending: false }),
@@ -315,7 +360,7 @@ export async function fetchJournalData(journalId: string): Promise<JournalData> 
     if (tradeRows.length === 0) {
       const { data: fallbackTrades } = await supabase
         .from("trades")
-        .select("*")
+        .select(LIGHTWEIGHT_TRADE_SELECT)
         .order("closed_at", { ascending: false });
       if (fallbackTrades && fallbackTrades.length > 0) {
         tradeRows = fallbackTrades as Row[];
