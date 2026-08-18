@@ -29,17 +29,7 @@ import { useJournal } from "@/lib/journal-store";
 import { useJournals } from "@/lib/journals";
 import { cn } from "@/lib/utils";
 
-const nav = [
-  { to: "/panel", label: "Resumen", icon: LayoutDashboard },
-  { to: "/diarios", label: "Diarios", icon: NotebookPen },
-  { to: "/cuentas", label: "Cuentas", icon: Wallet },
-  { to: "/operaciones", label: "Operaciones", icon: ListOrdered },
-  { to: "/estrategias", label: "Estrategias", icon: Layers },
-  { to: "/conta", label: "Conta", icon: Receipt },
-  { to: "/mente", label: "Mente", icon: Brain },
-  { to: "/usuarios", label: "Usuarios", icon: Users },
-  { to: "/chat", label: "Chat", icon: MessageSquare },
-] as const;
+
 
 function JournalSwitcher() {
   const { data: journals = [] } = useJournals();
@@ -120,7 +110,22 @@ export function AppShell({
   bareHeader?: boolean;
 }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const items = nav;
+  const { user, profile } = useAuth();
+
+  // Obtener únicamente la primera palabra del nombre del usuario (ej: "Toni" de "Toni Garcia")
+  const rawName = profile?.display_name || user?.email?.split("@")[0] || "Usuario";
+  const userFirstWord = rawName.trim().split(/\s+/)[0] || "Usuario";
+
+  const items = [
+    { to: "/panel", label: "Resumen", icon: LayoutDashboard },
+    { to: "/diarios", label: "Diarios", icon: NotebookPen },
+    { to: "/cuentas", label: "Cuentas", icon: Wallet },
+    { to: "/operaciones", label: "Operaciones", icon: ListOrdered },
+    { to: "/estrategias", label: "Estrategias", icon: Layers },
+    { to: "/conta", label: "Conta", icon: Receipt },
+    { to: "/mente", label: "Mente", icon: Brain },
+    { to: "/usuarios", label: userFirstWord, icon: Users },
+  ];
 
   return (
     <div className="min-h-screen bg-background">

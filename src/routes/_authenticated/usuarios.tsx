@@ -13,6 +13,7 @@ import {
   KeyRound,
   Lock,
   Mail,
+  MessageSquare,
   Moon,
   Search,
   Send,
@@ -38,6 +39,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
+import { ChatThread } from "@/components/chat-thread";
 import {
   getLocalGoogleAiKey,
   setLocalGoogleAiKey,
@@ -472,8 +474,8 @@ function UsersPage() {
 
   return (
     <AppShell
-      title="Usuarios & Configuración"
-      subtitle="Gestiona tu perfil personal, asignación de supervisión, tema y administración del sistema"
+      title={profile?.display_name ? `${profile.display_name.trim().split(/\s+/)[0]} · Mi Cuenta` : "Mi Perfil & Ajustes"}
+      subtitle="Gestiona tu perfil, chat con supervisores, tema y directorio de usuarios"
       showAccountPanel={false}
     >
       <div className="space-y-6">
@@ -551,21 +553,25 @@ function UsersPage() {
           </div>
         </section>
 
-        {/* ESTRUCTURA POR PESTAÑAS (DIRECTORIO Y PERFIL) */}
+        {/* ESTRUCTURA POR PESTAÑAS (DIRECTORIO, PERFIL Y CHAT) */}
         <Tabs defaultValue={isAdmin || isSupervisor ? "admin" : "profile"} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-2 p-1 bg-muted/60 max-w-md">
-            <TabsTrigger value="admin" className="gap-2 font-semibold">
+          <TabsList className="grid w-full grid-cols-3 p-1 bg-muted/60 max-w-lg">
+            <TabsTrigger value="admin" className="gap-2 font-semibold text-xs md:text-sm">
               <Users className="size-4" />
-              <span>{isAdmin ? "Gestión de Usuarios" : "Directorio de Usuarios"}</span>
+              <span className="truncate">{isAdmin ? "Gestión" : "Directorio"}</span>
               {isAdmin && pendingRequests.length > 0 && (
                 <span className="rounded-full bg-amber-500 px-1.5 text-[10px] font-bold text-white">
                   {pendingRequests.length}
                 </span>
               )}
             </TabsTrigger>
-            <TabsTrigger value="profile" className="gap-2 font-semibold">
+            <TabsTrigger value="profile" className="gap-2 font-semibold text-xs md:text-sm">
               <Sliders className="size-4" />
-              <span>Mi Perfil y Ajustes</span>
+              <span className="truncate">Mi Perfil</span>
+            </TabsTrigger>
+            <TabsTrigger value="chat" className="gap-2 font-semibold text-xs md:text-sm">
+              <MessageSquare className="size-4" />
+              <span className="truncate">Chat</span>
             </TabsTrigger>
           </TabsList>
 
@@ -1023,6 +1029,29 @@ function UsersPage() {
                 theme={theme}
                 setTheme={setTheme}
               />
+            </TabsContent>
+
+            {/* TAB CHAT INTERNO */}
+            <TabsContent value="chat" className="space-y-6">
+              <div className="panel p-5 md:p-6 space-y-4">
+                <div className="flex items-center gap-3">
+                  <div className="flex size-10 items-center justify-center rounded-xl bg-brand/10 text-brand">
+                    <MessageSquare className="size-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold">Chat con tu Supervisor</h3>
+                    <p className="text-xs text-muted-foreground">
+                      Conversación privada sobre tus operaciones, estrategia y rendimiento con tus supervisores autorizados.
+                    </p>
+                  </div>
+                </div>
+
+                <ChatThread
+                  subjectUserId={user?.id ?? null}
+                  title="Mi hilo privado"
+                  hint="Solo visible para ti y los supervisores de la plataforma."
+                />
+              </div>
             </TabsContent>
           </Tabs>
         </div>
