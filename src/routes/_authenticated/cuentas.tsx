@@ -96,7 +96,7 @@ function parseMoneyInput(value: string) {
 }
 
 function AccountDialog({ account, trigger }: { account?: Account | undefined; trigger: React.ReactNode }) {
-  const { addAccount, updateAccount, removeAccount, strategies } = useJournal();
+  const { addAccount, updateAccount, removeAccount } = useJournal();
   const editing = Boolean(account);
   const [open, setOpen] = useState(false);
   const [type, setType] = useState<AccountType>(account?.type ?? "funded");
@@ -119,7 +119,6 @@ function AccountDialog({ account, trigger }: { account?: Account | undefined; tr
     setBroker(added);
     setNewBroker("");
   };
-  const [strategyId, setStrategyId] = useState(account?.strategyId ?? "");
   const [initial, setInitial] = useState(String(account?.initialBalance ?? 50000));
   const [current, setCurrent] = useState(String(account?.currentBalance ?? 50000));
 
@@ -137,7 +136,6 @@ function AccountDialog({ account, trigger }: { account?: Account | undefined; tr
       setName(account.name);
       setFirm(account.firm ?? PROP_FIRMS[0]!);
       setBroker(account.broker ?? BROKERS[0]!);
-      setStrategyId(account.strategyId ?? "");
       setInitial(String(account.initialBalance));
       setCurrent(String(account.currentBalance));
 
@@ -165,7 +163,6 @@ function AccountDialog({ account, trigger }: { account?: Account | undefined; tr
       type,
       firm: type === "funded" ? firm : undefined,
       broker: type === "personal" ? broker : undefined,
-      strategyId: strategyId,
       initialBalance,
       currentBalance,
       drawdownLimit: type === "funded" ? Number(dd) || 0 : undefined,
@@ -243,26 +240,6 @@ function AccountDialog({ account, trigger }: { account?: Account | undefined; tr
               onChange={(e) => setName(e.target.value)}
               placeholder="Ej. Apex 50K PA / FTMO 100K Eval"
             />
-          </div>
-
-          <div className="space-y-1.5">
-            <Label>Estrategia asignada (opcional)</Label>
-            <Select
-              value={strategyId || "none"}
-              onValueChange={(v) => setStrategyId(v === "none" ? "" : v)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Sin estrategia vinculada" />
-              </SelectTrigger>
-              <SelectContent className="max-h-64">
-                <SelectItem value="none">Sin estrategia vinculada</SelectItem>
-                {strategies.map((s) => (
-                  <SelectItem key={s.id} value={s.id}>
-                    {s.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
           </div>
 
           {type === "funded" && (
@@ -483,7 +460,7 @@ function AccountDialog({ account, trigger }: { account?: Account | undefined; tr
 }
 
 function AccountsPage() {
-  const { accounts, trades, withdrawals, strategies, updateAccount } = useJournal();
+  const { accounts, trades, withdrawals } = useJournal();
   const [filterType, setFilterType] = useState<"all" | "funded" | "personal">("all");
 
   const funded = useMemo(() => accounts.filter((a) => a.type === "funded"), [accounts]);
@@ -566,35 +543,6 @@ function AccountsPage() {
                 }
               />
             </div>
-          </div>
-
-          {/* Strategy Selector */}
-          <div>
-            <Select
-              value={acc.strategyId || "none"}
-              onValueChange={async (v) => {
-                try {
-                  await updateAccount(acc.id, { strategyId: v === "none" ? "" : v });
-                  toast.success("Estrategia actualizada");
-                } catch {
-                  toast.error("No se pudo cambiar la estrategia");
-                }
-              }}
-            >
-              <SelectTrigger className="h-8 text-xs" aria-label={`Estrategia de ${acc.name}`}>
-                <SelectValue placeholder="Sin estrategia asignada">
-                  {strategies.find((s) => s.id === acc.strategyId)?.name ?? "Sin estrategia asignada"}
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent className="max-h-64">
-                <SelectItem value="none">Sin estrategia asignada</SelectItem>
-                {strategies.map((s) => (
-                  <SelectItem key={s.id} value={s.id}>
-                    {s.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
           </div>
 
           {/* 3 Metric Grid */}
