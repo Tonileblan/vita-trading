@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { Globe, Layers, Pencil, Plus } from "lucide-react";
+import { Layers, Pencil, Plus } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { MarketHours } from "@/components/market-hours";
 import { AccountStrategyCalendar } from "@/components/account-strategy-calendar";
@@ -106,11 +106,6 @@ function EstrategiasPage() {
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
                     <h3 className="truncate text-lg font-semibold">{s.name}</h3>
-                    {s.isShared && (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-blue-500/15 px-2 py-0.5 text-[10px] font-semibold text-blue-600 dark:text-blue-400 shrink-0">
-                        <Globe className="size-3" /> Compartida
-                      </span>
-                    )}
                   </div>
                   <p className="text-xs text-muted-foreground">
                     {s.mainSymbol} · riesgo {(s.riskPct * 100).toFixed(1)}% ·{" "}
@@ -192,11 +187,6 @@ function EstrategiasPage() {
                   <td className="py-2 font-medium">
                     <span className="inline-flex items-center gap-1.5">
                       {s.strategy.name}
-                      {s.strategy.isShared && (
-                        <span className="inline-flex items-center gap-0.5 rounded-full bg-blue-500/10 px-1.5 py-0.2 text-[9px] font-semibold text-blue-600 dark:text-blue-400">
-                          <Globe className="size-2.5" /> Compartida
-                        </span>
-                      )}
                     </span>
                     <span className="ml-2 text-xs text-muted-foreground">
                       {s.strategy.mainSymbol} · {(s.strategy.riskPct * 100).toFixed(1)}%
