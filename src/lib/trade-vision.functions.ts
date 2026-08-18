@@ -90,9 +90,11 @@ export const extractTradesFromImages = createServerFn({ method: "POST" })
         "La API oficial de DeepSeek (V3/R1) está optimizada para razonamiento y texto, pero no admite lectura directa de imágenes. Para capturas, selecciona en tu Perfil Google AI (Gemini Flash), Groq Cloud (Llama Vision) o OpenRouter, que son 100% gratuitos.",
       );
     }
-    // 2. PROVEEDOR: GROQ CLOUD (Llama 3.2 Vision)
+    // 2. PROVEEDOR: GROQ CLOUD (Aviso sobre modelos de visión retirados en Groq)
     else if (provider === "groq" && userApiKey) {
-      const groqModel = data.model || "llama-3.2-11b-vision-preview";
+      const groqModel = data.model || "llama-3.3-70b-versatile";
+      
+      // Intentar llamada si el usuario especificó un modelo
       const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
         method: "POST",
         headers: {
@@ -118,7 +120,13 @@ export const extractTradesFromImages = createServerFn({ method: "POST" })
 
       if (!res.ok) {
         const err = await res.json().catch(() => null);
-        throw new Error((err as any)?.error?.message || `Error en Groq Cloud (${res.status})`);
+        const errMsg = (err as any)?.error?.message || "";
+        if (errMsg.includes("decommissioned") || errMsg.includes("vision") || errMsg.includes("not supported")) {
+          throw new Error(
+            "Groq ha retirado sus modelos de visión en preview. Para extraer operaciones de fotos y capturas, selecciona en tu perfil Google AI (Gemini 2.0 Flash) u OpenRouter (Llama 3.2 Vision), que son 100% gratuitos y tienen soporte nativo de imágenes.",
+          );
+        }
+        throw new Error(errMsg || `Error en Groq Cloud (${res.status})`);
       }
 
       const json = (await res.json()) as { choices?: { message?: { content?: string } }[] };

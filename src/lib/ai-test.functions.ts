@@ -45,8 +45,12 @@ export const testAiConnectionServerFn = createServerFn({ method: "POST" })
 
       // 2. GROQ CLOUD
       if (provider === "groq") {
-        const targetModel = model || "llama-3.2-11b-vision-preview";
-        const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        let targetModel =
+          model && model !== "llama-3.2-11b-vision-preview"
+            ? model
+            : "llama-3.3-70b-versatile";
+
+        let res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
           method: "POST",
           headers: {
             "Authorization": `Bearer ${key}`,
@@ -58,6 +62,48 @@ export const testAiConnectionServerFn = createServerFn({ method: "POST" })
             max_tokens: 10,
           }),
         });
+
+        // Si el modelo estaba en desuso o falló, buscar modelos activos de la cuenta
+        if (!res.ok) {
+          try {
+            const listRes = await fetch("https://api.groq.com/openai/v1/models", {
+              headers: { "Authorization": `Bearer ${key}` },
+            });
+            if (listRes.ok) {
+              const listData = (await listRes.json()) as {
+                data?: { id: string }[];
+              };
+              const activeModels = (listData.data || []).map((m) => m.id);
+              const preferred = [
+                "llama-3.3-70b-versatile",
+                "deepseek-r1-distill-llama-70b",
+                "llama-3.1-8b-instant",
+                "mixtral-8x7b-32768",
+              ];
+              const fallback =
+                preferred.find((p) => activeModels.includes(p)) || activeModels[0];
+              if (fallback) {
+                targetModel = fallback;
+                res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+                  method: "POST",
+                  headers: {
+                    "Authorization": `Bearer ${key}`,
+                    "Content-Type": "application/json",
+                  },
+                  body: JSON.stringify({
+                    model: targetModel,
+                    messages: [
+                      { role: "user", content: "Responde únicamente con la palabra OK." },
+                    ],
+                    max_tokens: 10,
+                  }),
+                });
+              }
+            }
+          } catch {
+            // Continuar con el error original
+          }
+        }
 
         if (res.ok) {
           return {
