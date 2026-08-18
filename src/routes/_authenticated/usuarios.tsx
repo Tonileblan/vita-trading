@@ -40,6 +40,7 @@ import { toast } from "sonner";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { ChatThread } from "@/components/chat-thread";
+import { deleteUserAdminFn } from "@/lib/admin.functions";
 import {
   getLocalGoogleAiKey,
   setLocalGoogleAiKey,
@@ -124,6 +125,7 @@ function UsersPage() {
   const { user, profile, isAdmin, isSupervisor } = useAuth();
   const { theme, setTheme } = useTheme();
   const qc = useQueryClient();
+  const deleteUserServer = useServerFn(deleteUserAdminFn);
 
   const [name, setName] = useState("");
   const [avatar, setAvatar] = useState("");
@@ -407,32 +409,13 @@ function UsersPage() {
 
   const deleteUser = useMutation({
     mutationFn: async (userId: string) => {
-      // 1. Intentar RPC con target_user_id
-      let { error } = await (supabase.rpc as any)("admin_delete_user", {
-        target_user_id: userId,
-      });
-
-      if (error) {
-        // 2. Intentar con p_target_user_id
-        const res2 = await (supabase.rpc as any)("admin_delete_user", {
-          p_target_user_id: userId,
-        });
-        error = res2.error;
-      }
-
-      if (error) {
-        // 3. Fallback directo en cascada
-        await supabase.from("account_strategy_periods").delete().eq("user_id", userId);
-        await supabase.from("chat_messages").delete().or(`sender_id.eq.${userId},receiver_id.eq.${userId}`);
-        await supabase.from("withdrawals").delete().eq("user_id", userId);
-        await supabase.from("trades").delete().eq("user_id", userId);
-        await supabase.from("accounts").delete().eq("user_id", userId);
-        await supabase.from("strategies").delete().eq("user_id", userId);
-        await supabase.from("journals").delete().eq("owner_id", userId);
-        await supabase.from("user_roles").delete().eq("user_id", userId);
-        const { error: profErr } = await supabase.from("profiles").delete().eq("id", userId);
-        if (profErr) throw error || profErr;
-      }
+      await deleteUserServer({ data: { userId } });
+    },
+    onMutate: async (userId) => {
+      await qc.cancelQueries({ queryKey: ["all-profiles"] });
+      qc.setQueryData(["all-profiles"], (old: any) =>
+        Array.isArray(old) ? old.filter((u: any) => u.id !== userId) : [],
+      );
     },
     onSuccess: () => {
       toast.success("Usuario eliminado definitivamente");
@@ -441,7 +424,10 @@ function UsersPage() {
       qc.invalidateQueries({ queryKey: ["all-roles"] });
       qc.invalidateQueries({ queryKey: ["available-supervisors"] });
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => {
+      toast.error(e.message);
+      qc.invalidateQueries({ queryKey: ["all-profiles"] });
+    },
   });
 
   // Métricas para administradores
