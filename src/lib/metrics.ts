@@ -251,14 +251,16 @@ export function effectiveStrategyId(
   accounts: Account[],
   periods: AccountStrategyPeriod[] = [],
 ) {
-  const day = trade.closedAt.slice(0, 10);
-  const period = periods.find(
-    (p) =>
-      p.accountId === trade.accountId &&
-      day >= p.startDate &&
-      (!p.endDate || day <= p.endDate),
-  );
-  if (period) return period.strategyId;
+  const day = (trade.openedAt || trade.closedAt || "").slice(0, 10);
+  if (day) {
+    const period = periods.find(
+      (p) =>
+        p.accountId === trade.accountId &&
+        day >= p.startDate &&
+        (!p.endDate || day <= p.endDate),
+    );
+    if (period) return period.strategyId;
+  }
   if (trade.strategyId) return trade.strategyId;
   return accounts.find((a) => a.id === trade.accountId)?.strategyId ?? "";
 }
@@ -410,7 +412,12 @@ export function accountDrawdown(
 
   type Ev = { at: string; delta: number };
   const events: Ev[] = [
-    ...trades.filter((t) => t.accountId === account.id).map((t) => ({ at: t.closedAt, delta: t.pnl })),
+    ...trades
+      .filter((t) => t.accountId === account.id)
+      .map((t) => ({
+        at: t.openedAt || t.closedAt || new Date().toISOString(),
+        delta: t.pnl,
+      })),
     ...withdrawals
       .filter((w) => w.accountId === account.id)
       .map((w) => ({ at: w.date, delta: -Math.abs(w.amount) })),
@@ -543,7 +550,8 @@ const MONTHS = [
 export function monthlyNet(trades: Trade[], startCapital: number) {
   const nets = new Array(12).fill(0) as number[];
   for (const t of trades) {
-    const i = new Date(t.closedAt).getUTCMonth();
+    const dateStr = t.openedAt || t.closedAt;
+    const i = dateStr ? new Date(dateStr).getUTCMonth() : 0;
     nets[i] = (nets[i] ?? 0) + t.pnl;
   }
   let acc = 0;

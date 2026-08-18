@@ -48,25 +48,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     enabled: !!userId,
     staleTime: 5 * 60_000,
     queryFn: async () => {
-      const { data: rpcData, error: rpcErr } = await (supabase.rpc as any)("get_user_bootstrap");
-      if (!rpcErr && rpcData) {
-        return {
-          profile: (rpcData.profile as Profile | null) ?? null,
-          roles: (rpcData.roles ?? []) as string[],
-        };
+      try {
+        const { data: rpcData, error: rpcErr } = await (supabase.rpc as any)("get_user_bootstrap");
+        if (!rpcErr && rpcData && typeof rpcData === "object") {
+          return {
+            profile: (rpcData.profile as Profile | null) ?? null,
+            roles: (rpcData.roles ?? []) as string[],
+          };
+        }
+      } catch {
+        // Fallback below
       }
-      const [profRes, roleRes] = await Promise.all([
-        supabase
-          .from("profiles")
-          .select("id, display_name, avatar_url, is_private, supervisor_status, assigned_supervisor_id")
-          .eq("id", userId!)
-          .maybeSingle(),
-        supabase.from("user_roles").select("role").eq("user_id", userId!),
-      ]);
-      return {
-        profile: (profRes.data as Profile | null) ?? null,
-        roles: (roleRes.data ?? []).map((r) => r.role as string),
-      };
+
+      try {
+        const [profRes, roleRes] = await Promise.all([
+          supabase
+            .from("profiles")
+            .select("*")
+            .eq("id", userId!)
+            .maybeSingle(),
+          supabase.from("user_roles").select("role").eq("user_id", userId!),
+        ]);
+
+        return {
+          profile: (profRes.data as Profile | null) ?? null,
+          roles: (roleRes.data ?? []).map((r) => r.role as string),
+        };
+      } catch (err) {
+        console.error("Error al cargar perfil/roles:", err);
+        return { profile: null, roles: [] };
+      }
     },
   });
 

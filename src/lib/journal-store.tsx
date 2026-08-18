@@ -249,7 +249,7 @@ export async function fetchJournalData(journalId: string): Promise<JournalData> 
       p_journal_id: journalId,
     });
 
-    if (!rpcErr && bundle && typeof bundle === "object") {
+    if (!rpcErr && bundle && typeof bundle === "object" && Array.isArray((bundle as any).accounts)) {
       return {
         accounts: ((bundle as any).accounts ?? []).map((r: Row) => toAccount(r)),
         strategies: ((bundle as any).strategies ?? []).map((r: Row) => toStrategy(r)),
@@ -262,31 +262,34 @@ export async function fetchJournalData(journalId: string): Promise<JournalData> 
     // Fallback a consultas individuales si el RPC no estuviera disponible
   }
 
-  const [accounts, strategies, trades, withdrawals, periods] = await Promise.all([
-    supabase
-      .from("accounts")
-      .select("*")
-      .eq("journal_id", journalId)
-      .order("created_at", { ascending: true }),
-    supabase.from("strategies").select("*").eq("journal_id", journalId),
-    supabase.from("trades").select("*").eq("journal_id", journalId).order("closed_at", { ascending: false }),
-    supabase.from("withdrawals").select("*").eq("journal_id", journalId).order("date", { ascending: false }),
-    supabase
-      .from("account_strategy_periods")
-      .select("*")
-      .eq("journal_id", journalId)
-      .order("start_date", { ascending: true }),
-  ]);
-  const err =
-    accounts.error || strategies.error || trades.error || withdrawals.error || periods.error;
-  if (err) throw err;
-  return {
-    accounts: (accounts.data ?? []).map((r) => toAccount(r as Row)),
-    strategies: (strategies.data ?? []).map((r) => toStrategy(r as Row)),
-    trades: (trades.data ?? []).map((r) => toTrade(r as Row)),
-    withdrawals: (withdrawals.data ?? []).map((r) => toWithdrawal(r as Row)),
-    strategyPeriods: (periods.data ?? []).map((r) => toPeriod(r as Row)),
-  };
+  try {
+    const [accounts, strategies, trades, withdrawals, periods] = await Promise.all([
+      supabase
+        .from("accounts")
+        .select("*")
+        .eq("journal_id", journalId)
+        .order("created_at", { ascending: true }),
+      supabase.from("strategies").select("*").eq("journal_id", journalId),
+      supabase.from("trades").select("*").eq("journal_id", journalId).order("closed_at", { ascending: false }),
+      supabase.from("withdrawals").select("*").eq("journal_id", journalId).order("date", { ascending: false }),
+      supabase
+        .from("account_strategy_periods")
+        .select("*")
+        .eq("journal_id", journalId)
+        .order("start_date", { ascending: true }),
+    ]);
+
+    return {
+      accounts: (accounts.data ?? []).map((r) => toAccount(r as Row)),
+      strategies: (strategies.data ?? []).map((r) => toStrategy(r as Row)),
+      trades: (trades.data ?? []).map((r) => toTrade(r as Row)),
+      withdrawals: (withdrawals.data ?? []).map((r) => toWithdrawal(r as Row)),
+      strategyPeriods: (periods.data ?? []).map((r) => toPeriod(r as Row)),
+    };
+  } catch (err) {
+    console.error("Error al cargar datos del diario:", err);
+    return EMPTY;
+  }
 }
 
 async function seedDefaultStrategies(journalId: string, userId: string) {
