@@ -9,14 +9,15 @@ export function formatCurrency(value: number, withSign = false) {
 }
 
 export function formatDateTime(iso: string) {
+  if (!iso) return "—";
   const d = new Date(iso);
+  if (isNaN(d.getTime())) return "—";
   return d.toLocaleString("es-ES", {
     day: "2-digit",
     month: "short",
     year: "2-digit",
     hour: "2-digit",
     minute: "2-digit",
-    timeZone: "UTC",
   });
 }
 
@@ -213,7 +214,6 @@ export function buildEquityCurve(trades: Trade[], startBalance: number) {
       date: new Date(dateStr).toLocaleDateString("es-ES", {
         day: "2-digit",
         month: "short",
-        timeZone: "UTC",
       }),
       equity: Number(equity.toFixed(2)),
     };
