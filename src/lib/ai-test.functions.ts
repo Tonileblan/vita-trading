@@ -123,8 +123,12 @@ export const testAiConnectionServerFn = createServerFn({ method: "POST" })
 
       // 3. OPENROUTER
       if (provider === "openrouter") {
-        const targetModel = model || "meta-llama/llama-3.2-11b-vision-instruct:free";
-        const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        let targetModel =
+          model && model !== "meta-llama/llama-3.2-11b-vision-instruct:free"
+            ? model
+            : "google/gemini-2.0-flash-exp:free";
+
+        let res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
           method: "POST",
           headers: {
             "Authorization": `Bearer ${key}`,
@@ -138,6 +142,45 @@ export const testAiConnectionServerFn = createServerFn({ method: "POST" })
             max_tokens: 10,
           }),
         });
+
+        // Si falló por falta de endpoints en el modelo solicitado, probar alternativas gratuitas activas
+        if (!res.ok) {
+          const fallbackCandidates = [
+            "google/gemini-2.0-flash-exp:free",
+            "deepseek/deepseek-r1:free",
+            "deepseek/deepseek-chat:free",
+            "meta-llama/llama-3.3-70b-instruct:free",
+            "qwen/qwen-2.5-vl-72b-instruct:free",
+          ];
+
+          for (const cand of fallbackCandidates) {
+            if (cand === targetModel) continue;
+            try {
+              const candRes = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+                method: "POST",
+                headers: {
+                  "Authorization": `Bearer ${key}`,
+                  "Content-Type": "application/json",
+                  "HTTP-Referer": "https://vita-trading.app",
+                  "X-Title": "Vita-Trading",
+                },
+                body: JSON.stringify({
+                  model: cand,
+                  messages: [{ role: "user", content: "Responde únicamente con la palabra OK." }],
+                  max_tokens: 10,
+                }),
+              });
+
+              if (candRes.ok) {
+                targetModel = cand;
+                res = candRes;
+                break;
+              }
+            } catch {
+              // Continuar con el siguiente candidato
+            }
+          }
+        }
 
         if (res.ok) {
           return {

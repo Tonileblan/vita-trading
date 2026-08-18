@@ -132,10 +132,14 @@ export const extractTradesFromImages = createServerFn({ method: "POST" })
       const json = (await res.json()) as { choices?: { message?: { content?: string } }[] };
       content = json.choices?.[0]?.message?.content ?? "{}";
     }
-    // 3. PROVEEDOR: OPENROUTER (Modelos con visión como Llama 3.2 Vision o Qwen VL)
+    // 3. PROVEEDOR: OPENROUTER (Modelos con visión como Gemini 2.0 Flash o Qwen VL)
     else if (provider === "openrouter" && userApiKey) {
-      const openRouterModel = data.model || "meta-llama/llama-3.2-11b-vision-instruct:free";
-      const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      let openRouterModel =
+        data.model && data.model !== "meta-llama/llama-3.2-11b-vision-instruct:free"
+          ? data.model
+          : "google/gemini-2.0-flash-exp:free";
+
+      let res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${userApiKey}`,
@@ -159,6 +163,41 @@ export const extractTradesFromImages = createServerFn({ method: "POST" })
           temperature: 0.1,
         }),
       });
+
+      // Si el modelo seleccionado no tiene endpoints activos, probar Qwen 2.5 VL
+      if (!res.ok) {
+        try {
+          const fallbackRes = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+            method: "POST",
+            headers: {
+              "Authorization": `Bearer ${userApiKey}`,
+              "Content-Type": "application/json",
+              "HTTP-Referer": "https://vita-trading.app",
+              "X-Title": "Vita-Trading",
+            },
+            body: JSON.stringify({
+              model: "qwen/qwen-2.5-vl-72b-instruct:free",
+              messages: [
+                { role: "system", content: `${PROMPT}\n${hint}` },
+                {
+                  role: "user",
+                  content: [
+                    { type: "text", text: "Extrae todas las operaciones de estas capturas en formato JSON." },
+                    ...data.images.map((url) => ({ type: "image_url", image_url: { url } })),
+                  ],
+                },
+              ],
+              response_format: { type: "json_object" },
+              temperature: 0.1,
+            }),
+          });
+          if (fallbackRes.ok) {
+            res = fallbackRes;
+          }
+        } catch {
+          // Continuar con el error original
+        }
+      }
 
       if (!res.ok) {
         const err = await res.json().catch(() => null);
