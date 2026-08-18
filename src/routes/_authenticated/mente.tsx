@@ -11,9 +11,11 @@ import {
   Save,
   ShieldCheck,
   Sparkles,
+  Wind,
 } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/app-shell";
+import { BreathingExercise } from "@/components/breathing-exercise";
 import { EmotionStats } from "@/components/emotion-stats";
 import { MoodCalendar } from "@/components/mood-calendar";
 import { MoodCheckinCard } from "@/components/mood-checkin-card";
@@ -44,6 +46,7 @@ export const Route = createFileRoute("/_authenticated/mente")({
 
 const TABS = [
   { key: "hoy", label: "Check-in & Calendario", icon: CalendarDays },
+  { key: "respiracion", label: "Respiración 3 Fases", icon: Wind },
   { key: "analitica", label: "Analítica Emocional", icon: LineChart },
   { key: "reglas", label: "Reglas & Disciplina", icon: ShieldCheck },
 ] as const;
@@ -303,10 +306,37 @@ function MentePage() {
             Selecciona un diario activo para empezar a registrar tu estado mental.
           </div>
         ) : tab === "hoy" ? (
-          <div className="grid gap-5 lg:grid-cols-2">
-            <MoodCheckinCard journalId={activeJournalId} existing={today} />
-            <MoodCalendar checkins={checkins} trades={visibleTrades} />
+          <div className="space-y-5">
+            {/* Quick Breathing Banner */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-2xl border border-border/80 bg-gradient-to-r from-blue-500/10 via-indigo-500/5 to-teal-500/10 p-4 sm:p-5">
+              <div className="flex items-center gap-3.5">
+                <div className="flex size-11 items-center justify-center rounded-xl bg-blue-500/15 text-blue-500 shrink-0">
+                  <Wind className="size-6 animate-pulse" />
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-foreground">Ejercicio de Respiración de 3 Fases</h4>
+                  <p className="text-xs text-muted-foreground">
+                    Inhala · Retén · Exhala. Reduce el estrés y entra en zona antes de abrir la sesión.
+                  </p>
+                </div>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setTab("respiracion")}
+                className="gap-2 font-bold shrink-0 self-end sm:self-auto border-blue-500/30 text-blue-600 dark:text-blue-400 hover:bg-blue-500/10"
+              >
+                <Wind className="size-4" /> Iniciar ejercicio
+              </Button>
+            </div>
+
+            <div className="grid gap-5 lg:grid-cols-2">
+              <MoodCheckinCard journalId={activeJournalId} existing={today} />
+              <MoodCalendar checkins={checkins} trades={visibleTrades} />
+            </div>
           </div>
+        ) : tab === "respiracion" ? (
+          <BreathingExercise />
         ) : tab === "analitica" ? (
           <EmotionStats trades={visibleTrades} checkins={checkins} />
         ) : (
