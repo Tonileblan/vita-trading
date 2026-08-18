@@ -240,6 +240,32 @@ const EMPTY: JournalData = {
   strategyPeriods: [],
 };
 
+const JOURNAL_DATA_CACHE_PREFIX = "vita-trading:cache:journal-data:";
+
+export function getLocalJournalDataCache(journalId: string): JournalData | null {
+  if (typeof window === "undefined" || !journalId) return null;
+  try {
+    const raw = window.localStorage.getItem(JOURNAL_DATA_CACHE_PREFIX + journalId);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (parsed && typeof parsed === "object" && Array.isArray(parsed.accounts)) {
+      return parsed as JournalData;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+export function setLocalJournalDataCache(journalId: string, data: JournalData) {
+  if (typeof window === "undefined" || !journalId) return;
+  try {
+    window.localStorage.setItem(JOURNAL_DATA_CACHE_PREFIX + journalId, JSON.stringify(data));
+  } catch {
+    // Ignore storage quota
+  }
+}
+
 /** Lee todos los datos de un diario (usado también por la vista de supervisión). */
 export async function fetchJournalData(journalId: string): Promise<JournalData> {
   if (!journalId) return EMPTY;
@@ -250,13 +276,15 @@ export async function fetchJournalData(journalId: string): Promise<JournalData> 
     });
 
     if (!rpcErr && bundle && typeof bundle === "object" && Array.isArray((bundle as any).accounts)) {
-      return {
+      const parsed: JournalData = {
         accounts: ((bundle as any).accounts ?? []).map((r: Row) => toAccount(r)),
         strategies: ((bundle as any).strategies ?? []).map((r: Row) => toStrategy(r)),
         trades: ((bundle as any).trades ?? []).map((r: Row) => toTrade(r)),
         withdrawals: ((bundle as any).withdrawals ?? []).map((r: Row) => toWithdrawal(r)),
         strategyPeriods: ((bundle as any).strategyPeriods ?? []).map((r: Row) => toPeriod(r)),
       };
+      setLocalJournalDataCache(journalId, parsed);
+      return parsed;
     }
   } catch {
     // Fallback a consultas individuales
@@ -294,16 +322,18 @@ export async function fetchJournalData(journalId: string): Promise<JournalData> 
       }
     }
 
-    return {
+    const parsed: JournalData = {
       accounts: (accounts.data ?? []).map((r) => toAccount(r as Row)),
       strategies: (strategies.data ?? []).map((r) => toStrategy(r as Row)),
       trades: tradeRows.map((r) => toTrade(r)),
       withdrawals: (withdrawals.data ?? []).map((r) => toWithdrawal(r as Row)),
       strategyPeriods: (periods.data ?? []).map((r) => toPeriod(r as Row)),
     };
+    setLocalJournalDataCache(journalId, parsed);
+    return parsed;
   } catch (err) {
     console.error("Error al cargar datos del diario:", err);
-    return EMPTY;
+    return getLocalJournalDataCache(journalId) ?? EMPTY;
   }
 }
 
@@ -379,10 +409,12 @@ export function JournalProvider({ children }: { children: ReactNode }) {
     if (typeof window !== "undefined") window.localStorage.setItem(STORAGE_KEY, id);
   }, []);
 
-  const { data = EMPTY, isLoading } = useQuery({
+  const { data = getLocalJournalDataCache(activeJournalId) ?? EMPTY, isLoading } = useQuery({
     queryKey: ["journal-data", activeJournalId],
     enabled: !!activeJournalId,
-    staleTime: 60_000,
+    staleTime: 5 * 60_000,
+    gcTime: 30 * 60_000,
+    placeholderData: (prev) => prev ?? getLocalJournalDataCache(activeJournalId) ?? EMPTY,
     queryFn: async () => {
       const result = await fetchJournalData(activeJournalId);
       if (result.strategies.length === 0) {
@@ -395,9 +427,12 @@ export function JournalProvider({ children }: { children: ReactNode }) {
           .maybeSingle();
         if (uid && journal?.owner_id === uid) {
           await seedDefaultStrategies(activeJournalId, uid);
-          return fetchJournalData(activeJournalId);
+          const seeded = await fetchJournalData(activeJournalId);
+          setLocalJournalDataCache(activeJournalId, seeded);
+          return seeded;
         }
       }
+      setLocalJournalDataCache(activeJournalId, result);
       return result;
     },
   });

@@ -64,6 +64,8 @@ function TradesPage() {
   const [working, setWorking] = useState(false);
   const [sortBy, setSortBy] = useState<"created" | "closed">("closed");
   const [tab, setTab] = useState<"operaciones" | "importaciones">("operaciones");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(50);
 
   const filtered = useMemo(
     () =>
@@ -104,6 +106,12 @@ function TradesPage() {
         }),
     [visibleTrades, accounts, strategyPeriods, query, selectedStrategyId, sortBy],
   );
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const paginatedTrades = useMemo(() => {
+    const start = (page - 1) * pageSize;
+    return filtered.slice(start, start + pageSize);
+  }, [filtered, page, pageSize]);
 
   const m = useMemo(() => computeMetrics(filtered), [filtered]);
 
@@ -364,7 +372,7 @@ function TradesPage() {
 
             {/* Trades Table */}
             <TradesTable
-              trades={filtered}
+              trades={paginatedTrades}
               accounts={accounts}
               strategies={strategies}
               selectedIds={selected}
@@ -381,6 +389,55 @@ function TradesPage() {
                 })
               }
             />
+
+            {/* Paginación de Operaciones */}
+            {filtered.length > pageSize && (
+              <div className="flex flex-wrap items-center justify-between gap-3 pt-2 text-xs text-muted-foreground">
+                <div className="flex items-center gap-2">
+                  <span>
+                    Mostrando {(page - 1) * pageSize + 1}–{Math.min(page * pageSize, filtered.length)} de{" "}
+                    {filtered.length} operaciones
+                  </span>
+                  <select
+                    value={pageSize}
+                    onChange={(e) => {
+                      setPageSize(Number(e.target.value));
+                      setPage(1);
+                    }}
+                    className="h-7 rounded border border-border bg-card px-1.5 text-xs text-foreground"
+                  >
+                    <option value={25}>25 / pág.</option>
+                    <option value={50}>50 / pág.</option>
+                    <option value={100}>100 / pág.</option>
+                    <option value={200}>200 / pág.</option>
+                  </select>
+                </div>
+
+                <div className="flex items-center gap-1.5">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-7 px-2.5 text-xs"
+                    disabled={page <= 1}
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  >
+                    Anterior
+                  </Button>
+                  <span className="px-2 font-medium text-foreground">
+                    Página {page} de {totalPages}
+                  </span>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-7 px-2.5 text-xs"
+                    disabled={page >= totalPages}
+                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  >
+                    Siguiente
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
         )}
 

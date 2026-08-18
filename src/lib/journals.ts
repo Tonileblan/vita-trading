@@ -12,14 +12,39 @@ export interface Journal {
   created_at: string;
 }
 
+const JOURNALS_CACHE_KEY = "vita-trading:cache:journals";
+
+export function getLocalJournalsCache(): Journal[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = window.localStorage.getItem(JOURNALS_CACHE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? (parsed as Journal[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function setLocalJournalsCache(journals: Journal[]) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(JOURNALS_CACHE_KEY, JSON.stringify(journals));
+  } catch {
+    // Ignore storage quota
+  }
+}
+
 export function useJournals() {
   return useQuery({
     queryKey: ["journals"],
-    staleTime: 60_000,
+    staleTime: 5 * 60_000,
+    gcTime: 30 * 60_000,
+    placeholderData: (prev) => (prev && prev.length > 0 ? prev : getLocalJournalsCache()),
     queryFn: async () => {
       const { data: sessionData } = await supabase.auth.getSession();
       const uid = sessionData.session?.user?.id;
-      if (!uid) return [];
+      if (!uid) return getLocalJournalsCache();
       const { data, error } = await supabase
         .from("journals")
         .select(
@@ -28,7 +53,9 @@ export function useJournals() {
         .eq("owner_id", uid)
         .order("created_at", { ascending: true });
       if (error) throw error;
-      return (data ?? []) as Journal[];
+      const res = (data ?? []) as Journal[];
+      setLocalJournalsCache(res);
+      return res;
     },
   });
 }

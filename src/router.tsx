@@ -6,9 +6,9 @@ export const getRouter = () => {
   const queryClient = new QueryClient({
     defaultOptions: {
       queries: {
-        // Evita recargas innecesarias al cambiar de pestaña o volver a una vista.
-        staleTime: 60_000,
-        gcTime: 5 * 60_000,
+        // Mantiene los datos calientes en memoria evitando peticiones redundantes
+        staleTime: 5 * 60_000,
+        gcTime: 30 * 60_000,
         refetchOnWindowFocus: false,
         retry: 1,
       },
