@@ -30,17 +30,13 @@ import { cn } from "@/lib/utils";
 export const Route = createFileRoute("/_authenticated/mente")({
   head: () => ({
     meta: [
-      { title: "Mente & Psicología — Vita-Trading Journal" },
+      { title: "Mente & Psicología — Vita-Trading" },
       {
         name: "description",
         content:
-          "Check-in diario de ánimo, energía y foco, analítica emocional del trading y reglas de disciplina.",
+          "Seguimiento de psicología de trading, estado emocional pre/post sesión y respeto de reglas operativas.",
       },
-      { property: "og:title", content: "Mente & Psicología — Vita-Trading Journal" },
-      {
-        property: "og:description",
-        content: "Cruza tu estado mental con tus resultados y detecta qué emociones te cuestan dinero.",
-      },
+      { property: "og:title", content: "Mente & Psicología — Vita-Trading" },
     ],
   }),
   component: MentePage,

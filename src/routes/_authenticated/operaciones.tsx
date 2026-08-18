@@ -38,16 +38,13 @@ import { cn } from "@/lib/utils";
 export const Route = createFileRoute("/_authenticated/operaciones")({
   head: () => ({
     meta: [
-      { title: "Operaciones — Vita-Trading Journal" },
+      { title: "Operaciones — Vita-Trading" },
       {
         name: "description",
-        content: "Historial completo de operaciones con filtros por activo, estrategia y cuenta.",
+        content:
+          "Registro y tabla de operaciones de trading con cálculo automático de PnL, RR y comisiones.",
       },
-      { property: "og:title", content: "Operaciones — Vita-Trading Journal" },
-      {
-        property: "og:description",
-        content: "Registra y revisa cada ejecución con evidencia gráfica y notas de análisis.",
-      },
+      { property: "og:title", content: "Operaciones — Vita-Trading" },
     ],
   }),
   component: TradesPage,

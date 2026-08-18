@@ -22,13 +22,13 @@ import { Button } from "@/components/ui/button";
 export const Route = createFileRoute("/funciones")({
   head: () => ({
     meta: [
-      { title: "Funciones — Vita-Trading Journal" },
+      { title: "Funciones — Vita-Trading" },
       {
         name: "description",
         content:
           "Diarios, cuentas de fondeo y personales, operaciones, estrategias, contabilidad y mente: todas las funciones de Vita-Trading.",
       },
-      { property: "og:title", content: "Funciones — Vita-Trading Journal" },
+      { property: "og:title", content: "Funciones — Vita-Trading" },
       {
         property: "og:description",
         content:
