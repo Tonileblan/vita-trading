@@ -4,7 +4,7 @@ import type { Account, Strategy, Trade, Withdrawal } from "./types";
 export const mockStrategies: Strategy[] = [
   {
     id: "str-indices",
-    name: "Principal",
+    name: "IFT",
     initialCapital: 10000,
     riskPct: 0.03,
     mainSymbol: "MNQ",
@@ -103,6 +103,23 @@ export const mockStrategies: Strategy[] = [
     setup: "Retroceso en zona de equilibrio / Fibo 61.8%",
     management: "Stop swing estructurado · TP ratio 1:3",
     contracts: "1 contrato MES / ES",
+  },
+  {
+    id: "str-scalping",
+    name: "Scalping",
+    initialCapital: 10000,
+    riskPct: 0.02,
+    mainSymbol: "MNQ",
+    color: "var(--teal, #14b8a6)",
+    isShared: true,
+    market: "Nueva York · Scalping MNQ / MGC",
+    chart: "1 minuto / 30 seg",
+    days: "Lunes a Viernes",
+    schedule: "15:30 - 17:30 (Apertura y volatilidad)",
+    execution: "Manual rápida",
+    setup: "Rechazo en niveles de liquidez intradía · Micro-estructuras",
+    management: "Stop ceñido 10-15 ticks · TP rápido 20-30 ticks · Ratio 1:2",
+    contracts: "1 a 3 contratos micro",
   },
 ];
 
