@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, X } from "lucide-react";
 import { pnlByDay } from "@/lib/emotion-metrics";
 import { todayKey } from "@/lib/emotions";
 import { formatCurrency } from "@/lib/metrics";
@@ -8,8 +8,22 @@ import { cn } from "@/lib/utils";
 
 const WEEKDAYS = ["L", "M", "X", "J", "V", "S", "D"];
 
-export function PnlCalendar({ trades }: { trades: Trade[] }) {
+export function PnlCalendar({
+  trades,
+  selectedDate,
+  onSelectDate,
+}: {
+  trades: Trade[];
+  selectedDate?: string | null;
+  onSelectDate?: (dateKey: string | null) => void;
+}) {
   const [cursor, setCursor] = useState(() => {
+    if (selectedDate) {
+      const parts = selectedDate.split("-").map(Number);
+      if (parts.length === 3 && parts[0] && parts[1]) {
+        return new Date(parts[0], parts[1] - 1, 1);
+      }
+    }
     const d = new Date();
     return new Date(d.getFullYear(), d.getMonth(), 1);
   });
@@ -47,10 +61,26 @@ export function PnlCalendar({ trades }: { trades: Trade[] }) {
 
   return (
     <section className="panel space-y-3 p-4">
-      <div className="flex items-center justify-between gap-2">
-        <h2 className="text-xl leading-none capitalize">
-          {cursor.toLocaleDateString("es-ES", { month: "long", year: "numeric" })}
-        </h2>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <h2 className="text-xl leading-none capitalize">
+            {cursor.toLocaleDateString("es-ES", { month: "long", year: "numeric" })}
+          </h2>
+          {selectedDate && (
+            <div className="flex items-center gap-1.5 rounded-full bg-brand/15 border border-brand/40 px-2.5 py-0.5 text-xs text-brand font-semibold">
+              <span>Día: {selectedDate.split("-").reverse().join("/")}</span>
+              <button
+                type="button"
+                onClick={() => onSelectDate?.(null)}
+                className="ml-0.5 hover:text-foreground inline-flex items-center"
+                title="Quitar filtro de día y ver todo el periodo"
+                aria-label="Quitar filtro de día"
+              >
+                <X className="size-3" />
+              </button>
+            </div>
+          )}
+        </div>
         <div className="flex items-center gap-2">
           <span
             className={cn(
@@ -95,39 +125,60 @@ export function PnlCalendar({ trades }: { trades: Trade[] }) {
           const key = todayKey(new Date(year, month, day));
           const entry = byDay.get(key);
           const pnl = entry?.pnl ?? 0;
+          const isSelected = selectedDate === key;
+          const isToday = key === todayKey();
+
           return (
-            <div
+            <button
               key={key}
+              type="button"
+              onClick={() => {
+                if (onSelectDate) {
+                  onSelectDate(isSelected ? null : key);
+                }
+              }}
               title={
                 entry
-                  ? `${formatCurrency(pnl, true)} · ${entry.trades} operación(es)`
-                  : "Sin operaciones"
+                  ? `${formatCurrency(pnl, true)} · ${entry.trades} operación(es) (Click para filtrar este día)`
+                  : "Sin operaciones (Click para filtrar este día)"
               }
               className={cn(
-                "flex min-h-14 flex-col items-center justify-center rounded-md border p-1 text-[10px]",
-                key === todayKey() ? "border-brand" : "border-border",
-                entry && pnl > 0 && "bg-profit/10",
-                entry && pnl < 0 && "bg-loss/10",
+                "flex min-h-14 flex-col items-center justify-center rounded-md border p-1 text-[10px] transition-all relative text-left w-full",
+                onSelectDate ? "cursor-pointer hover:border-foreground/40 hover:shadow-xs" : "",
+                isSelected
+                  ? "border-brand ring-2 ring-brand bg-brand/15 shadow-sm scale-[1.03] z-10 font-bold"
+                  : isToday
+                    ? "border-brand/70"
+                    : "border-border",
+                entry && pnl > 0 && !isSelected && "bg-profit/10",
+                entry && pnl < 0 && !isSelected && "bg-loss/10",
               )}
             >
-              <span className="text-muted-foreground">{day}</span>
+              <div className="flex w-full items-center justify-between px-0.5">
+                <span className={cn("text-muted-foreground", isSelected && "font-bold text-foreground")}>
+                  {day}
+                </span>
+                {isSelected && (
+                  <span className="size-1.5 rounded-full bg-brand" />
+                )}
+              </div>
               {entry ? (
                 <>
                   <span
                     className={cn(
-                      "num text-sm font-semibold leading-none",
+                      "num text-sm font-semibold leading-none mt-0.5",
                       pnl > 0 ? "text-profit" : pnl < 0 ? "text-loss" : "text-muted-foreground",
                     )}
                   >
                     {pnl > 0 ? "+" : ""}
                     {Math.round(pnl)}
                   </span>
-                  <span className="text-muted-foreground">{entry.trades} op.</span>
+                  <span className="text-muted-foreground text-[9px] mt-0.5">{entry.trades} op.</span>
                 </>
               ) : (
-                <span className="text-muted-foreground">·</span>
+                <span className="text-muted-foreground mt-1">·</span>
               )}
-            </div>
+            </button>
           );
         })}
       </div>

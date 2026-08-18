@@ -17,11 +17,11 @@ export function TradesTable({
 }: {
   trades: Trade[];
   accounts: Account[];
-  limit?: number;
-  selectedIds?: string[];
-  onToggleSelect?: (id: string) => void;
-  onEdit?: (trade: Trade) => void;
-  onDelete?: (trade: Trade) => void;
+  limit?: number | undefined;
+  selectedIds?: string[] | undefined;
+  onToggleSelect?: ((id: string) => void) | undefined;
+  onEdit?: ((trade: Trade) => void) | undefined;
+  onDelete?: ((trade: Trade) => void) | undefined;
 }) {
   const [editingTrade, setEditingTrade] = useState<Trade | null>(null);
 

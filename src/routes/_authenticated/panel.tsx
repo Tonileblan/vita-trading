@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
-import { CalendarIcon } from "lucide-react";
+import { CalendarIcon, X } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { EquityChart } from "@/components/equity-chart";
 import { RiskAlerts } from "@/components/risk-alerts";
@@ -79,6 +79,9 @@ function Overview() {
 
   // Filtro de usuario para supervisores: "mine" (mi diario) o userId específico
   const [supervisorUserFilter, setSupervisorUserFilter] = useState<string>("mine");
+
+  // Filtro por clic en un día concreto del calendario (YYYY-MM-DD)
+  const [selectedCalendarDate, setSelectedCalendarDate] = useState<string | null>(null);
 
   const { data: svProfiles = [] } = useQuery({
     queryKey: ["sv-profiles"],
@@ -177,6 +180,12 @@ function Overview() {
   }, [strategies, visibleTrades, accountFilter, accounts, strategyPeriods]);
 
   const trades = useMemo(() => {
+    if (selectedCalendarDate) {
+      return scopedTrades.filter((t) => {
+        const key = (t.closedAt || t.openedAt).slice(0, 10);
+        return key === selectedCalendarDate;
+      });
+    }
     if (range === "custom") {
       const from = customRange.from;
       const to = customRange.to;
@@ -189,7 +198,7 @@ function Overview() {
       });
     }
     return filterByRange(scopedTrades, range);
-  }, [scopedTrades, range, customRange]);
+  }, [scopedTrades, range, customRange, selectedCalendarDate]);
 
   // Accounts (capital + PnL) of the selected account/strategy.
   const strategyAccounts = useMemo(() => {
@@ -255,9 +264,9 @@ function Overview() {
     (s, a) => s + accountResult(a, visibleTrades, withdrawals),
     0,
   );
-  // PnL del recuadro: estrategia o rango concreto → PnL de las operaciones filtradas.
+  // PnL del recuadro: si hay día seleccionado, estrategia o rango concreto → PnL de las operaciones filtradas.
   const fusionPnl =
-    isStrategy || range !== "all"
+    selectedCalendarDate || isStrategy || range !== "all"
       ? trades.reduce((s, t) => s + t.pnl, 0)
       : fusionAccounts.reduce((s, a) => s + accountResult(a, visibleTrades, withdrawals), 0);
 
@@ -267,6 +276,16 @@ function Overview() {
     return fundedEquity + realEquity;
   };
   const scopePnl = (key: Scope) => {
+    if (selectedCalendarDate || isStrategy || range !== "all") {
+      const relevantTrades = trades.filter((t) => {
+        const acc = accounts.find((a) => a.id === t.accountId);
+        if (!acc) return true;
+        if (key === "funded") return acc.type === "funded";
+        if (key === "real") return acc.type !== "funded";
+        return true;
+      });
+      return relevantTrades.reduce((s, t) => s + t.pnl, 0);
+    }
     if (key === "funded") return fundedPnl;
     if (key === "real") return realPnl;
     return fundedPnl + realPnl;
@@ -283,6 +302,7 @@ function Overview() {
               onChange={(e) => {
                 setSupervisorUserFilter(e.target.value);
                 setFilter("all");
+                setSelectedCalendarDate(null);
               }}
               className="h-7 rounded-md border border-brand/50 bg-card px-2 text-xs font-semibold text-brand"
               aria-label="Ver resumen de usuario"
@@ -299,7 +319,10 @@ function Overview() {
           )}
           <select
             value={filter}
-            onChange={(e) => setFilter(e.target.value)}
+            onChange={(e) => {
+              setFilter(e.target.value);
+              setSelectedCalendarDate(null);
+            }}
             className="h-7 rounded-md border border-border bg-card px-2 text-xs font-semibold"
             aria-label="Cuenta o estrategia"
           >
@@ -323,10 +346,13 @@ function Overview() {
             {RANGES.map((r) => (
               <button
                 key={r.key}
-                onClick={() => setRange(r.key)}
+                onClick={() => {
+                  setRange(r.key);
+                  setSelectedCalendarDate(null);
+                }}
                 className={cn(
                   "rounded px-2 py-1 text-xs font-semibold transition-colors",
-                  range === r.key
+                  range === r.key && !selectedCalendarDate
                     ? "bg-brand text-primary-foreground"
                     : "text-muted-foreground hover:text-foreground",
                 )}
@@ -337,10 +363,13 @@ function Overview() {
             <Popover>
               <PopoverTrigger asChild>
                 <button
-                  onClick={() => setRange("custom")}
+                  onClick={() => {
+                    setRange("custom");
+                    setSelectedCalendarDate(null);
+                  }}
                   className={cn(
                     "flex h-7 items-center gap-1 rounded px-2 text-xs font-semibold transition-colors",
-                    range === "custom"
+                    range === "custom" && !selectedCalendarDate
                       ? "bg-brand text-primary-foreground"
                       : "text-muted-foreground hover:text-foreground",
                   )}
@@ -368,6 +397,7 @@ function Overview() {
                           : undefined
                     }
                     onSelect={(sel) => {
+                      setSelectedCalendarDate(null);
                       if (!sel) {
                         setCustomRange({ from: undefined, to: undefined });
                         return;
@@ -384,7 +414,10 @@ function Overview() {
                       {customRange.to ? format(customRange.to, "dd/MM/yyyy") : "Fin"}
                     </span>
                     <button
-                      onClick={() => setCustomRange({ from: undefined, to: undefined })}
+                      onClick={() => {
+                        setCustomRange({ from: undefined, to: undefined });
+                        setSelectedCalendarDate(null);
+                      }}
                       className="text-xs font-semibold text-muted-foreground hover:text-foreground"
                     >
                       Limpiar
@@ -397,12 +430,37 @@ function Overview() {
         </span>
       }
       subtitle={
-        isSupervisedView
-          ? `Supervisando a ${svProfiles.find((p) => p.id === supervisorUserFilter)?.display_name ?? "usuario"} · ${accounts.length} cuenta(s) · Fondeo ${formatCurrency(fundedEquity)} · Real ${formatCurrency(realEquity)}`
-          : `${selectedAccounts.length} cuenta(s) · Fondeo ${formatCurrency(fundedEquity)} · Real ${formatCurrency(realEquity)}`
+        selectedCalendarDate
+          ? `Filtrado por día ${selectedCalendarDate.split("-").reverse().join("/")} · ${trades.length} operación(es) · PnL ${fusionPnl >= 0 ? "+" : "−"}${formatCurrency(Math.abs(fusionPnl), false)}`
+          : isSupervisedView
+            ? `Supervisando a ${svProfiles.find((p) => p.id === supervisorUserFilter)?.display_name ?? "usuario"} · ${accounts.length} cuenta(s) · Fondeo ${formatCurrency(fundedEquity)} · Real ${formatCurrency(realEquity)}`
+            : `${selectedAccounts.length} cuenta(s) · Fondeo ${formatCurrency(fundedEquity)} · Real ${formatCurrency(realEquity)}`
       }
     >
       <div className="space-y-5">
+        {selectedCalendarDate && (
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-brand/50 bg-brand/10 p-3 text-xs">
+            <div className="flex items-center gap-2">
+              <span className="font-semibold text-brand">
+                📅 Mostrando exclusivamente el día {selectedCalendarDate.split("-").reverse().join("/")}
+              </span>
+              <span className="text-muted-foreground">
+                ({trades.length} operación{trades.length === 1 ? "" : "es"} · PnL del día:{" "}
+                <strong className={fusionPnl >= 0 ? "text-profit" : "text-loss"}>
+                  {fusionPnl >= 0 ? "+" : "−"}{formatCurrency(Math.abs(fusionPnl), false)}
+                </strong>)
+              </span>
+            </div>
+            <button
+              onClick={() => setSelectedCalendarDate(null)}
+              className="inline-flex items-center gap-1 rounded bg-card px-2.5 py-1 font-semibold text-foreground border border-border hover:bg-accent transition-colors"
+            >
+              <X className="size-3" />
+              Ver periodo completo
+            </button>
+          </div>
+        )}
+
         <RiskAlerts />
         {accountFilter === "all" && !isStrategy ? (
           <section className="grid gap-3 sm:grid-cols-3">
@@ -512,26 +570,48 @@ function Overview() {
                 Curva de capital{" "}
                 <span className="text-sm font-medium text-muted-foreground">
                   ·{" "}
-                  {scope === "funded"
-                    ? "Fondeo"
-                    : scope === "real"
-                      ? "Real"
-                      : "Total"}
+                  {selectedCalendarDate
+                    ? `Día ${selectedCalendarDate.split("-").reverse().join("/")}`
+                    : scope === "funded"
+                      ? "Fondeo"
+                      : scope === "real"
+                        ? "Real"
+                        : "Total"}
                 </span>
               </h2>
               <p className="text-xs text-muted-foreground">
-                Consolidada de las cuentas activas
+                {selectedCalendarDate
+                  ? `Evolución intradía del día ${selectedCalendarDate.split("-").reverse().join("/")}`
+                  : "Consolidada de las cuentas activas"}
               </p>
             </div>
           </div>
           <EquityChart data={curve} />
         </section>
 
-        <PnlCalendar trades={calendarTrades} />
+        <PnlCalendar
+          trades={calendarTrades}
+          selectedDate={selectedCalendarDate}
+          onSelectDate={setSelectedCalendarDate}
+        />
 
         <section className="space-y-3">
-          <h2 className="text-base font-semibold">Últimas operaciones</h2>
-          <TradesTable trades={trades} accounts={accounts} limit={12} />
+          <div className="flex items-center justify-between">
+            <h2 className="text-base font-semibold">
+              {selectedCalendarDate
+                ? `Operaciones del día ${selectedCalendarDate.split("-").reverse().join("/")} (${trades.length})`
+                : "Últimas operaciones"}
+            </h2>
+            {selectedCalendarDate && (
+              <button
+                onClick={() => setSelectedCalendarDate(null)}
+                className="text-xs font-semibold text-brand hover:underline"
+              >
+                Ver todas las operaciones
+              </button>
+            )}
+          </div>
+          <TradesTable trades={trades} accounts={accounts} limit={selectedCalendarDate ? undefined : 12} />
         </section>
       </div>
     </AppShell>
