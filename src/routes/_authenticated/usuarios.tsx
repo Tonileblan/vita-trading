@@ -24,6 +24,7 @@ import {
   Sliders,
   Sparkles,
   Sun,
+  RotateCcw,
   Save,
   Trash2,
   Unlock,
@@ -32,6 +33,7 @@ import {
   UserPlus,
   Users,
   Webhook,
+  X,
   XCircle,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
@@ -251,14 +253,28 @@ function UsersPage() {
   // Mutación: Solicitar ser supervisor
   const applyForSupervisor = useMutation({
     mutationFn: async () => {
-      const { error: rpcErr } = await (supabase.rpc as any)("apply_for_supervisor");
-      if (rpcErr) {
-        // Fallback update
-        const { error } = await supabase
-          .from("profiles")
-          .update({ supervisor_status: "pending" })
-          .eq("id", user!.id);
-        if (error) throw error;
+      if (!user?.id) throw new Error("No hay sesión activa");
+      try {
+        const { error: rpcErr } = await (supabase.rpc as any)("apply_for_supervisor");
+        if (!rpcErr) return;
+      } catch {
+        // Fallback
+      }
+      const { error } = await supabase
+        .from("profiles")
+        .update({ supervisor_status: "pending" })
+        .eq("id", user.id);
+      if (error) throw error;
+    },
+    onMutate: async () => {
+      if (user?.id) {
+        qc.setQueryData(["user-meta", user.id], (old: any) => {
+          if (!old) return old;
+          return {
+            ...old,
+            profile: old.profile ? { ...old.profile, supervisor_status: "pending" } : null,
+          };
+        });
       }
     },
     onSuccess: () => {
@@ -266,7 +282,48 @@ function UsersPage() {
       qc.invalidateQueries({ queryKey: ["user-meta"] });
       qc.invalidateQueries({ queryKey: ["all-profiles"] });
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => {
+      toast.error(e.message);
+      qc.invalidateQueries({ queryKey: ["user-meta"] });
+    },
+  });
+
+  // Mutación: Cancelar solicitud de supervisor
+  const cancelSupervisorApplication = useMutation({
+    mutationFn: async () => {
+      if (!user?.id) throw new Error("No hay sesión activa");
+      try {
+        const { error: rpcErr } = await (supabase.rpc as any)("cancel_supervisor_application");
+        if (!rpcErr) return;
+      } catch {
+        // Fallback
+      }
+      const { error } = await supabase
+        .from("profiles")
+        .update({ supervisor_status: "none" })
+        .eq("id", user.id);
+      if (error) throw error;
+    },
+    onMutate: async () => {
+      if (user?.id) {
+        qc.setQueryData(["user-meta", user.id], (old: any) => {
+          if (!old) return old;
+          return {
+            ...old,
+            profile: old.profile ? { ...old.profile, supervisor_status: "none" } : null,
+          };
+        });
+      }
+    },
+    onSuccess: () => {
+      toast.success("Solicitud de supervisor cancelada");
+      qc.invalidateQueries({ queryKey: ["user-meta"] });
+      qc.invalidateQueries({ queryKey: ["all-profiles"] });
+    },
+    onError: (e: Error) => {
+      toast.error(e.message);
+      qc.invalidateQueries({ queryKey: ["user-meta"] });
+    },
   });
 
   // Mutación: Administrador revisa solicitud de supervisor
@@ -1056,6 +1113,7 @@ function UsersPage() {
                 availableSupervisors={availableSupervisors}
                 currentSupervisorStatus={currentSupervisorStatus}
                 applyForSupervisor={applyForSupervisor}
+                cancelSupervisorApplication={cancelSupervisorApplication}
                 isSupervisor={isSupervisor}
                 isAdmin={isAdmin}
                 theme={theme}
@@ -1338,6 +1396,7 @@ function ProfileSettingsGrid({
   availableSupervisors,
   currentSupervisorStatus,
   applyForSupervisor,
+  cancelSupervisorApplication,
   isSupervisor,
   isAdmin,
   theme,
@@ -1359,6 +1418,7 @@ function ProfileSettingsGrid({
   availableSupervisors: AvailableSupervisor[];
   currentSupervisorStatus: string;
   applyForSupervisor: any;
+  cancelSupervisorApplication: any;
   isSupervisor: boolean;
   isAdmin: boolean;
   theme: string;
@@ -1518,7 +1578,7 @@ function ProfileSettingsGrid({
                     <Shield className="size-4" /> Eres Administrador Principal
                   </div>
                   <p className="text-muted-foreground text-[11px] leading-relaxed">
-                    Tienes permisos completos para supervisar cuentas y aprobar solicitudes de otros usuarios.
+                    Tienes permisos completos para supervisar cuentas, asignar tutores y aprobar o rechazar solicitudes de otros usuarios.
                   </p>
                 </div>
               ) : isSupervisor ? (
@@ -1527,7 +1587,7 @@ function ProfileSettingsGrid({
                     <CheckCircle2 className="size-4" /> Eres Supervisor Aprobado
                   </div>
                   <p className="text-muted-foreground text-[11px] leading-relaxed">
-                    Los usuarios pueden seleccionarte en su lista desplegable para que supervises su operativa.
+                    Apareces en el directorio público y los usuarios pueden seleccionarte como su tutor para que revises su operativa.
                   </p>
                 </div>
               ) : currentSupervisorStatus === "pending" ? (
@@ -1536,7 +1596,7 @@ function ProfileSettingsGrid({
                     <Clock className="size-4" /> Solicitud en Revisión
                   </div>
                   <p className="text-muted-foreground text-[11px] leading-relaxed">
-                    Tu solicitud para ser supervisor ha sido enviada y está a la espera de ser aprobada por el administrador.
+                    Tu solicitud para ser supervisor ha sido enviada al administrador y está pendiente de aprobación.
                   </p>
                 </div>
               ) : currentSupervisorStatus === "rejected" ? (
@@ -1545,7 +1605,7 @@ function ProfileSettingsGrid({
                     <XCircle className="size-4" /> Solicitud Anterior Rechazada
                   </div>
                   <p className="text-muted-foreground text-[11px] leading-relaxed">
-                    Puedes volver a solicitar la candidatura a supervisor cuando lo desees.
+                    Puedes volver a presentar tu candidatura a supervisor cuando lo desees para una nueva revisión.
                   </p>
                 </div>
               ) : (
@@ -1559,27 +1619,37 @@ function ProfileSettingsGrid({
           </div>
 
           <div className="mt-5 pt-3 border-t border-border/60">
-            {!isAdmin && !isSupervisor && (
+            {currentSupervisorStatus === "pending" ? (
               <Button
-                variant={currentSupervisorStatus === "pending" ? "secondary" : "default"}
-                className="w-full gap-2"
-                disabled={currentSupervisorStatus === "pending" || applyForSupervisor.isPending}
+                variant="outline"
+                className="w-full gap-2 border-amber-500/40 text-amber-700 hover:bg-amber-500/10 dark:text-amber-300"
+                disabled={cancelSupervisorApplication.isPending}
+                onClick={() => cancelSupervisorApplication.mutate()}
+              >
+                <X className="size-4" />
+                {cancelSupervisorApplication.isPending ? "Cancelando…" : "Cancelar solicitud de supervisor"}
+              </Button>
+            ) : !isAdmin && !isSupervisor ? (
+              <Button
+                className="w-full gap-2 font-semibold shadow-xs"
+                disabled={applyForSupervisor.isPending}
                 onClick={() => applyForSupervisor.mutate()}
               >
-                {currentSupervisorStatus === "pending" ? (
+                {currentSupervisorStatus === "rejected" ? (
                   <>
-                    <Clock className="size-4" /> Solicitud Enviada
+                    <RotateCcw className="size-4" />
+                    {applyForSupervisor.isPending ? "Enviando…" : "Volver a solicitar ser Supervisor"}
                   </>
                 ) : (
                   <>
-                    <Send className="size-4" /> Solicitar ser Supervisor
+                    <Send className="size-4" />
+                    {applyForSupervisor.isPending ? "Enviando…" : "Solicitar ser Supervisor"}
                   </>
                 )}
               </Button>
-            )}
-            {(isAdmin || isSupervisor) && (
-              <div className="text-center text-xs text-muted-foreground">
-                Rol supervisor activo
+            ) : (
+              <div className="text-center text-xs text-muted-foreground py-1">
+                {isAdmin ? "Rol de Administrador con acceso a supervisión" : "Rol de Supervisor activo"}
               </div>
             )}
           </div>
