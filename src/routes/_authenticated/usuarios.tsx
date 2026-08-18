@@ -285,31 +285,47 @@ function UsersPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  // Queries de Administración
+  // Queries de Administración y Directorio
   const { data: users = [] } = useQuery({
     queryKey: ["all-profiles"],
-    enabled: isAdmin,
     queryFn: async () => {
-      const { data: rpcData, error: rpcError } = await (supabase.rpc as any)("admin_get_users");
-      if (!rpcError && Array.isArray(rpcData)) {
-        return rpcData as UserRow[];
+      try {
+        const { data: rpcData, error: rpcError } = await (supabase.rpc as any)("admin_get_users");
+        if (!rpcError && Array.isArray(rpcData)) {
+          return rpcData as UserRow[];
+        }
+      } catch {
+        // Fallback
       }
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("id, display_name, avatar_url, created_at, is_private, supervisor_status, assigned_supervisor_id")
-        .order("created_at", { ascending: true });
-      if (error) throw error;
-      return (data ?? []) as UserRow[];
+      try {
+        const { data, error } = await supabase
+          .from("profiles")
+          .select("id, display_name, avatar_url, created_at, is_private, supervisor_status, assigned_supervisor_id")
+          .order("created_at", { ascending: true });
+        if (error) {
+          const { data: simpleData } = await supabase
+            .from("profiles")
+            .select("id, display_name, avatar_url, created_at")
+            .order("created_at", { ascending: true });
+          return (simpleData ?? []) as UserRow[];
+        }
+        return (data ?? []) as UserRow[];
+      } catch {
+        return [];
+      }
     },
   });
 
   const { data: roles = [] } = useQuery({
     queryKey: ["all-roles"],
-    enabled: isAdmin,
     queryFn: async () => {
-      const { data, error } = await supabase.from("user_roles").select("user_id, role");
-      if (error) throw error;
-      return (data ?? []) as { user_id: string; role: string }[];
+      try {
+        const { data, error } = await supabase.from("user_roles").select("user_id, role");
+        if (error) return [];
+        return (data ?? []) as { user_id: string; role: string }[];
+      } catch {
+        return [];
+      }
     },
   });
 
@@ -525,34 +541,33 @@ function UsersPage() {
           </div>
         </section>
 
-        {/* ESTRUCTURA POR PESTAÑAS (ADMIN vs USUARIO) */}
-        {isAdmin ? (
-          <Tabs defaultValue="admin" className="space-y-6">
-            <TabsList className="grid w-full grid-cols-2 p-1 bg-muted/60 max-w-md">
-              <TabsTrigger value="admin" className="gap-2 font-semibold">
-                <Users className="size-4" />
-                <span>Gestión de Usuarios</span>
-                {pendingRequests.length > 0 && (
-                  <span className="rounded-full bg-amber-500 px-1.5 text-[10px] font-bold text-white">
-                    {pendingRequests.length}
-                  </span>
-                )}
-              </TabsTrigger>
-              <TabsTrigger value="profile" className="gap-2 font-semibold">
-                <Sliders className="size-4" />
-                <span>Mi Perfil y Ajustes</span>
-              </TabsTrigger>
-            </TabsList>
+        {/* ESTRUCTURA POR PESTAÑAS (DIRECTORIO Y PERFIL) */}
+        <Tabs defaultValue={isAdmin || isSupervisor ? "admin" : "profile"} className="space-y-6">
+          <TabsList className="grid w-full grid-cols-2 p-1 bg-muted/60 max-w-md">
+            <TabsTrigger value="admin" className="gap-2 font-semibold">
+              <Users className="size-4" />
+              <span>{isAdmin ? "Gestión de Usuarios" : "Directorio de Usuarios"}</span>
+              {isAdmin && pendingRequests.length > 0 && (
+                <span className="rounded-full bg-amber-500 px-1.5 text-[10px] font-bold text-white">
+                  {pendingRequests.length}
+                </span>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="profile" className="gap-2 font-semibold">
+              <Sliders className="size-4" />
+              <span>Mi Perfil y Ajustes</span>
+            </TabsTrigger>
+          </TabsList>
 
-            {/* TAB ADMIN: GESTIÓN DE USUARIOS */}
-            <TabsContent value="admin" className="space-y-6">
-              {/* Solicitudes de supervisor pendientes */}
-              {pendingRequests.length > 0 && (
-                <section className="panel border-amber-500/40 bg-amber-500/5 p-5 space-y-4">
-                  <div className="flex items-center gap-2.5">
-                    <div className="flex size-9 items-center justify-center rounded-lg bg-amber-500/20 text-amber-500">
-                      <GraduationCap className="size-5" />
-                    </div>
+          {/* TAB: GESTIÓN / DIRECTORIO DE USUARIOS */}
+          <TabsContent value="admin" className="space-y-6">
+            {/* Solicitudes de supervisor pendientes (Solo Admin) */}
+            {isAdmin && pendingRequests.length > 0 && (
+              <section className="panel border-amber-500/40 bg-amber-500/5 p-5 space-y-4">
+                <div className="flex items-center gap-2.5">
+                  <div className="flex size-9 items-center justify-center rounded-lg bg-amber-500/20 text-amber-500">
+                    <GraduationCap className="size-5" />
+                  </div>
                     <div>
                       <h3 className="text-base font-bold text-foreground">
                         Solicitudes para ser Supervisor ({pendingRequests.length})
@@ -750,7 +765,7 @@ function UsersPage() {
                         <th className="px-4 py-3">Roles</th>
                         <th className="px-4 py-3">Supervisión</th>
                         <th className="px-4 py-3">Privacidad</th>
-                        <th className="px-4 py-3 text-right">Acciones</th>
+                        <th className="px-4 py-3 text-right">{isAdmin ? "Acciones" : "Estado"}</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border">
@@ -858,107 +873,111 @@ function UsersPage() {
                               </td>
 
                               <td className="px-4 py-3 text-right">
-                                <div className="flex items-center justify-end gap-1">
-                                  {u.supervisor_status === "pending" && (
-                                    <>
-                                      <Button
-                                        size="sm"
-                                        className="h-8 bg-emerald-600 hover:bg-emerald-700 text-white text-xs gap-1"
-                                        disabled={adminReviewSupervisor.isPending}
-                                        onClick={() =>
-                                          adminReviewSupervisor.mutate({ userId: u.id, approve: true })
-                                        }
-                                        title="Aprobar supervisor"
-                                      >
-                                        <CheckCircle2 className="size-3.5" /> Aprobar
-                                      </Button>
-                                      <Button
-                                        size="sm"
-                                        variant="outline"
-                                        className="h-8 text-destructive text-xs gap-1"
-                                        disabled={adminReviewSupervisor.isPending}
-                                        onClick={() =>
-                                          adminReviewSupervisor.mutate({ userId: u.id, approve: false })
-                                        }
-                                        title="Rechazar solicitud"
-                                      >
-                                        <XCircle className="size-3.5" /> Rechazar
-                                      </Button>
-                                    </>
-                                  )}
-
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="h-8 gap-1 text-xs"
-                                    onClick={() => {
-                                      setEditingUser(u);
-                                      setEditEmail(u.email ?? "");
-                                      setEditPassword("");
-                                    }}
-                                  >
-                                    <KeyRound className="size-3.5" />
-                                    <span className="hidden sm:inline">Credenciales</span>
-                                  </Button>
-
-                                  <Button
-                                    variant={isUSupervisor ? "default" : "outline"}
-                                    size="sm"
-                                    className={cn(
-                                      "h-8 text-xs",
-                                      isUSupervisor && "bg-amber-500 hover:bg-amber-600 text-white",
+                                {isAdmin ? (
+                                  <div className="flex items-center justify-end gap-1">
+                                    {u.supervisor_status === "pending" && (
+                                      <>
+                                        <Button
+                                          size="sm"
+                                          className="h-8 bg-emerald-600 hover:bg-emerald-700 text-white text-xs gap-1"
+                                          disabled={adminReviewSupervisor.isPending}
+                                          onClick={() =>
+                                            adminReviewSupervisor.mutate({ userId: u.id, approve: true })
+                                          }
+                                          title="Aprobar supervisor"
+                                        >
+                                          <CheckCircle2 className="size-3.5" /> Aprobar
+                                        </Button>
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          className="h-8 text-destructive text-xs gap-1"
+                                          disabled={adminReviewSupervisor.isPending}
+                                          onClick={() =>
+                                            adminReviewSupervisor.mutate({ userId: u.id, approve: false })
+                                          }
+                                          title="Rechazar solicitud"
+                                        >
+                                          <XCircle className="size-3.5" /> Rechazar
+                                        </Button>
+                                      </>
                                     )}
-                                    disabled={toggleRole.isPending}
-                                    onClick={() =>
-                                      toggleRole.mutate({
-                                        userId: u.id,
-                                        role: "supervisor",
-                                        grant: !isUSupervisor,
-                                      })
-                                    }
-                                    title={isUSupervisor ? "Quitar rol supervisor" : "Hacer supervisor"}
-                                  >
-                                    <ShieldCheck className="size-3.5" />
-                                    <span className="hidden sm:inline">
-                                      {isUSupervisor ? "Supervisor" : "+ Sup"}
-                                    </span>
-                                  </Button>
 
-                                  <Button
-                                    variant={isUAdmin ? "default" : "outline"}
-                                    size="sm"
-                                    className="h-8 text-xs"
-                                    disabled={isCurrent || toggleRole.isPending}
-                                    onClick={() =>
-                                      toggleRole.mutate({
-                                        userId: u.id,
-                                        role: "admin",
-                                        grant: !isUAdmin,
-                                      })
-                                    }
-                                    title={isUAdmin ? "Quitar rol administrador" : "Hacer administrador"}
-                                  >
-                                    <Shield className="size-3.5" />
-                                    <span className="hidden sm:inline">
-                                      {isUAdmin ? "Admin" : "+ Admin"}
-                                    </span>
-                                  </Button>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="h-8 gap-1 text-xs"
+                                      onClick={() => {
+                                        setEditingUser(u);
+                                        setEditEmail(u.email ?? "");
+                                        setEditPassword("");
+                                      }}
+                                    >
+                                      <KeyRound className="size-3.5" />
+                                      <span className="hidden sm:inline">Credenciales</span>
+                                    </Button>
 
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="size-8 text-destructive hover:bg-destructive/10 hover:text-destructive"
-                                    disabled={isCurrent}
-                                    onClick={() => setDeletingUser(u)}
-                                    title={
-                                      isCurrent
-                                        ? "No puedes eliminar tu propia cuenta"
-                                        : "Eliminar usuario definitivamente"
-                                    }
-                                  >
-                                    <Trash2 className="size-3.5" />
-                                  </Button>
-                                </div>
+                                    <Button
+                                      variant={isUSupervisor ? "default" : "outline"}
+                                      size="sm"
+                                      className={cn(
+                                        "h-8 text-xs",
+                                        isUSupervisor && "bg-amber-500 hover:bg-amber-600 text-white",
+                                      )}
+                                      disabled={toggleRole.isPending}
+                                      onClick={() =>
+                                        toggleRole.mutate({
+                                          userId: u.id,
+                                          role: "supervisor",
+                                          grant: !isUSupervisor,
+                                        })
+                                      }
+                                      title={isUSupervisor ? "Quitar rol supervisor" : "Hacer supervisor"}
+                                    >
+                                      <ShieldCheck className="size-3.5" />
+                                      <span className="hidden sm:inline">
+                                        {isUSupervisor ? "Supervisor" : "+ Sup"}
+                                      </span>
+                                    </Button>
+
+                                    <Button
+                                      variant={isUAdmin ? "default" : "outline"}
+                                      size="sm"
+                                      className="h-8 text-xs"
+                                      disabled={isCurrent || toggleRole.isPending}
+                                      onClick={() =>
+                                        toggleRole.mutate({
+                                          userId: u.id,
+                                          role: "admin",
+                                          grant: !isUAdmin,
+                                        })
+                                      }
+                                      title={isUAdmin ? "Quitar rol administrador" : "Hacer administrador"}
+                                    >
+                                      <Shield className="size-3.5" />
+                                      <span className="hidden sm:inline">
+                                        {isUAdmin ? "Admin" : "+ Admin"}
+                                      </span>
+                                    </Button>
+
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="size-8 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                                      disabled={isCurrent}
+                                      onClick={() => setDeletingUser(u)}
+                                      title={
+                                        isCurrent
+                                          ? "No puedes eliminar tu propia cuenta"
+                                          : "Eliminar usuario definitivamente"
+                                      }
+                                    >
+                                      <Trash2 className="size-3.5" />
+                                    </Button>
+                                  </div>
+                                ) : (
+                                  <span className="text-xs text-muted-foreground">Activo</span>
+                                )}
                               </td>
                             </tr>
                           );
@@ -996,32 +1015,7 @@ function UsersPage() {
               />
             </TabsContent>
           </Tabs>
-        ) : (
-          /* VISTA DIRECTA PARA NO-ADMINS */
-          <ProfileSettingsGrid
-            user={user}
-            name={name}
-            setName={setName}
-            avatar={avatar}
-            setAvatar={setAvatar}
-            saveProfile={saveProfile}
-            isPrivate={isPrivate}
-            togglePrivate={togglePrivate}
-            hasSupervisor={hasSupervisor}
-            setHasSupervisor={setHasSupervisor}
-            selectedSupervisorId={selectedSupervisorId}
-            setSelectedSupervisorId={setSelectedSupervisorId}
-            saveAssignedSupervisor={saveAssignedSupervisor}
-            availableSupervisors={availableSupervisors}
-            currentSupervisorStatus={currentSupervisorStatus}
-            applyForSupervisor={applyForSupervisor}
-            isSupervisor={isSupervisor}
-            isAdmin={isAdmin}
-            theme={theme}
-            setTheme={setTheme}
-          />
-        )}
-      </div>
+        </div>
 
       {/* DIÁLOGO: EDITAR CREDENCIALES (ADMIN) */}
       <Dialog open={!!editingUser} onOpenChange={(open) => !open && setEditingUser(null)}>

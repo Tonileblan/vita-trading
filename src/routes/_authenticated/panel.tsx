@@ -85,29 +85,31 @@ function Overview() {
   const [selectedCalendarDate, setSelectedCalendarDate] = useState<string | null>(null);
 
   const { data: svProfiles = [] } = useQuery({
-    queryKey: ["sv-profiles", user?.id, isAdmin],
-    enabled: isSupervisor,
+    queryKey: ["sv-profiles", user?.id],
+    enabled: isSupervisor || isAdmin,
     queryFn: async () => {
-      let q = supabase
-        .from("profiles")
-        .select("id, display_name, created_at, assigned_supervisor_id, is_private")
-        .eq("is_private", false)
-        .order("created_at", { ascending: true });
+      try {
+        const { data, error } = await supabase
+          .from("profiles")
+          .select("id, display_name, created_at, is_private")
+          .order("created_at", { ascending: true });
 
-      if (!isAdmin && user?.id) {
-        // Los supervisores solo ven a los usuarios que los han elegido expresamente
-        q = q.eq("assigned_supervisor_id", user.id);
+        if (error) throw error;
+        return (data ?? []).filter((p) => p.id !== user?.id && !p.is_private) as {
+          id: string;
+          display_name: string | null;
+          created_at: string;
+        }[];
+      } catch (e) {
+        console.warn("Error al cargar perfiles para supervisión:", e);
+        return [];
       }
-
-      const { data, error } = await q;
-      if (error) throw error;
-      return (data ?? []) as { id: string; display_name: string | null; created_at: string }[];
     },
   });
 
   const { data: svData } = useQuery({
     queryKey: ["sv-panel-data", supervisorUserFilter],
-    enabled: isSupervisor && supervisorUserFilter !== "mine",
+    enabled: (isSupervisor || isAdmin) && supervisorUserFilter !== "mine",
     queryFn: async () => {
       const targetUserId = supervisorUserFilter;
       const [accs, trds, strats, wds, pers] = await Promise.all([
@@ -304,7 +306,7 @@ function Overview() {
       title={
         <span className="flex flex-wrap items-center gap-2 w-full">
           <span>Resumen</span>
-          {isSupervisor && (
+          {(isSupervisor || isAdmin) && svProfiles.length > 0 && (
             <select
               value={supervisorUserFilter}
               onChange={(e) => {
@@ -316,7 +318,7 @@ function Overview() {
               aria-label="Ver resumen de usuario"
             >
               <option value="mine">👤 Mi diario personal</option>
-              <optgroup label="Usuarios supervisados">
+              <optgroup label="Usuarios registrados">
                 {svProfiles.map((p) => (
                   <option key={p.id} value={p.id}>
                     {p.display_name ?? `Usuario ${p.id.slice(0, 6)}`}
