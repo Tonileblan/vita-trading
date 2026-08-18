@@ -32,7 +32,7 @@ import { TradeFormDialog } from "@/components/trade-form-dialog";
 import { TradeImportDialog } from "@/components/trade-import-dialog";
 import { TradesTable } from "@/components/trades-table";
 import { useJournal } from "@/lib/journal-store";
-import { computeMetrics, formatCurrency, formatDateTime } from "@/lib/metrics";
+import { computeMetrics, effectiveStrategyId, formatCurrency, formatDateTime } from "@/lib/metrics";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/operaciones")({
@@ -58,10 +58,10 @@ type Pending =
   | { kind: "batch"; id: string; label: string };
 
 function TradesPage() {
-  const { visibleTrades, accounts, strategies, importBatches, removeTrades, removeImportBatch } =
+  const { visibleTrades, accounts, strategies, strategyPeriods, importBatches, removeTrades, removeImportBatch } =
     useJournal();
   const [query, setQuery] = useState("");
-  const [tag, setTag] = useState<string | null>(null);
+  const [selectedStrategyId, setSelectedStrategyId] = useState<string | null>(null);
   const [selected, setSelected] = useState<string[]>([]);
   const [pending, setPending] = useState<Pending | null>(null);
   const [working, setWorking] = useState(false);
@@ -71,11 +71,30 @@ function TradesPage() {
   const filtered = useMemo(
     () =>
       visibleTrades
-        .filter(
-          (t) =>
-            (!tag || t.tags.includes(tag)) &&
-            (!query || t.symbol.toLowerCase().includes(query.toLowerCase())),
-        )
+        .filter((t) => {
+          // Filtro por estrategia (usa effectiveStrategyId para coincidir con la estrategia directa, de tramo o de cuenta)
+          if (selectedStrategyId) {
+            const stratId = effectiveStrategyId(t, accounts, strategyPeriods);
+            if (stratId !== selectedStrategyId && t.strategyId !== selectedStrategyId) {
+              return false;
+            }
+          }
+
+          // Búsqueda por texto (símbolo, notas, nombre de cuenta o etiquetas)
+          if (query) {
+            const q = query.toLowerCase();
+            const matchesSymbol = t.symbol.toLowerCase().includes(q);
+            const matchesNotes = t.notes?.toLowerCase().includes(q) ?? false;
+            const matchesTags = t.tags.some((tag) => tag.toLowerCase().includes(q));
+            const accName = accounts.find((a) => a.id === t.accountId)?.name.toLowerCase() ?? "";
+            const matchesAccount = accName.includes(q);
+            if (!matchesSymbol && !matchesNotes && !matchesTags && !matchesAccount) {
+              return false;
+            }
+          }
+
+          return true;
+        })
         .sort((a, b) => {
           if (sortBy === "created") {
             const aDate = a.createdAt ?? a.openedAt ?? a.closedAt;
@@ -86,7 +105,7 @@ function TradesPage() {
           const bDate = b.openedAt || b.closedAt;
           return bDate.localeCompare(aDate);
         }),
-    [visibleTrades, query, tag, sortBy],
+    [visibleTrades, accounts, strategyPeriods, query, selectedStrategyId, sortBy],
   );
 
   const m = useMemo(() => computeMetrics(filtered), [filtered]);
@@ -253,31 +272,67 @@ function TradesPage() {
                 <div className="flex flex-wrap items-center gap-1.5">
                   <button
                     type="button"
-                    onClick={() => setTag(null)}
+                    onClick={() => setSelectedStrategyId(null)}
                     className={cn(
-                      "rounded-full px-3 py-1 text-xs font-medium transition-colors",
-                      tag === null
+                      "rounded-full px-3 py-1 text-xs font-semibold transition-colors",
+                      selectedStrategyId === null
                         ? "bg-brand text-brand-foreground shadow-xs"
                         : "border border-border text-muted-foreground hover:text-foreground",
                     )}
                   >
-                    Todas
+                    Todas ({visibleTrades.length})
                   </button>
-                  {strategies.map(({ id, name: sName }) => (
-                    <button
-                      key={id}
-                      type="button"
-                      onClick={() => setTag(tag === sName ? null : sName)}
-                      className={cn(
-                        "rounded-full px-3 py-1 text-xs font-medium transition-colors",
-                        tag === sName
-                          ? "bg-brand text-brand-foreground shadow-xs"
-                          : "border border-border text-muted-foreground hover:text-foreground",
-                      )}
-                    >
-                      {sName}
-                    </button>
-                  ))}
+                  {strategies.map((s) => {
+                    const count = visibleTrades.filter(
+                      (t) =>
+                        effectiveStrategyId(t, accounts, strategyPeriods) === s.id ||
+                        t.strategyId === s.id,
+                    ).length;
+                    const isSelected = selectedStrategyId === s.id;
+
+                    return (
+                      <button
+                        key={s.id}
+                        type="button"
+                        onClick={() =>
+                          setSelectedStrategyId(isSelected ? null : s.id)
+                        }
+                        className={cn(
+                          "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold transition-all",
+                          isSelected
+                            ? "bg-brand text-brand-foreground shadow-xs"
+                            : "border border-border text-muted-foreground hover:text-foreground",
+                        )}
+                        style={
+                          isSelected
+                            ? undefined
+                            : {
+                                borderColor: s.color ? `${s.color}60` : undefined,
+                              }
+                        }
+                      >
+                        {s.color && (
+                          <span
+                            className="size-2 rounded-full shrink-0"
+                            style={{
+                              backgroundColor: isSelected ? "currentColor" : s.color,
+                            }}
+                          />
+                        )}
+                        <span>{s.name}</span>
+                        <span
+                          className={cn(
+                            "ml-0.5 rounded-full px-1.5 py-0.2 text-[10px]",
+                            isSelected
+                              ? "bg-brand-foreground/20 text-brand-foreground"
+                              : "bg-muted text-muted-foreground",
+                          )}
+                        >
+                          {count}
+                        </span>
+                      </button>
+                    );
+                  })}
                 </div>
               )}
             </div>
