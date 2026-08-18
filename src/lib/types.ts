@@ -95,6 +95,10 @@ export interface Strategy {
   riskPct: number; // 0.03 = 3%
   mainSymbol: string;
   color: string;
+  /** Si la estrategia está compartida con todos los usuarios */
+  isShared?: boolean | undefined;
+  /** Propietario o creador de la estrategia */
+  userId?: string | undefined;
   /** Ficha operativa (opcional). */
   market?: string | undefined;
   chart?: string | undefined;

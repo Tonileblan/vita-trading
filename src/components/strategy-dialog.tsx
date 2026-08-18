@@ -1,7 +1,8 @@
 import { useState, type ReactNode } from "react";
-import { Trash2 } from "lucide-react";
+import { Globe, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 import {
   Dialog,
   DialogContent,
@@ -43,6 +44,7 @@ export function StrategyDialog({
   const [capital, setCapital] = useState(String(strategy?.initialCapital ?? 10000));
   const [risk, setRisk] = useState(String(((strategy?.riskPct ?? 0.03) * 100).toFixed(2)));
   const [symbol, setSymbol] = useState(strategy?.mainSymbol ?? "MNQ");
+  const [isShared, setIsShared] = useState(Boolean(strategy?.isShared ?? false));
   const [text, setText] = useState<Record<TextKey, string>>(() =>
     Object.fromEntries(TEXT_FIELDS.map((f) => [f.key, strategy?.[f.key] ?? ""])) as Record<
       TextKey,
@@ -57,12 +59,15 @@ export function StrategyDialog({
       setCapital(String(strategy.initialCapital));
       setRisk((strategy.riskPct * 100).toFixed(2));
       setSymbol(strategy.mainSymbol);
+      setIsShared(Boolean(strategy.isShared ?? false));
       setText(
         Object.fromEntries(TEXT_FIELDS.map((f) => [f.key, strategy[f.key] ?? ""])) as Record<
           TextKey,
           string
         >,
       );
+    } else if (v && !strategy) {
+      setIsShared(false);
     }
   };
 
@@ -77,6 +82,7 @@ export function StrategyDialog({
       riskPct: (Number(risk) || 0) / 100,
       mainSymbol: symbol.trim().toUpperCase() || "MNQ",
       color: strategy?.color ?? "var(--brand)",
+      isShared,
       ...(Object.fromEntries(
         TEXT_FIELDS.map((f) => [f.key, text[f.key].trim() || undefined]),
       ) as Partial<Record<TextKey, string | undefined>>),
@@ -133,6 +139,23 @@ export function StrategyDialog({
               <Label>Símbolo</Label>
               <Input value={symbol} onChange={(e) => setSymbol(e.target.value)} />
             </div>
+          </div>
+
+          {/* OPCIÓN: COMPARTIR CON TODOS LOS USUARIOS */}
+          <div className="flex items-center justify-between rounded-xl border border-border/80 bg-muted/40 p-3.5">
+            <div className="space-y-0.5 pr-3">
+              <Label htmlFor="strategy-shared-toggle" className="flex items-center gap-1.5 text-xs font-semibold cursor-pointer">
+                <Globe className="size-3.5 text-blue-500" /> Compartir con todos los usuarios
+              </Label>
+              <p className="text-[11px] text-muted-foreground">
+                Permite que todos los usuarios de la plataforma puedan ver y usar esta estrategia.
+              </p>
+            </div>
+            <Switch
+              id="strategy-shared-toggle"
+              checked={isShared}
+              onCheckedChange={setIsShared}
+            />
           </div>
 
           {TEXT_FIELDS.map((f) => (

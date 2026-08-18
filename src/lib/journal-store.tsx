@@ -65,6 +65,8 @@ export function toStrategy(r: Row): Strategy {
     riskPct: Number(r["risk_pct"] ?? 0),
     mainSymbol: String(r["main_symbol"] ?? ""),
     color: String(r["color"] ?? "var(--brand)"),
+    isShared: Boolean(r["is_shared"] ?? false),
+    userId: (r["user_id"] as string | null) ?? undefined,
     market: (r["market"] as string | null) ?? undefined,
     chart: (r["chart"] as string | null) ?? undefined,
     days: (r["days"] as string | null) ?? undefined,
@@ -83,6 +85,7 @@ function fromStrategy(s: Partial<Strategy>): Row {
   if (s.riskPct !== undefined) out["risk_pct"] = s.riskPct;
   if (s.mainSymbol !== undefined) out["main_symbol"] = s.mainSymbol;
   if (s.color !== undefined) out["color"] = s.color;
+  if (s.isShared !== undefined) out["is_shared"] = s.isShared;
   for (const k of ["market", "chart", "days", "schedule", "execution", "setup", "management", "contracts"] as const) {
     if (s[k] !== undefined) out[k] = s[k] ?? null;
   }
@@ -383,10 +386,21 @@ export async function fetchJournalData(journalId: string): Promise<JournalData> 
 }
 
 async function seedDefaultStrategies(journalId: string, userId: string) {
+  try {
+    const { error: rpcErr } = await (supabase.rpc as any)("seed_user_strategies", {
+      p_journal_id: journalId,
+      p_user_id: userId,
+    });
+    if (!rpcErr) return;
+  } catch {
+    // Fallback manual
+  }
+
   const rows = mockStrategies.map((s) => ({
     ...fromStrategy(s),
     journal_id: journalId,
     user_id: userId,
+    is_shared: true,
   }));
   await supabase.from("strategies").insert(rows as never);
 }
@@ -731,12 +745,65 @@ export function JournalProvider({ children }: { children: ReactNode }) {
       },
       restoreDefaultStrategies: async () => {
         const base = await ownerFields();
-        if (!base.user_id) return;
-        // Omite las estrategias por defecto que ya existan (por nombre) para no duplicar.
+        if (!base.user_id || !base.journal_id) return;
+
+        // 1. Intentar sembrado mediante RPC
+        try {
+          const { error: rpcErr } = await (supabase.rpc as any)("seed_user_strategies", {
+            p_journal_id: base.journal_id,
+            p_user_id: base.user_id,
+          });
+          if (!rpcErr) {
+            await refresh();
+            return;
+          }
+        } catch {
+          // Fallback manual
+        }
+
+        // 2. Fallback manual: buscar estrategias del admin o compartidas
         const existing = new Set(data.strategies.map((s) => s.name));
-        const rows = mockStrategies
+        let sourceStrategies: Strategy[] = [];
+
+        try {
+          const { data: adminRoles } = await supabase
+            .from("user_roles")
+            .select("user_id")
+            .eq("role", "admin")
+            .limit(1);
+
+          const adminId = adminRoles?.[0]?.user_id;
+          if (adminId) {
+            const { data: adminStrats } = await supabase
+              .from("strategies")
+              .select("*")
+              .eq("user_id", adminId);
+            if (adminStrats && adminStrats.length > 0) {
+              sourceStrategies = adminStrats.map(toStrategy);
+            }
+          }
+
+          if (sourceStrategies.length === 0) {
+            const { data: sharedStrats } = await supabase
+              .from("strategies")
+              .select("*")
+              .eq("is_shared", true);
+            if (sharedStrats && sharedStrats.length > 0) {
+              sourceStrategies = sharedStrats.map(toStrategy);
+            }
+          }
+        } catch {
+          // Ignorar y usar mock
+        }
+
+        if (sourceStrategies.length === 0) {
+          sourceStrategies = mockStrategies.map((s) => ({ ...s, isShared: true }));
+        }
+
+        const rows = sourceStrategies
           .filter((s) => !existing.has(s.name))
           .map((s) => ({ ...fromStrategy(s), ...base } as never));
+
         if (rows.length > 0) {
           const { error } = await supabase.from("strategies").insert(rows);
           if (error) throw error;

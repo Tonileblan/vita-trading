@@ -425,6 +425,7 @@ export type Database = {
           execution: string | null
           id: string
           initial_capital: number
+          is_shared: boolean
           journal_id: string
           main_symbol: string
           management: string | null
@@ -445,6 +446,7 @@ export type Database = {
           execution?: string | null
           id?: string
           initial_capital?: number
+          is_shared?: boolean
           journal_id: string
           main_symbol?: string
           management?: string | null
@@ -465,6 +467,7 @@ export type Database = {
           execution?: string | null
           id?: string
           initial_capital?: number
+          is_shared?: boolean
           journal_id?: string
           main_symbol?: string
           management?: string | null
