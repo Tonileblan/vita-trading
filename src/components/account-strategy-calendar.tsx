@@ -167,14 +167,40 @@ export function AccountStrategyCalendar({ accountIds }: { accountIds: string[] }
         </div>
       </div>
 
-      <div className="grid grid-cols-7 gap-1 text-center text-[10px] font-semibold uppercase text-muted-foreground">
-        {WEEKDAYS.map((d) => (
-          <span key={d}>{d}</span>
+      <div
+        className="grid gap-1 text-center text-[10px] font-semibold uppercase text-muted-foreground"
+        style={{ gridTemplateColumns: "1.35fr 1.35fr 1.35fr 1.35fr 1.35fr 0.65fr 0.65fr" }}
+      >
+        {WEEKDAYS.map((d, idx) => (
+          <span
+            key={d}
+            className={cn(
+              idx >= 5
+                ? "text-[9px] text-muted-foreground/45 tracking-tight font-normal"
+                : "font-bold text-foreground/80",
+            )}
+          >
+            {d}
+          </span>
         ))}
       </div>
-      <div className="grid grid-cols-7 gap-1">
+      <div
+        className="grid gap-1"
+        style={{ gridTemplateColumns: "1.35fr 1.35fr 1.35fr 1.35fr 1.35fr 0.65fr 0.65fr" }}
+      >
         {cells.map((day, i) => {
-          if (day === null) return <span key={`e${i}`} />;
+          const isWeekend = i % 7 >= 5;
+          if (day === null) {
+            return (
+              <span
+                key={`e${i}`}
+                className={cn(
+                  "rounded-md min-h-14",
+                  isWeekend && "bg-muted/10 border border-dashed border-border/20 opacity-30",
+                )}
+              />
+            );
+          }
           const iso = key(year, month, day);
           const entry = byDay.get(iso);
           const period = periodFor(iso);
@@ -186,17 +212,25 @@ export function AccountStrategyCalendar({ accountIds }: { accountIds: string[] }
               onClick={() => pickDay(iso)}
               className={cn(
                 "min-h-14 rounded-md border p-1 text-left transition-colors",
+                isWeekend && !entry && !selected && "bg-muted/20 border-dashed border-border/40 opacity-50",
                 selected
-                  ? "border-brand bg-brand/15"
+                  ? "border-brand bg-brand/15 opacity-100"
                   : entry
                     ? entry.pnl >= 0
-                      ? "border-profit/30 bg-profit/10"
-                      : "border-loss/30 bg-loss/10"
+                      ? "border-profit/30 bg-profit/10 opacity-100"
+                      : "border-loss/30 bg-loss/10 opacity-100"
                     : "border-border/60 hover:border-foreground/30",
               )}
             >
               <div className="flex items-center justify-between">
-                <span className="text-[10px] font-semibold text-muted-foreground">{day}</span>
+                <span
+                  className={cn(
+                    "text-[10px] font-semibold",
+                    isWeekend ? "text-[9px] text-muted-foreground/60" : "text-muted-foreground",
+                  )}
+                >
+                  {day}
+                </span>
                 {color ? (
                   <span
                     className="size-2 rounded-full"
@@ -209,14 +243,17 @@ export function AccountStrategyCalendar({ accountIds }: { accountIds: string[] }
                 <>
                   <p
                     className={cn(
-                      "num text-[11px] font-semibold tabular-nums",
+                      "num font-semibold tabular-nums leading-none mt-0.5",
+                      isWeekend ? "text-[9px]" : "text-[11px]",
                       entry.pnl >= 0 ? "text-profit" : "text-loss",
                     )}
                   >
                     {formatCurrency(entry.pnl, true)}
                   </p>
-                  <p className="text-[10px] text-muted-foreground">{entry.count} op.</p>
+                  <p className="text-[9px] text-muted-foreground">{entry.count} op.</p>
                 </>
+              ) : isWeekend ? (
+                <span className="text-[9px] text-muted-foreground opacity-35">—</span>
               ) : null}
             </button>
           );

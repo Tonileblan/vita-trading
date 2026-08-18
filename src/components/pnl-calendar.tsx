@@ -113,15 +113,41 @@ export function PnlCalendar({
         </div>
       </div>
 
-      <div className="grid grid-cols-7 gap-1 text-center text-[10px] font-semibold uppercase text-muted-foreground">
-        {WEEKDAYS.map((d) => (
-          <span key={d}>{d}</span>
+      <div
+        className="grid gap-1 text-center text-[10px] font-semibold uppercase text-muted-foreground"
+        style={{ gridTemplateColumns: "1.35fr 1.35fr 1.35fr 1.35fr 1.35fr 0.65fr 0.65fr" }}
+      >
+        {WEEKDAYS.map((d, idx) => (
+          <span
+            key={d}
+            className={cn(
+              idx >= 5
+                ? "text-[9px] text-muted-foreground/45 tracking-tight font-normal"
+                : "font-bold text-foreground/80",
+            )}
+          >
+            {d}
+          </span>
         ))}
       </div>
 
-      <div className="grid grid-cols-7 gap-1">
+      <div
+        className="grid gap-1"
+        style={{ gridTemplateColumns: "1.35fr 1.35fr 1.35fr 1.35fr 1.35fr 0.65fr 0.65fr" }}
+      >
         {cells.map((day, i) => {
-          if (day === null) return <span key={`e${i}`} />;
+          const isWeekend = i % 7 >= 5;
+          if (day === null) {
+            return (
+              <span
+                key={`e${i}`}
+                className={cn(
+                  "rounded-md min-h-14",
+                  isWeekend && "bg-muted/10 border border-dashed border-border/20 opacity-30",
+                )}
+              />
+            );
+          }
           const key = todayKey(new Date(year, month, day));
           const entry = byDay.get(key);
           const pnl = entry?.pnl ?? 0;
@@ -140,22 +166,30 @@ export function PnlCalendar({
               title={
                 entry
                   ? `${formatCurrency(pnl, true)} · ${entry.trades} operación(es) (Click para filtrar este día)`
-                  : "Sin operaciones (Click para filtrar este día)"
+                  : isWeekend
+                    ? `Fin de semana (${day}) · Sin operaciones`
+                    : "Sin operaciones (Click para filtrar este día)"
               }
               className={cn(
                 "flex min-h-14 flex-col items-center justify-center rounded-md border p-1 text-[10px] transition-all relative text-left w-full",
                 onSelectDate ? "cursor-pointer hover:border-foreground/40 hover:shadow-xs" : "",
+                isWeekend && !entry && !isSelected && "bg-muted/20 border-dashed border-border/40 opacity-50 hover:opacity-90",
                 isSelected
-                  ? "border-brand ring-2 ring-brand bg-brand/15 shadow-sm scale-[1.03] z-10 font-bold"
+                  ? "border-brand ring-2 ring-brand bg-brand/15 shadow-sm scale-[1.03] z-10 font-bold opacity-100"
                   : isToday
                     ? "border-brand/70"
                     : "border-border",
-                entry && pnl > 0 && !isSelected && "bg-profit/10",
-                entry && pnl < 0 && !isSelected && "bg-loss/10",
+                entry && pnl > 0 && !isSelected && "bg-profit/10 opacity-100",
+                entry && pnl < 0 && !isSelected && "bg-loss/10 opacity-100",
               )}
             >
               <div className="flex w-full items-center justify-between px-0.5">
-                <span className={cn("text-muted-foreground", isSelected && "font-bold text-foreground")}>
+                <span
+                  className={cn(
+                    isWeekend ? "text-[9px] text-muted-foreground/60" : "text-muted-foreground",
+                    isSelected && "font-bold text-foreground",
+                  )}
+                >
                   {day}
                 </span>
                 {isSelected && (
@@ -166,17 +200,20 @@ export function PnlCalendar({
                 <>
                   <span
                     className={cn(
-                      "num text-sm font-semibold leading-none mt-0.5",
+                      "num font-semibold leading-none mt-0.5",
+                      isWeekend ? "text-xs" : "text-sm",
                       pnl > 0 ? "text-profit" : pnl < 0 ? "text-loss" : "text-muted-foreground",
                     )}
                   >
                     {pnl > 0 ? "+" : ""}
                     {Math.round(pnl)}
                   </span>
-                  <span className="text-muted-foreground text-[9px] mt-0.5">{entry.trades} op.</span>
+                  <span className="text-muted-foreground text-[8px] md:text-[9px] mt-0.5">{entry.trades} op.</span>
                 </>
               ) : (
-                <span className="text-muted-foreground mt-1">·</span>
+                <span className={cn("text-muted-foreground", isWeekend ? "text-[9px] opacity-35" : "mt-1")}>
+                  {isWeekend ? "—" : "·"}
+                </span>
               )}
             </button>
           );

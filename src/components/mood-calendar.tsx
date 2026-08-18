@@ -75,14 +75,40 @@ export function MoodCalendar({
         </div>
       </div>
 
-      <div className="grid grid-cols-7 gap-1 text-center text-[10px] font-semibold uppercase text-muted-foreground">
-        {WEEKDAYS.map((d) => (
-          <span key={d}>{d}</span>
+      <div
+        className="grid gap-1 text-center text-[10px] font-semibold uppercase text-muted-foreground"
+        style={{ gridTemplateColumns: "1.35fr 1.35fr 1.35fr 1.35fr 1.35fr 0.65fr 0.65fr" }}
+      >
+        {WEEKDAYS.map((d, idx) => (
+          <span
+            key={d}
+            className={cn(
+              idx >= 5
+                ? "text-[9px] text-muted-foreground/45 tracking-tight font-normal"
+                : "font-bold text-foreground/80",
+            )}
+          >
+            {d}
+          </span>
         ))}
       </div>
-      <div className="grid grid-cols-7 gap-1">
+      <div
+        className="grid gap-1"
+        style={{ gridTemplateColumns: "1.35fr 1.35fr 1.35fr 1.35fr 1.35fr 0.65fr 0.65fr" }}
+      >
         {cells.map((day, i) => {
-          if (day === null) return <span key={`e${i}`} />;
+          const isWeekend = i % 7 >= 5;
+          if (day === null) {
+            return (
+              <span
+                key={`e${i}`}
+                className={cn(
+                  "rounded-md min-h-14",
+                  isWeekend && "bg-muted/10 border border-dashed border-border/20 opacity-30",
+                )}
+              />
+            );
+          }
           const key = todayKey(new Date(year, month, day));
           const c = moodByDay.get(key);
           const pnl = byDay.get(key)?.pnl;
@@ -92,19 +118,31 @@ export function MoodCalendar({
               title={
                 c
                   ? `Ánimo ${c.mood}/5 · Energía ${c.energy}/5 · Estrés ${c.stress}/5`
-                  : "Sin check-in"
+                  : isWeekend
+                    ? `Fin de semana (${day}) · Sin check-in`
+                    : "Sin check-in"
               }
               className={cn(
-                "flex min-h-14 flex-col items-center justify-center rounded-md border p-1 text-[10px]",
+                "flex min-h-14 flex-col items-center justify-center rounded-md border p-1 text-[10px] transition-all",
+                isWeekend && !c && "bg-muted/20 border-dashed border-border/40 opacity-50",
                 key === todayKey() ? "border-brand" : "border-border",
               )}
             >
-              <span className="text-muted-foreground">{day}</span>
-              <span className="text-sm leading-none">{c ? MOOD_FACES[c.mood - 1] : "·"}</span>
+              <span
+                className={cn(
+                  isWeekend ? "text-[9px] text-muted-foreground/60" : "text-muted-foreground",
+                  key === todayKey() && "font-bold text-foreground",
+                )}
+              >
+                {day}
+              </span>
+              <span className={cn("leading-none mt-0.5", isWeekend ? "text-xs" : "text-sm")}>
+                {c ? MOOD_FACES[c.mood - 1] : isWeekend ? "—" : "·"}
+              </span>
               {pnl != null && (
                 <span
                   className={cn(
-                    "num font-semibold",
+                    "num font-semibold text-[9px] mt-0.5",
                     pnl > 0 ? "text-profit" : pnl < 0 ? "text-loss" : "text-muted-foreground",
                   )}
                 >
