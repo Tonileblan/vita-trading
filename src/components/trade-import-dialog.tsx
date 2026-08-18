@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { Camera, ImagePlus, Loader2, Sparkles, X } from "lucide-react";
 import { toast } from "sonner";
@@ -94,6 +95,7 @@ function compressImageFile(file: File, maxDim = 1280, quality = 0.8): Promise<st
 }
 
 export function TradeImportDialog() {
+  const navigate = useNavigate();
   const { accounts, strategies, trades, addTrades } = useJournal();
   const extract = useServerFn(extractTradesFromImages);
   const [open, setOpen] = useState(false);
@@ -137,6 +139,19 @@ export function TradeImportDialog() {
       toast.error("Añade al menos una captura");
       return;
     }
+    if (!googleAiKey) {
+      toast.error("Para usar funciones de IA conecta Google AI aquí", {
+        action: {
+          label: "Conectar aquí",
+          onClick: () => {
+            setOpen(false);
+            navigate({ to: "/usuarios" });
+          },
+        },
+        duration: 7000,
+      });
+      return;
+    }
     setLoading(true);
     try {
       const found = await extract({
@@ -169,8 +184,29 @@ export function TradeImportDialog() {
         toast.success(
           `${parsedRows.length} operaciones detectadas · ${parsedRows.filter((r) => r.duplicate).length} ya existentes`,
         );
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "No se pudo analizar la captura con Google AI Gemini");
+    } catch (e: any) {
+      const msg = e instanceof Error ? e.message : String(e);
+      if (
+        msg.includes("404") ||
+        msg.includes("not found") ||
+        msg.includes("Falta configurar") ||
+        msg.includes("no válida") ||
+        msg.includes("Google AI") ||
+        msg.includes("AIza")
+      ) {
+        toast.error("Para usar funciones de IA conecta Google AI aquí", {
+          action: {
+            label: "Conectar aquí",
+            onClick: () => {
+              setOpen(false);
+              navigate({ to: "/usuarios" });
+            },
+          },
+          duration: 7000,
+        });
+      } else {
+        toast.error(msg || "No se pudo analizar la captura con Google AI Gemini");
+      }
     } finally {
       setLoading(false);
     }
@@ -246,6 +282,29 @@ export function TradeImportDialog() {
             operaciones automáticamente.
           </DialogDescription>
         </DialogHeader>
+
+        {!googleAiKey && (
+          <div className="flex flex-col gap-2.5 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3.5 text-xs text-amber-800 dark:text-amber-300 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-amber-500/20 text-amber-600 dark:text-amber-400">
+                <Sparkles className="size-4" />
+              </div>
+              <div>
+                <p className="font-semibold text-foreground">Para usar funciones de IA conecta Google AI aquí</p>
+                <p className="text-[11px] opacity-90">Obtén tu clave gratuita en Google AI Studio y pégala en tu perfil.</p>
+              </div>
+            </div>
+            <Button
+              asChild
+              size="sm"
+              className="shrink-0 bg-amber-600 text-white hover:bg-amber-700 h-8 text-xs font-semibold shadow-xs"
+            >
+              <Link to="/usuarios" onClick={() => setOpen(false)}>
+                Conectar Google AI aquí
+              </Link>
+            </Button>
+          </div>
+        )}
 
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">

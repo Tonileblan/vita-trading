@@ -146,7 +146,7 @@ export const extractTradesFromImages = createServerFn({ method: "POST" })
       content = json.choices?.[0]?.message?.content ?? "{}";
     } else {
       throw new Error(
-        "Falta configurar tu clave de Google AI Studio. Puedes configurarla gratuitamente en Mi Perfil.",
+        "Para usar funciones de IA conecta Google AI aquí (en la pestaña de tu Perfil).",
       );
     }
 
