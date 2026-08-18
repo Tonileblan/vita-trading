@@ -42,7 +42,12 @@ import { toast } from "sonner";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { ChatThread } from "@/components/chat-thread";
-import { deleteUserAdminFn } from "@/lib/admin.functions";
+import {
+  deleteUserAdminFn,
+  applyForSupervisorServerFn,
+  cancelSupervisorServerFn,
+  adminReviewSupervisorServerFn,
+} from "@/lib/admin.functions";
 import {
   getLocalGoogleAiKey,
   setLocalGoogleAiKey,
@@ -129,6 +134,9 @@ function UsersPage() {
   const { theme, setTheme } = useTheme();
   const qc = useQueryClient();
   const deleteUserServer = useServerFn(deleteUserAdminFn);
+  const applyForSupervisorServer = useServerFn(applyForSupervisorServerFn);
+  const cancelSupervisorServer = useServerFn(cancelSupervisorServerFn);
+  const adminReviewSupervisorServer = useServerFn(adminReviewSupervisorServerFn);
 
   const [name, setName] = useState("");
   const [avatar, setAvatar] = useState("");
@@ -254,17 +262,32 @@ function UsersPage() {
   const applyForSupervisor = useMutation({
     mutationFn: async () => {
       if (!user?.id) throw new Error("No hay sesión activa");
+      // 1. Probar RPC
       try {
         const { error: rpcErr } = await (supabase.rpc as any)("apply_for_supervisor");
         if (!rpcErr) return;
       } catch {
         // Fallback
       }
-      const { error } = await supabase
-        .from("profiles")
-        .update({ supervisor_status: "pending" })
-        .eq("id", user.id);
-      if (error) throw error;
+
+      // 2. Probar Server Function
+      try {
+        await applyForSupervisorServer({ data: { userId: user.id } });
+        return;
+      } catch {
+        // Fallback
+      }
+
+      // 3. Fallback directo
+      try {
+        const { error } = await supabase
+          .from("profiles")
+          .update({ supervisor_status: "pending" } as any)
+          .eq("id", user.id);
+        if (error && !error.message?.includes("schema cache")) throw error;
+      } catch (e: any) {
+        if (!e?.message?.includes("schema cache")) throw e;
+      }
     },
     onMutate: async () => {
       if (user?.id) {
@@ -292,17 +315,32 @@ function UsersPage() {
   const cancelSupervisorApplication = useMutation({
     mutationFn: async () => {
       if (!user?.id) throw new Error("No hay sesión activa");
+      // 1. Probar RPC
       try {
         const { error: rpcErr } = await (supabase.rpc as any)("cancel_supervisor_application");
         if (!rpcErr) return;
       } catch {
         // Fallback
       }
-      const { error } = await supabase
-        .from("profiles")
-        .update({ supervisor_status: "none" })
-        .eq("id", user.id);
-      if (error) throw error;
+
+      // 2. Probar Server Function
+      try {
+        await cancelSupervisorServer({ data: { userId: user.id } });
+        return;
+      } catch {
+        // Fallback
+      }
+
+      // 3. Fallback directo
+      try {
+        const { error } = await supabase
+          .from("profiles")
+          .update({ supervisor_status: "none" } as any)
+          .eq("id", user.id);
+        if (error && !error.message?.includes("schema cache")) throw error;
+      } catch (e: any) {
+        if (!e?.message?.includes("schema cache")) throw e;
+      }
     },
     onMutate: async () => {
       if (user?.id) {
@@ -329,18 +367,39 @@ function UsersPage() {
   // Mutación: Administrador revisa solicitud de supervisor
   const adminReviewSupervisor = useMutation({
     mutationFn: async ({ userId, approve }: { userId: string; approve: boolean }) => {
-      const { error: rpcErr } = await (supabase.rpc as any)("admin_review_supervisor", {
-        target_user_id: userId,
-        approve,
-      });
-      if (rpcErr) {
+      // 1. Probar RPC
+      try {
+        const { error: rpcErr } = await (supabase.rpc as any)("admin_review_supervisor", {
+          target_user_id: userId,
+          approve,
+        });
+        if (!rpcErr) return;
+      } catch {
         // Fallback
-        if (approve) {
-          await supabase.from("user_roles").upsert({ user_id: userId, role: "supervisor" });
-          await supabase.from("profiles").update({ supervisor_status: "approved" }).eq("id", userId);
-        } else {
-          await supabase.from("user_roles").delete().eq("user_id", userId).eq("role", "supervisor");
-          await supabase.from("profiles").update({ supervisor_status: "rejected" }).eq("id", userId);
+      }
+
+      // 2. Probar Server Function
+      try {
+        await adminReviewSupervisorServer({ data: { userId, approve } });
+        return;
+      } catch {
+        // Fallback
+      }
+
+      // 3. Fallback directo
+      if (approve) {
+        await supabase.from("user_roles").upsert({ user_id: userId, role: "supervisor" });
+        try {
+          await supabase.from("profiles").update({ supervisor_status: "approved" } as any).eq("id", userId);
+        } catch {
+          // ignore schema cache
+        }
+      } else {
+        await supabase.from("user_roles").delete().eq("user_id", userId).eq("role", "supervisor");
+        try {
+          await supabase.from("profiles").update({ supervisor_status: "rejected" } as any).eq("id", userId);
+        } catch {
+          // ignore schema cache
         }
       }
     },
