@@ -634,19 +634,6 @@ function EstrategiasPage() {
                 Estrategia:
               </span>
 
-              <button
-                type="button"
-                onClick={() => setSelectedStrategyId(null)}
-                className={cn(
-                  "rounded-full px-3 py-1 text-xs font-semibold transition cursor-pointer border",
-                  selectedStrategyId === null
-                    ? "bg-foreground text-background border-foreground font-bold shadow-xs"
-                    : "bg-card text-muted-foreground border-border hover:text-foreground hover:border-foreground/40",
-                )}
-              >
-                Todas las estrategias
-              </button>
-
               {strategies.map((s) => {
                 const active = selectedStrategyId === s.id;
                 return (
@@ -657,7 +644,7 @@ function EstrategiasPage() {
                     className={cn(
                       "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold transition cursor-pointer border",
                       active
-                        ? "border-brand bg-brand text-primary-foreground font-bold shadow-xs"
+                        ? "border-brand bg-brand text-primary-foreground font-bold shadow-xs scale-[1.02]"
                         : "bg-card text-muted-foreground border-border hover:text-foreground hover:border-foreground/40",
                     )}
                   >
@@ -680,19 +667,6 @@ function EstrategiasPage() {
                   Cuentas:
                 </span>
 
-                <button
-                  type="button"
-                  onClick={() => setCalendarAccountIds([])}
-                  className={cn(
-                    "rounded-full px-3 py-1 text-xs font-semibold transition cursor-pointer border",
-                    calendarAccountIds.length === 0 || calendarAccountIds.length === accounts.length
-                      ? "bg-foreground text-background border-foreground font-bold shadow-xs"
-                      : "bg-card text-muted-foreground border-border hover:text-foreground hover:border-foreground/40",
-                  )}
-                >
-                  Todas las cuentas
-                </button>
-
                 {accounts.map((a) => {
                   const active = calendarAccountIds.includes(a.id);
                   return (
@@ -709,7 +683,7 @@ function EstrategiasPage() {
                       className={cn(
                         "rounded-full px-3 py-1 text-xs font-semibold transition cursor-pointer border",
                         active
-                          ? "border-brand bg-brand text-primary-foreground font-bold shadow-xs"
+                          ? "border-brand bg-brand text-primary-foreground font-bold shadow-xs scale-[1.02]"
                           : "bg-card text-muted-foreground border-border hover:text-foreground hover:border-foreground/40",
                       )}
                     >
