@@ -242,18 +242,33 @@ function Overview() {
     return visibleTrades.filter((t) => t.accountId && ids.has(t.accountId));
   }, [isStrategy, scopedTrades, strategyAccounts, visibleTrades]);
 
-  // Cuenta de fondeo concreta seleccionada → progreso hacia objetivo (eval / retiro).
+  // Cuenta de fondeo concreta seleccionada → progreso hacia objetivo (eval / retiro) y drawdown
+  const selectedFundedAccount = useMemo(() => {
+    if (isStrategy) return null;
+    if (accountFilter !== "all") {
+      const acc = accounts.find((a) => a.id === accountFilter);
+      return acc?.type === "funded" ? acc : null;
+    }
+    if (scope === "funded" && scopedAccounts.length === 1 && scopedAccounts[0]?.type === "funded") {
+      return scopedAccounts[0];
+    }
+    return null;
+  }, [isStrategy, accountFilter, accounts, scope, scopedAccounts]);
+
   const fundedTarget = useMemo(() => {
-    if (isStrategy || accountFilter === "all") return null;
-    const account = selectedAccounts[0];
-    if (!account || account.type !== "funded") return null;
-    return accountTarget(account, visibleTrades, withdrawals);
-  }, [isStrategy, accountFilter, selectedAccounts, visibleTrades, withdrawals]);
+    if (!selectedFundedAccount) return null;
+    return accountTarget(selectedFundedAccount, visibleTrades, withdrawals);
+  }, [selectedFundedAccount, visibleTrades, withdrawals]);
 
   const curveAccounts = isStrategy ? strategyAccounts : scopedAccounts;
   const curve = useMemo(
-    () => buildEquityCurve(trades, accountsCurveStart(curveAccounts, trades, withdrawals)),
-    [trades, curveAccounts, withdrawals],
+    () =>
+      buildEquityCurve(
+        trades,
+        accountsCurveStart(curveAccounts, trades, withdrawals),
+        selectedFundedAccount,
+      ),
+    [trades, curveAccounts, withdrawals, selectedFundedAccount],
   );
 
   const fundedAccounts = selectedAccounts.filter((a) => a.type === "funded");
@@ -595,6 +610,15 @@ function Overview() {
                   : "Consolidada de las cuentas activas"}
               </p>
             </div>
+            {selectedFundedAccount?.drawdownLimit && (
+              <div className="flex items-center gap-1.5 rounded-full border border-red-500/30 bg-red-500/10 px-3 py-1 text-xs font-semibold text-red-500">
+                <span className="inline-block size-2 rounded-full bg-red-500 animate-pulse" />
+                <span>
+                  Límite Drawdown ({selectedFundedAccount.drawdownType === "trailing" ? "Trailing" : selectedFundedAccount.drawdownType === "eod" ? "EOD" : "Estático"}):{" "}
+                  <strong>{formatCurrency(selectedFundedAccount.drawdownLimit)}</strong>
+                </span>
+              </div>
+            )}
           </div>
           <EquityChart data={curve} />
         </section>

@@ -56,6 +56,7 @@ function AccountDetail() {
       buildEquityCurve(
         accTrades,
         account ? accountCurveStart(account, accTrades, withdrawals) : 0,
+        account,
       ),
     [accTrades, account, withdrawals],
   );

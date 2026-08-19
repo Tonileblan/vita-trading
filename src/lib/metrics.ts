@@ -201,14 +201,50 @@ export function filterByDays(trades: Trade[], days: number) {
   return trades.filter((t) => new Date(t.openedAt || t.closedAt).getTime() >= cutoff);
 }
 
-export function buildEquityCurve(trades: Trade[], startBalance: number) {
+export function buildEquityCurve(
+  trades: Trade[],
+  startBalance: number,
+  fundedAccount?: Account | null,
+) {
   const sorted = [...trades].sort(
     (a, b) => new Date(a.openedAt || a.closedAt).getTime() - new Date(b.openedAt || b.closedAt).getTime(),
   );
+
   let equity = startBalance;
+  const isFunded = fundedAccount?.type === "funded" && Boolean(fundedAccount.drawdownLimit);
+  const ddLimit = isFunded ? (fundedAccount.drawdownLimit ?? 0) : 0;
+  const ddType = isFunded ? (fundedAccount.drawdownType ?? "static") : "static";
+  const initial = fundedAccount?.initialBalance ?? startBalance;
+  const maxRef = initial + ddLimit;
+
+  let peak = Math.max(initial, startBalance);
+  let eodRef = initial;
+  let lastDay: string | null = null;
+
   return sorted.map((t, i) => {
     equity += t.pnl;
     const dateStr = t.openedAt || t.closedAt;
+    const day = dateStr ? dateStr.slice(0, 10) : "";
+
+    peak = Math.max(peak, equity);
+
+    let drawdownFloor: number | undefined;
+    if (isFunded && ddLimit > 0) {
+      if (ddType === "static") {
+        drawdownFloor = Number((initial - ddLimit).toFixed(2));
+      } else if (ddType === "trailing") {
+        const ref = Math.min(peak, maxRef);
+        drawdownFloor = Number((ref - ddLimit).toFixed(2));
+      } else if (ddType === "eod") {
+        const ref = Math.min(Math.max(initial, eodRef), maxRef);
+        drawdownFloor = Number((ref - ddLimit).toFixed(2));
+        if (day && day !== lastDay) {
+          eodRef = Math.max(eodRef, equity);
+          lastDay = day;
+        }
+      }
+    }
+
     return {
       index: i + 1,
       date: new Date(dateStr).toLocaleDateString("es-ES", {
@@ -216,6 +252,7 @@ export function buildEquityCurve(trades: Trade[], startBalance: number) {
         month: "short",
       }),
       equity: Number(equity.toFixed(2)),
+      ...(drawdownFloor !== undefined ? { drawdownFloor } : {}),
     };
   });
 }
