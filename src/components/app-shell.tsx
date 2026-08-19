@@ -11,6 +11,7 @@ import {
   Brain,
   Receipt,
   ShieldCheck,
+  HelpCircle,
   LogOut,
 } from "lucide-react";
 import { type ReactNode } from "react";
@@ -48,7 +49,7 @@ function UserMenu() {
           <Users className="size-4" /> Mi perfil
         </DropdownMenuItem>
         <DropdownMenuItem onSelect={() => navigate({ to: "/funciones" })}>
-          <LayoutDashboard className="size-4" /> Funciones de la app
+          <HelpCircle className="size-4" /> Funciones y Ayuda
         </DropdownMenuItem>
         <DropdownMenuItem
           onSelect={async () => {
