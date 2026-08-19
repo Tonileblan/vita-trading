@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { checkRules } from "@/lib/emotion-metrics";
 import { todayKey } from "@/lib/emotions";
 import { useJournal } from "@/lib/journal-store";
-import { accountTarget } from "@/lib/metrics";
+import { accountDrawdown, accountTarget, formatCurrency } from "@/lib/metrics";
 import { useCheckins, useJournalRules, DEFAULT_RULES } from "@/lib/mood";
 import { cn } from "@/lib/utils";
 
@@ -33,9 +33,26 @@ export function RiskAlerts() {
           : `${x.account.name} ha alcanzado el objetivo de evaluación.`,
     }));
 
+  const drawdownAlerts = accounts
+    .filter((a) => a.type === "funded" && Boolean(a.drawdownLimit))
+    .map((a) => ({ account: a, dd: accountDrawdown(a, trades, withdrawals) }))
+    .filter((x) => x.dd !== null && (x.dd.remaining < 600 || x.dd.breached))
+    .map((x) => ({
+      key: `dd-${x.account.id}`,
+      tone: "warn" as const,
+      message: x.dd!.breached
+        ? `Cuenta ${x.account.name}: Cuenta rota (límite alcanzado).`
+        : `Cuenta ${x.account.name}: Drawdown crítico (${formatCurrency(x.dd!.remaining)} restantes).`,
+    }));
+
   const alerts = [
+    ...drawdownAlerts,
     ...targetAlerts,
-    ...checkRules(visibleTrades, rules, checkins.some((c) => c.date === todayKey())),
+    ...checkRules(
+      visibleTrades,
+      rules,
+      checkins.some((c) => c.date === todayKey()),
+    ),
   ];
   if (muted || alerts.length === 0) return null;
 

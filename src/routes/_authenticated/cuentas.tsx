@@ -43,6 +43,7 @@ import {
   formatCurrency,
 } from "@/lib/metrics";
 import { PhaseChip, TargetProgress } from "@/components/target-progress";
+import { DrawdownCornerAlert } from "@/components/drawdown-corner-alert";
 import {
   ACCOUNT_PHASES,
   BROKERS,
@@ -95,7 +96,13 @@ function parseMoneyInput(value: string) {
   return Number(digitsAfter === 3 ? parts.join("") : parts.join("."));
 }
 
-function AccountDialog({ account, trigger }: { account?: Account | undefined; trigger: React.ReactNode }) {
+function AccountDialog({
+  account,
+  trigger,
+}: {
+  account?: Account | undefined;
+  trigger: React.ReactNode;
+}) {
   const { addAccount, updateAccount, removeAccount } = useJournal();
   const editing = Boolean(account);
   const [open, setOpen] = useState(false);
@@ -125,9 +132,7 @@ function AccountDialog({ account, trigger }: { account?: Account | undefined; tr
   const [dd, setDd] = useState(String(account?.drawdownLimit ?? 2500));
   const [ddType, setDdType] = useState<DrawdownType>(account?.drawdownType ?? "static");
   const [phase, setPhase] = useState<AccountPhase>(account?.phase ?? "eval");
-  const [target, setTarget] = useState(
-    account?.profitTarget ? String(account.profitTarget) : "",
-  );
+  const [target, setTarget] = useState(account?.profitTarget ? String(account.profitTarget) : "");
 
   const onOpenChange = (v: boolean) => {
     setOpen(v);
@@ -437,11 +442,7 @@ function AccountDialog({ account, trigger }: { account?: Account | undefined; tr
 
         <DialogFooter className="sm:justify-between pt-2">
           {editing ? (
-            <Button
-              variant="destructive"
-              onClick={remove}
-              className="gap-1.5"
-            >
+            <Button variant="destructive" onClick={remove} className="gap-1.5">
               Eliminar
             </Button>
           ) : (
@@ -495,8 +496,26 @@ function AccountsPage() {
     const dd = accountDrawdown(acc, trades, withdrawals);
     const target = accountTarget(acc, trades, withdrawals);
 
+    const isLowDrawdown =
+      acc.type === "funded" &&
+      Boolean(acc.drawdownLimit) &&
+      dd !== null &&
+      (dd.remaining < 600 || dd.breached);
+
     return (
-      <article className="panel flex flex-col justify-between p-5 transition-all hover:border-foreground/20">
+      <article
+        className={cn(
+          "panel relative overflow-hidden flex flex-col justify-between p-5 transition-all hover:border-foreground/20",
+          isLowDrawdown && "border-loss/40 hover:border-loss/60 shadow-xs",
+        )}
+      >
+        <DrawdownCornerAlert
+          remaining={dd?.remaining ?? 0}
+          isFunded={acc.type === "funded" && Boolean(acc.drawdownLimit)}
+          breached={dd?.breached ?? false}
+          threshold={600}
+        />
+
         <div className="space-y-4">
           <div className="flex items-start justify-between gap-3">
             <Link
@@ -568,23 +587,34 @@ function AccountsPage() {
 
           {/* Drawdown Progress */}
           {dd && (
-            <div className="space-y-1.5 rounded-xl border border-border/80 bg-muted/20 p-3">
+            <div
+              className={cn(
+                "space-y-1.5 rounded-xl border p-3 transition-colors",
+                isLowDrawdown ? "border-loss/40 bg-loss/5" : "border-border/80 bg-muted/20",
+              )}
+            >
               <div className="flex flex-wrap justify-between gap-x-2 text-xs text-muted-foreground">
-                <span className="font-semibold">Drawdown {dd.label.toLowerCase()}</span>
+                <span className={cn("font-semibold", isLowDrawdown && "text-loss")}>
+                  Drawdown {dd.label.toLowerCase()}
+                  {isLowDrawdown && !dd.breached && " · Crítico (< 600 $)"}
+                </span>
                 <span className="num font-semibold">
                   {formatCurrency(dd.used)} / {formatCurrency(dd.limit)}
                 </span>
               </div>
               <div className="h-2 overflow-hidden rounded-full bg-muted">
                 <div
-                  className={cn("h-full transition-all", dd.pct > 70 ? "bg-loss" : "bg-brand")}
+                  className={cn(
+                    "h-full transition-all",
+                    dd.pct > 70 || isLowDrawdown ? "bg-loss" : "bg-brand",
+                  )}
                   style={{ width: `${Math.min(100, Math.max(0, dd.pct))}%` }}
                 />
               </div>
               <p
                 className={cn(
                   "text-[11px]",
-                  dd.breached ? "font-bold text-loss" : "text-muted-foreground",
+                  dd.breached || isLowDrawdown ? "font-bold text-loss" : "text-muted-foreground",
                 )}
               >
                 {dd.breached
@@ -749,7 +779,8 @@ function AccountsPage() {
             <div className="space-y-1">
               <h3 className="text-lg font-bold">No hay cuentas para mostrar</h3>
               <p className="text-sm text-muted-foreground">
-                Crea una cuenta de fondeo o personal para comenzar a registrar tus operaciones y controlar el drawdown.
+                Crea una cuenta de fondeo o personal para comenzar a registrar tus operaciones y
+                controlar el drawdown.
               </p>
             </div>
             <div className="pt-2">

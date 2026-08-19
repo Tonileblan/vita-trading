@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo } from "react";
-import { ArrowLeft, Building2, User } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Building2, User } from "lucide-react";
 import { AccountCostCard } from "@/components/account-cost-card";
 import { AppShell } from "@/components/app-shell";
 import { EquityChart } from "@/components/equity-chart";
@@ -20,6 +20,7 @@ import {
   accountTarget,
 } from "@/lib/metrics";
 import { TargetProgress, PhaseChip } from "@/components/target-progress";
+import { DrawdownCornerAlert } from "@/components/drawdown-corner-alert";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/cuenta/$accountId")({
@@ -78,11 +79,19 @@ function AccountDetail() {
 
   const byStrategy = strategies
     .map((s) => {
-      const own = accTrades.filter((t) => effectiveStrategyId(t, accounts, strategyPeriods) === s.id);
+      const own = accTrades.filter(
+        (t) => effectiveStrategyId(t, accounts, strategyPeriods) === s.id,
+      );
       return { name: s.name, count: own.length, net: own.reduce((sum, t) => sum + t.pnl, 0) };
     })
     .filter((r) => r.count > 0)
     .sort((a, b) => b.net - a.net);
+
+  const isLowDrawdown =
+    account.type === "funded" &&
+    Boolean(account.drawdownLimit) &&
+    dd !== null &&
+    (dd.remaining < 600 || dd.breached);
 
   return (
     <AppShell
@@ -98,7 +107,18 @@ function AccountDetail() {
       }
     >
       <div className="space-y-5">
-        <section className="panel grid grid-cols-2 gap-4 p-4 md:grid-cols-4">
+        <section
+          className={cn(
+            "panel relative overflow-hidden grid grid-cols-2 gap-4 p-4 md:grid-cols-4",
+            isLowDrawdown && "border-loss/40",
+          )}
+        >
+          <DrawdownCornerAlert
+            remaining={dd?.remaining ?? 0}
+            isFunded={account.type === "funded" && Boolean(account.drawdownLimit)}
+            breached={dd?.breached ?? false}
+            threshold={600}
+          />
           <div>
             <p className="text-xs text-muted-foreground">Balance inicial</p>
             <p className="num text-lg font-semibold">{formatCurrency(account.initialBalance)}</p>
@@ -109,7 +129,9 @@ function AccountDetail() {
           </div>
           <div>
             <p className="text-xs text-muted-foreground">Resultado de cuenta</p>
-            <p className={cn("num text-lg font-semibold", result >= 0 ? "text-profit" : "text-loss")}>
+            <p
+              className={cn("num text-lg font-semibold", result >= 0 ? "text-profit" : "text-loss")}
+            >
               {formatCurrency(result, true)}
             </p>
           </div>
@@ -160,11 +182,24 @@ function AccountDetail() {
         <AccountCostCard accountId={account.id} pnl={pnl} />
 
         {dd ? (
-          <section className="panel space-y-2 p-4">
+          <section
+            className={cn(
+              "panel relative overflow-hidden space-y-2.5 p-4",
+              isLowDrawdown && "border-loss/40 bg-loss/5",
+            )}
+          >
+            <DrawdownCornerAlert
+              remaining={dd.remaining}
+              isFunded={account.type === "funded" && Boolean(account.drawdownLimit)}
+              breached={dd.breached}
+              threshold={600}
+            />
+
             <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
-              <span className="font-semibold">
+              <span className={cn("font-semibold", isLowDrawdown && "text-loss")}>
                 Drawdown · {dd.label}
                 {dd.frozen ? " · suelo congelado" : ""}
+                {isLowDrawdown && !dd.breached && " · Crítico (< 600 $)"}
               </span>
               <span className="num text-muted-foreground">
                 {formatCurrency(dd.used)} / {formatCurrency(dd.limit)}
@@ -172,7 +207,7 @@ function AccountDetail() {
             </div>
             <div className="h-2 overflow-hidden rounded-full bg-muted">
               <div
-                className={cn("h-full", dd.pct > 70 ? "bg-loss" : "bg-brand")}
+                className={cn("h-full", dd.pct > 70 || isLowDrawdown ? "bg-loss" : "bg-brand")}
                 style={{ width: `${dd.pct}%` }}
               />
             </div>
@@ -187,12 +222,28 @@ function AccountDetail() {
               </div>
               <div>
                 <p>Margen restante</p>
-                <p className="num font-semibold text-foreground">{formatCurrency(dd.remaining)}</p>
+                <p
+                  className={cn(
+                    "num font-semibold",
+                    isLowDrawdown ? "text-loss font-bold" : "text-foreground",
+                  )}
+                >
+                  {formatCurrency(dd.remaining)}
+                </p>
               </div>
               <div>
                 <p>Estado</p>
-                <p className={cn("font-semibold", dd.breached ? "text-loss" : "text-profit")}>
-                  {dd.breached ? "Cuenta rota" : "En regla"}
+                <p
+                  className={cn(
+                    "font-semibold",
+                    dd.breached || isLowDrawdown ? "text-loss font-bold" : "text-profit",
+                  )}
+                >
+                  {dd.breached
+                    ? "Cuenta rota"
+                    : isLowDrawdown
+                      ? "Riesgo alto (< 600 $)"
+                      : "En regla"}
                 </p>
               </div>
             </div>
@@ -202,7 +253,6 @@ function AccountDetail() {
                 {new Date(dd.breachedAt).toLocaleDateString("es-ES")} (recuperada)
               </p>
             ) : null}
-
           </section>
         ) : null}
 
