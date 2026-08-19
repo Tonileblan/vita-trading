@@ -249,11 +249,28 @@ function Overview() {
       const acc = accounts.find((a) => a.id === accountFilter);
       return acc?.type === "funded" ? acc : null;
     }
-    if (scope === "funded" && scopedAccounts.length === 1 && scopedAccounts[0]?.type === "funded") {
-      return scopedAccounts[0];
+    const fundedAccs = scopedAccounts.filter((a) => a.type === "funded");
+    if (fundedAccs.length === 1) {
+      return fundedAccs[0];
+    }
+    if (fundedAccs.length > 1 && scope === "funded") {
+      const totalInitial = fundedAccs.reduce((s, a) => s + a.initialBalance, 0);
+      const totalLimit = fundedAccs.reduce((s, a) => s + (a.drawdownLimit ?? 0), 0);
+      if (totalLimit > 0) {
+        return {
+          id: "combined-funded",
+          name: "Fondeo Combinado",
+          type: "funded" as const,
+          initialBalance: totalInitial,
+          currentBalance: fundedAccs.reduce((s, a) => s + a.currentBalance, 0),
+          drawdownLimit: totalLimit,
+          drawdownType: "trailing" as const,
+          currency: fundedAccs[0]?.currency ?? "USD",
+        };
+      }
     }
     return null;
-  }, [isStrategy, accountFilter, accounts, scope, scopedAccounts]);
+  }, [isStrategy, accountFilter, accounts, scopedAccounts, scope]);
 
   const fundedTarget = useMemo(() => {
     if (!selectedFundedAccount) return null;

@@ -233,11 +233,10 @@ export function buildEquityCurve(
       if (ddType === "static") {
         drawdownFloor = Number((initial - ddLimit).toFixed(2));
       } else if (ddType === "trailing") {
-        const ref = Math.min(peak, maxRef);
-        drawdownFloor = Number((ref - ddLimit).toFixed(2));
+        // El trailing drawdown sigue a la curva de capital conforme sube a nuevos picos
+        drawdownFloor = Number((peak - ddLimit).toFixed(2));
       } else if (ddType === "eod") {
-        const ref = Math.min(Math.max(initial, eodRef), maxRef);
-        drawdownFloor = Number((ref - ddLimit).toFixed(2));
+        drawdownFloor = Number((Math.max(initial, eodRef) - ddLimit).toFixed(2));
         if (day && day !== lastDay) {
           eodRef = Math.max(eodRef, equity);
           lastDay = day;
