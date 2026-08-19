@@ -2,16 +2,16 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
-import { Building2, CalendarIcon, Layers, X } from "lucide-react";
+import { Building2, CalendarIcon, Filter, Layers, Sparkles, User, Wallet, X } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { EquityChart } from "@/components/equity-chart";
 import { RiskAlerts } from "@/components/risk-alerts";
-import { EmotionHighlights } from "@/components/emotion-stats";
 import { PnlCalendar } from "@/components/pnl-calendar";
 import { PerformanceAnalysis } from "@/components/performance-analysis";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { TradesTable } from "@/components/trades-table";
+import { TradeFormDialog } from "@/components/trade-form-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import {
@@ -63,13 +63,12 @@ const RANGES = [
 ] as const;
 
 type RangeKey = (typeof RANGES)[number]["key"] | "custom";
-
 type DateRange = { from: Date | undefined; to: Date | undefined };
 
 const SCOPES = [
-  { key: "all", label: "Capital total" },
-  { key: "funded", label: "Capital fondeo" },
-  { key: "real", label: "Capital real" },
+  { key: "all", label: "Capital total", icon: Wallet },
+  { key: "funded", label: "Capital fondeo", icon: Building2 },
+  { key: "real", label: "Capital real", icon: User },
 ] as const;
 
 type Scope = (typeof SCOPES)[number]["key"];
@@ -115,9 +114,17 @@ function Overview() {
       const targetUserId = supervisorUserFilter;
       const [accs, trds, strats, wds, pers] = await Promise.all([
         supabase.from("accounts").select("*").eq("user_id", targetUserId),
-        supabase.from("trades").select("*").eq("user_id", targetUserId).order("closed_at", { ascending: false }),
+        supabase
+          .from("trades")
+          .select("*")
+          .eq("user_id", targetUserId)
+          .order("closed_at", { ascending: false }),
         supabase.from("strategies").select("*").eq("user_id", targetUserId),
-        supabase.from("withdrawals").select("*").eq("user_id", targetUserId).order("date", { ascending: false }),
+        supabase
+          .from("withdrawals")
+          .select("*")
+          .eq("user_id", targetUserId)
+          .order("date", { ascending: false }),
         supabase
           .from("account_strategy_periods")
           .select("*")
@@ -125,23 +132,43 @@ function Overview() {
           .order("start_date", { ascending: true }),
       ]);
       return {
-        accounts: (accs.data ?? []).map((r) => toAccount(r as any)),
-        trades: (trds.data ?? []).map((r) => toTrade(r as any)),
-        strategies: (strats.data ?? []).map((r) => toStrategy(r as any)),
-        withdrawals: (wds.data ?? []).map((r) => toWithdrawal(r as any)).filter((w) => w.status === "approved"),
-        strategyPeriods: (pers.data ?? []).map((r) => toPeriod(r as any)),
+        accounts: (accs.data ?? []).map((r) => toAccount(r as Record<string, unknown>)),
+        trades: (trds.data ?? []).map((r) => toTrade(r as Record<string, unknown>)),
+        strategies: (strats.data ?? []).map((r) => toStrategy(r as Record<string, unknown>)),
+        withdrawals: (wds.data ?? [])
+          .map((r) => toWithdrawal(r as Record<string, unknown>))
+          .filter((w) => w.status === "approved"),
+        strategyPeriods: (pers.data ?? []).map((r) => toPeriod(r as Record<string, unknown>)),
       };
     },
   });
 
   const isSupervisedView = isSupervisor && supervisorUserFilter !== "mine";
-  const accounts = isSupervisedView ? (svData?.accounts ?? []) : journalStore.accounts;
-  const strategies = isSupervisedView ? (svData?.strategies ?? []) : journalStore.strategies;
-  const allTrades = isSupervisedView ? (svData?.trades ?? []) : journalStore.trades;
+  const accounts = useMemo(
+    () => (isSupervisedView ? (svData?.accounts ?? []) : journalStore.accounts),
+    [isSupervisedView, svData?.accounts, journalStore.accounts],
+  );
+  const strategies = useMemo(
+    () => (isSupervisedView ? (svData?.strategies ?? []) : journalStore.strategies),
+    [isSupervisedView, svData?.strategies, journalStore.strategies],
+  );
+  const allTrades = useMemo(
+    () => (isSupervisedView ? (svData?.trades ?? []) : journalStore.trades),
+    [isSupervisedView, svData?.trades, journalStore.trades],
+  );
   const visibleTrades = isSupervisedView ? allTrades : journalStore.visibleTrades;
-  const withdrawals = isSupervisedView ? (svData?.withdrawals ?? []) : journalStore.withdrawals;
-  const strategyPeriods = isSupervisedView ? (svData?.strategyPeriods ?? []) : journalStore.strategyPeriods;
-  const selectedAccountIds = isSupervisedView ? accounts.map((a) => a.id) : journalStore.selectedAccountIds;
+  const withdrawals = useMemo(
+    () => (isSupervisedView ? (svData?.withdrawals ?? []) : journalStore.withdrawals),
+    [isSupervisedView, svData?.withdrawals, journalStore.withdrawals],
+  );
+  const strategyPeriods = useMemo(
+    () => (isSupervisedView ? (svData?.strategyPeriods ?? []) : journalStore.strategyPeriods),
+    [isSupervisedView, svData?.strategyPeriods, journalStore.strategyPeriods],
+  );
+  const selectedAccountIds = useMemo(
+    () => (isSupervisedView ? accounts.map((a) => a.id) : journalStore.selectedAccountIds),
+    [isSupervisedView, accounts, journalStore.selectedAccountIds],
+  );
 
   const [range, setRange] = useState<RangeKey>("all");
   const [customRange, setCustomRange] = useState<DateRange>({ from: undefined, to: undefined });
@@ -232,7 +259,11 @@ function Overview() {
     [isStrategy, strategyAccounts, scopedAccounts],
   );
   const fusionEquity = useMemo(
-    () => fusionAccounts.reduce((sum, account) => sum + accountBalance(account, visibleTrades, withdrawals), 0),
+    () =>
+      fusionAccounts.reduce(
+        (sum, account) => sum + accountBalance(account, visibleTrades, withdrawals),
+        0,
+      ),
     [fusionAccounts, visibleTrades, withdrawals],
   );
 
@@ -307,7 +338,8 @@ function Overview() {
     (s, a) => s + accountResult(a, visibleTrades, withdrawals),
     0,
   );
-  // PnL del recuadro: si hay día seleccionado, estrategia o rango concreto → PnL de las operaciones filtradas.
+
+  // PnL del recuadro
   const fusionPnl =
     selectedCalendarDate || isStrategy || range !== "all"
       ? trades.reduce((s, t) => s + t.pnl, 0)
@@ -318,6 +350,7 @@ function Overview() {
     if (key === "real") return realEquity;
     return fundedEquity + realEquity;
   };
+
   const scopePnl = (key: Scope) => {
     if (selectedCalendarDate || isStrategy || range !== "all") {
       const relevantTrades = trades.filter((t) => {
@@ -336,266 +369,399 @@ function Overview() {
 
   return (
     <AppShell
-      title={
-        <span className="flex flex-wrap items-center gap-2 w-full">
-          <span>Resumen</span>
-          {(isSupervisor || isAdmin) && svProfiles.length > 0 && (
-            <select
-              value={supervisorUserFilter}
-              onChange={(e) => {
-                setSupervisorUserFilter(e.target.value);
-                setFilter("all");
-                setSelectedCalendarDate(null);
-              }}
-              className="h-7 rounded-md border border-brand/50 bg-card px-2 text-xs font-semibold text-brand"
-              aria-label="Ver resumen de usuario"
-            >
-              <option value="mine">👤 Mi diario personal</option>
-              <optgroup label="Usuarios registrados">
-                {svProfiles.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.display_name ?? `Usuario ${p.id.slice(0, 6)}`}
-                  </option>
-                ))}
-              </optgroup>
-            </select>
-          )}
-          <select
-            value={filter}
-            onChange={(e) => {
-              setFilter(e.target.value);
-              setSelectedCalendarDate(null);
-            }}
-            className="h-7 rounded-md border border-border bg-card px-2 text-xs font-semibold"
-            aria-label="Cuenta o estrategia"
-          >
-            <option value="all">Todo</option>
-            <optgroup label="Cuentas">
-              {accounts.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.name}
-                </option>
-              ))}
-            </optgroup>
-            <optgroup label="Estrategias">
-              {accountStrategies.map((s) => (
-                <option key={s.id} value={`strategy:${s.id}`}>
-                  Estrategia-{s.name}
-                </option>
-              ))}
-            </optgroup>
-          </select>
-          <div className="ml-auto flex flex-wrap gap-1 rounded-md border border-border p-1">
-            {RANGES.map((r) => (
-              <button
-                key={r.key}
-                onClick={() => {
-                  setRange(r.key);
-                  setSelectedCalendarDate(null);
-                }}
-                className={cn(
-                  "rounded px-2 py-1 text-xs font-semibold transition-colors",
-                  range === r.key && !selectedCalendarDate
-                    ? "bg-brand text-primary-foreground"
-                    : "text-muted-foreground hover:text-foreground",
-                )}
-              >
-                {r.label}
-              </button>
-            ))}
-            <Popover>
-              <PopoverTrigger asChild>
-                <button
-                  onClick={() => {
-                    setRange("custom");
-                    setSelectedCalendarDate(null);
-                  }}
-                  className={cn(
-                    "flex h-7 items-center gap-1 rounded px-2 text-xs font-semibold transition-colors",
-                    range === "custom" && !selectedCalendarDate
-                      ? "bg-brand text-primary-foreground"
-                      : "text-muted-foreground hover:text-foreground",
-                  )}
-                >
-                  <CalendarIcon className="h-3.5 w-3.5" />
-                  Fechas
-                  {(customRange.from || customRange.to) && (
-                    <span className="text-[10px]">
-                      {customRange.from ? format(customRange.from, "dd/MM") : "…"}–
-                      {customRange.to ? format(customRange.to, "dd/MM") : "…"}
-                    </span>
-                  )}
-                </button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <div className="p-3 pointer-events-auto">
-                  <Calendar
-                    mode="range"
-                    numberOfMonths={1}
-                    selected={
-                      customRange.from && customRange.to
-                        ? { from: customRange.from, to: customRange.to }
-                        : customRange.from
-                          ? { from: customRange.from }
-                          : undefined
-                    }
-                    onSelect={(sel) => {
-                      setSelectedCalendarDate(null);
-                      if (!sel) {
-                        setCustomRange({ from: undefined, to: undefined });
-                        return;
-                      }
-                      setCustomRange({ from: sel.from, to: "to" in sel ? sel.to : undefined });
-                    }}
-                  />
-                  <div className="flex items-center justify-between gap-2 px-1 pt-2">
-                    <span className="text-xs text-muted-foreground">
-                      {customRange.from
-                        ? format(customRange.from, "dd/MM/yyyy")
-                        : "Inicio"}
-                      {" → "}
-                      {customRange.to ? format(customRange.to, "dd/MM/yyyy") : "Fin"}
-                    </span>
-                    <button
-                      onClick={() => {
-                        setCustomRange({ from: undefined, to: undefined });
-                        setSelectedCalendarDate(null);
-                      }}
-                      className="text-xs font-semibold text-muted-foreground hover:text-foreground"
-                    >
-                      Limpiar
-                    </button>
-                  </div>
-                </div>
-              </PopoverContent>
-            </Popover>
-          </div>
-        </span>
-      }
+      title="Resumen"
       subtitle={
         selectedCalendarDate
           ? `Filtrado por día ${selectedCalendarDate.split("-").reverse().join("/")} · ${trades.length} operación(es) · PnL ${fusionPnl >= 0 ? "+" : "−"}${formatCurrency(Math.abs(fusionPnl), false)}`
           : isSupervisedView
             ? `Supervisando a ${svProfiles.find((p) => p.id === supervisorUserFilter)?.display_name ?? "usuario"} · ${accounts.length} cuenta(s) · Fondeo ${formatCurrency(fundedEquity)} · Real ${formatCurrency(realEquity)}`
-            : `${selectedAccounts.length} cuenta(s) · Fondeo ${formatCurrency(fundedEquity)} · Real ${formatCurrency(realEquity)}`
+            : `${selectedAccounts.length} cuenta(s) activas · Fondeo ${formatCurrency(fundedEquity)} · Real ${formatCurrency(realEquity)}`
+      }
+      actions={
+        <div className="flex items-center gap-2">
+          <TradeFormDialog />
+        </div>
       }
     >
-      <div className="space-y-5">
+      <div className="space-y-6">
+        {/* ========================================================================= */}
+        {/* BARRA SUPERIOR DE CONTROL Y FILTROS                                       */}
+        {/* ========================================================================= */}
+        <section className="panel p-3 bg-card shadow-xs">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            {/* Izquierda: Selectores de Entidad y Supervisor */}
+            <div className="flex flex-wrap items-center gap-2">
+              {(isSupervisor || isAdmin) && svProfiles.length > 0 && (
+                <div className="flex items-center gap-1.5 rounded-md border border-brand/50 bg-brand/5 px-2 py-1">
+                  <User className="size-3.5 text-brand" />
+                  <select
+                    value={supervisorUserFilter}
+                    onChange={(e) => {
+                      setSupervisorUserFilter(e.target.value);
+                      setFilter("all");
+                      setSelectedCalendarDate(null);
+                    }}
+                    className="bg-transparent text-xs font-bold text-brand focus:outline-none cursor-pointer"
+                    aria-label="Ver resumen de usuario"
+                  >
+                    <option value="mine">Mi diario personal</option>
+                    <optgroup label="Usuarios registrados">
+                      {svProfiles.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.display_name ?? `Usuario ${p.id.slice(0, 6)}`}
+                        </option>
+                      ))}
+                    </optgroup>
+                  </select>
+                </div>
+              )}
+
+              <div className="flex items-center gap-1.5 rounded-md border border-border bg-card px-2 py-1">
+                <Filter className="size-3.5 text-muted-foreground" />
+                <select
+                  value={filter}
+                  onChange={(e) => {
+                    setFilter(e.target.value);
+                    setSelectedCalendarDate(null);
+                  }}
+                  className="bg-transparent text-xs font-semibold text-foreground focus:outline-none cursor-pointer"
+                  aria-label="Cuenta o estrategia"
+                >
+                  <option value="all">🌐 Todas las cuentas</option>
+                  {accounts.filter((a) => a.type === "funded").length > 0 && (
+                    <optgroup label="🏢 Cuentas de Fondeo">
+                      {accounts
+                        .filter((a) => a.type === "funded")
+                        .map((a) => (
+                          <option key={a.id} value={a.id}>
+                            {a.name}
+                          </option>
+                        ))}
+                    </optgroup>
+                  )}
+                  {accounts.filter((a) => a.type !== "funded").length > 0 && (
+                    <optgroup label="👤 Cuentas Personales">
+                      {accounts
+                        .filter((a) => a.type !== "funded")
+                        .map((a) => (
+                          <option key={a.id} value={a.id}>
+                            {a.name}
+                          </option>
+                        ))}
+                    </optgroup>
+                  )}
+                  {accountStrategies.length > 0 && (
+                    <optgroup label="⚡ Estrategias">
+                      {accountStrategies.map((s) => (
+                        <option key={s.id} value={`strategy:${s.id}`}>
+                          Estrategia: {s.name}
+                        </option>
+                      ))}
+                    </optgroup>
+                  )}
+                </select>
+              </div>
+            </div>
+
+            {/* Derecha: Píldoras de Rango Temporal */}
+            <div className="flex flex-wrap items-center gap-1 rounded-md border border-border bg-muted/20 p-1">
+              {RANGES.map((r) => (
+                <button
+                  key={r.key}
+                  onClick={() => {
+                    setRange(r.key);
+                    setSelectedCalendarDate(null);
+                  }}
+                  className={cn(
+                    "rounded px-2.5 py-1 text-xs font-semibold transition-all cursor-pointer",
+                    range === r.key && !selectedCalendarDate
+                      ? "bg-foreground text-background shadow-xs font-bold"
+                      : "text-muted-foreground hover:text-foreground hover:bg-accent/50",
+                  )}
+                >
+                  {r.label}
+                </button>
+              ))}
+
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button
+                    onClick={() => {
+                      setRange("custom");
+                      setSelectedCalendarDate(null);
+                    }}
+                    className={cn(
+                      "flex items-center gap-1 rounded px-2.5 py-1 text-xs font-semibold transition-all cursor-pointer",
+                      range === "custom" && !selectedCalendarDate
+                        ? "bg-foreground text-background shadow-xs font-bold"
+                        : "text-muted-foreground hover:text-foreground hover:bg-accent/50",
+                    )}
+                  >
+                    <CalendarIcon className="size-3.5" />
+                    Fechas
+                    {(customRange.from || customRange.to) && (
+                      <span className="text-[10px] font-mono">
+                        {customRange.from ? format(customRange.from, "dd/MM") : "…"}–
+                        {customRange.to ? format(customRange.to, "dd/MM") : "…"}
+                      </span>
+                    )}
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="end">
+                  <div className="p-3 pointer-events-auto">
+                    <Calendar
+                      mode="range"
+                      numberOfMonths={1}
+                      selected={
+                        customRange.from && customRange.to
+                          ? { from: customRange.from, to: customRange.to }
+                          : customRange.from
+                            ? { from: customRange.from }
+                            : undefined
+                      }
+                      onSelect={(sel) => {
+                        setSelectedCalendarDate(null);
+                        if (!sel) {
+                          setCustomRange({ from: undefined, to: undefined });
+                          return;
+                        }
+                        setCustomRange({ from: sel.from, to: "to" in sel ? sel.to : undefined });
+                      }}
+                    />
+                    <div className="flex items-center justify-between gap-2 px-1 pt-2 border-t border-border mt-2">
+                      <span className="text-xs text-muted-foreground">
+                        {customRange.from ? format(customRange.from, "dd/MM/yyyy") : "Inicio"}
+                        {" → "}
+                        {customRange.to ? format(customRange.to, "dd/MM/yyyy") : "Fin"}
+                      </span>
+                      <button
+                        onClick={() => {
+                          setCustomRange({ from: undefined, to: undefined });
+                          setSelectedCalendarDate(null);
+                        }}
+                        className="text-xs font-bold text-brand hover:underline cursor-pointer"
+                      >
+                        Limpiar
+                      </button>
+                    </div>
+                  </div>
+                </PopoverContent>
+              </Popover>
+            </div>
+          </div>
+        </section>
+
+        {/* Banner interactivo de día filtrado por el calendario */}
         {selectedCalendarDate && (
-          <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-brand/50 bg-brand/10 p-3 text-xs">
-            <div className="flex items-center gap-2">
-              <span className="font-semibold text-brand">
-                📅 Mostrando exclusivamente el día {selectedCalendarDate.split("-").reverse().join("/")}
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-brand/60 bg-brand/10 p-3.5 text-xs shadow-xs animate-in fade-in slide-in-from-top-1">
+            <div className="flex items-center gap-2.5">
+              <span className="flex size-7 items-center justify-center rounded-full bg-brand text-primary-foreground font-bold">
+                📅
               </span>
-              <span className="text-muted-foreground">
-                ({trades.length} operación{trades.length === 1 ? "" : "es"} · PnL del día:{" "}
-                <strong className={fusionPnl >= 0 ? "text-profit" : "text-loss"}>
-                  {fusionPnl >= 0 ? "+" : "−"}{formatCurrency(Math.abs(fusionPnl), false)}
-                </strong>)
-              </span>
+              <div>
+                <p className="font-bold text-foreground text-sm">
+                  Mostrando exclusivamente el día{" "}
+                  {selectedCalendarDate.split("-").reverse().join("/")}
+                </p>
+                <p className="text-muted-foreground text-[11px] mt-0.5">
+                  {trades.length} operación{trades.length === 1 ? "" : "es"} registradas · PnL neto
+                  del día:{" "}
+                  <strong
+                    className={cn("num font-bold", fusionPnl >= 0 ? "text-profit" : "text-loss")}
+                  >
+                    {fusionPnl >= 0 ? "+" : "−"}
+                    {formatCurrency(Math.abs(fusionPnl), false)}
+                  </strong>
+                </p>
+              </div>
             </div>
             <button
               onClick={() => setSelectedCalendarDate(null)}
-              className="inline-flex items-center gap-1 rounded bg-card px-2.5 py-1 font-semibold text-foreground border border-border hover:bg-accent transition-colors"
+              className="inline-flex items-center gap-1.5 rounded-md bg-card px-3 py-1.5 font-bold text-foreground border border-border hover:bg-accent hover:border-foreground/40 transition-all cursor-pointer shadow-xs"
             >
-              <X className="size-3" />
+              <X className="size-3.5" />
               Ver periodo completo
             </button>
           </div>
         )}
 
+        {/* Alertas de Disciplina y Riesgo */}
         <RiskAlerts />
+
+        {/* ========================================================================= */}
+        {/* BLOQUE 1: RESUMEN DE CAPITAL Y ESTADO DE CUENTAS                          */}
+        {/* ========================================================================= */}
         {accountFilter === "all" && !isStrategy ? (
           <section className="grid gap-3 sm:grid-cols-3">
             {SCOPES.map((s) => {
               const pnl = scopePnl(s.key);
+              const Icon = s.icon;
+              const isSelectedScope = scope === s.key;
+              const count =
+                s.key === "funded"
+                  ? fundedAccounts.length
+                  : s.key === "real"
+                    ? realAccounts.length
+                    : selectedAccounts.length;
+
               return (
                 <button
                   key={s.key}
                   onClick={() => setScope(s.key)}
                   className={cn(
-                    "panel p-4 text-left transition-colors",
-                    scope === s.key
-                      ? "border-brand bg-brand/10"
-                      : "hover:border-foreground/30",
+                    "panel p-4 text-left transition-all cursor-pointer relative overflow-hidden group",
+                    isSelectedScope
+                      ? "border-brand bg-brand/10 ring-1 ring-brand shadow-xs"
+                      : "hover:border-foreground/30 hover:bg-accent/30",
                   )}
                 >
-                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                    {s.label}
-                  </p>
-                  <p className="num mt-1 text-lg font-semibold">
+                  <div className="flex items-center justify-between">
+                    <span className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                      <Icon
+                        className={cn(
+                          "size-4",
+                          isSelectedScope ? "text-brand" : "text-muted-foreground",
+                        )}
+                      />
+                      {s.label}
+                    </span>
+                    <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
+                      {count} {count === 1 ? "cuenta" : "cuentas"}
+                    </span>
+                  </div>
+
+                  <p className="num mt-2 text-2xl font-black tracking-tight text-foreground">
                     {formatCurrency(scopeValue(s.key))}
                   </p>
-                  <p
-                    className={cn(
-                      "num mt-1 text-sm font-semibold tabular-nums",
-                      pnl >= 0 ? "text-profit" : "text-loss",
-                    )}
-                  >
-                    {pnl >= 0 ? "+" : "−"} {formatCurrency(Math.abs(pnl), false)}
-                  </p>
+
+                  <div className="mt-2 flex items-center justify-between border-t border-border/50 pt-2 text-xs">
+                    <span className="text-muted-foreground text-[11px]">Resultado periodo:</span>
+                    <span
+                      className={cn(
+                        "num font-bold tabular-nums",
+                        pnl >= 0 ? "text-profit" : "text-loss",
+                      )}
+                    >
+                      {pnl >= 0 ? "+" : "−"} {formatCurrency(Math.abs(pnl), false)}
+                    </span>
+                  </div>
                 </button>
               );
             })}
           </section>
         ) : (
-          <section className="panel p-4">
-            <div className="flex items-center justify-between gap-2">
-              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                {isStrategy ? "Estrategia" : "Cuenta"}
-              </p>
-              {fundedTarget && (
-                <span
+          <section className="panel p-4 bg-card shadow-xs">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-3">
+              <div className="flex items-center gap-2">
+                {isStrategy ? (
+                  <span
+                    className="size-3.5 rounded-full"
+                    style={{
+                      backgroundColor:
+                        strategies.find((s) => s.id === strategyFilter)?.color ??
+                        "var(--color-brand)",
+                    }}
+                  />
+                ) : (
+                  <Building2 className="size-4 text-brand" />
+                )}
+                <div>
+                  <h2 className="text-lg font-bold font-display tracking-wide uppercase leading-none">
+                    {isStrategy
+                      ? `Estrategia: ${strategies.find((s) => s.id === strategyFilter)?.name ?? "Estrategia"}`
+                      : (accounts.find((a) => a.id === accountFilter)?.name ?? "Cuenta")}
+                  </h2>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {isStrategy
+                      ? "Rendimiento agrupado por estrategia"
+                      : "Supervisión detallada de cuenta"}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                {fundedTarget && (
+                  <span
+                    className={cn(
+                      "rounded-full px-2.5 py-0.5 text-xs font-bold uppercase tracking-wider",
+                      fundedTarget.phase === "live"
+                        ? "bg-profit/15 text-profit border border-profit/30"
+                        : "bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30",
+                    )}
+                  >
+                    {fundedTarget.phase === "live" ? "Fondeada / Live" : "Fase de Evaluación"}
+                  </span>
+                )}
+                <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs font-semibold text-muted-foreground">
+                  {isStrategy
+                    ? "Estrategia"
+                    : accounts.find((a) => a.id === accountFilter)?.type === "funded"
+                      ? "Fondeo"
+                      : "Personal"}
+                </span>
+              </div>
+            </div>
+
+            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Capital Actual
+                </p>
+                <p className="num text-3xl font-black text-foreground mt-1">
+                  {formatCurrency(fusionEquity)}
+                </p>
+              </div>
+
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Resultado en Periodo
+                </p>
+                <p
                   className={cn(
-                    "rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider",
-                    fundedTarget.phase === "live"
-                      ? "bg-profit/15 text-profit"
-                      : "bg-amber-500/15 text-amber-600 dark:text-amber-400",
+                    "num text-2xl font-black tabular-nums mt-1",
+                    fusionPnl >= 0 ? "text-profit" : "text-loss",
                   )}
                 >
-                  {fundedTarget.phase === "live" ? "Live" : "Eval"}
-                </span>
-              )}
+                  {fusionPnl >= 0 ? "+" : "−"} {formatCurrency(Math.abs(fusionPnl), false)}
+                </p>
+              </div>
             </div>
-            <p className="num mt-1 text-lg font-semibold">
-              {formatCurrency(fusionEquity)}
-            </p>
-            <p
-              className={cn(
-                "num mt-1 text-sm font-semibold tabular-nums",
-                fusionPnl >= 0 ? "text-profit" : "text-loss",
-              )}
-            >
-              {fusionPnl >= 0 ? "+" : "−"} {formatCurrency(Math.abs(fusionPnl), false)}
-            </p>
+
             {fundedTarget && (
-              <div className="mt-3 border-t border-border pt-3">
+              <div className="mt-4 border-t border-border pt-3">
                 <div className="flex items-baseline justify-between text-xs">
-                  <span className="font-semibold text-muted-foreground">{fundedTarget.label}</span>
-                  <span className="num font-bold">{fundedTarget.pct.toFixed(0)}%</span>
+                  <span className="font-semibold text-foreground">{fundedTarget.label}</span>
+                  <span className="num font-bold text-sm">{fundedTarget.pct.toFixed(0)}%</span>
                 </div>
                 <div className="mt-2 h-2.5 overflow-hidden rounded-full bg-muted">
                   <div
-                    className={cn("h-full", fundedTarget.reached ? "bg-profit" : "bg-amber-500")}
+                    className={cn(
+                      "h-full transition-all duration-500",
+                      fundedTarget.reached ? "bg-profit" : "bg-amber-500",
+                    )}
                     style={{ width: `${Math.min(100, fundedTarget.pct)}%` }}
                   />
                 </div>
                 <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
                   <span>
                     {fundedTarget.reached ? (
-                      <span className="font-semibold text-profit">
-                        {fundedTarget.phase === "live" ? "Listo para retirar" : "Evaluación superada"}
+                      <span className="font-bold text-profit">
+                        ✓{" "}
+                        {fundedTarget.phase === "live"
+                          ? "Listo para solicitar retiro"
+                          : "Objetivo superado"}
                       </span>
                     ) : (
                       <>
                         Faltan{" "}
-                        <span className="num font-semibold text-foreground">
+                        <span className="num font-bold text-foreground">
                           {formatCurrency(fundedTarget.remaining)}
-                        </span>
+                        </span>{" "}
+                        para meta
                       </>
                     )}
                   </span>
-                  <span className="num">
+                  <span className="num font-medium">
                     {formatCurrency(fundedTarget.balance)} / {formatCurrency(fundedTarget.target)}
                   </span>
                 </div>
@@ -603,96 +769,120 @@ function Overview() {
             )}
           </section>
         )}
-        <PerformanceAnalysis trades={trades} />
-        <EmotionHighlights trades={trades} />
 
-        <section className="panel p-4">
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <h2 className="text-xl leading-none">
-                Curva de capital{" "}
-                <span className="text-sm font-medium text-muted-foreground">
-                  ·{" "}
+        {/* ========================================================================= */}
+        {/* BLOQUE 2: ANÁLISIS DE RENDIMIENTO Y CALIDAD DE TRADING                     */}
+        {/* ========================================================================= */}
+        <section className="space-y-2">
+          <div className="flex items-center justify-between">
+            <h2 className="text-base font-bold font-display uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+              <Sparkles className="size-4 text-brand" /> Calidad y Métricas de Rendimiento
+            </h2>
+            <span className="text-xs text-muted-foreground">
+              {trades.length} operación{trades.length === 1 ? "" : "es"} evaluadas
+            </span>
+          </div>
+          <PerformanceAnalysis trades={trades} />
+        </section>
+
+        {/* ========================================================================= */}
+        {/* BLOQUE 3: EVOLUCIÓN TEMPORAL - CURVA DE CAPITAL Y MATRIZ PNL               */}
+        {/* ========================================================================= */}
+        <div className="space-y-5">
+          {/* 3.1 Curva de Capital */}
+          <section className="panel p-4 bg-card shadow-xs">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-border/50 pb-3">
+              <div>
+                <h2 className="text-xl font-display uppercase tracking-wide leading-none">
+                  Curva de capital{" "}
+                  <span className="text-sm font-medium text-muted-foreground font-sans lowercase">
+                    ·{" "}
+                    {selectedCalendarDate
+                      ? `día ${selectedCalendarDate.split("-").reverse().join("/")}`
+                      : scope === "funded"
+                        ? "fondeo"
+                        : scope === "real"
+                          ? "personal"
+                          : "consolidado"}
+                  </span>
+                </h2>
+                <p className="text-xs text-muted-foreground mt-0.5">
                   {selectedCalendarDate
-                    ? `Día ${selectedCalendarDate.split("-").reverse().join("/")}`
-                    : scope === "funded"
-                      ? "Fondeo"
-                      : scope === "real"
-                        ? "Real"
-                        : "Total"}
+                    ? `Evolución intradía del día ${selectedCalendarDate.split("-").reverse().join("/")}`
+                    : "Evolución cronológica del balance de cuentas"}
+                </p>
+              </div>
+
+              {/* Etiqueta de balance actual */}
+              <div className="flex items-center">
+                <span className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1 text-xs font-semibold text-foreground shadow-xs">
+                  {isStrategy ? (
+                    <>
+                      <span
+                        className="size-2 rounded-full"
+                        style={{
+                          backgroundColor:
+                            strategies.find((s) => s.id === strategyFilter)?.color ??
+                            "var(--color-brand)",
+                        }}
+                      />
+                      <span>
+                        {strategies.find((s) => s.id === strategyFilter)?.name ?? "Estrategia"}
+                      </span>
+                    </>
+                  ) : accountFilter !== "all" ? (
+                    <>
+                      <Building2 className="size-3.5 text-muted-foreground" />
+                      <span>{accounts.find((a) => a.id === accountFilter)?.name ?? "Cuenta"}</span>
+                    </>
+                  ) : (
+                    <>
+                      <Layers className="size-3.5 text-muted-foreground" />
+                      <span>
+                        {scope === "funded" ? "Fondeo" : scope === "real" ? "Personal" : "Total"}
+                      </span>
+                    </>
+                  )}
+                  <span className="text-muted-foreground">·</span>
+                  <span className="num font-black text-foreground">
+                    {formatCurrency(fusionEquity)}
+                  </span>
                 </span>
+              </div>
+            </div>
+
+            <EquityChart data={curve} />
+          </section>
+
+          {/* 3.2 Matriz Diaria PnL */}
+          <PnlCalendar
+            trades={calendarTrades}
+            selectedDate={selectedCalendarDate}
+            onSelectDate={setSelectedCalendarDate}
+          />
+        </div>
+
+        {/* ========================================================================= */}
+        {/* BLOQUE 4: REGISTRO DE OPERACIONES DEL PERIODO                             */}
+        {/* ========================================================================= */}
+        <section className="space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border pb-2">
+            <div>
+              <h2 className="text-lg font-display uppercase tracking-wide font-bold">
+                {selectedCalendarDate
+                  ? `Operaciones del día ${selectedCalendarDate.split("-").reverse().join("/")}`
+                  : "Registro de Operaciones del Periodo"}
               </h2>
               <p className="text-xs text-muted-foreground">
-                {selectedCalendarDate
-                  ? `Evolución intradía del día ${selectedCalendarDate.split("-").reverse().join("/")}`
-                  : "Consolidada de las cuentas activas"}
+                {trades.length} operación{trades.length === 1 ? "" : "es"} listadas
               </p>
             </div>
 
-            {/* Única etiqueta con el nombre y el capital actual */}
-            <div className="flex items-center">
-              {isStrategy ? (
-                <span className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1 text-xs font-semibold text-foreground shadow-xs">
-                  <span
-                    className="size-2 rounded-full"
-                    style={{
-                      backgroundColor:
-                        strategies.find((s) => s.id === strategyFilter)?.color ?? "var(--color-brand)",
-                    }}
-                  />
-                  <span>{strategies.find((s) => s.id === strategyFilter)?.name ?? "Estrategia"}</span>
-                  <span className="text-muted-foreground">·</span>
-                  <span className="num font-bold text-foreground">{formatCurrency(fusionEquity)}</span>
-                </span>
-              ) : accountFilter !== "all" ? (
-                (() => {
-                  const acc = accounts.find((a) => a.id === accountFilter);
-                  const currentCap = acc ? accountBalance(acc, visibleTrades, withdrawals) : 0;
-                  return (
-                    <span className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1 text-xs font-semibold text-foreground shadow-xs">
-                      <Building2 className="size-3.5 text-muted-foreground" />
-                      <span>{acc?.name ?? "Cuenta"}</span>
-                      <span className="text-muted-foreground">·</span>
-                      <span className="num font-bold text-foreground">{formatCurrency(currentCap)}</span>
-                    </span>
-                  );
-                })()
-              ) : (
-                <span className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1 text-xs font-semibold text-foreground shadow-xs">
-                  <span>
-                    {scope === "funded"
-                      ? "Cuentas de Fondeo"
-                      : scope === "real"
-                        ? "Cuentas Personales"
-                        : "Todas las cuentas"}
-                  </span>
-                  <span className="text-muted-foreground">·</span>
-                  <span className="num font-bold text-foreground">{formatCurrency(fusionEquity)}</span>
-                </span>
-              )}
-            </div>
-          </div>
-          <EquityChart data={curve} />
-        </section>
-
-        <PnlCalendar
-          trades={calendarTrades}
-          selectedDate={selectedCalendarDate}
-          onSelectDate={setSelectedCalendarDate}
-        />
-
-        <section className="space-y-3">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <h2 className="text-base font-semibold">
-              {selectedCalendarDate
-                ? `Operaciones del día ${selectedCalendarDate.split("-").reverse().join("/")} (${trades.length})`
-                : `Operaciones (${trades.length})`}
-            </h2>
             <div className="flex items-center gap-2">
               {selectedCalendarDate ? (
                 <button
                   onClick={() => setSelectedCalendarDate(null)}
-                  className="text-xs font-semibold text-brand hover:underline"
+                  className="text-xs font-bold text-brand hover:underline cursor-pointer"
                 >
                   Ver todas las fechas
                 </button>
@@ -700,7 +890,7 @@ function Overview() {
                 <button
                   type="button"
                   onClick={() => setShowAllTrades(!showAllTrades)}
-                  className="text-xs font-semibold text-brand hover:underline cursor-pointer"
+                  className="text-xs font-bold text-brand hover:underline cursor-pointer"
                 >
                   {showAllTrades
                     ? "Mostrar solo las 15 más recientes"
@@ -709,6 +899,7 @@ function Overview() {
               ) : null}
             </div>
           </div>
+
           <TradesTable
             trades={trades}
             accounts={accounts}

@@ -1,12 +1,12 @@
 import { useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight, X } from "lucide-react";
+import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, X } from "lucide-react";
 import { pnlByDay } from "@/lib/emotion-metrics";
 import { todayKey } from "@/lib/emotions";
 import { formatCurrency } from "@/lib/metrics";
 import type { Trade } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
-const WEEKDAYS = ["L", "M", "X", "J", "V", "S", "D"];
+const WEEKDAYS = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
 
 export function PnlCalendar({
   trades,
@@ -61,13 +61,17 @@ export function PnlCalendar({
 
   return (
     <section className="panel space-y-3 p-4">
+      {/* Header del Calendario */}
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <h2 className="text-xl leading-none capitalize">
-            {cursor.toLocaleDateString("es-ES", { month: "long", year: "numeric" })}
-          </h2>
+          <div className="flex items-center gap-1.5">
+            <CalendarIcon className="size-4 text-brand" />
+            <h2 className="text-xl font-display uppercase tracking-wide capitalize leading-none">
+              {cursor.toLocaleDateString("es-ES", { month: "long", year: "numeric" })}
+            </h2>
+          </div>
           {selectedDate && (
-            <div className="flex items-center gap-1.5 rounded-full bg-brand/15 border border-brand/40 px-2.5 py-0.5 text-xs text-brand font-semibold">
+            <div className="flex items-center gap-1.5 rounded-full bg-brand/15 border border-brand/40 px-2.5 py-0.5 text-xs text-brand font-semibold animate-pulse">
               <span>Día: {selectedDate.split("-").reverse().join("/")}</span>
               <button
                 type="button"
@@ -81,49 +85,52 @@ export function PnlCalendar({
             </div>
           )}
         </div>
+
         <div className="flex items-center gap-2">
           <span
             className={cn(
-              "num text-sm font-semibold",
+              "num text-sm font-bold px-2 py-0.5 rounded-md border",
               summary.net > 0
-                ? "text-profit"
+                ? "text-profit bg-profit/10 border-profit/30"
                 : summary.net < 0
-                  ? "text-loss"
-                  : "text-muted-foreground",
+                  ? "text-loss bg-loss/10 border-loss/30"
+                  : "text-muted-foreground bg-muted/40 border-border",
             )}
           >
+            {summary.net > 0 ? "+" : ""}
             {formatCurrency(summary.net, true)}
           </span>
-          <button
-            type="button"
-            aria-label="Mes anterior"
-            className="rounded border border-border p-1"
-            onClick={() => setCursor(new Date(year, month - 1, 1))}
-          >
-            <ChevronLeft className="size-4" />
-          </button>
-          <button
-            type="button"
-            aria-label="Mes siguiente"
-            className="rounded border border-border p-1"
-            onClick={() => setCursor(new Date(year, month + 1, 1))}
-          >
-            <ChevronRight className="size-4" />
-          </button>
+          <div className="flex items-center rounded-md border border-border bg-card">
+            <button
+              type="button"
+              aria-label="Mes anterior"
+              className="p-1 hover:bg-accent rounded-l text-muted-foreground hover:text-foreground transition-colors"
+              onClick={() => setCursor(new Date(year, month - 1, 1))}
+            >
+              <ChevronLeft className="size-4" />
+            </button>
+            <button
+              type="button"
+              aria-label="Mes siguiente"
+              className="p-1 hover:bg-accent rounded-r text-muted-foreground hover:text-foreground transition-colors"
+              onClick={() => setCursor(new Date(year, month + 1, 1))}
+            >
+              <ChevronRight className="size-4" />
+            </button>
+          </div>
         </div>
       </div>
 
+      {/* Días de la semana */}
       <div
-        className="grid gap-1 text-center text-[10px] font-semibold uppercase text-muted-foreground"
+        className="grid gap-1 text-center text-[10px] font-bold uppercase tracking-wider text-muted-foreground"
         style={{ gridTemplateColumns: "1.35fr 1.35fr 1.35fr 1.35fr 1.35fr 0.65fr 0.65fr" }}
       >
         {WEEKDAYS.map((d, idx) => (
           <span
             key={d}
             className={cn(
-              idx >= 5
-                ? "text-[9px] text-muted-foreground/45 tracking-tight font-normal"
-                : "font-bold text-foreground/80",
+              idx >= 5 ? "text-[9px] text-muted-foreground/40 font-normal" : "text-foreground/75",
             )}
           >
             {d}
@@ -131,6 +138,7 @@ export function PnlCalendar({
         ))}
       </div>
 
+      {/* Cuadrícula de Días */}
       <div
         className="grid gap-1"
         style={{ gridTemplateColumns: "1.35fr 1.35fr 1.35fr 1.35fr 1.35fr 0.65fr 0.65fr" }}
@@ -142,8 +150,8 @@ export function PnlCalendar({
               <span
                 key={`e${i}`}
                 className={cn(
-                  "rounded-md min-h-14",
-                  isWeekend && "bg-muted/10 border border-dashed border-border/20 opacity-30",
+                  "rounded min-h-13",
+                  isWeekend && "bg-muted/10 border border-dashed border-border/20 opacity-20",
                 )}
               />
             );
@@ -165,42 +173,44 @@ export function PnlCalendar({
               }}
               title={
                 entry
-                  ? `${formatCurrency(pnl, true)} · ${entry.trades} operación(es) (Click para filtrar este día)`
+                  ? `${formatCurrency(pnl, true)} · ${entry.trades} operación(es) (Clic para filtrar este día)`
                   : isWeekend
                     ? `Fin de semana (${day}) · Sin operaciones`
-                    : "Sin operaciones (Click para filtrar este día)"
+                    : "Sin operaciones (Clic para filtrar este día)"
               }
               className={cn(
-                "flex min-h-14 flex-col items-center justify-center rounded-md border p-1 text-[10px] transition-all relative text-left w-full",
-                onSelectDate ? "cursor-pointer hover:border-foreground/40 hover:shadow-xs" : "",
-                isWeekend && !entry && !isSelected && "bg-muted/20 border-dashed border-border/40 opacity-50 hover:opacity-90",
+                "flex min-h-13 flex-col items-center justify-center rounded border p-1 text-[10px] transition-all relative text-left w-full",
+                onSelectDate ? "cursor-pointer hover:border-foreground/50 hover:shadow-xs" : "",
+                isWeekend &&
+                  !entry &&
+                  !isSelected &&
+                  "bg-muted/15 border-dashed border-border/35 opacity-40 hover:opacity-85",
                 isSelected
-                  ? "border-brand ring-2 ring-brand bg-brand/15 shadow-sm scale-[1.03] z-10 font-bold opacity-100"
+                  ? "border-brand ring-2 ring-brand bg-brand/15 shadow-sm scale-[1.02] z-10 font-bold opacity-100"
                   : isToday
                     ? "border-brand/70"
-                    : "border-border",
-                entry && pnl > 0 && !isSelected && "bg-profit/10 opacity-100",
-                entry && pnl < 0 && !isSelected && "bg-loss/10 opacity-100",
+                    : "border-border/80",
+                entry && pnl > 0 && !isSelected && "bg-profit/10 hover:bg-profit/15 opacity-100",
+                entry && pnl < 0 && !isSelected && "bg-loss/10 hover:bg-loss/15 opacity-100",
               )}
             >
               <div className="flex w-full items-center justify-between px-0.5">
                 <span
                   className={cn(
-                    isWeekend ? "text-[9px] text-muted-foreground/60" : "text-muted-foreground",
+                    "font-mono text-[10px]",
+                    isWeekend ? "text-muted-foreground/60" : "text-muted-foreground",
                     isSelected && "font-bold text-foreground",
                   )}
                 >
                   {day}
                 </span>
-                {isSelected && (
-                  <span className="size-1.5 rounded-full bg-brand" />
-                )}
+                {isSelected && <span className="size-1.5 rounded-full bg-brand" />}
               </div>
               {entry ? (
                 <>
                   <span
                     className={cn(
-                      "num font-semibold leading-none mt-0.5",
+                      "num font-black leading-none mt-0.5",
                       isWeekend ? "text-xs" : "text-sm",
                       pnl > 0 ? "text-profit" : pnl < 0 ? "text-loss" : "text-muted-foreground",
                     )}
@@ -208,10 +218,17 @@ export function PnlCalendar({
                     {pnl > 0 ? "+" : ""}
                     {Math.round(pnl)}
                   </span>
-                  <span className="text-muted-foreground text-[8px] md:text-[9px] mt-0.5">{entry.trades} op.</span>
+                  <span className="text-muted-foreground text-[8px] md:text-[9px] mt-0.5 font-medium">
+                    {entry.trades} op.
+                  </span>
                 </>
               ) : (
-                <span className={cn("text-muted-foreground", isWeekend ? "text-[9px] opacity-35" : "mt-1")}>
+                <span
+                  className={cn(
+                    "text-muted-foreground",
+                    isWeekend ? "text-[8px] opacity-30" : "mt-0.5",
+                  )}
+                >
                   {isWeekend ? "—" : "·"}
                 </span>
               )}
@@ -220,12 +237,15 @@ export function PnlCalendar({
         })}
       </div>
 
+      {/* Resumen del mes inferior */}
       <div className="grid grid-cols-2 gap-2 border-t border-border pt-3 text-xs sm:grid-cols-5">
         <div>
-          <p className="text-muted-foreground">Neto</p>
+          <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+            Neto Mes
+          </p>
           <p
             className={cn(
-              "num font-semibold",
+              "num text-sm font-bold",
               summary.net > 0 ? "text-profit" : summary.net < 0 ? "text-loss" : "",
             )}
           >
@@ -233,24 +253,32 @@ export function PnlCalendar({
           </p>
         </div>
         <div>
-          <p className="text-muted-foreground">Operaciones</p>
-          <p className="num font-semibold">{summary.ops}</p>
+          <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+            Operaciones
+          </p>
+          <p className="num text-sm font-bold">{summary.ops}</p>
         </div>
         <div>
-          <p className="text-muted-foreground">Días +/−</p>
-          <p className="num font-semibold">
+          <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+            Días +/−
+          </p>
+          <p className="num text-sm font-bold">
             <span className="text-profit">{summary.winDays}</span>
             {" / "}
             <span className="text-loss">{summary.lossDays}</span>
           </p>
         </div>
         <div>
-          <p className="text-muted-foreground">Mejor día</p>
-          <p className="num font-semibold text-profit">{formatCurrency(summary.best, true)}</p>
+          <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+            Mejor día
+          </p>
+          <p className="num text-sm font-bold text-profit">{formatCurrency(summary.best, true)}</p>
         </div>
         <div>
-          <p className="text-muted-foreground">Peor día</p>
-          <p className="num font-semibold text-loss">{formatCurrency(summary.worst, true)}</p>
+          <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+            Peor día
+          </p>
+          <p className="num text-sm font-bold text-loss">{formatCurrency(summary.worst, true)}</p>
         </div>
       </div>
     </section>

@@ -50,7 +50,11 @@ export function EquityChart({
               fontSize: 12,
               boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
             }}
-            labelStyle={{ color: "var(--color-muted-foreground)", fontWeight: 600, marginBottom: 4 }}
+            labelStyle={{
+              color: "var(--color-muted-foreground)",
+              fontWeight: 600,
+              marginBottom: 4,
+            }}
             formatter={(v: number, name: string) => {
               const formatted = `$${Number(v).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
               if (name === "drawdownFloor" || name === "Límite Drawdown") {
