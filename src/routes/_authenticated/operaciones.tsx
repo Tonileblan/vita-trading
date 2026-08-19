@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import {
+  AlertTriangle,
   ArrowUpDown,
   History as HistoryIcon,
   List as ListIcon,
@@ -51,13 +52,23 @@ export const Route = createFileRoute("/_authenticated/operaciones")({
 });
 
 type Pending =
-  | { kind: "trades"; ids: string[]; label: string }
-  | { kind: "batch"; id: string; label: string };
+  { kind: "trades"; ids: string[]; label: string } | { kind: "batch"; id: string; label: string };
 
 function TradesPage() {
-  const { visibleTrades, accounts, strategies, strategyPeriods, importBatches, removeTrades, removeImportBatch } =
-    useJournal();
+  const {
+    trades,
+    visibleTrades,
+    accounts,
+    strategies,
+    strategyPeriods,
+    importBatches,
+    removeTrades,
+    removeImportBatch,
+    selectedAccountIds,
+    selectAll,
+  } = useJournal();
   const [query, setQuery] = useState("");
+  const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
   const [selectedStrategyId, setSelectedStrategyId] = useState<string | null>(null);
   const [selected, setSelected] = useState<string[]>([]);
   const [pending, setPending] = useState<Pending | null>(null);
@@ -67,9 +78,13 @@ function TradesPage() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(50);
 
+  const baseTrades = selectedAccountId
+    ? trades.filter((t) => t.accountId === selectedAccountId)
+    : visibleTrades;
+
   const filtered = useMemo(
     () =>
-      visibleTrades
+      baseTrades
         .filter((t) => {
           // Filtro por estrategia (usa effectiveStrategyId para coincidir con la estrategia directa, de tramo o de cuenta)
           if (selectedStrategyId) {
@@ -104,7 +119,7 @@ function TradesPage() {
           const bDate = b.openedAt || b.closedAt || "";
           return bDate.localeCompare(aDate);
         }),
-    [visibleTrades, accounts, strategyPeriods, query, selectedStrategyId, sortBy],
+    [baseTrades, accounts, strategyPeriods, query, selectedStrategyId, sortBy],
   );
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
@@ -249,82 +264,64 @@ function TradesPage() {
         {/* TAB 1: OPERACIONES */}
         {tab === "operaciones" && (
           <div className="space-y-4">
-            {/* Filter Toolbar */}
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="flex flex-wrap items-center gap-2.5 flex-1 min-w-[280px]">
-                <div className="relative flex-1 max-w-sm">
-                  <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    className="pl-9 h-9 text-xs"
-                    placeholder="Buscar activo (NQ, EURUSD, BTC…)"
-                    value={query}
-                    onChange={(e) => setQuery(e.target.value)}
-                  />
+            {/* Banner informativo de filtro lateral activo */}
+            {selectedAccountIds.length < accounts.length && !selectedAccountId && (
+              <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-2.5 text-xs text-amber-200">
+                <div className="flex items-center gap-2">
+                  <AlertTriangle className="size-4 shrink-0 text-amber-400" />
+                  <span>
+                    Filtro lateral activo: se muestran solo {visibleTrades.length} operaciones de{" "}
+                    {selectedAccountIds.length} de {accounts.length} cuentas.
+                  </span>
                 </div>
                 <Button
                   size="sm"
                   variant="outline"
-                  className="h-9 gap-1.5 text-xs"
-                  onClick={() => setSortBy((s) => (s === "created" ? "closed" : "created"))}
+                  className="h-7 text-xs border-amber-500/40 text-amber-100 hover:bg-amber-500/20"
+                  onClick={selectAll}
                 >
-                  <ArrowUpDown className="size-3.5" />
-                  {sortBy === "closed" ? "Orden: Fecha Apertura" : "Orden: Creación/Registro"}
+                  Mostrar todas las cuentas
                 </Button>
               </div>
+            )}
 
-              {/* Strategy Pills */}
-              {strategies.length > 0 && (
-                <div className="flex flex-wrap items-center gap-1.5">
+            {/* Filter Toolbar */}
+            <div className="space-y-2.5">
+              {/* Selector de Cuentas */}
+              {accounts.length > 1 && (
+                <div className="flex flex-wrap items-center gap-1.5 pb-1">
+                  <span className="text-xs font-semibold text-muted-foreground mr-1">Cuenta:</span>
                   <button
                     type="button"
-                    onClick={() => setSelectedStrategyId(null)}
+                    onClick={() => {
+                      setSelectedAccountId(null);
+                      selectAll();
+                    }}
                     className={cn(
                       "rounded-full px-3 py-1 text-xs font-semibold transition-colors",
-                      selectedStrategyId === null
+                      selectedAccountId === null && selectedAccountIds.length === accounts.length
                         ? "bg-brand text-brand-foreground shadow-xs"
                         : "border border-border text-muted-foreground hover:text-foreground",
                     )}
                   >
-                    Todas ({visibleTrades.length})
+                    Todas ({trades.length})
                   </button>
-                  {strategies.map((s) => {
-                    const count = visibleTrades.filter(
-                      (t) =>
-                        effectiveStrategyId(t, accounts, strategyPeriods) === s.id ||
-                        t.strategyId === s.id,
-                    ).length;
-                    const isSelected = selectedStrategyId === s.id;
-
+                  {accounts.map((a) => {
+                    const isSelected = selectedAccountId === a.id;
+                    const count = trades.filter((t) => t.accountId === a.id).length;
                     return (
                       <button
-                        key={s.id}
+                        key={a.id}
                         type="button"
-                        onClick={() =>
-                          setSelectedStrategyId(isSelected ? null : s.id)
-                        }
+                        onClick={() => setSelectedAccountId(isSelected ? null : a.id)}
                         className={cn(
                           "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold transition-all",
                           isSelected
                             ? "bg-brand text-brand-foreground shadow-xs"
                             : "border border-border text-muted-foreground hover:text-foreground",
                         )}
-                        style={
-                          isSelected
-                            ? undefined
-                            : {
-                                borderColor: s.color ? `${s.color}60` : undefined,
-                              }
-                        }
                       >
-                        {s.color && (
-                          <span
-                            className="size-2 rounded-full shrink-0"
-                            style={{
-                              backgroundColor: isSelected ? "currentColor" : s.color,
-                            }}
-                          />
-                        )}
-                        <span>{s.name}</span>
+                        <span className="max-w-[140px] truncate">{a.name}</span>
                         <span
                           className={cn(
                             "ml-0.5 rounded-full px-1.5 py-0.2 text-[10px]",
@@ -340,13 +337,104 @@ function TradesPage() {
                   })}
                 </div>
               )}
+
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex flex-wrap items-center gap-2.5 flex-1 min-w-[280px]">
+                  <div className="relative flex-1 max-w-sm">
+                    <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      className="pl-9 h-9 text-xs"
+                      placeholder="Buscar activo (NQ, EURUSD, BTC…)"
+                      value={query}
+                      onChange={(e) => setQuery(e.target.value)}
+                    />
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-9 gap-1.5 text-xs"
+                    onClick={() => setSortBy((s) => (s === "created" ? "closed" : "created"))}
+                  >
+                    <ArrowUpDown className="size-3.5" />
+                    {sortBy === "closed" ? "Orden: Fecha Apertura" : "Orden: Creación/Registro"}
+                  </Button>
+                </div>
+
+                {/* Strategy Pills */}
+                {strategies.length > 0 && (
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedStrategyId(null)}
+                      className={cn(
+                        "rounded-full px-3 py-1 text-xs font-semibold transition-colors",
+                        selectedStrategyId === null
+                          ? "bg-brand text-brand-foreground shadow-xs"
+                          : "border border-border text-muted-foreground hover:text-foreground",
+                      )}
+                    >
+                      Todas ({visibleTrades.length})
+                    </button>
+                    {strategies.map((s) => {
+                      const count = visibleTrades.filter(
+                        (t) =>
+                          effectiveStrategyId(t, accounts, strategyPeriods) === s.id ||
+                          t.strategyId === s.id,
+                      ).length;
+                      const isSelected = selectedStrategyId === s.id;
+
+                      return (
+                        <button
+                          key={s.id}
+                          type="button"
+                          onClick={() => setSelectedStrategyId(isSelected ? null : s.id)}
+                          className={cn(
+                            "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold transition-all",
+                            isSelected
+                              ? "bg-brand text-brand-foreground shadow-xs"
+                              : "border border-border text-muted-foreground hover:text-foreground",
+                          )}
+                          style={
+                            isSelected
+                              ? undefined
+                              : {
+                                  borderColor: s.color ? `${s.color}60` : undefined,
+                                }
+                          }
+                        >
+                          {s.color && (
+                            <span
+                              className="size-2 rounded-full shrink-0"
+                              style={{
+                                backgroundColor: isSelected ? "currentColor" : s.color,
+                              }}
+                            />
+                          )}
+                          <span>{s.name}</span>
+                          <span
+                            className={cn(
+                              "ml-0.5 rounded-full px-1.5 py-0.2 text-[10px]",
+                              isSelected
+                                ? "bg-brand-foreground/20 text-brand-foreground"
+                                : "bg-muted text-muted-foreground",
+                            )}
+                          >
+                            {count}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Bulk Selection Bar */}
             {selected.length > 0 && (
               <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-brand/40 bg-brand/5 p-3 text-sm">
                 <span className="font-semibold text-foreground">
-                  {selected.length} {selected.length === 1 ? "operación seleccionada" : "operaciones seleccionadas"}
+                  {selected.length}{" "}
+                  {selected.length === 1 ? "operación seleccionada" : "operaciones seleccionadas"}
                 </span>
                 <div className="flex items-center gap-2">
                   <Button size="sm" variant="ghost" onClick={() => setSelected([])}>
@@ -395,8 +483,8 @@ function TradesPage() {
               <div className="flex flex-wrap items-center justify-between gap-3 pt-2 text-xs text-muted-foreground">
                 <div className="flex items-center gap-2">
                   <span>
-                    Mostrando {(page - 1) * pageSize + 1}–{Math.min(page * pageSize, filtered.length)} de{" "}
-                    {filtered.length} operaciones
+                    Mostrando {(page - 1) * pageSize + 1}–
+                    {Math.min(page * pageSize, filtered.length)} de {filtered.length} operaciones
                   </span>
                   <select
                     value={pageSize}
@@ -447,13 +535,16 @@ function TradesPage() {
             <div>
               <h3 className="text-base font-bold">Lotes e Historial de Importación</h3>
               <p className="text-xs text-muted-foreground">
-                Revisa las importaciones realizadas por captura, CSV o manual y deshazlas si necesitas revertir los datos.
+                Revisa las importaciones realizadas por captura, CSV o manual y deshazlas si
+                necesitas revertir los datos.
               </p>
             </div>
 
             {importBatches.length === 0 ? (
               <div className="rounded-xl border border-border/80 bg-muted/20 p-8 text-center space-y-3">
-                <p className="text-sm text-muted-foreground">Aún no hay importaciones registradas.</p>
+                <p className="text-sm text-muted-foreground">
+                  Aún no hay importaciones registradas.
+                </p>
                 <TradeImportDialog />
               </div>
             ) : (

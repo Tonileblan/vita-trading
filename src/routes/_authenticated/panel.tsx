@@ -2,8 +2,19 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
-import { Building2, CalendarIcon, Filter, Layers, Sparkles, User, Wallet, X } from "lucide-react";
+import {
+  AlertTriangle,
+  Building2,
+  CalendarIcon,
+  Filter,
+  Layers,
+  Sparkles,
+  User,
+  Wallet,
+  X,
+} from "lucide-react";
 import { AppShell } from "@/components/app-shell";
+import { Button } from "@/components/ui/button";
 import { EquityChart } from "@/components/equity-chart";
 import { RiskAlerts } from "@/components/risk-alerts";
 import { PnlCalendar } from "@/components/pnl-calendar";
@@ -378,6 +389,29 @@ function Overview() {
       }
     >
       <div className="space-y-6">
+        {/* Banner informativo de filtro lateral activo */}
+        {!isSupervisedView &&
+          journalStore.selectedAccountIds &&
+          journalStore.selectedAccountIds.length < accounts.length && (
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-2.5 text-xs text-amber-200">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="size-4 shrink-0 text-amber-400" />
+                <span>
+                  Filtro lateral activo: viendo datos de {selectedAccounts.length} de{" "}
+                  {accounts.length} cuentas.
+                </span>
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 text-xs border-amber-500/40 text-amber-100 hover:bg-amber-500/20"
+                onClick={journalStore.selectAll}
+              >
+                Ver todas las cuentas
+              </Button>
+            </div>
+          )}
+
         {/* ========================================================================= */}
         {/* BARRA SUPERIOR DE CONTROL Y FILTROS                                       */}
         {/* ========================================================================= */}

@@ -607,10 +607,13 @@ export function JournalProvider({ children }: { children: ReactNode }) {
     return { journal_id: activeJournalId, user_id: userData.user?.id };
   }, [activeJournalId]);
 
-  const selectedAccountIds = useMemo(
-    () => manualSelection ?? data.accounts.map((a) => a.id),
-    [manualSelection, data.accounts],
-  );
+  const validAccountIds = useMemo(() => new Set(data.accounts.map((a) => a.id)), [data.accounts]);
+
+  const selectedAccountIds = useMemo(() => {
+    if (!manualSelection) return data.accounts.map((a) => a.id);
+    const valid = manualSelection.filter((id) => validAccountIds.has(id));
+    return valid.length > 0 ? valid : data.accounts.map((a) => a.id);
+  }, [manualSelection, data.accounts, validAccountIds]);
 
   const value = useMemo<JournalState>(() => {
     const selected = new Set(selectedAccountIds);
@@ -754,6 +757,11 @@ export function JournalProvider({ children }: { children: ReactNode }) {
           ...trade,
         };
 
+        // Si la cuenta estaba excluida por el filtro manual lateral, resetearlo para que la operación se vea de inmediato
+        if (trade.accountId && manualSelection && !manualSelection.includes(trade.accountId)) {
+          setManualSelection(null);
+        }
+
         // 1. Inserción optimista inmediata en caché (0ms)
         updateCache((old) => ({
           ...old,
@@ -869,6 +877,10 @@ export function JournalProvider({ children }: { children: ReactNode }) {
             ...t,
           };
         });
+
+        if (manualSelection) {
+          setManualSelection(null);
+        }
 
         // 1. Actualización optimista de lote (0ms)
         updateCache((old) => ({
