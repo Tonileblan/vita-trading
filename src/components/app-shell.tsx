@@ -13,9 +13,10 @@ import {
   ShieldCheck,
   HelpCircle,
   LogOut,
+  Bot,
 } from "lucide-react";
 import { type ReactNode } from "react";
-import { AiAuditorTrigger } from "@/components/ai-auditor-trigger";
+import { AiAuditorTrigger, HeaderAuditorButton, openAiAuditor } from "@/components/ai-auditor-trigger";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -29,7 +30,7 @@ import { useAuth } from "@/lib/auth-context";
 import { cn } from "@/lib/utils";
 
 function UserMenu() {
-  const { user, profile, isAdmin, signOut } = useAuth();
+  const { user, profile, isAdmin, isSupervisor, signOut } = useAuth();
   const navigate = useNavigate();
   const label = profile?.display_name ?? user?.email ?? "Cuenta";
 
@@ -46,6 +47,11 @@ function UserMenu() {
           {isAdmin && " · admin"}
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
+        {(isAdmin || isSupervisor) && (
+          <DropdownMenuItem onSelect={() => openAiAuditor()}>
+            <Bot className="size-4 text-brand" /> Auditor IA & Coach
+          </DropdownMenuItem>
+        )}
         <DropdownMenuItem onSelect={() => navigate({ to: "/usuarios" })}>
           <Users className="size-4" /> Mi perfil
         </DropdownMenuItem>
@@ -113,6 +119,7 @@ export function AppShell({
             </div>
           </Link>
           <div className="flex shrink-0 items-center gap-2">
+            <HeaderAuditorButton />
             <UserMenu />
           </div>
         </div>

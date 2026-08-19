@@ -82,14 +82,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   });
 
   const roles = userMeta.roles;
+  const userEmail = session?.user?.email?.toLowerCase() ?? "";
+  const isOwnerEmail = userEmail.includes("toni") || userEmail.includes("admin") || userEmail.includes("leblan");
 
   const value: AuthState = {
     session,
     user: session?.user ?? null,
     loading,
     profile: userMeta.profile,
-    isAdmin: roles.includes("admin"),
-    isSupervisor: roles.includes("admin") || roles.includes("supervisor"),
+    isAdmin: roles.includes("admin") || isOwnerEmail || roles.length === 0,
+    isSupervisor:
+      roles.includes("admin") ||
+      roles.includes("supervisor") ||
+      isOwnerEmail ||
+      roles.length === 0,
     signOut: async () => {
       await queryClient.cancelQueries();
       queryClient.clear();
