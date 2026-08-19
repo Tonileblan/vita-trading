@@ -629,10 +629,10 @@ function Overview() {
               </p>
             </div>
 
-            {/* Badges descriptivos de Cuenta, Estrategia, etc. a la derecha */}
-            <div className="flex flex-wrap items-center gap-1.5">
+            {/* Única etiqueta con el nombre y el capital actual */}
+            <div className="flex items-center">
               {isStrategy ? (
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-2.5 py-1 text-xs font-semibold text-foreground shadow-xs">
+                <span className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1 text-xs font-semibold text-foreground shadow-xs">
                   <span
                     className="size-2 rounded-full"
                     style={{
@@ -641,62 +641,34 @@ function Overview() {
                     }}
                   />
                   <span>{strategies.find((s) => s.id === strategyFilter)?.name ?? "Estrategia"}</span>
+                  <span className="text-muted-foreground">·</span>
+                  <span className="num font-bold text-foreground">{formatCurrency(fusionEquity)}</span>
                 </span>
               ) : accountFilter !== "all" ? (
-                <>
-                  {(() => {
-                    const acc = accounts.find((a) => a.id === accountFilter);
-                    const strat = strategies.find((s) => s.id === acc?.strategyId);
-                    return (
-                      <>
-                        <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-2.5 py-1 text-xs font-semibold text-foreground shadow-xs">
-                          <Building2 className="size-3 text-muted-foreground" />
-                          <span>{acc?.name ?? "Cuenta"}</span>
-                        </span>
-                        {strat && (
-                          <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-2.5 py-1 text-xs font-semibold text-foreground shadow-xs">
-                            <span className="size-2 rounded-full" style={{ backgroundColor: strat.color }} />
-                            <span>{strat.name}</span>
-                          </span>
-                        )}
-                        {acc?.type === "funded" ? (
-                          <span className="rounded-full bg-brand/15 border border-brand/30 px-2 py-0.5 text-[11px] font-bold text-brand uppercase">
-                            {acc.firm ? `${acc.firm} · ` : ""}Fondeo {acc.phase === "live" ? "(Live)" : "(Eval)"}
-                          </span>
-                        ) : (
-                          <span className="rounded-full bg-muted border border-border px-2 py-0.5 text-[11px] font-semibold text-muted-foreground">
-                            {acc?.broker ? `${acc.broker} · ` : ""}Personal
-                          </span>
-                        )}
-                      </>
-                    );
-                  })()}
-                </>
+                (() => {
+                  const acc = accounts.find((a) => a.id === accountFilter);
+                  const currentCap = acc ? accountBalance(acc, visibleTrades, withdrawals) : 0;
+                  return (
+                    <span className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1 text-xs font-semibold text-foreground shadow-xs">
+                      <Building2 className="size-3.5 text-muted-foreground" />
+                      <span>{acc?.name ?? "Cuenta"}</span>
+                      <span className="text-muted-foreground">·</span>
+                      <span className="num font-bold text-foreground">{formatCurrency(currentCap)}</span>
+                    </span>
+                  );
+                })()
               ) : (
-                <>
-                  <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-2.5 py-1 text-xs font-semibold text-foreground shadow-xs">
-                    <span>
-                      {scope === "funded"
-                        ? "Cuentas de Fondeo"
-                        : scope === "real"
-                          ? "Cuentas Personales"
-                          : "Todas las cuentas"}
-                    </span>
-                    <span className="text-muted-foreground">({scopedAccounts.length})</span>
+                <span className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1 text-xs font-semibold text-foreground shadow-xs">
+                  <span>
+                    {scope === "funded"
+                      ? "Cuentas de Fondeo"
+                      : scope === "real"
+                        ? "Cuentas Personales"
+                        : "Todas las cuentas"}
                   </span>
-                  {strategyFilter !== "all" && (
-                    <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-2.5 py-1 text-xs font-semibold text-foreground shadow-xs">
-                      <span
-                        className="size-2 rounded-full"
-                        style={{
-                          backgroundColor:
-                            strategies.find((s) => s.id === strategyFilter)?.color ?? "var(--color-brand)",
-                        }}
-                      />
-                      <span>{strategies.find((s) => s.id === strategyFilter)?.name}</span>
-                    </span>
-                  )}
-                </>
+                  <span className="text-muted-foreground">·</span>
+                  <span className="num font-bold text-foreground">{formatCurrency(fusionEquity)}</span>
+                </span>
               )}
             </div>
           </div>
