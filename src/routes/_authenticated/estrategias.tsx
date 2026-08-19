@@ -1,6 +1,20 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { Layers, Pencil, Plus } from "lucide-react";
+import {
+  Award,
+  BarChart3,
+  Calendar as CalendarIcon,
+  Coins,
+  Layers,
+  Pencil,
+  Plus,
+  RotateCcw,
+  Sparkles,
+  Target,
+  TrendingUp,
+  Wallet,
+  X,
+} from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { MarketHours } from "@/components/market-hours";
 import { AccountStrategyCalendar } from "@/components/account-strategy-calendar";
@@ -13,19 +27,12 @@ import { cn } from "@/lib/utils";
 export const Route = createFileRoute("/_authenticated/estrategias")({
   head: () => ({
     meta: [
-      { title: "Estrategias y portafolio — Bitácora de trading" },
+      { title: "Estrategias y portafolio — Vita-Trading" },
       {
         name: "description",
         content:
-          "Compara el rendimiento de cada estrategia: capital, neto, retiros, efectividad, profit factor y neto mensual combinado.",
+          "Compara el rendimiento de cada estrategia: capital, neto, retiros, efectividad, profit factor y matriz operativa.",
       },
-      { property: "og:title", content: "Estrategias y portafolio" },
-      {
-        property: "og:description",
-        content: "Cada estrategia con su capital y riesgo propio, más la comparativa global.",
-      },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
   component: EstrategiasPage,
@@ -36,15 +43,18 @@ function pct(v: number) {
 }
 
 function EstrategiasPage() {
-  const { strategies, trades, withdrawals, accounts, strategyPeriods } =
-    useJournal();
+  const { strategies, trades, withdrawals, accounts, strategyPeriods } = useJournal();
+
+  const [selectedStrategyId, setSelectedStrategyId] = useState<string | null>(null);
+  const [calendarAccountIds, setCalendarAccountIds] = useState<string[]>([]);
 
   const stats = useMemo(
-    () => strategies.map((s) => computeStrategyStats(s, trades, withdrawals, accounts, strategyPeriods)),
+    () =>
+      strategies.map((s) =>
+        computeStrategyStats(s, trades, withdrawals, accounts, strategyPeriods),
+      ),
     [strategies, trades, withdrawals, accounts, strategyPeriods],
   );
-
-  const [calendarAccountIds, setCalendarAccountIds] = useState<string[]>([]);
 
   const statById = useMemo(
     () => new Map(stats.map((s) => [s.strategy.id, s])),
@@ -57,245 +67,667 @@ function EstrategiasPage() {
     const withdrawn = stats.reduce((s, x) => s + x.withdrawn, 0);
     const ops = stats.reduce((s, x) => s + x.trades, 0);
     const current = stats.reduce((s, x) => s + x.currentCapital, 0);
-    return { initial, net, withdrawn, ops, current };
-  }, [stats]);
+    const winningTrades = trades.filter((t) => t.pnl > 0).length;
+    const totalTrades = trades.length;
+    const globalWinRate = totalTrades > 0 ? (winningTrades / totalTrades) * 100 : 0;
+    const grossProfit = trades.filter((t) => t.pnl > 0).reduce((s, t) => s + t.pnl, 0);
+    const grossLoss = Math.abs(trades.filter((t) => t.pnl < 0).reduce((s, t) => s + t.pnl, 0));
+    const globalPf = grossLoss > 0 ? grossProfit / grossLoss : grossProfit > 0 ? Infinity : 0;
+    const returnPct = initial > 0 ? (net / initial) * 100 : 0;
 
+    return {
+      initial,
+      net,
+      withdrawn,
+      ops,
+      current,
+      globalWinRate,
+      globalPf,
+      returnPct,
+    };
+  }, [stats, trades]);
 
+  const handleClearFilters = () => {
+    setSelectedStrategyId(null);
+    setCalendarAccountIds([]);
+  };
+
+  const hasActiveFilters = Boolean(
+    selectedStrategyId ||
+      (calendarAccountIds.length > 0 && calendarAccountIds.length < accounts.length),
+  );
 
   return (
     <AppShell
-      title="Estrategias y portafolio"
-      subtitle="Cada estrategia con su propio capital y riesgo · comparativa global"
+      title="Estrategias y Portafolio"
+      subtitle="Supervisa el rendimiento de cada sistema de trading, distribución de capital y matriz comparativa"
       showAccountPanel={false}
       actions={
         <StrategyDialog
           trigger={
-            <Button>
+            <Button className="gap-1.5 shadow-xs">
               <Plus className="size-4" /> Nueva estrategia
             </Button>
           }
         />
       }
     >
-      <div className="space-y-5">
+      <div className="space-y-6">
+        {/* Horarios de Mercado */}
         <MarketHours />
+
+        {/* ========================================================================= */}
+        {/* BLOQUE 1: KPIs GLOBALES DEL PORTAFOLIO                                    */}
+        {/* ========================================================================= */}
+        <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {/* 1. Capital Total */}
+          <div className="panel p-4 flex flex-col justify-between space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                <Wallet className="size-3.5 text-brand" /> Capital Gestionado
+              </span>
+              <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground num">
+                {accounts.length} {accounts.length === 1 ? "cuenta" : "cuentas"}
+              </span>
+            </div>
+            <div>
+              <p className="num text-2xl font-black text-foreground">
+                {formatCurrency(totals.current)}
+              </p>
+              <p className="num text-xs text-muted-foreground mt-0.5">
+                Inicial: {formatCurrency(totals.initial)}
+              </p>
+            </div>
+          </div>
+
+          {/* 2. PnL Neto */}
+          <div className="panel p-4 flex flex-col justify-between space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                <TrendingUp className="size-3.5 text-brand" /> PnL Neto Total
+              </span>
+              <span
+                className={cn(
+                  "num rounded px-1.5 py-0.5 text-[10px] font-bold",
+                  totals.net >= 0 ? "bg-profit/15 text-profit" : "bg-loss/15 text-loss",
+                )}
+              >
+                {totals.returnPct >= 0 ? "+" : ""}
+                {totals.returnPct.toFixed(1)}% ROI
+              </span>
+            </div>
+            <div>
+              <p
+                className={cn(
+                  "num text-2xl font-black",
+                  totals.net >= 0 ? "text-profit" : "text-loss",
+                )}
+              >
+                {totals.net >= 0 ? "+" : ""}
+                {formatCurrency(totals.net, true)}
+              </p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {totals.ops} operaciones registradas
+              </p>
+            </div>
+          </div>
+
+          {/* 3. Retiros */}
+          <div className="panel p-4 flex flex-col justify-between space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                <Coins className="size-3.5 text-brand" /> Retiros Totales
+              </span>
+              <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">
+                Payouts
+              </span>
+            </div>
+            <div>
+              <p className="num text-2xl font-black text-foreground">
+                {formatCurrency(totals.withdrawn)}
+              </p>
+              <p className="text-xs text-muted-foreground mt-0.5">Beneficios asegurados</p>
+            </div>
+          </div>
+
+          {/* 4. Rendimiento Operativo */}
+          <div className="panel p-4 flex flex-col justify-between space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                <Award className="size-3.5 text-brand" /> Efectividad Global
+              </span>
+              <span className="num rounded bg-brand/15 text-brand px-1.5 py-0.5 text-[10px] font-bold">
+                PF {Number.isFinite(totals.globalPf) ? totals.globalPf.toFixed(2) : "—"}
+              </span>
+            </div>
+            <div>
+              <p className="num text-2xl font-black text-foreground">
+                {totals.globalWinRate.toFixed(1)}%
+              </p>
+              <p className="text-xs text-muted-foreground mt-0.5">Tasa de acierto combinada</p>
+            </div>
+          </div>
+        </section>
+
+        {/* ========================================================================= */}
+        {/* BLOQUE 2: FICHAS DE ESTRATEGIAS                                           */}
+        {/* ========================================================================= */}
         {strategies.length === 0 ? (
           <div className="panel flex flex-col items-center gap-3 p-8 text-center">
             <Layers className="size-8 text-muted-foreground" />
             <div>
-              <p className="text-lg font-semibold">No hay estrategias en este diario</p>
+              <p className="text-lg font-semibold">No hay estrategias configuradas</p>
               <p className="text-sm text-muted-foreground">
-                Crea una nueva estrategia personalizada para tu operativa.
+                Crea tus estrategias con sus reglas operativas, activos y límites de riesgo.
               </p>
             </div>
-            <div className="flex flex-wrap items-center justify-center gap-2">
-              <StrategyDialog
-                trigger={
-                  <Button>
-                    <Plus className="size-4" /> Nueva estrategia
-                  </Button>
-                }
-              />
-            </div>
+            <StrategyDialog
+              trigger={
+                <Button className="mt-2">
+                  <Plus className="size-4" /> Crear primera estrategia
+                </Button>
+              }
+            />
           </div>
         ) : (
-        <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {strategies.map((s) => (
-            <div key={s.id} className="panel p-4">
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <h3 className="truncate text-lg font-semibold">{s.name}</h3>
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    {s.mainSymbol} · riesgo {(s.riskPct * 100).toFixed(1)}% ·{" "}
-                    {statById.get(s.id)?.accounts.length
-                      ? formatCurrency(statById.get(s.id)!.currentCapital)
-                      : "sin cuentas asignadas"}
-                  </p>
-                </div>
-                <StrategyDialog
-                  strategy={s}
-                  trigger={
-                    <Button variant="ghost" size="icon" aria-label={`Editar ${s.name}`}>
-                      <Pencil className="size-4" />
-                    </Button>
-                  }
-                />
-              </div>
-              <dl className="mt-3 space-y-1 text-xs">
-                {(
-                  [
-                    ["Mercado", s.market],
-                    ["Gráfico", s.chart],
-                    ["Días", s.days],
-                    ["Horario", s.schedule],
-                    ["Operación", s.execution],
-                    ["Configuración", s.setup],
-                    ["Gestión", s.management],
-                    ["Contratos", s.contracts],
-                  ] as const
-                )
-                  .filter(([, v]) => Boolean(v))
-                  .map(([k, v]) => (
-                    <div key={k} className="flex gap-2">
-                      <dt className="shrink-0 uppercase tracking-wide text-muted-foreground">
-                        {k}
-                      </dt>
-                      <dd className="min-w-0">{v}</dd>
-                    </div>
-                  ))}
-              </dl>
+          <section className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h2 className="text-base font-bold font-display uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                <Sparkles className="size-4 text-brand" /> Sistemas y Fichas Operativas ({strategies.length})
+              </h2>
             </div>
-          ))}
-        </section>
-        )}
 
-        <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          {[
-            { label: "Capital inicial total", value: formatCurrency(totals.initial) },
-            { label: "Capital actual total", value: formatCurrency(totals.current) },
-            { label: "Neto total (P&L)", value: formatCurrency(totals.net, true) },
-            { label: "Retiros totales", value: formatCurrency(totals.withdrawn) },
-          ].map((k) => (
-            <div key={k.label} className="panel p-4">
-              <p className="text-xs uppercase tracking-wide text-muted-foreground">{k.label}</p>
-              <p className="mt-1 text-2xl font-bold tabular-nums">{k.value}</p>
-            </div>
-          ))}
-        </section>
+            <div className="grid gap-3.5 md:grid-cols-2 xl:grid-cols-3">
+              {strategies.map((s) => {
+                const st = statById.get(s.id);
+                const isSelected = selectedStrategyId === s.id;
 
-        <section className="panel overflow-x-auto p-4">
-          <h2 className="mb-3 text-base font-semibold">Comparativa por estrategia</h2>
-          <table className="w-full min-w-[720px] text-sm">
-            <thead className="text-xs uppercase text-muted-foreground">
-              <tr className="border-b border-border">
-                <th className="py-2 text-left">Estrategia</th>
-                <th className="py-2 text-right">Cap. inicial</th>
-                <th className="py-2 text-right">Neto</th>
-                <th className="py-2 text-right">Retiros</th>
-                <th className="py-2 text-right">Cap. actual</th>
-                <th className="py-2 text-right">#Oper.</th>
-                <th className="py-2 text-right">Efect.</th>
-                <th className="py-2 text-right">PF</th>
-                <th className="py-2 text-right">Riesgo/op.</th>
-              </tr>
-            </thead>
-            <tbody>
-              {stats.map((s) => (
-                <tr key={s.strategy.id} className="border-b border-border/60">
-                  <td className="py-2 font-medium">
-                    <span className="inline-flex items-center gap-1.5">
-                      {s.strategy.name}
-                    </span>
-                    <span className="ml-2 text-xs text-muted-foreground">
-                      {s.strategy.mainSymbol} · {(s.strategy.riskPct * 100).toFixed(1)}%
-                    </span>
-                    <span className="block text-xs text-muted-foreground">
-                      {s.accounts.length
-                        ? s.accounts.map((a) => a.name).join(", ")
-                        : "sin cuentas asignadas"}
-                    </span>
-                  </td>
-                  <td className="py-2 text-right tabular-nums">
-                    {formatCurrency(s.initialCapital)}
-                  </td>
-
-                  <td
+                return (
+                  <div
+                    key={s.id}
+                    onClick={() => setSelectedStrategyId(isSelected ? null : s.id)}
                     className={cn(
-                      "py-2 text-right font-semibold tabular-nums",
-                      s.net >= 0 ? "text-profit" : "text-loss",
+                      "panel p-4 flex flex-col justify-between space-y-3 transition-all cursor-pointer relative",
+                      isSelected
+                        ? "border-brand ring-2 ring-brand/80 bg-brand/[0.04] shadow-sm"
+                        : "hover:border-foreground/30 hover:bg-accent/20",
                     )}
                   >
-                    {formatCurrency(s.net, true)}
-                  </td>
-                  <td className="py-2 text-right tabular-nums">{formatCurrency(s.withdrawn)}</td>
-                  <td className="py-2 text-right tabular-nums">
-                    {formatCurrency(s.currentCapital)}
-                  </td>
-                  <td className="py-2 text-right tabular-nums">{s.trades}</td>
-                  <td className="py-2 text-right tabular-nums">{pct(s.winRate)}</td>
-                  <td className="py-2 text-right tabular-nums">
-                    {Number.isFinite(s.profitFactor) ? s.profitFactor.toFixed(2) : "∞"}
-                  </td>
-                  <td className="py-2 text-right tabular-nums">
-                    {formatCurrency(s.riskPerTrade)}
-                  </td>
-                </tr>
-              ))}
-              <tr className="font-semibold">
-                <td className="py-2">TOTAL</td>
-                <td className="py-2 text-right tabular-nums">{formatCurrency(totals.initial)}</td>
-                <td
-                  className={cn(
-                    "py-2 text-right tabular-nums",
-                    totals.net >= 0 ? "text-profit" : "text-loss",
-                  )}
-                >
-                  {formatCurrency(totals.net, true)}
-                </td>
-                <td className="py-2 text-right tabular-nums">{formatCurrency(totals.withdrawn)}</td>
-                <td className="py-2 text-right tabular-nums">{formatCurrency(totals.current)}</td>
-                <td className="py-2 text-right tabular-nums">{totals.ops}</td>
-                <td colSpan={3} />
-              </tr>
-            </tbody>
-          </table>
-        </section>
+                    <div>
+                      {/* Header de la tarjeta */}
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span
+                              className="size-3 rounded-full shrink-0"
+                              style={{ backgroundColor: s.color || "var(--color-brand)" }}
+                            />
+                            <h3 className="truncate text-base font-bold text-foreground">
+                              {s.name}
+                            </h3>
+                            <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-bold uppercase text-muted-foreground">
+                              {s.mainSymbol}
+                            </span>
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Riesgo:{" "}
+                            <strong className="text-foreground num">
+                              {(s.riskPct * 100).toFixed(1)}%
+                            </strong>{" "}
+                            ·{" "}
+                            {st?.accounts.length
+                              ? `${st.accounts.length} ${st.accounts.length === 1 ? "cuenta" : "cuentas"}`
+                              : "Sin cuentas fijas"}
+                          </p>
+                        </div>
 
-        <section className="panel p-4">
-          <h2 className="text-xl leading-none">Calendario</h2>
-          <p className="mb-3 text-xs text-muted-foreground">
-            Elige una o varias cuentas y asigna la estrategia que usaste en cada tramo de fechas.
-          </p>
-          <div className="mb-4 flex flex-wrap items-center gap-2">
-            {accounts.map((a) => {
-              const active = calendarAccountIds.includes(a.id);
-              return (
-                <button
-                  key={a.id}
-                  type="button"
-                  onClick={() =>
-                    setCalendarAccountIds((prev) =>
-                      prev.includes(a.id) ? prev.filter((id) => id !== a.id) : [...prev, a.id],
-                    )
-                  }
-                  className={cn(
-                    "rounded-full border px-3 py-1 text-xs font-semibold transition",
-                    active
-                      ? "border-foreground bg-foreground text-background"
-                      : "border-border text-muted-foreground hover:text-foreground",
-                  )}
-                >
-                  {a.name}
-                </button>
-              );
-            })}
-            {accounts.length > 1 && (
-              <button
-                type="button"
-                onClick={() =>
-                  setCalendarAccountIds((prev) =>
-                    prev.length === accounts.length ? [] : accounts.map((a) => a.id),
-                  )
-                }
-                className="rounded-full border border-dashed border-border px-3 py-1 text-xs font-semibold text-muted-foreground hover:text-foreground"
+                        <div
+                          className="shrink-0 -mr-1 -mt-1"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <StrategyDialog
+                            strategy={s}
+                            trigger={
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="size-8 text-muted-foreground hover:text-foreground"
+                                aria-label={`Editar ${s.name}`}
+                              >
+                                <Pencil className="size-3.5" />
+                              </Button>
+                            }
+                          />
+                        </div>
+                      </div>
+
+                      {/* Barra de métricas rápidas */}
+                      {st && (
+                        <div className="mt-3 grid grid-cols-3 gap-1 rounded-lg border border-border/70 bg-muted/30 p-2 text-center text-xs">
+                          <div>
+                            <span className="text-[10px] text-muted-foreground block">Neto</span>
+                            <span
+                              className={cn(
+                                "num font-bold",
+                                st.net >= 0 ? "text-profit" : "text-loss",
+                              )}
+                            >
+                              {st.net >= 0 ? "+" : ""}
+                              {formatCurrency(st.net, true)}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-[10px] text-muted-foreground block">Win Rate</span>
+                            <span className="num font-bold text-foreground">
+                              {pct(st.winRate)}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-[10px] text-muted-foreground block">PF</span>
+                            <span className="num font-bold text-foreground">
+                              {Number.isFinite(st.profitFactor) ? st.profitFactor.toFixed(2) : "—"}
+                            </span>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Parámetros Operativos (Badges limpios) */}
+                      <div className="mt-3 flex flex-wrap gap-1.5">
+                        {[
+                          s.market && { label: "Mercado", val: s.market },
+                          s.chart && { label: "TF", val: s.chart },
+                          s.schedule && { label: "Horario", val: s.schedule },
+                          s.setup && { label: "Setup", val: s.setup },
+                          s.management && { label: "Gestión", val: s.management },
+                          s.contracts && { label: "Contratos", val: s.contracts },
+                        ]
+                          .filter(Boolean)
+                          .map((item, idx) => (
+                            <span
+                              key={idx}
+                              className="inline-flex items-center gap-1 rounded-md bg-muted/60 border border-border/50 px-2 py-0.5 text-[11px] text-foreground/80"
+                            >
+                              <strong className="font-semibold text-muted-foreground text-[10px]">
+                                {item!.label}:
+                              </strong>{" "}
+                              {item!.val}
+                            </span>
+                          ))}
+                      </div>
+                    </div>
+
+                    {/* Footer de la tarjeta con acción de filtrado */}
+                    <div className="pt-2 border-t border-border/50 flex items-center justify-between text-xs">
+                      <span className="text-[11px] text-muted-foreground">
+                        {st?.trades ?? 0} trades ejecutados
+                      </span>
+                      <span
+                        className={cn(
+                          "font-bold text-xs transition-colors",
+                          isSelected ? "text-brand" : "text-muted-foreground hover:text-foreground",
+                        )}
+                      >
+                        {isSelected ? "✓ Filtrando calendario" : "Ver en calendario →"}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        )}
+
+        {/* ========================================================================= */}
+        {/* BLOQUE 3: MATRIZ COMPARATIVA DE ESTRATEGIAS (REDiseñada)                   */}
+        {/* ========================================================================= */}
+        <section className="panel overflow-hidden">
+          <div className="p-4 border-b border-border flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-display uppercase tracking-wide font-bold flex items-center gap-2">
+                <BarChart3 className="size-4 text-brand" /> Matriz Comparativa de Estrategias
+              </h2>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Desglose analítico de rendimiento, efectividad y distribución de capital por sistema
+              </p>
+            </div>
+
+            {selectedStrategyId && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleClearFilters}
+                className="gap-1.5 text-xs font-bold text-brand hover:text-brand"
               >
-                {calendarAccountIds.length === accounts.length ? "Ninguna" : "Todas"}
-              </button>
-            )}
-            {accounts.length === 0 && (
-              <p className="text-sm text-muted-foreground">No hay cuentas todavía.</p>
+                <RotateCcw className="size-3.5" /> Mostrar todas las estrategias
+              </Button>
             )}
           </div>
-          {calendarAccountIds.length > 0 ? (
-            <AccountStrategyCalendar
-              key={calendarAccountIds.join(",")}
-              accountIds={calendarAccountIds}
-            />
-          ) : accounts.length > 0 ? (
-            <p className="text-sm text-muted-foreground">Selecciona una o varias cuentas para ver el calendario.</p>
-          ) : null}
+
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[850px] text-sm">
+              <thead className="border-b border-border bg-muted/40 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                <tr>
+                  <th className="py-2.5 px-4 text-left">Estrategia</th>
+                  <th className="py-2.5 px-3 text-right">Cap. Inicial</th>
+                  <th className="py-2.5 px-3 text-right">Cap. Actual</th>
+                  <th className="py-2.5 px-3 text-right">Neto (P&L)</th>
+                  <th className="py-2.5 px-3 text-right">Retiros</th>
+                  <th className="py-2.5 px-3 text-center">Trades</th>
+                  <th className="py-2.5 px-4 text-left">Win Rate</th>
+                  <th className="py-2.5 px-3 text-center">Profit Factor</th>
+                  <th className="py-2.5 px-4 text-right">Riesgo / Trade</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border/60">
+                {stats.map((s) => {
+                  const isSelected = selectedStrategyId === s.strategy.id;
+
+                  return (
+                    <tr
+                      key={s.strategy.id}
+                      onClick={() =>
+                        setSelectedStrategyId(isSelected ? null : s.strategy.id)
+                      }
+                      className={cn(
+                        "transition-colors cursor-pointer group",
+                        isSelected
+                          ? "bg-brand/10 font-medium"
+                          : "hover:bg-accent/40",
+                      )}
+                    >
+                      {/* Estrategia */}
+                      <td className="py-3 px-4">
+                        <div className="flex items-center gap-2.5">
+                          <span
+                            className="size-3 rounded-full shrink-0 shadow-xs"
+                            style={{
+                              backgroundColor:
+                                s.strategy.color || "var(--color-brand)",
+                            }}
+                          />
+                          <div>
+                            <div className="flex items-center gap-1.5">
+                              <span className="font-bold text-foreground group-hover:text-brand transition-colors">
+                                {s.strategy.name}
+                              </span>
+                              <span className="rounded bg-muted px-1.5 py-0.2 text-[10px] font-bold text-muted-foreground uppercase">
+                                {s.strategy.mainSymbol}
+                              </span>
+                            </div>
+                            <span className="text-[11px] text-muted-foreground block">
+                              {s.accounts.length
+                                ? `${s.accounts.length} ${s.accounts.length === 1 ? "cuenta" : "cuentas"} asignadas`
+                                : "Sin cuentas fijas"}
+                            </span>
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* Cap Inicial */}
+                      <td className="py-3 px-3 text-right num text-muted-foreground">
+                        {formatCurrency(s.initialCapital)}
+                      </td>
+
+                      {/* Cap Actual */}
+                      <td className="py-3 px-3 text-right num font-semibold text-foreground">
+                        {formatCurrency(s.currentCapital)}
+                      </td>
+
+                      {/* Neto PnL */}
+                      <td
+                        className={cn(
+                          "py-3 px-3 text-right num font-black text-sm",
+                          s.net >= 0 ? "text-profit" : "text-loss",
+                        )}
+                      >
+                        <div className="flex flex-col items-end">
+                          <span>
+                            {s.net >= 0 ? "+" : ""}
+                            {formatCurrency(s.net, true)}
+                          </span>
+                          {s.initialCapital > 0 && (
+                            <span className="text-[10px] font-normal opacity-85">
+                              {s.returnPct >= 0 ? "+" : ""}
+                              {s.returnPct.toFixed(1)}% ROI
+                            </span>
+                          )}
+                        </div>
+                      </td>
+
+                      {/* Retiros */}
+                      <td className="py-3 px-3 text-right num text-muted-foreground">
+                        {s.withdrawn > 0 ? formatCurrency(s.withdrawn) : "—"}
+                      </td>
+
+                      {/* Trades */}
+                      <td className="py-3 px-3 text-center num font-bold">
+                        {s.trades}
+                      </td>
+
+                      {/* Win Rate */}
+                      <td className="py-3 px-4">
+                        <div className="space-y-1">
+                          <div className="flex justify-between text-xs num">
+                            <span className="font-bold text-foreground">
+                              {pct(s.winRate)}
+                            </span>
+                          </div>
+                          <div className="h-1.5 w-24 overflow-hidden rounded-full bg-muted">
+                            <div
+                              className={cn(
+                                "h-full rounded-full transition-all",
+                                s.winRate >= 50 ? "bg-profit" : "bg-loss",
+                              )}
+                              style={{ width: `${s.winRate}%` }}
+                            />
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* Profit Factor */}
+                      <td className="py-3 px-3 text-center">
+                        <span
+                          className={cn(
+                            "num rounded-md px-2 py-0.5 text-xs font-bold tabular-nums inline-block",
+                            s.profitFactor >= 1.5
+                              ? "bg-profit/15 text-profit border border-profit/25"
+                              : s.profitFactor >= 1.0
+                                ? "bg-brand/15 text-brand border border-brand/25"
+                                : "bg-loss/15 text-loss border border-loss/25",
+                          )}
+                        >
+                          {Number.isFinite(s.profitFactor)
+                            ? s.profitFactor.toFixed(2)
+                            : s.trades > 0
+                              ? "∞"
+                              : "—"}
+                        </span>
+                      </td>
+
+                      {/* Riesgo / Trade */}
+                      <td className="py-3 px-4 text-right num text-muted-foreground text-xs">
+                        {formatCurrency(s.riskPerTrade)}
+                        <span className="text-[10px] block opacity-75">
+                          ({(s.strategy.riskPct * 100).toFixed(1)}%)
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+
+              {/* Fila TOTAL Consolidada */}
+              <tfoot className="border-t-2 border-border bg-muted/40 font-bold">
+                <tr>
+                  <td className="py-3 px-4 text-foreground uppercase tracking-wider text-xs">
+                    Total Portafolio
+                  </td>
+                  <td className="py-3 px-3 text-right num">
+                    {formatCurrency(totals.initial)}
+                  </td>
+                  <td className="py-3 px-3 text-right num text-foreground font-black">
+                    {formatCurrency(totals.current)}
+                  </td>
+                  <td
+                    className={cn(
+                      "py-3 px-3 text-right num font-black text-sm",
+                      totals.net >= 0 ? "text-profit" : "text-loss",
+                    )}
+                  >
+                    {totals.net >= 0 ? "+" : ""}
+                    {formatCurrency(totals.net, true)}
+                  </td>
+                  <td className="py-3 px-3 text-right num">
+                    {formatCurrency(totals.withdrawn)}
+                  </td>
+                  <td className="py-3 px-3 text-center num text-foreground">
+                    {totals.ops}
+                  </td>
+                  <td className="py-3 px-4 num text-xs">
+                    {totals.globalWinRate.toFixed(1)}% promedio
+                  </td>
+                  <td className="py-3 px-3 text-center num text-xs">
+                    {Number.isFinite(totals.globalPf)
+                      ? totals.globalPf.toFixed(2)
+                      : "—"}
+                  </td>
+                  <td className="py-3 px-4 text-right text-xs text-muted-foreground">
+                    —
+                  </td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </section>
+
+        {/* ========================================================================= */}
+        {/* BLOQUE 4: CALENDARIO DE ASIGNACIÓN Y OPERATIVA                           */}
+        {/* ========================================================================= */}
+        <section className="panel p-5 space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-3">
+            <div>
+              <h2 className="text-xl font-display uppercase tracking-wide font-bold flex items-center gap-2">
+                <CalendarIcon className="size-5 text-brand" /> Calendario de Estrategias y Tramos
+              </h2>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Visualiza el resultado diario por estrategia y asigna qué estrategia operaste en cada periodo.
+              </p>
+            </div>
+
+            {hasActiveFilters && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleClearFilters}
+                className="gap-1.5 text-xs font-bold text-brand hover:text-brand border-brand/40 bg-brand/5 cursor-pointer"
+              >
+                <RotateCcw className="size-3.5" /> Deseleccionar todo (Ver todas)
+              </Button>
+            )}
+          </div>
+
+          {/* Barra de Filtros interactiva: Estrategias y Cuentas */}
+          <div className="space-y-2.5 rounded-xl border border-border/70 bg-muted/20 p-3">
+            {/* Filtro por Estrategia */}
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground shrink-0 mr-1">
+                Estrategia:
+              </span>
+
+              <button
+                type="button"
+                onClick={() => setSelectedStrategyId(null)}
+                className={cn(
+                  "rounded-full px-3 py-1 text-xs font-semibold transition cursor-pointer border",
+                  selectedStrategyId === null
+                    ? "bg-foreground text-background border-foreground font-bold shadow-xs"
+                    : "bg-card text-muted-foreground border-border hover:text-foreground hover:border-foreground/40",
+                )}
+              >
+                Todas las estrategias
+              </button>
+
+              {strategies.map((s) => {
+                const active = selectedStrategyId === s.id;
+                return (
+                  <button
+                    key={s.id}
+                    type="button"
+                    onClick={() => setSelectedStrategyId(active ? null : s.id)}
+                    className={cn(
+                      "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold transition cursor-pointer border",
+                      active
+                        ? "border-brand bg-brand text-primary-foreground font-bold shadow-xs"
+                        : "bg-card text-muted-foreground border-border hover:text-foreground hover:border-foreground/40",
+                    )}
+                  >
+                    <span
+                      className="size-2 rounded-full shrink-0"
+                      style={{
+                        backgroundColor: active ? "currentColor" : s.color || "var(--color-brand)",
+                      }}
+                    />
+                    {s.name}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Filtro por Cuenta */}
+            {accounts.length > 0 && (
+              <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-border/40">
+                <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground shrink-0 mr-1">
+                  Cuentas:
+                </span>
+
+                <button
+                  type="button"
+                  onClick={() => setCalendarAccountIds([])}
+                  className={cn(
+                    "rounded-full px-3 py-1 text-xs font-semibold transition cursor-pointer border",
+                    calendarAccountIds.length === 0 || calendarAccountIds.length === accounts.length
+                      ? "bg-foreground text-background border-foreground font-bold shadow-xs"
+                      : "bg-card text-muted-foreground border-border hover:text-foreground hover:border-foreground/40",
+                  )}
+                >
+                  Todas las cuentas
+                </button>
+
+                {accounts.map((a) => {
+                  const active = calendarAccountIds.includes(a.id);
+                  return (
+                    <button
+                      key={a.id}
+                      type="button"
+                      onClick={() =>
+                        setCalendarAccountIds((prev) =>
+                          prev.includes(a.id)
+                            ? prev.filter((id) => id !== a.id)
+                            : [...prev, a.id],
+                        )
+                      }
+                      className={cn(
+                        "rounded-full px-3 py-1 text-xs font-semibold transition cursor-pointer border",
+                        active
+                          ? "border-brand bg-brand text-primary-foreground font-bold shadow-xs"
+                          : "bg-card text-muted-foreground border-border hover:text-foreground hover:border-foreground/40",
+                      )}
+                    >
+                      {a.name}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* El calendario se muestra SIEMPRE (con o sin selección) */}
+          <AccountStrategyCalendar
+            key={`${calendarAccountIds.join(",")}-${selectedStrategyId ?? "all"}`}
+            accountIds={calendarAccountIds}
+            selectedStrategyId={selectedStrategyId}
+            onClearSelection={handleClearFilters}
+          />
         </section>
       </div>
     </AppShell>
