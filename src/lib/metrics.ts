@@ -1,4 +1,5 @@
 import type { Account, AccountStrategyPeriod, Trade } from "./types";
+import { tradeDayKey } from "./emotions";
 
 export function formatCurrency(value: number, withSign = false) {
   const sign = withSign && value > 0 ? "+" : value < 0 ? "-" : "";
@@ -287,7 +288,7 @@ export function effectiveStrategyId(
   accounts: Account[],
   periods: AccountStrategyPeriod[] = [],
 ) {
-  const day = (trade.openedAt || trade.closedAt || "").slice(0, 10);
+  const day = tradeDayKey(trade) || (trade.openedAt || trade.closedAt || "").slice(0, 10);
   if (day) {
     const period = periods.find(
       (p) =>

@@ -1045,13 +1045,13 @@ export function JournalProvider({ children }: { children: ReactNode }) {
 
         // Actualizar directamente todas las operaciones de esta cuenta dentro del tramo de fechas
         const start = period.startDate;
-        const end = period.endDate || period.startDate;
+        const end = period.endDate;
         const matchingTradeIds = data.trades
           .filter((t) => {
             if (t.accountId !== period.accountId) return false;
             const day = tradeDayKey(t);
             if (!day) return false;
-            return day >= start && day <= end;
+            return day >= start && (!end || day <= end);
           })
           .map((t) => t.id);
 
@@ -1065,8 +1065,37 @@ export function JournalProvider({ children }: { children: ReactNode }) {
         await refresh();
       },
       removeStrategyPeriod: async (id) => {
+        const targetPeriod = data.strategyPeriods.find((p) => p.id === id);
         const { error } = await supabase.from("account_strategy_periods").delete().eq("id", id);
         if (error) throw error;
+
+        if (targetPeriod) {
+          const start = targetPeriod.startDate;
+          const end = targetPeriod.endDate;
+          const defaultStratId =
+            data.accounts.find((a) => a.id === targetPeriod.accountId)?.strategyId ?? null;
+
+          const matchingTradeIds = data.trades
+            .filter((t) => {
+              if (t.accountId !== targetPeriod.accountId) return false;
+              const day = tradeDayKey(t);
+              if (!day) return false;
+              return (
+                day >= start &&
+                (!end || day <= end) &&
+                t.strategyId === targetPeriod.strategyId
+              );
+            })
+            .map((t) => t.id);
+
+          if (matchingTradeIds.length > 0) {
+            await supabase
+              .from("trades")
+              .update({ strategy_id: defaultStratId })
+              .in("id", matchingTradeIds);
+          }
+        }
+
         await refresh();
       },
       restoreDefaultStrategies: async () => {
