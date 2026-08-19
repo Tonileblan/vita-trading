@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
-import { CalendarIcon, X } from "lucide-react";
+import { Building2, CalendarIcon, Layers, X } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { EquityChart } from "@/components/equity-chart";
 import { RiskAlerts } from "@/components/risk-alerts";
@@ -83,6 +83,7 @@ function Overview() {
 
   // Filtro por clic en un día concreto del calendario (YYYY-MM-DD)
   const [selectedCalendarDate, setSelectedCalendarDate] = useState<string | null>(null);
+  const [showAllTrades, setShowAllTrades] = useState(false);
 
   const { data: svProfiles = [] } = useQuery({
     queryKey: ["sv-profiles", user?.id],
@@ -627,6 +628,77 @@ function Overview() {
                   : "Consolidada de las cuentas activas"}
               </p>
             </div>
+
+            {/* Badges descriptivos de Cuenta, Estrategia, etc. a la derecha */}
+            <div className="flex flex-wrap items-center gap-1.5">
+              {isStrategy ? (
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-2.5 py-1 text-xs font-semibold text-foreground shadow-xs">
+                  <span
+                    className="size-2 rounded-full"
+                    style={{
+                      backgroundColor:
+                        strategies.find((s) => s.id === strategyFilter)?.color ?? "var(--color-brand)",
+                    }}
+                  />
+                  <span>{strategies.find((s) => s.id === strategyFilter)?.name ?? "Estrategia"}</span>
+                </span>
+              ) : accountFilter !== "all" ? (
+                <>
+                  {(() => {
+                    const acc = accounts.find((a) => a.id === accountFilter);
+                    const strat = strategies.find((s) => s.id === acc?.strategyId);
+                    return (
+                      <>
+                        <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-2.5 py-1 text-xs font-semibold text-foreground shadow-xs">
+                          <Building2 className="size-3 text-muted-foreground" />
+                          <span>{acc?.name ?? "Cuenta"}</span>
+                        </span>
+                        {strat && (
+                          <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-2.5 py-1 text-xs font-semibold text-foreground shadow-xs">
+                            <span className="size-2 rounded-full" style={{ backgroundColor: strat.color }} />
+                            <span>{strat.name}</span>
+                          </span>
+                        )}
+                        {acc?.type === "funded" ? (
+                          <span className="rounded-full bg-brand/15 border border-brand/30 px-2 py-0.5 text-[11px] font-bold text-brand uppercase">
+                            {acc.firm ? `${acc.firm} · ` : ""}Fondeo {acc.phase === "live" ? "(Live)" : "(Eval)"}
+                          </span>
+                        ) : (
+                          <span className="rounded-full bg-muted border border-border px-2 py-0.5 text-[11px] font-semibold text-muted-foreground">
+                            {acc?.broker ? `${acc.broker} · ` : ""}Personal
+                          </span>
+                        )}
+                      </>
+                    );
+                  })()}
+                </>
+              ) : (
+                <>
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-2.5 py-1 text-xs font-semibold text-foreground shadow-xs">
+                    <span>
+                      {scope === "funded"
+                        ? "Cuentas de Fondeo"
+                        : scope === "real"
+                          ? "Cuentas Personales"
+                          : "Todas las cuentas"}
+                    </span>
+                    <span className="text-muted-foreground">({scopedAccounts.length})</span>
+                  </span>
+                  {strategyFilter !== "all" && (
+                    <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-2.5 py-1 text-xs font-semibold text-foreground shadow-xs">
+                      <span
+                        className="size-2 rounded-full"
+                        style={{
+                          backgroundColor:
+                            strategies.find((s) => s.id === strategyFilter)?.color ?? "var(--color-brand)",
+                        }}
+                      />
+                      <span>{strategies.find((s) => s.id === strategyFilter)?.name}</span>
+                    </span>
+                  )}
+                </>
+              )}
+            </div>
           </div>
           <EquityChart data={curve} />
         </section>
@@ -638,22 +710,39 @@ function Overview() {
         />
 
         <section className="space-y-3">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 className="text-base font-semibold">
               {selectedCalendarDate
                 ? `Operaciones del día ${selectedCalendarDate.split("-").reverse().join("/")} (${trades.length})`
-                : "Últimas operaciones"}
+                : `Operaciones (${trades.length})`}
             </h2>
-            {selectedCalendarDate && (
-              <button
-                onClick={() => setSelectedCalendarDate(null)}
-                className="text-xs font-semibold text-brand hover:underline"
-              >
-                Ver todas las operaciones
-              </button>
-            )}
+            <div className="flex items-center gap-2">
+              {selectedCalendarDate ? (
+                <button
+                  onClick={() => setSelectedCalendarDate(null)}
+                  className="text-xs font-semibold text-brand hover:underline"
+                >
+                  Ver todas las fechas
+                </button>
+              ) : trades.length > 15 ? (
+                <button
+                  type="button"
+                  onClick={() => setShowAllTrades(!showAllTrades)}
+                  className="text-xs font-semibold text-brand hover:underline cursor-pointer"
+                >
+                  {showAllTrades
+                    ? "Mostrar solo las 15 más recientes"
+                    : `Consultar todas las ${trades.length} operaciones`}
+                </button>
+              ) : null}
+            </div>
           </div>
-          <TradesTable trades={trades} accounts={accounts} strategies={strategies} limit={selectedCalendarDate ? undefined : 12} />
+          <TradesTable
+            trades={trades}
+            accounts={accounts}
+            strategies={strategies}
+            limit={showAllTrades || selectedCalendarDate ? undefined : 15}
+          />
         </section>
       </div>
     </AppShell>
