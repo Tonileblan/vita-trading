@@ -61,9 +61,15 @@ export function todayKey(d: Date | string = new Date()): string {
 
 /** Clave local YYYY-MM-DD de una operación comercial. */
 export function tradeDayKey(t: { closedAt?: string | null; openedAt?: string | null }): string {
-  const iso = t.closedAt || t.openedAt;
+  const iso = t.openedAt || t.closedAt;
   if (!iso) return "";
-  const d = new Date(iso);
-  if (isNaN(d.getTime())) return "";
-  return todayKey(d);
+  const cleaned = iso.trim().replace(" ", "T");
+  const d = new Date(cleaned);
+  if (!isNaN(d.getTime())) {
+    return todayKey(d);
+  }
+  // Fallback si el parser de fechas del navegador falla: extraer YYYY-MM-DD directo
+  const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (m) return `${m[1]}-${m[2]}-${m[3]}`;
+  return "";
 }
