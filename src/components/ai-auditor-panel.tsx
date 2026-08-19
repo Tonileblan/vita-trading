@@ -491,24 +491,42 @@ export function AiAuditorPanel({
                   </p>
                 </div>
                 <div>
-                  <span className="text-[11px] text-muted-foreground">Operaciones</span>
+                  <span className="text-[11px] text-muted-foreground">Setups / Órdenes</span>
                   <p className="font-display text-base font-bold text-foreground">
-                    {statusSummary.todayTradesCount}
+                    {statusSummary.todayUniqueSetupsCount}
+                    {statusSummary.todayTradesCount !== statusSummary.todayUniqueSetupsCount && (
+                      <span className="text-xs font-normal text-muted-foreground ml-1">
+                        ({statusSummary.todayTradesCount} accs)
+                      </span>
+                    )}
                   </p>
                 </div>
                 <div>
-                  <span className="text-[11px] text-muted-foreground">Racha Pérdidas</span>
+                  <span className="text-[11px] text-muted-foreground">Racha Máx / Cuenta</span>
                   <p
                     className={cn(
                       "font-display text-base font-bold",
-                      statusSummary.currentStreak >= 2 ? "text-loss" : "text-foreground",
+                      statusSummary.maxAccountStreak >= 2 ? "text-loss" : "text-foreground",
                     )}
                   >
-                    {statusSummary.currentStreak}
+                    {statusSummary.maxAccountStreak}
                   </p>
                 </div>
               </div>
             </div>
+
+            {/* Desglose de Cuentas y Réplicas Multicuenta */}
+            {statusSummary.simultaneousGroups.some((g) => g.isMultiAccount) && (
+              <div className="rounded-md border border-brand/40 bg-accent/30 p-3 space-y-1.5 text-xs">
+                <div className="flex items-center gap-1.5 font-semibold text-foreground">
+                  <Sliders className="size-3.5 text-brand" />
+                  <span>Detección de Operativa Multicuenta (Copier)</span>
+                </div>
+                <p className="text-muted-foreground text-[11px]">
+                  El auditor reconoce entradas simultáneas en varias cuentas como <strong>un único setup replicado</strong>, evitando falsas alertas de sobreoperativa y evaluando el riesgo de correlación de cartera.
+                </p>
+              </div>
+            )}
 
             {/* Lista de Alertas Activas */}
             {statusSummary.activeAlerts.length > 0 && (
