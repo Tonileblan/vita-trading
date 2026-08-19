@@ -15,6 +15,7 @@ import {
   LogOut,
 } from "lucide-react";
 import { type ReactNode } from "react";
+import { AiAuditorTrigger } from "@/components/ai-auditor-trigger";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -157,6 +158,8 @@ export function AppShell({
         </div>
         <div className="space-y-6">{children}</div>
       </main>
+
+      <AiAuditorTrigger />
     </div>
   );
 }
