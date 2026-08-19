@@ -43,7 +43,7 @@ import {
   formatCurrency,
 } from "@/lib/metrics";
 import { PhaseChip, TargetProgress } from "@/components/target-progress";
-import { DrawdownCornerAlert } from "@/components/drawdown-corner-alert";
+import { DrawdownAlertButton } from "@/components/drawdown-corner-alert";
 import {
   ACCOUNT_PHASES,
   BROKERS,
@@ -505,17 +505,10 @@ function AccountsPage() {
     return (
       <article
         className={cn(
-          "panel relative overflow-hidden flex flex-col justify-between p-5 transition-all hover:border-foreground/20",
+          "panel flex flex-col justify-between p-5 transition-all hover:border-foreground/20",
           isLowDrawdown && "border-loss/40 hover:border-loss/60 shadow-xs",
         )}
       >
-        <DrawdownCornerAlert
-          remaining={dd?.remaining ?? 0}
-          isFunded={acc.type === "funded" && Boolean(acc.drawdownLimit)}
-          breached={dd?.breached ?? false}
-          threshold={600}
-        />
-
         <div className="space-y-4">
           <div className="flex items-start justify-between gap-3">
             <Link
@@ -523,13 +516,21 @@ function AccountsPage() {
               params={{ accountId: acc.id }}
               className="min-w-0 flex-1 group"
             >
-              <div className="flex items-center gap-2">
-                <h3 className="truncate text-base font-bold group-hover:text-brand transition-colors">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="text-base font-bold group-hover:text-brand transition-colors break-words">
                   {acc.name}
                 </h3>
                 {acc.type === "funded" && <PhaseChip phase={acc.phase ?? "eval"} />}
+                {isLowDrawdown && (
+                  <DrawdownAlertButton
+                    remaining={dd?.remaining ?? 0}
+                    isFunded={acc.type === "funded" && Boolean(acc.drawdownLimit)}
+                    breached={dd?.breached ?? false}
+                    threshold={600}
+                  />
+                )}
               </div>
-              <p className="text-xs text-muted-foreground mt-0.5">
+              <p className="text-xs text-muted-foreground mt-1">
                 {acc.type === "funded"
                   ? (acc.firm ?? "Prop firm")
                   : (acc.broker ?? "Cuenta personal")}{" "}
@@ -537,10 +538,23 @@ function AccountsPage() {
               </p>
             </Link>
 
-            <div className="flex items-center gap-2">
+            <div className="flex flex-col items-end gap-1 shrink-0">
+              <AccountDialog
+                account={acc}
+                trigger={
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="size-8 -mr-1 text-muted-foreground hover:text-foreground"
+                    aria-label={`Editar ${acc.name}`}
+                  >
+                    <Pencil className="size-3.5" />
+                  </Button>
+                }
+              />
               <span
                 className={cn(
-                  "num rounded-lg px-2.5 py-1 text-xs font-bold",
+                  "num rounded-lg px-2.5 py-0.5 text-xs font-bold whitespace-nowrap",
                   result >= 0
                     ? "bg-profit/15 text-profit border border-profit/20"
                     : "bg-loss/15 text-loss border border-loss/20",
@@ -548,19 +562,6 @@ function AccountsPage() {
               >
                 {formatCurrency(result, true)}
               </span>
-              <AccountDialog
-                account={acc}
-                trigger={
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="size-8"
-                    aria-label={`Editar ${acc.name}`}
-                  >
-                    <Pencil className="size-3.5" />
-                  </Button>
-                }
-              />
             </div>
           </div>
 

@@ -20,7 +20,7 @@ import {
   accountTarget,
 } from "@/lib/metrics";
 import { TargetProgress, PhaseChip } from "@/components/target-progress";
-import { DrawdownCornerAlert } from "@/components/drawdown-corner-alert";
+import { DrawdownAlertButton } from "@/components/drawdown-corner-alert";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/cuenta/$accountId")({
@@ -95,7 +95,19 @@ function AccountDetail() {
 
   return (
     <AppShell
-      title={account.name}
+      title={
+        <div className="flex items-center gap-2.5 flex-wrap">
+          <span>{account.name}</span>
+          {isLowDrawdown && (
+            <DrawdownAlertButton
+              remaining={dd?.remaining ?? 0}
+              isFunded={account.type === "funded" && Boolean(account.drawdownLimit)}
+              breached={dd?.breached ?? false}
+              threshold={600}
+            />
+          )}
+        </div>
+      }
       subtitle={`${account.firm ?? "Cuenta personal"} · ${account.currency}`}
       actions={
         <Link
@@ -109,16 +121,10 @@ function AccountDetail() {
       <div className="space-y-5">
         <section
           className={cn(
-            "panel relative overflow-hidden grid grid-cols-2 gap-4 p-4 md:grid-cols-4",
+            "panel grid grid-cols-2 gap-4 p-4 md:grid-cols-4",
             isLowDrawdown && "border-loss/40",
           )}
         >
-          <DrawdownCornerAlert
-            remaining={dd?.remaining ?? 0}
-            isFunded={account.type === "funded" && Boolean(account.drawdownLimit)}
-            breached={dd?.breached ?? false}
-            threshold={600}
-          />
           <div>
             <p className="text-xs text-muted-foreground">Balance inicial</p>
             <p className="num text-lg font-semibold">{formatCurrency(account.initialBalance)}</p>
@@ -183,24 +189,23 @@ function AccountDetail() {
 
         {dd ? (
           <section
-            className={cn(
-              "panel relative overflow-hidden space-y-2.5 p-4",
-              isLowDrawdown && "border-loss/40 bg-loss/5",
-            )}
+            className={cn("panel space-y-2.5 p-4", isLowDrawdown && "border-loss/40 bg-loss/5")}
           >
-            <DrawdownCornerAlert
-              remaining={dd.remaining}
-              isFunded={account.type === "funded" && Boolean(account.drawdownLimit)}
-              breached={dd.breached}
-              threshold={600}
-            />
-
             <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
-              <span className={cn("font-semibold", isLowDrawdown && "text-loss")}>
-                Drawdown · {dd.label}
-                {dd.frozen ? " · suelo congelado" : ""}
-                {isLowDrawdown && !dd.breached && " · Crítico (< 600 $)"}
-              </span>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className={cn("font-semibold", isLowDrawdown && "text-loss")}>
+                  Drawdown · {dd.label}
+                  {dd.frozen ? " · suelo congelado" : ""}
+                </span>
+                {isLowDrawdown && (
+                  <DrawdownAlertButton
+                    remaining={dd.remaining}
+                    isFunded={account.type === "funded" && Boolean(account.drawdownLimit)}
+                    breached={dd.breached}
+                    threshold={600}
+                  />
+                )}
+              </div>
               <span className="num text-muted-foreground">
                 {formatCurrency(dd.used)} / {formatCurrency(dd.limit)}
               </span>
