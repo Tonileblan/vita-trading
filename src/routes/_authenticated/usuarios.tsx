@@ -44,6 +44,7 @@ import { Button } from "@/components/ui/button";
 import { ChatThread } from "@/components/chat-thread";
 import {
   deleteUserAdminFn,
+  updateCredentialsAdminFn,
   applyForSupervisorServerFn,
   cancelSupervisorServerFn,
   adminReviewSupervisorServerFn,
@@ -134,6 +135,7 @@ function UsersPage() {
   const { theme, setTheme } = useTheme();
   const qc = useQueryClient();
   const deleteUserServer = useServerFn(deleteUserAdminFn);
+  const updateCredentialsServer = useServerFn(updateCredentialsAdminFn);
   const applyForSupervisorServer = useServerFn(applyForSupervisorServerFn);
   const cancelSupervisorServer = useServerFn(cancelSupervisorServerFn);
   const adminReviewSupervisorServer = useServerFn(adminReviewSupervisorServerFn);
@@ -507,6 +509,21 @@ function UsersPage() {
       newEmail?: string | undefined;
       newPassword?: string | undefined;
     }) => {
+      // 1. Intentar Server Function (usa Service Role para actualizar auth.users directamente)
+      try {
+        const res = await updateCredentialsServer({
+          data: {
+            userId,
+            email: newEmail?.trim() || undefined,
+            password: newPassword?.trim() || undefined,
+          },
+        });
+        if (res?.success) return;
+      } catch (err: any) {
+        console.warn("Server credentials update error, trying RPC fallback:", err);
+      }
+
+      // 2. Intentar RPC
       const { error } = await (supabase.rpc as any)("admin_update_user_credentials", {
         target_user_id: userId,
         new_email: newEmail?.trim() || null,
@@ -526,30 +543,55 @@ function UsersPage() {
 
   const deleteUser = useMutation({
     mutationFn: async (userId: string) => {
-      // 1. Intentar RPC delete_user_account
-      const { data: d1, error: e1 } = await (supabase.rpc as any)("delete_user_account", {
-        user_id: userId,
-      });
-      if (!e1 && d1) return;
-
-      // 2. Intentar RPC admin_delete_user con target_user_id
-      const { data: d2, error: e2 } = await (supabase.rpc as any)("admin_delete_user", {
-        target_user_id: userId,
-      });
-      if (!e2 && d2) return;
-
-      // 3. Intentar RPC admin_delete_user con p_target_user_id
-      const { data: d3, error: e3 } = await (supabase.rpc as any)("admin_delete_user", {
-        p_target_user_id: userId,
-      });
-      if (!e3 && d3) return;
-
-      // 4. Intentar Server Function
+      // 1. Intentar Server Function (Service Role con borrado de todas las tablas y auth.users)
       try {
-        await deleteUserServer({ data: { userId } });
+        const res = await deleteUserServer({ data: { userId } });
+        if (res?.success) return;
       } catch (err: any) {
-        throw new Error(e1?.message || e2?.message || e3?.message || err?.message || "No se pudo eliminar el usuario");
+        console.warn("Server delete error, trying RPC fallbacks:", err);
       }
+
+      // 2. Intentar RPC delete_user_account
+      try {
+        const { data: d1, error: e1 } = await (supabase.rpc as any)("delete_user_account", {
+          user_id: userId,
+        });
+        if (!e1 && d1) return;
+      } catch {
+        // Fallback
+      }
+
+      // 3. Intentar RPC admin_delete_user con target_user_id
+      try {
+        const { data: d2, error: e2 } = await (supabase.rpc as any)("admin_delete_user", {
+          target_user_id: userId,
+        });
+        if (!e2 && d2) return;
+      } catch {
+        // Fallback
+      }
+
+      // 4. Intentar RPC admin_delete_user con p_target_user_id
+      try {
+        const { data: d3, error: e3 } = await (supabase.rpc as any)("admin_delete_user", {
+          p_target_user_id: userId,
+        });
+        if (!e3 && d3) return;
+      } catch {
+        // Fallback
+      }
+
+      // 5. Fallback directo en cliente (desvincular supervisor y borrar perfil)
+      try {
+        await supabase.from("profiles").update({ assigned_supervisor_id: null } as any).eq("assigned_supervisor_id", userId);
+        await supabase.from("user_roles").delete().eq("user_id", userId);
+        const { error: pErr } = await supabase.from("profiles").delete().eq("id", userId);
+        if (!pErr) return;
+      } catch {
+        // Fallback
+      }
+
+      throw new Error("No se pudo eliminar el usuario de la base de datos");
     },
     onMutate: async (userId) => {
       await qc.cancelQueries({ queryKey: ["all-profiles"] });
