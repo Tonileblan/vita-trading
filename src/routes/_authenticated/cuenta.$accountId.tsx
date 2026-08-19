@@ -20,6 +20,7 @@ import {
   accountTarget,
 } from "@/lib/metrics";
 import { TargetProgress, PhaseChip } from "@/components/target-progress";
+import { DrawdownProgress } from "@/components/drawdown-progress";
 import { DrawdownAlertButton } from "@/components/drawdown-corner-alert";
 import { cn } from "@/lib/utils";
 
@@ -187,79 +188,7 @@ function AccountDetail() {
 
         <AccountCostCard accountId={account.id} pnl={pnl} />
 
-        {dd ? (
-          <section
-            className={cn("panel space-y-2.5 p-4", isLowDrawdown && "border-loss/40 bg-loss/5")}
-          >
-            <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className={cn("font-semibold", isLowDrawdown && "text-loss")}>
-                  Drawdown · {dd.label}
-                  {dd.frozen ? " · suelo congelado" : ""}
-                </span>
-                {isLowDrawdown && (
-                  <DrawdownAlertButton
-                    remaining={dd.remaining}
-                    isFunded={account.type === "funded" && Boolean(account.drawdownLimit)}
-                    breached={dd.breached}
-                    threshold={600}
-                  />
-                )}
-              </div>
-              <span className="num text-muted-foreground">
-                {formatCurrency(dd.used)} / {formatCurrency(dd.limit)}
-              </span>
-            </div>
-            <div className="h-2 overflow-hidden rounded-full bg-muted">
-              <div
-                className={cn("h-full", dd.pct > 70 || isLowDrawdown ? "bg-loss" : "bg-brand")}
-                style={{ width: `${dd.pct}%` }}
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-3 text-xs text-muted-foreground md:grid-cols-4">
-              <div>
-                <p>Referencia</p>
-                <p className="num font-semibold text-foreground">{formatCurrency(dd.reference)}</p>
-              </div>
-              <div>
-                <p>Suelo</p>
-                <p className="num font-semibold text-foreground">{formatCurrency(dd.floor)}</p>
-              </div>
-              <div>
-                <p>Margen restante</p>
-                <p
-                  className={cn(
-                    "num font-semibold",
-                    isLowDrawdown ? "text-loss font-bold" : "text-foreground",
-                  )}
-                >
-                  {formatCurrency(dd.remaining)}
-                </p>
-              </div>
-              <div>
-                <p>Estado</p>
-                <p
-                  className={cn(
-                    "font-semibold",
-                    dd.breached || isLowDrawdown ? "text-loss font-bold" : "text-profit",
-                  )}
-                >
-                  {dd.breached
-                    ? "Cuenta rota"
-                    : isLowDrawdown
-                      ? "Riesgo alto (< 600 $)"
-                      : "En regla"}
-                </p>
-              </div>
-            </div>
-            {dd.breachedAt && !dd.breached ? (
-              <p className="text-xs text-muted-foreground">
-                Aviso: cierre por debajo del suelo el{" "}
-                {new Date(dd.breachedAt).toLocaleDateString("es-ES")} (recuperada)
-              </p>
-            ) : null}
-          </section>
-        ) : null}
+        {dd ? <DrawdownProgress status={dd} threshold={600} variant="detail" /> : null}
 
         <KpiCards metrics={metrics} trades={accTrades} />
 

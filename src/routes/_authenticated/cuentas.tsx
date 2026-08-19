@@ -43,6 +43,7 @@ import {
   formatCurrency,
 } from "@/lib/metrics";
 import { PhaseChip, TargetProgress } from "@/components/target-progress";
+import { DrawdownProgress } from "@/components/drawdown-progress";
 import { DrawdownAlertButton } from "@/components/drawdown-corner-alert";
 import {
   ACCOUNT_PHASES,
@@ -587,43 +588,7 @@ function AccountsPage() {
           {target && <TargetProgress status={target} />}
 
           {/* Drawdown Progress */}
-          {dd && (
-            <div
-              className={cn(
-                "space-y-1.5 rounded-xl border p-3 transition-colors",
-                isLowDrawdown ? "border-loss/40 bg-loss/5" : "border-border/80 bg-muted/20",
-              )}
-            >
-              <div className="flex flex-wrap justify-between gap-x-2 text-xs text-muted-foreground">
-                <span className={cn("font-semibold", isLowDrawdown && "text-loss")}>
-                  Drawdown {dd.label.toLowerCase()}
-                  {isLowDrawdown && !dd.breached && " · Crítico (< 600 $)"}
-                </span>
-                <span className="num font-semibold">
-                  {formatCurrency(dd.used)} / {formatCurrency(dd.limit)}
-                </span>
-              </div>
-              <div className="h-2 overflow-hidden rounded-full bg-muted">
-                <div
-                  className={cn(
-                    "h-full transition-all",
-                    dd.pct > 70 || isLowDrawdown ? "bg-loss" : "bg-brand",
-                  )}
-                  style={{ width: `${Math.min(100, Math.max(0, dd.pct))}%` }}
-                />
-              </div>
-              <p
-                className={cn(
-                  "text-[11px]",
-                  dd.breached || isLowDrawdown ? "font-bold text-loss" : "text-muted-foreground",
-                )}
-              >
-                {dd.breached
-                  ? `Cuenta rota: límite alcanzado en ${formatCurrency(dd.floor)}`
-                  : `Colchón disponible: ${formatCurrency(dd.remaining)} (suelo en ${formatCurrency(dd.floor)})`}
-              </p>
-            </div>
-          )}
+          {dd && <DrawdownProgress status={dd} threshold={600} />}
         </div>
 
         {/* Footer */}
