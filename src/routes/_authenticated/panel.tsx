@@ -610,15 +610,6 @@ function Overview() {
                   : "Consolidada de las cuentas activas"}
               </p>
             </div>
-            {selectedFundedAccount?.drawdownLimit && (
-              <div className="flex items-center gap-1.5 rounded-full border border-red-500/30 bg-red-500/10 px-3 py-1 text-xs font-semibold text-red-500">
-                <span className="inline-block size-2 rounded-full bg-red-500 animate-pulse" />
-                <span>
-                  Límite Drawdown ({selectedFundedAccount.drawdownType === "trailing" ? "Trailing" : selectedFundedAccount.drawdownType === "eod" ? "EOD" : "Estático"}):{" "}
-                  <strong>{formatCurrency(selectedFundedAccount.drawdownLimit)}</strong>
-                </span>
-              </div>
-            )}
           </div>
           <EquityChart data={curve} />
         </section>

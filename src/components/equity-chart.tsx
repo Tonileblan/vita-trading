@@ -2,7 +2,6 @@ import {
   Area,
   AreaChart,
   CartesianGrid,
-  Legend,
   Line,
   ResponsiveContainer,
   Tooltip,
@@ -60,18 +59,7 @@ export function EquityChart({
               return [formatted, "Capital (Equity)"];
             }}
           />
-          {hasDrawdown && (
-            <Legend
-              verticalAlign="top"
-              align="right"
-              wrapperStyle={{ paddingBottom: 8, fontSize: 11 }}
-              formatter={(value) => (
-                <span className="text-xs font-semibold text-muted-foreground">
-                  {value === "equity" ? "Curva de Capital" : "Límite Drawdown (Fondeo)"}
-                </span>
-              )}
-            />
-          )}
+          {/* Area de curva de capital */}
           <Area
             type="monotone"
             name="equity"
