@@ -11,7 +11,6 @@ import { PerformanceAnalysis } from "@/components/performance-analysis";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { TradesTable } from "@/components/trades-table";
-import { TradeFormDialog } from "@/components/trade-form-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import {
@@ -376,11 +375,6 @@ function Overview() {
           : isSupervisedView
             ? `Supervisando a ${svProfiles.find((p) => p.id === supervisorUserFilter)?.display_name ?? "usuario"} · ${accounts.length} cuenta(s) · Fondeo ${formatCurrency(fundedEquity)} · Real ${formatCurrency(realEquity)}`
             : `${selectedAccounts.length} cuenta(s) activas · Fondeo ${formatCurrency(fundedEquity)} · Real ${formatCurrency(realEquity)}`
-      }
-      actions={
-        <div className="flex items-center gap-2">
-          <TradeFormDialog />
-        </div>
       }
     >
       <div className="space-y-6">
