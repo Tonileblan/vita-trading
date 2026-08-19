@@ -10,11 +10,10 @@ import {
   MessageSquare,
   Brain,
   Receipt,
-
   ShieldCheck,
   LogOut,
 } from "lucide-react";
-import { useEffect, type ReactNode } from "react";
+import { type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -25,38 +24,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/lib/auth-context";
-import { useJournal } from "@/lib/journal-store";
-import { useJournals } from "@/lib/journals";
 import { cn } from "@/lib/utils";
-
-
-
-function JournalSwitcher() {
-  const { data: journals = [] } = useJournals();
-  const { activeJournalId, setActiveJournalId } = useJournal();
-  const active = journals.find((j) => j.id === activeJournalId);
-
-  useEffect(() => {
-    if (!active && journals.length > 0) setActiveJournalId(journals[0]!.id);
-  }, [active, journals, setActiveJournalId]);
-
-  if (journals.length === 0) return null;
-
-  return (
-    <select
-      value={active?.id ?? ""}
-      onChange={(e) => setActiveJournalId(e.target.value)}
-      className="h-9 max-w-[7.5rem] rounded-md border border-border bg-card px-2 text-sm sm:max-w-none"
-      aria-label="Diario activo"
-    >
-      {journals.map((j) => (
-        <option key={j.id} value={j.id}>
-          {j.name}
-        </option>
-      ))}
-    </select>
-  );
-}
 
 function UserMenu() {
   const { user, profile, isAdmin, signOut } = useAuth();
@@ -143,7 +111,6 @@ export function AppShell({
             </div>
           </Link>
           <div className="flex shrink-0 items-center gap-2">
-            <JournalSwitcher />
             <UserMenu />
           </div>
         </div>
