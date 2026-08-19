@@ -31,7 +31,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { TradeFormDialog } from "@/components/trade-form-dialog";
 import { TradeImportDialog } from "@/components/trade-import-dialog";
-import { TradesTable } from "@/components/trades-table";
+import { TradesTable, type SortDirection, type TradeSortField } from "@/components/trades-table";
 import { useJournal } from "@/lib/journal-store";
 import { computeMetrics, effectiveStrategyId, formatCurrency, formatDateTime } from "@/lib/metrics";
 import { cn } from "@/lib/utils";
@@ -43,9 +43,14 @@ export const Route = createFileRoute("/_authenticated/operaciones")({
       {
         name: "description",
         content:
-          "Registro y tabla de operaciones de trading con cálculo automático de PnL, RR y comisiones.",
+          "Registro detallado de operaciones de Vita-Trading con filtrado, estadísticas y análisis por estrategia.",
       },
       { property: "og:title", content: "Operaciones — Vita-Trading" },
+      {
+        property: "og:description",
+        content:
+          "Consulta, filtra y categoriza todas las ejecuciones registradas en tus cuentas de fondeo y personales.",
+      },
     ],
   }),
   component: TradesPage,
@@ -73,7 +78,8 @@ function TradesPage() {
   const [selected, setSelected] = useState<string[]>([]);
   const [pending, setPending] = useState<Pending | null>(null);
   const [working, setWorking] = useState(false);
-  const [sortBy, setSortBy] = useState<"created" | "closed">("closed");
+  const [sortField, setSortField] = useState<TradeSortField>("date");
+  const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
   const [tab, setTab] = useState<"operaciones" | "importaciones">("operaciones");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(50);
@@ -110,17 +116,38 @@ function TradesPage() {
           return true;
         })
         .sort((a, b) => {
-          if (sortBy === "created") {
-            const aDate = a.createdAt || a.openedAt || a.closedAt || "";
-            const bDate = b.createdAt || b.openedAt || b.closedAt || "";
-            return bDate.localeCompare(aDate);
+          let cmp = 0;
+          if (sortField === "date") {
+            const aTime = new Date(a.openedAt || a.closedAt || a.createdAt || "").getTime() || 0;
+            const bTime = new Date(b.openedAt || b.closedAt || b.createdAt || "").getTime() || 0;
+            cmp = aTime - bTime;
+          } else if (sortField === "strategy") {
+            const aStratId = effectiveStrategyId(a, accounts, strategyPeriods) || a.strategyId;
+            const bStratId = effectiveStrategyId(b, accounts, strategyPeriods) || b.strategyId;
+            const aStrat = strategies.find((s) => s.id === aStratId)?.name || "";
+            const bStrat = strategies.find((s) => s.id === bStratId)?.name || "";
+            if (!aStrat && bStrat) return 1;
+            if (aStrat && !bStrat) return -1;
+            cmp = aStrat.localeCompare(bStrat, "es", { sensitivity: "base" });
+          } else if (sortField === "pnl") {
+            cmp = (a.pnl ?? 0) - (b.pnl ?? 0);
+          } else if (sortField === "account") {
+            const aName = accounts.find((acc) => acc.id === a.accountId)?.name ?? "";
+            const bName = accounts.find((acc) => acc.id === b.accountId)?.name ?? "";
+            cmp = aName.localeCompare(bName, "es", { sensitivity: "base" });
+          } else if (sortField === "symbol") {
+            cmp = (a.symbol || "").localeCompare(b.symbol || "", "es", { sensitivity: "base" });
           }
-          const aDate = a.openedAt || a.closedAt || "";
-          const bDate = b.openedAt || b.closedAt || "";
-          return bDate.localeCompare(aDate);
+          return sortDirection === "asc" ? cmp : -cmp;
         }),
-    [baseTrades, accounts, strategyPeriods, query, selectedStrategyId, sortBy],
+    [baseTrades, accounts, strategies, strategyPeriods, query, selectedStrategyId, sortField, sortDirection],
   );
+
+  const handleSortChange = (field: TradeSortField, direction: SortDirection) => {
+    setSortField(field);
+    setSortDirection(direction);
+    setPage(1);
+  };
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const paginatedTrades = useMemo(() => {
@@ -353,10 +380,35 @@ function TradesPage() {
                     size="sm"
                     variant="outline"
                     className="h-9 gap-1.5 text-xs"
-                    onClick={() => setSortBy((s) => (s === "created" ? "closed" : "created"))}
+                    onClick={() => {
+                      if (sortField === "date") {
+                        setSortDirection((d) => (d === "desc" ? "asc" : "desc"));
+                      } else {
+                        setSortField("date");
+                        setSortDirection("desc");
+                      }
+                      setPage(1);
+                    }}
+                    title="Alternar orden"
                   >
                     <ArrowUpDown className="size-3.5" />
-                    {sortBy === "closed" ? "Orden: Fecha Apertura" : "Orden: Creación/Registro"}
+                    {sortField === "date"
+                      ? sortDirection === "desc"
+                        ? "Fecha: Más recientes"
+                        : "Fecha: Más antiguas"
+                      : sortField === "strategy"
+                        ? sortDirection === "asc"
+                          ? "Estrategia: A → Z"
+                          : "Estrategia: Z → A"
+                        : sortField === "pnl"
+                          ? sortDirection === "desc"
+                            ? "PnL: Mayor a menor"
+                            : "PnL: Menor a mayor"
+                          : sortField === "account"
+                            ? sortDirection === "asc"
+                              ? "Cuenta: A → Z"
+                              : "Cuenta: Z → A"
+                            : "Orden: " + sortField}
                   </Button>
                 </div>
 
@@ -463,7 +515,11 @@ function TradesPage() {
               trades={paginatedTrades}
               accounts={accounts}
               strategies={strategies}
+              strategyPeriods={strategyPeriods}
               selectedIds={selected}
+              sortField={sortField}
+              sortDirection={sortDirection}
+              onSortChange={handleSortChange}
               onToggleSelect={(id) =>
                 setSelected((prev) =>
                   prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],

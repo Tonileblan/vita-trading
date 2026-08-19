@@ -1,36 +1,80 @@
-import { useState } from "react";
-import { FileText, Image as ImageIcon, Layers, Pencil, Smile, Trash2, Zap } from "lucide-react";
+import { useMemo, useState } from "react";
+import {
+  ArrowDown,
+  ArrowUp,
+  ArrowUpDown,
+  FileText,
+  Image as ImageIcon,
+  Layers,
+  Pencil,
+  Smile,
+  Trash2,
+  Zap,
+} from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
-import { formatCurrency, formatDateTime } from "@/lib/metrics";
-import type { Account, Strategy, Trade } from "@/lib/types";
+import { effectiveStrategyId, formatCurrency, formatDateTime } from "@/lib/metrics";
+import type { Account, AccountStrategyPeriod, Strategy, Trade } from "@/lib/types";
 import { useJournal } from "@/lib/journal-store";
 import { TradeFormDialog } from "@/components/trade-form-dialog";
 import { cn } from "@/lib/utils";
+
+export type TradeSortField = "date" | "strategy" | "account" | "pnl" | "symbol";
+export type SortDirection = "asc" | "desc";
 
 export function TradesTable({
   trades,
   accounts,
   strategies: propStrategies,
+  strategyPeriods: propStrategyPeriods,
   limit,
   selectedIds,
   onToggleSelect,
   onEdit,
   onDelete,
+  sortField,
+  sortDirection,
+  onSortChange,
 }: {
   trades: Trade[];
   accounts: Account[];
   strategies?: Strategy[] | undefined;
+  strategyPeriods?: AccountStrategyPeriod[] | undefined;
   limit?: number | undefined;
   selectedIds?: string[] | undefined;
   onToggleSelect?: ((id: string) => void) | undefined;
   onEdit?: ((trade: Trade) => void) | undefined;
   onDelete?: ((trade: Trade) => void) | undefined;
+  sortField?: TradeSortField | null;
+  sortDirection?: SortDirection;
+  onSortChange?: (field: TradeSortField, direction: SortDirection) => void;
 }) {
   const store = useJournal();
   const strategies = propStrategies ?? store.strategies;
+  const strategyPeriods = propStrategyPeriods ?? store.strategyPeriods;
   const [editingTrade, setEditingTrade] = useState<Trade | null>(null);
 
-  const rows = limit ? trades.slice(0, limit) : trades;
+  const [internalSortField, setInternalSortField] = useState<TradeSortField | null>("date");
+  const [internalSortDir, setInternalSortDir] = useState<SortDirection>("desc");
+
+  const currentSortField = sortField !== undefined ? sortField : internalSortField;
+  const currentSortDir = sortDirection !== undefined ? sortDirection : internalSortDir;
+
+  const handleSort = (field: TradeSortField) => {
+    let nextDir: SortDirection = "asc";
+    if (currentSortField === field) {
+      nextDir = currentSortDir === "asc" ? "desc" : "asc";
+    } else {
+      nextDir = field === "date" || field === "pnl" ? "desc" : "asc";
+    }
+
+    if (onSortChange) {
+      onSortChange(field, nextDir);
+    } else {
+      setInternalSortField(field);
+      setInternalSortDir(nextDir);
+    }
+  };
+
   const nameOf = (id: string) => accounts.find((a) => a.id === id)?.name ?? "—";
   /** Treats empty or "N/D" (legacy) symbols as unavailable. */
   const symbolOf = (s: string) => (s && s !== "N/D" ? s : "—");
@@ -47,6 +91,11 @@ export function TradesTable({
   };
 
   const strategyOf = (trade: Trade) => {
+    const stratId = effectiveStrategyId(trade, accounts, strategyPeriods);
+    if (stratId) {
+      const found = strategies.find((s) => s.id === stratId);
+      if (found) return found;
+    }
     if (trade.strategyId) {
       const direct = strategies.find((s) => s.id === trade.strategyId);
       if (direct) return direct;
@@ -58,6 +107,39 @@ export function TradesTable({
     return null;
   };
 
+  const sortedTrades = useMemo(() => {
+    if (onSortChange) {
+      return trades;
+    }
+    if (!currentSortField) return trades;
+
+    return [...trades].sort((a, b) => {
+      let cmp = 0;
+      if (currentSortField === "date") {
+        const aTime = new Date(a.openedAt || a.closedAt || a.createdAt || "").getTime() || 0;
+        const bTime = new Date(b.openedAt || b.closedAt || b.createdAt || "").getTime() || 0;
+        cmp = aTime - bTime;
+      } else if (currentSortField === "strategy") {
+        const aStrat = strategyOf(a)?.name || "";
+        const bStrat = strategyOf(b)?.name || "";
+        if (!aStrat && bStrat) return 1;
+        if (aStrat && !bStrat) return -1;
+        cmp = aStrat.localeCompare(bStrat, "es", { sensitivity: "base" });
+      } else if (currentSortField === "pnl") {
+        cmp = (a.pnl ?? 0) - (b.pnl ?? 0);
+      } else if (currentSortField === "account") {
+        const aName = nameOf(a.accountId);
+        const bName = nameOf(b.accountId);
+        cmp = aName.localeCompare(bName, "es", { sensitivity: "base" });
+      } else if (currentSortField === "symbol") {
+        cmp = (a.symbol || "").localeCompare(b.symbol || "", "es", { sensitivity: "base" });
+      }
+      return currentSortDir === "asc" ? cmp : -cmp;
+    });
+  }, [trades, currentSortField, currentSortDir, onSortChange, strategies, accounts, strategyPeriods]);
+
+  const rows = limit ? sortedTrades.slice(0, limit) : sortedTrades;
+
   return (
     <>
       <div className="panel overflow-x-auto">
@@ -66,13 +148,135 @@ export function TradesTable({
             <tr className="border-b border-border text-left uppercase tracking-wider text-muted-foreground">
               {selectable && <th className="w-8 px-2 py-2 md:px-3 md:py-3" />}
               <th className="w-16 whitespace-nowrap px-2 py-2 font-semibold md:px-3 md:py-3">Acciones</th>
-              <th className="whitespace-nowrap px-2 py-2 font-semibold md:px-4 md:py-3">Fecha</th>
-              <th className="whitespace-nowrap px-2 py-2 font-semibold md:px-4 md:py-3">Cuenta</th>
-              <th className="whitespace-nowrap px-2 py-2 font-semibold md:px-4 md:py-3">Estrategia</th>
+              
+              {/* Columna Fecha */}
+              <th className="whitespace-nowrap px-2 py-2 font-semibold md:px-4 md:py-3">
+                <button
+                  type="button"
+                  onClick={() => handleSort("date")}
+                  className={cn(
+                    "inline-flex items-center gap-1.5 hover:text-foreground transition-colors cursor-pointer select-none group/th",
+                    currentSortField === "date" ? "text-foreground font-bold" : "text-muted-foreground",
+                  )}
+                  title="Clic para ordenar por fecha"
+                  aria-label="Ordenar por fecha"
+                >
+                  <span>Fecha</span>
+                  {currentSortField === "date" ? (
+                    currentSortDir === "asc" ? (
+                      <ArrowUp className="size-3.5 text-brand" />
+                    ) : (
+                      <ArrowDown className="size-3.5 text-brand" />
+                    )
+                  ) : (
+                    <ArrowUpDown className="size-3.5 opacity-30 group-hover/th:opacity-100 transition-opacity" />
+                  )}
+                </button>
+              </th>
+
+              {/* Columna Cuenta */}
+              <th className="whitespace-nowrap px-2 py-2 font-semibold md:px-4 md:py-3">
+                <button
+                  type="button"
+                  onClick={() => handleSort("account")}
+                  className={cn(
+                    "inline-flex items-center gap-1.5 hover:text-foreground transition-colors cursor-pointer select-none group/th",
+                    currentSortField === "account" ? "text-foreground font-bold" : "text-muted-foreground",
+                  )}
+                  title="Clic para ordenar por cuenta"
+                  aria-label="Ordenar por cuenta"
+                >
+                  <span>Cuenta</span>
+                  {currentSortField === "account" ? (
+                    currentSortDir === "asc" ? (
+                      <ArrowUp className="size-3.5 text-brand" />
+                    ) : (
+                      <ArrowDown className="size-3.5 text-brand" />
+                    )
+                  ) : (
+                    <ArrowUpDown className="size-3.5 opacity-30 group-hover/th:opacity-100 transition-opacity" />
+                  )}
+                </button>
+              </th>
+
+              {/* Columna Estrategia */}
+              <th className="whitespace-nowrap px-2 py-2 font-semibold md:px-4 md:py-3">
+                <button
+                  type="button"
+                  onClick={() => handleSort("strategy")}
+                  className={cn(
+                    "inline-flex items-center gap-1.5 hover:text-foreground transition-colors cursor-pointer select-none group/th",
+                    currentSortField === "strategy" ? "text-foreground font-bold" : "text-muted-foreground",
+                  )}
+                  title="Clic para ordenar por estrategia"
+                  aria-label="Ordenar por estrategia"
+                >
+                  <span>Estrategia</span>
+                  {currentSortField === "strategy" ? (
+                    currentSortDir === "asc" ? (
+                      <ArrowUp className="size-3.5 text-brand" />
+                    ) : (
+                      <ArrowDown className="size-3.5 text-brand" />
+                    )
+                  ) : (
+                    <ArrowUpDown className="size-3.5 opacity-30 group-hover/th:opacity-100 transition-opacity" />
+                  )}
+                </button>
+              </th>
+
               <th className="whitespace-nowrap px-2 py-2 font-semibold md:px-4 md:py-3">Dir.</th>
               <th className="whitespace-nowrap px-2 py-2 text-right font-semibold md:px-4 md:py-3">Tamaño</th>
-              <th className="whitespace-nowrap px-2 py-2 text-right font-semibold md:px-4 md:py-3">PnL</th>
-              <th className="whitespace-nowrap px-2 py-2 font-semibold md:px-4 md:py-3">Activo</th>
+
+              {/* Columna PnL */}
+              <th className="whitespace-nowrap px-2 py-2 text-right font-semibold md:px-4 md:py-3">
+                <button
+                  type="button"
+                  onClick={() => handleSort("pnl")}
+                  className={cn(
+                    "inline-flex items-center justify-end gap-1.5 hover:text-foreground transition-colors cursor-pointer select-none group/th w-full",
+                    currentSortField === "pnl" ? "text-foreground font-bold" : "text-muted-foreground",
+                  )}
+                  title="Clic para ordenar por PnL"
+                  aria-label="Ordenar por PnL"
+                >
+                  <span>PnL</span>
+                  {currentSortField === "pnl" ? (
+                    currentSortDir === "asc" ? (
+                      <ArrowUp className="size-3.5 text-brand" />
+                    ) : (
+                      <ArrowDown className="size-3.5 text-brand" />
+                    )
+                  ) : (
+                    <ArrowUpDown className="size-3.5 opacity-30 group-hover/th:opacity-100 transition-opacity" />
+                  )}
+                </button>
+              </th>
+
+              {/* Columna Activo */}
+              <th className="whitespace-nowrap px-2 py-2 font-semibold md:px-4 md:py-3">
+                <button
+                  type="button"
+                  onClick={() => handleSort("symbol")}
+                  className={cn(
+                    "inline-flex items-center gap-1.5 hover:text-foreground transition-colors cursor-pointer select-none group/th",
+                    currentSortField === "symbol" ? "text-foreground font-bold" : "text-muted-foreground",
+                  )}
+                  title="Clic para ordenar por símbolo / activo"
+                  aria-label="Ordenar por activo"
+                >
+                  <span>Activo</span>
+                  {currentSortField === "symbol" ? (
+                    currentSortDir === "asc" ? (
+                      <ArrowUp className="size-3.5 text-brand" />
+                    ) : (
+                      <ArrowDown className="size-3.5 text-brand" />
+                    )
+                  ) : (
+                    <ArrowUpDown className="size-3.5 opacity-30 group-hover/th:opacity-100 transition-opacity" />
+                  )}
+                </button>
+              </th>
+
               <th className="whitespace-nowrap px-2 py-2 text-right font-semibold md:px-4 md:py-3">Entrada</th>
               <th className="whitespace-nowrap px-2 py-2 text-right font-semibold md:px-4 md:py-3">Salida</th>
             </tr>

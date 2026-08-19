@@ -932,6 +932,7 @@ function Overview() {
             trades={trades}
             accounts={accounts}
             strategies={strategies}
+            strategyPeriods={strategyPeriods}
             limit={showAllTrades || selectedCalendarDate ? undefined : 15}
           />
         </section>
