@@ -86,7 +86,16 @@ function fromStrategy(s: Partial<Strategy>): Row {
   if (s.mainSymbol !== undefined) out["main_symbol"] = s.mainSymbol;
   if (s.color !== undefined) out["color"] = s.color;
   if (s.isShared !== undefined) out["is_shared"] = s.isShared;
-  for (const k of ["market", "chart", "days", "schedule", "execution", "setup", "management", "contracts"] as const) {
+  for (const k of [
+    "market",
+    "chart",
+    "days",
+    "schedule",
+    "execution",
+    "setup",
+    "management",
+    "contracts",
+  ] as const) {
     if (s[k] !== undefined) out[k] = s[k] ?? null;
   }
   return out;
@@ -142,7 +151,6 @@ function fromTrade(t: Partial<Omit<Trade, "id">>): Row {
   if (t.emotionNote !== undefined) out["emotion_note"] = t.emotionNote ?? null;
   return out;
 }
-
 
 export function toWithdrawal(r: Row): Withdrawal {
   return {
@@ -218,7 +226,6 @@ function groupImportBatches(trades: Trade[]): ImportBatch[] {
   }
   return [...map.values()].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 20);
 }
-
 
 /** Aplica un delta de PnL al balance almacenado de cada cuenta. */
 async function applyBalanceDeltas(accounts: Account[], deltas: Map<string, number>) {
@@ -300,7 +307,9 @@ export async function fetchTradeScreenshots(tradeId: string): Promise<string[]> 
       .maybeSingle();
 
     if (!error && data && Array.isArray((data as any).screenshots)) {
-      const list = ((data as any).screenshots as string[]).filter((s) => s !== "__has_screenshots__");
+      const list = ((data as any).screenshots as string[]).filter(
+        (s) => s !== "__has_screenshots__",
+      );
       tradeScreenshotsCache.set(tradeId, list);
       return list;
     }
@@ -320,7 +329,12 @@ export async function fetchJournalData(journalId: string): Promise<JournalData> 
       p_journal_id: journalId,
     });
 
-    if (!rpcErr && bundle && typeof bundle === "object" && Array.isArray((bundle as any).accounts)) {
+    if (
+      !rpcErr &&
+      bundle &&
+      typeof bundle === "object" &&
+      Array.isArray((bundle as any).accounts)
+    ) {
       const parsed: JournalData = {
         accounts: ((bundle as any).accounts ?? []).map((r: Row) => toAccount(r)),
         strategies: ((bundle as any).strategies ?? []).map((r: Row) => toStrategy(r)),
@@ -351,7 +365,11 @@ export async function fetchJournalData(journalId: string): Promise<JournalData> 
         .select(LIGHTWEIGHT_TRADE_SELECT)
         .or(`journal_id.eq.${journalId},journal_id.is.null`)
         .order("closed_at", { ascending: false }),
-      supabase.from("withdrawals").select("*").eq("journal_id", journalId).order("date", { ascending: false }),
+      supabase
+        .from("withdrawals")
+        .select("*")
+        .eq("journal_id", journalId)
+        .order("date", { ascending: false }),
       supabase
         .from("account_strategy_periods")
         .select("*")
@@ -523,6 +541,67 @@ export function JournalProvider({ children }: { children: ReactNode }) {
     [qc, activeJournalId],
   );
 
+  const updateCache = useCallback(
+    (updater: (old: JournalData) => JournalData) => {
+      qc.setQueryData<JournalData>(["journal-data", activeJournalId], (old) => {
+        const base = old ?? getLocalJournalDataCache(activeJournalId) ?? EMPTY;
+        const next = updater(base);
+        setLocalJournalDataCache(activeJournalId, next);
+        return next;
+      });
+    },
+    [qc, activeJournalId],
+  );
+
+  // Suscripción a cambios en tiempo real (Realtime) para sincronización inmediata multi-pestaña/dispositivo
+  useEffect(() => {
+    if (!activeJournalId) return;
+
+    const channel = supabase
+      .channel(`rt-journal-${activeJournalId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "trades",
+          filter: `journal_id=eq.${activeJournalId}`,
+        },
+        () => {
+          qc.invalidateQueries({ queryKey: ["journal-data", activeJournalId] });
+        },
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "accounts",
+          filter: `journal_id=eq.${activeJournalId}`,
+        },
+        () => {
+          qc.invalidateQueries({ queryKey: ["journal-data", activeJournalId] });
+        },
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "withdrawals",
+          filter: `journal_id=eq.${activeJournalId}`,
+        },
+        () => {
+          qc.invalidateQueries({ queryKey: ["journal-data", activeJournalId] });
+        },
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [activeJournalId, qc]);
+
   const ownerFields = useCallback(async () => {
     const { data: userData } = await supabase.auth.getUser();
     return { journal_id: activeJournalId, user_id: userData.user?.id };
@@ -542,19 +621,41 @@ export function JournalProvider({ children }: { children: ReactNode }) {
         ? data.trades
         : data.trades.filter((t) => !t.accountId || selected.has(t.accountId));
     const importBatches = groupImportBatches(data.trades);
-    /** Borra operaciones y devuelve a cada cuenta el PnL correspondiente. */
+
+    /** Borra operaciones de inmediato en caché y persiste en Supabase. */
     const deleteTradeIds = async (ids: string[]) => {
       if (ids.length === 0) return;
-      const { error } = await supabase.from("trades").delete().in("id", ids);
-      if (error) throw error;
+      const idSet = new Set(ids);
       const deltas = new Map<string, number>();
       for (const t of data.trades) {
-        if (!ids.includes(t.id) || !t.accountId) continue;
+        if (!idSet.has(t.id) || !t.accountId) continue;
         deltas.set(t.accountId, (deltas.get(t.accountId) ?? 0) - t.pnl);
       }
-      await applyBalanceDeltas(data.accounts, deltas);
-      await refresh();
+
+      // 1. Actualización optimista inmediata (0ms)
+      updateCache((old) => ({
+        ...old,
+        trades: old.trades.filter((t) => !idSet.has(t.id)),
+        accounts: old.accounts.map((a) => {
+          const delta = deltas.get(a.id);
+          return delta ? { ...a, currentBalance: a.currentBalance + delta } : a;
+        }),
+      }));
+
+      // 2. Persistencia en base de datos
+      try {
+        const deletePromise = supabase.from("trades").delete().in("id", ids);
+        const balancePromise =
+          deltas.size > 0 ? applyBalanceDeltas(data.accounts, deltas) : Promise.resolve();
+
+        const [{ error }] = await Promise.all([deletePromise, balancePromise]);
+        if (error) throw error;
+      } catch (err) {
+        await refresh();
+        throw err;
+      }
     };
+
     return {
       ...data,
       // Solo los retiros aprobados afectan al capital y a las métricas.
@@ -573,68 +674,175 @@ export function JournalProvider({ children }: { children: ReactNode }) {
       selectAll: () => setManualSelection(null),
       addAccount: async (account) => {
         const base = await ownerFields();
-        const { error } = await supabase
-          .from("accounts")
-          .insert({ ...fromAccount(account), ...base } as never);
-        if (error) throw error;
+        const tempId =
+          typeof crypto !== "undefined" && "randomUUID" in crypto
+            ? crypto.randomUUID()
+            : `temp-acc-${Date.now()}`;
+        const optimisticAccount: Account = {
+          id: tempId,
+          ...account,
+        };
+
+        updateCache((old) => ({
+          ...old,
+          accounts: [...old.accounts, optimisticAccount],
+        }));
+
         setManualSelection(null);
-        await refresh();
+
+        try {
+          const { data: inserted, error } = await supabase
+            .from("accounts")
+            .insert({ ...fromAccount(account), ...base } as never)
+            .select()
+            .single();
+          if (error) throw error;
+          if (inserted) {
+            const realAcc = toAccount(inserted as Row);
+            updateCache((old) => ({
+              ...old,
+              accounts: old.accounts.map((a) => (a.id === tempId ? realAcc : a)),
+            }));
+          }
+        } catch (err) {
+          await refresh();
+          throw err;
+        }
       },
       updateAccount: async (id, patch) => {
-        const { error } = await supabase
-          .from("accounts")
-          .update(fromAccount(patch) as never)
-          .eq("id", id);
-        if (error) throw error;
-        await refresh();
+        updateCache((old) => ({
+          ...old,
+          accounts: old.accounts.map((a) => (a.id === id ? { ...a, ...patch } : a)),
+        }));
+
+        try {
+          const { error } = await supabase
+            .from("accounts")
+            .update(fromAccount(patch) as never)
+            .eq("id", id);
+          if (error) throw error;
+        } catch (err) {
+          await refresh();
+          throw err;
+        }
       },
       removeAccount: async (id) => {
-        const { error } = await supabase.from("accounts").delete().eq("id", id);
-        if (error) throw error;
+        updateCache((old) => ({
+          ...old,
+          accounts: old.accounts.filter((a) => a.id !== id),
+        }));
         setManualSelection(null);
-        await refresh();
+
+        try {
+          const { error } = await supabase.from("accounts").delete().eq("id", id);
+          if (error) throw error;
+        } catch (err) {
+          await refresh();
+          throw err;
+        }
       },
       addTrade: async (trade) => {
         const base = await ownerFields();
-        const { error } = await supabase
-          .from("trades")
-          .insert({ ...fromTrade(trade), ...base } as never);
-        if (error) throw error;
-        const account = data.accounts.find((a) => a.id === trade.accountId);
-        if (account) {
-          await supabase
-            .from("accounts")
-            .update({ current_balance: account.currentBalance + trade.pnl } as never)
-            .eq("id", account.id);
+        const tempId =
+          typeof crypto !== "undefined" && "randomUUID" in crypto
+            ? crypto.randomUUID()
+            : `temp-${Date.now()}`;
+        const optimisticTrade: Trade = {
+          id: tempId,
+          journalId: activeJournalId,
+          createdAt: new Date().toISOString(),
+          ...trade,
+        };
+
+        // 1. Inserción optimista inmediata en caché (0ms)
+        updateCache((old) => ({
+          ...old,
+          trades: [optimisticTrade, ...old.trades],
+          accounts: old.accounts.map((a) =>
+            a.id === trade.accountId ? { ...a, currentBalance: a.currentBalance + trade.pnl } : a,
+          ),
+        }));
+
+        // 2. Persistencia en Supabase en paralelo
+        try {
+          const insertPromise = supabase
+            .from("trades")
+            .insert({ ...fromTrade(trade), ...base } as never)
+            .select()
+            .single();
+
+          const account = data.accounts.find((a) => a.id === trade.accountId);
+          const accountPromise = account
+            ? supabase
+                .from("accounts")
+                .update({ current_balance: account.currentBalance + trade.pnl } as never)
+                .eq("id", account.id)
+            : Promise.resolve();
+
+          const [{ data: insertedRow, error: insertErr }] = await Promise.all([
+            insertPromise,
+            accountPromise,
+          ]);
+
+          if (insertErr) throw insertErr;
+
+          // 3. Reemplazar ID temporal por el ID definitivo
+          if (insertedRow) {
+            const realTrade = toTrade(insertedRow as Row);
+            updateCache((old) => ({
+              ...old,
+              trades: old.trades.map((t) => (t.id === tempId ? realTrade : t)),
+            }));
+          }
+        } catch (err) {
+          await refresh();
+          throw err;
         }
-        await refresh();
       },
       updateTrade: async (id, patch) => {
         const oldTrade = data.trades.find((t) => t.id === id);
-        const row = fromTrade(patch);
-        const { error } = await supabase.from("trades").update(row as never).eq("id", id);
-        if (error) throw error;
-        if (oldTrade) {
-          const oldAccountId = oldTrade.accountId;
-          const newAccountId = patch.accountId !== undefined ? patch.accountId : oldAccountId;
-          const oldPnl = oldTrade.pnl ?? 0;
-          const newPnl = patch.pnl !== undefined ? patch.pnl : oldPnl;
+        const oldAccountId = oldTrade?.accountId;
+        const newAccountId = patch.accountId !== undefined ? patch.accountId : oldAccountId;
+        const oldPnl = oldTrade?.pnl ?? 0;
+        const newPnl = patch.pnl !== undefined ? patch.pnl : oldPnl;
 
-          const deltas = new Map<string, number>();
-          if (oldAccountId === newAccountId) {
-            const delta = newPnl - oldPnl;
-            if (delta !== 0 && newAccountId) {
-              deltas.set(newAccountId, delta);
-            }
-          } else {
-            if (oldAccountId) deltas.set(oldAccountId, -oldPnl);
-            if (newAccountId) deltas.set(newAccountId, (deltas.get(newAccountId) ?? 0) + newPnl);
+        const deltas = new Map<string, number>();
+        if (oldAccountId === newAccountId) {
+          const delta = newPnl - oldPnl;
+          if (delta !== 0 && newAccountId) {
+            deltas.set(newAccountId, delta);
           }
-          if (deltas.size > 0) {
-            await applyBalanceDeltas(data.accounts, deltas);
-          }
+        } else {
+          if (oldAccountId) deltas.set(oldAccountId, -oldPnl);
+          if (newAccountId) deltas.set(newAccountId, (deltas.get(newAccountId) ?? 0) + newPnl);
         }
-        await refresh();
+
+        // 1. Actualización optimista inmediata en memoria (0ms)
+        updateCache((old) => ({
+          ...old,
+          trades: old.trades.map((t) => (t.id === id ? { ...t, ...patch } : t)),
+          accounts: old.accounts.map((a) => {
+            const delta = deltas.get(a.id);
+            return delta ? { ...a, currentBalance: a.currentBalance + delta } : a;
+          }),
+        }));
+
+        // 2. Persistencia en Supabase
+        try {
+          const row = fromTrade(patch);
+          const updateTradePromise = supabase
+            .from("trades")
+            .update(row as never)
+            .eq("id", id);
+          const updateBalancePromise =
+            deltas.size > 0 ? applyBalanceDeltas(data.accounts, deltas) : Promise.resolve();
+
+          const [{ error }] = await Promise.all([updateTradePromise, updateBalancePromise]);
+          if (error) throw error;
+        } catch (err) {
+          await refresh();
+          throw err;
+        }
       },
       addTrades: async (list) => {
         if (list.length === 0) return;
@@ -643,20 +851,55 @@ export function JournalProvider({ children }: { children: ReactNode }) {
           typeof crypto !== "undefined" && "randomUUID" in crypto
             ? crypto.randomUUID()
             : String(Date.now());
-        const { error } = await supabase
-          .from("trades")
-          .insert(
-            list.map((t) => ({ ...fromTrade(t), ...base, import_batch_id: batchId })) as never,
-          );
-        if (error) throw error;
-        // Suma del PnL por cuenta para actualizar cada balance una única vez.
+
         const deltas = new Map<string, number>();
-        for (const t of list) {
-          if (!t.accountId) continue;
-          deltas.set(t.accountId, (deltas.get(t.accountId) ?? 0) + t.pnl);
+        const optimisticTrades: Trade[] = list.map((t, idx) => {
+          const tempId =
+            typeof crypto !== "undefined" && "randomUUID" in crypto
+              ? crypto.randomUUID()
+              : `temp-${Date.now()}-${idx}`;
+          if (t.accountId) {
+            deltas.set(t.accountId, (deltas.get(t.accountId) ?? 0) + t.pnl);
+          }
+          return {
+            id: tempId,
+            journalId: activeJournalId,
+            createdAt: new Date().toISOString(),
+            importBatchId: batchId,
+            ...t,
+          };
+        });
+
+        // 1. Actualización optimista de lote (0ms)
+        updateCache((old) => ({
+          ...old,
+          trades: [...optimisticTrades, ...old.trades],
+          accounts: old.accounts.map((a) => {
+            const delta = deltas.get(a.id);
+            return delta ? { ...a, currentBalance: a.currentBalance + delta } : a;
+          }),
+        }));
+
+        // 2. Persistencia en Supabase
+        try {
+          const rows = list.map((t) => ({
+            ...fromTrade(t),
+            ...base,
+            import_batch_id: batchId,
+          }));
+          const insertPromise = supabase.from("trades").insert(rows as never);
+          const balancePromise =
+            deltas.size > 0 ? applyBalanceDeltas(data.accounts, deltas) : Promise.resolve();
+
+          const [{ error }] = await Promise.all([insertPromise, balancePromise]);
+          if (error) throw error;
+
+          // Sincronizar IDs reales en segundo plano
+          refresh();
+        } catch (err) {
+          await refresh();
+          throw err;
         }
-        await applyBalanceDeltas(data.accounts, deltas);
-        await refresh();
       },
       removeTrade: async (id) => {
         await deleteTradeIds([id]);
@@ -667,44 +910,93 @@ export function JournalProvider({ children }: { children: ReactNode }) {
       removeImportBatch: async (batchId) => {
         const group = importBatches.find((b) => b.id === batchId);
         const ids =
-          group?.tradeIds ?? data.trades.filter((t) => t.importBatchId === batchId).map((t) => t.id);
+          group?.tradeIds ??
+          data.trades.filter((t) => t.importBatchId === batchId).map((t) => t.id);
         await deleteTradeIds(ids);
       },
       importBatches,
 
-
-
-
-
       addWithdrawal: async (withdrawal) => {
         const base = await ownerFields();
-        const { error } = await supabase.from("withdrawals").insert({
-          strategy_id: withdrawal.strategyId || null,
-          account_id: withdrawal.accountId || null,
-          date: withdrawal.date,
-          amount: withdrawal.amount,
-          reason: withdrawal.reason ?? null,
+        const tempId =
+          typeof crypto !== "undefined" && "randomUUID" in crypto
+            ? crypto.randomUUID()
+            : `temp-wd-${Date.now()}`;
+        const optimisticWd: Withdrawal = {
+          id: tempId,
+          journalId: activeJournalId,
           status: withdrawal.status ?? "approved",
-          ...base,
-        } as never);
-        if (error) throw error;
-        await refresh();
+          ...withdrawal,
+        };
+
+        updateCache((old) => ({
+          ...old,
+          withdrawals: [optimisticWd, ...old.withdrawals],
+        }));
+
+        try {
+          const { data: inserted, error } = await supabase
+            .from("withdrawals")
+            .insert({
+              strategy_id: withdrawal.strategyId || null,
+              account_id: withdrawal.accountId || null,
+              date: withdrawal.date,
+              amount: withdrawal.amount,
+              reason: withdrawal.reason ?? null,
+              status: withdrawal.status ?? "approved",
+              ...base,
+            } as never)
+            .select()
+            .single();
+          if (error) throw error;
+          if (inserted) {
+            const realWd = toWithdrawal(inserted as Row);
+            updateCache((old) => ({
+              ...old,
+              withdrawals: old.withdrawals.map((w) => (w.id === tempId ? realWd : w)),
+            }));
+          }
+        } catch (err) {
+          await refresh();
+          throw err;
+        }
       },
       updateWithdrawal: async (id, patch) => {
-        const row: Record<string, unknown> = {};
-        if (patch.accountId !== undefined) row["account_id"] = patch.accountId || null;
-        if (patch.date !== undefined) row["date"] = patch.date;
-        if (patch.amount !== undefined) row["amount"] = patch.amount;
-        if (patch.reason !== undefined) row["reason"] = patch.reason ?? null;
-        if (patch.status !== undefined) row["status"] = patch.status;
-        const { error } = await supabase.from("withdrawals").update(row as never).eq("id", id);
-        if (error) throw error;
-        await refresh();
+        updateCache((old) => ({
+          ...old,
+          withdrawals: old.withdrawals.map((w) => (w.id === id ? { ...w, ...patch } : w)),
+        }));
+
+        try {
+          const row: Record<string, unknown> = {};
+          if (patch.accountId !== undefined) row["account_id"] = patch.accountId || null;
+          if (patch.date !== undefined) row["date"] = patch.date;
+          if (patch.amount !== undefined) row["amount"] = patch.amount;
+          if (patch.reason !== undefined) row["reason"] = patch.reason ?? null;
+          if (patch.status !== undefined) row["status"] = patch.status;
+          const { error } = await supabase
+            .from("withdrawals")
+            .update(row as never)
+            .eq("id", id);
+          if (error) throw error;
+        } catch (err) {
+          await refresh();
+          throw err;
+        }
       },
       removeWithdrawal: async (id) => {
-        const { error } = await supabase.from("withdrawals").delete().eq("id", id);
-        if (error) throw error;
-        await refresh();
+        updateCache((old) => ({
+          ...old,
+          withdrawals: old.withdrawals.filter((w) => w.id !== id),
+        }));
+
+        try {
+          const { error } = await supabase.from("withdrawals").delete().eq("id", id);
+          if (error) throw error;
+        } catch (err) {
+          await refresh();
+          throw err;
+        }
       },
       addStrategy: async (strategy) => {
         const base = await ownerFields();
@@ -824,7 +1116,7 @@ export function JournalProvider({ children }: { children: ReactNode }) {
 
         const rows = sourceStrategies
           .filter((s) => !existing.has(s.name))
-          .map((s) => ({ ...fromStrategy(s), ...base } as never));
+          .map((s) => ({ ...fromStrategy(s), ...base }) as never);
 
         if (rows.length > 0) {
           const { error } = await supabase.from("strategies").insert(rows);
@@ -833,7 +1125,16 @@ export function JournalProvider({ children }: { children: ReactNode }) {
         await refresh();
       },
     };
-  }, [data, isLoading, selectedAccountIds, activeJournalId, setActiveJournalId, ownerFields, refresh]);
+  }, [
+    data,
+    isLoading,
+    selectedAccountIds,
+    activeJournalId,
+    setActiveJournalId,
+    ownerFields,
+    refresh,
+    updateCache,
+  ]);
 
   return <JournalContext.Provider value={value}>{children}</JournalContext.Provider>;
 }
