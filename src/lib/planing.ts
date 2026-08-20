@@ -616,12 +616,13 @@ export function useSaveTradingPlan(journalId?: string) {
         : plan.id!;
 
       const existing = currentPlans.find((p) => p.id === planId);
+      const planName = (plan.name && plan.name.trim()) ? plan.name.trim() : (existing?.name || generateRecommendedPlanName());
 
       const payload: TradingPlan = {
         id: planId,
         journal_id: journalId,
         user_id: uid,
-        name: plan.name || existing?.name || generateRecommendedPlanName(),
+        name: planName,
         is_active: plan.is_active ?? existing?.is_active ?? DEFAULT_PLAN_SETTINGS.is_active,
         weekly_risk_budget: plan.weekly_risk_budget ?? existing?.weekly_risk_budget ?? DEFAULT_PLAN_SETTINGS.weekly_risk_budget,
         daily_risk_budget: plan.daily_risk_budget ?? existing?.daily_risk_budget ?? DEFAULT_PLAN_SETTINGS.daily_risk_budget,

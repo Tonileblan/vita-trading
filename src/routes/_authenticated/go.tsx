@@ -125,20 +125,21 @@ function GoPage() {
   };
 
   const handleCreateNewPlan = async () => {
-    if (!newPlanName.trim()) {
+    const trimmed = newPlanName.trim();
+    if (!trimmed) {
       toast.error("El nombre del plan no puede estar vacío");
       return;
     }
     try {
       const created = await savePlanMutation.mutateAsync({
-        name: newPlanName.trim(),
         ...DEFAULT_PLAN_SETTINGS,
+        name: trimmed,
       });
       if (created?.id) {
         setSelectedPlanId(created.id);
       }
       setNewPlanDialogOpen(false);
-      toast.success(`Plan "${newPlanName.trim()}" creado y activado`);
+      toast.success(`Plan "${trimmed}" creado y activado`);
     } catch (err: any) {
       toast.error("Error al crear plan: " + (err.message || ""));
     }
