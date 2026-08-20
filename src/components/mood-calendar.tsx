@@ -494,10 +494,10 @@ export function MoodCalendar({ checkins, trades }: MoodCalendarProps) {
                           <span
                             className={cn(
                               "rounded px-1.5 py-0.2 text-[10px] font-bold uppercase",
-                              t.side === "long" ? "bg-profit/15 text-profit" : "bg-loss/15 text-loss",
+                              t.direction === "long" ? "bg-profit/15 text-profit" : "bg-loss/15 text-loss",
                             )}
                           >
-                            {t.side}
+                            {t.direction}
                           </span>
                           {t.emotionBefore && (
                             <span className="rounded-full bg-muted border border-border px-2 py-0.5 text-[10px] text-muted-foreground">
