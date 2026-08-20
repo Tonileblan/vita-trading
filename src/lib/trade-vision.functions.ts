@@ -5,6 +5,7 @@ import { executeGeminiGenerateContent } from "@/lib/google-ai";
 const inputSchema = z.object({
   images: z.array(z.string().startsWith("data:image/").max(8_000_000)).min(1).max(6),
   symbols: z.array(z.string().max(20)).max(30).optional(),
+  accountHints: z.array(z.string().max(100)).max(50).optional(),
   apiKey: z.string().optional(),
   model: z.string().optional(),
 });
@@ -24,15 +25,17 @@ const extractedTrade = z.object({
   exitPrice: z.number().finite().optional().nullable(),
   size: z.number().finite().optional().nullable(),
   pnl: z.number().finite(),
+  accountName: z.string().max(100).optional().nullable(),
+  accountFirm: z.string().max(100).optional().nullable(),
 });
 
 const responseSchema = z.object({ trades: z.array(extractedTrade).max(200) });
 
 export type ExtractedTrade = z.infer<typeof extractedTrade>;
 
-const PROMPT = `Eres un extractor de operaciones de trading a partir de capturas de pantalla o fotos
+const PROMPT = `Eres un extractor experto de operaciones de trading a partir de capturas de pantalla o fotos
 (plataformas tipo Tradovate, NinjaTrader, TradingView, MetaTrader, apps de prop firms, tablas,
-extractos de payout, listados diarios o incluso notas escritas a mano).
+extractos de payout, listados diarios, trade copiers multicuenta o notas).
 
 Devuelve TODAS las operaciones o resultados cerrados visibles, uno por fila/tarjeta/línea.
 
@@ -45,6 +48,8 @@ Reglas:
   Quita símbolos de moneda, separadores de miles y espacios. "(120,50)" → -120.5.
 - "symbol": el activo si es visible (MNQ, NQ, ES, GC, EURUSD…). Si no aparece, null.
 - "direction": long para compras/buy/largo, short para ventas/sell/corto. Si no aparece, null.
+- "accountName": el nombre, código o identificador de cuenta o prop firm que aparece en la fila/operación (ej: "Apex-101", "PA-50K-1", "Topstep #2", "123456", "MFF-PA", "Tradovate DEMO", etc.). Si no aparece, null.
+- "accountFirm": la empresa de fondeo o broker si es visible (ej: "Apex", "Topstep", "FundingPips", "MyFundedFutures", "NinjaTrader", etc.). Si no aparece, null.
 - Fechas: SIEMPRE que aparezca una fecha o marca de tiempo (columna, cabecera, tarjeta, fila o pie),
   devuélvela en ISO 8601 con hora si está disponible (ej. 2026-05-14T15:32:00). Convierte 12h (am/pm) a 24h.
   Si el año no se ve, usa el año actual. Si la fecha aparece una sola vez para un bloque,
@@ -56,7 +61,7 @@ Reglas:
   (misma fecha o fechas distintas), devuélvelas TODAS por separado, una entrada por fila visible.
   El número de entradas del JSON debe coincidir exactamente con el número de filas/operaciones
   visibles en las imágenes.
-Responde SOLO con JSON válido: {"trades":[{"symbol":null,"direction":null,"openedAt":null,"closedAt":"2026-05-14T15:32:00","entryPrice":null,"exitPrice":null,"size":null,"pnl":-120.5}]}`;
+Responde SOLO con JSON válido: {"trades":[{"symbol":"MNQ","direction":"long","openedAt":"2026-05-14T15:30:00","closedAt":"2026-05-14T15:32:00","entryPrice":18500,"exitPrice":18520,"size":1,"pnl":80.0,"accountName":"Apex-50K-1","accountFirm":"Apex"}]}`;
 
 function parseDataUrl(dataUrl: string): { mime_type: string; data: string } {
   const match = dataUrl.match(/^data:([^;]+);base64,(.+)$/);
@@ -76,9 +81,15 @@ export const extractTradesFromImages = createServerFn({ method: "POST" })
       process.env["GOOGLE_API_KEY"];
     const lovableKey = process.env["LOVABLE_API_KEY"];
 
-    const hint = data.symbols?.length
+    const symbolHint = data.symbols?.length
       ? `Activos habituales del usuario: ${data.symbols.join(", ")}.`
       : "";
+
+    const accountHint = data.accountHints?.length
+      ? `Cuentas registradas del usuario en el sistema: ${data.accountHints.join(", ")}. Si las capturas corresponden a alguna de estas cuentas o prop firms, asocia el accountName correspondiente.`
+      : "";
+
+    const hints = [symbolHint, accountHint].filter(Boolean).join("\n");
 
     let content = "{}";
 
@@ -103,7 +114,7 @@ export const extractTradesFromImages = createServerFn({ method: "POST" })
         [
           {
             parts: [
-              { text: `${PROMPT}\n${hint}\nExtrae todas las operaciones de estas capturas.` },
+              { text: `${PROMPT}\n${hints}\nExtrae todas las operaciones de estas capturas.` },
               ...imageParts,
             ],
           },
@@ -124,7 +135,7 @@ export const extractTradesFromImages = createServerFn({ method: "POST" })
         body: JSON.stringify({
           model: "google/gemini-2.5-flash",
           messages: [
-            { role: "system", content: `${PROMPT}\n${hint}` },
+            { role: "system", content: `${PROMPT}\n${hints}` },
             {
               role: "user",
               content: [
