@@ -4,7 +4,11 @@ import { useServerFn } from "@tanstack/react-start";
 import {
   ArrowRight,
   Building2,
+  Calendar,
+  CalendarDays,
   Camera,
+  Check,
+  Clock,
   Coins,
   DollarSign,
   HelpCircle,
@@ -28,6 +32,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -45,6 +50,7 @@ import {
 } from "@/lib/google-ai";
 import { formatCurrency } from "@/lib/metrics";
 import { parseDetectedDate } from "@/lib/parse-date";
+import { todayKey } from "@/lib/emotions";
 import type { Account, Strategy } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -170,16 +176,59 @@ function dedupeKey(t: {
   return [normalizeSymbol(t.symbol), t.direction, day, t.pnl.toFixed(2)].join("|");
 }
 
-const toIso = (value?: string | null) => {
-  const parsed = parseDetectedDate(value);
-  return parsed ? new Date(parsed).toISOString() : new Date().toISOString();
-};
+function getYesterdayKey(): string {
+  const d = new Date();
+  d.setDate(d.getDate() - 1);
+  return todayKey(d);
+}
+
+function formatDisplayDate(dateKey: string): string {
+  if (!dateKey) return "Sin fecha seleccionada";
+  try {
+    const [y, m, d] = dateKey.split("-").map(Number);
+    const date = new Date(y!, m! - 1, d!);
+    if (isNaN(date.getTime())) return dateKey;
+    const formatted = date.toLocaleDateString("es-ES", {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
+    return formatted.charAt(0).toUpperCase() + formatted.slice(1);
+  } catch {
+    return dateKey;
+  }
+}
+
+function combineDateTimeToIso(dateStr: string, timeStr?: string): string {
+  try {
+    const [y, m, d] = (dateStr || todayKey()).split("-").map(Number);
+    let hh = 12;
+    let mm = 0;
+    let ss = 0;
+    if (timeStr) {
+      const parts = timeStr.split(":").map(Number);
+      if (!isNaN(parts[0]!)) hh = parts[0]!;
+      if (!isNaN(parts[1]!)) mm = parts[1]!;
+      if (parts[2] !== undefined && !isNaN(parts[2])) ss = parts[2];
+    }
+    const dateObj = new Date(y!, m! - 1, d!, hh, mm, ss);
+    if (isNaN(dateObj.getTime())) return new Date().toISOString();
+    return dateObj.toISOString();
+  } catch {
+    return new Date().toISOString();
+  }
+}
 
 interface Row extends ExtractedTrade {
   key: string;
   duplicate: boolean;
   selected: boolean;
   detectedAt: string | null;
+  /** Fecha confirmada para la operación (YYYY-MM-DD) */
+  customDate: string;
+  /** Hora confirmada para la operación (HH:mm) */
+  customTime: string;
   /** Identificador detectado para agrupar */
   detectedAccountKey: string;
   /** Cuenta destino final asignada */
@@ -258,6 +307,10 @@ export function TradeImportDialog() {
 
   const [open, setOpen] = useState(false);
   const [cameraOpen, setCameraOpen] = useState(false);
+
+  // Fecha confirmada global para el lote de operaciones importadas
+  const [batchDate, setBatchDate] = useState<string>(() => todayKey());
+  const [detectedCaptureDate, setDetectedCaptureDate] = useState<string | null>(null);
 
   // Cuenta y estrategia por defecto para capturas simples
   const [defaultAccountId, setDefaultAccountId] = useState(accounts[0]?.id ?? "");
@@ -347,6 +400,23 @@ export function TradeImportDialog() {
         existingCounts.set(k, (existingCounts.get(k) ?? 0) + 1);
       }
 
+      // Detectar fecha principal en la captura
+      let detectedDay: string | null = null;
+      for (const t of validFound) {
+        const parsed = parseDetectedDate(t.closedAt ?? t.openedAt);
+        if (parsed && parsed.includes("T")) {
+          const day = parsed.split("T")[0];
+          if (day && day.length === 10) {
+            detectedDay = day;
+            break;
+          }
+        }
+      }
+
+      const initialDate = detectedDay || todayKey();
+      setBatchDate(initialDate);
+      setDetectedCaptureDate(detectedDay);
+
       // Detectar grupos de cuentas presentes en la extracción
       const newMappings: Record<string, { targetAccountId: string; targetStrategyId: string }> = {};
       const detectedGroups = new Set<string>();
@@ -385,6 +455,19 @@ export function TradeImportDialog() {
         const duplicate = used < (existingCounts.get(key) ?? 0);
         const detectedAt = parseDetectedDate(t.closedAt ?? t.openedAt);
 
+        let rowDate = initialDate;
+        let rowTime = "15:30";
+
+        if (detectedAt && detectedAt.includes("T")) {
+          const parts = detectedAt.split("T");
+          if (parts[0] && parts[0].length === 10) {
+            rowDate = parts[0];
+          }
+          if (parts[1]) {
+            rowTime = parts[1].slice(0, 5);
+          }
+        }
+
         const accTag = t.accountName
           ? t.accountFirm
             ? `${t.accountName} (${t.accountFirm})`
@@ -409,6 +492,8 @@ export function TradeImportDialog() {
           duplicate,
           selected: !duplicate,
           detectedAt,
+          customDate: rowDate,
+          customTime: rowTime,
           detectedAccountKey: groupKey,
           assignedAccountId: assignedAccId,
           assignedStrategyId: assignedStratId,
@@ -426,8 +511,9 @@ export function TradeImportDialog() {
       } else {
         const uniqueAccountsDetected = detectedGroups.size;
         const simNote = omittedSimCount > 0 ? ` · ${omittedSimCount} ops SIM omitidas` : "";
+        const dateNote = detectedDay ? ` · Fecha: ${formatDisplayDate(detectedDay)}` : "";
         toast.success(
-          `${parsedRows.length} operaciones detectadas · ${uniqueAccountsDetected} ${uniqueAccountsDetected === 1 ? "cuenta" : "cuentas distintas"}${simNote}`,
+          `${parsedRows.length} operaciones detectadas · ${uniqueAccountsDetected} ${uniqueAccountsDetected === 1 ? "cuenta" : "cuentas distintas"}${dateNote}${simNote}`,
         );
       }
     } catch (e: any) {
@@ -456,6 +542,48 @@ export function TradeImportDialog() {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Actualizar fecha de lote global para todas las filas
+  const handleUpdateBatchDate = (newDate: string) => {
+    if (!newDate) return;
+    setBatchDate(newDate);
+    setRows((prev) =>
+      (prev ?? []).map((r) => ({
+        ...r,
+        customDate: newDate,
+      })),
+    );
+    toast.info(`Fecha de operaciones actualizada a: ${formatDisplayDate(newDate)}`);
+  };
+
+  // Actualizar fecha de una fila individual
+  const handleUpdateRowDate = (rowIndex: number, newDate: string) => {
+    if (!newDate) return;
+    setRows((prev) =>
+      (prev ?? []).map((r, i) =>
+        i === rowIndex
+          ? {
+              ...r,
+              customDate: newDate,
+            }
+          : r,
+      ),
+    );
+  };
+
+  // Actualizar hora de una fila individual
+  const handleUpdateRowTime = (rowIndex: number, newTime: string) => {
+    setRows((prev) =>
+      (prev ?? []).map((r, i) =>
+        i === rowIndex
+          ? {
+              ...r,
+              customTime: newTime,
+            }
+          : r,
+      ),
+    );
   };
 
   // Actualizar cuenta destino para un grupo detectado
@@ -526,27 +654,6 @@ export function TradeImportDialog() {
     );
   };
 
-  // Actualizar símbolo de una fila individual
-  const handleUpdateRowSymbol = (rowIndex: number, newSymbol: string) => {
-    const normalized = normalizeSymbol(newSymbol);
-    setRows((prev) =>
-      (prev ?? []).map((r, i) => {
-        if (i !== rowIndex) return r;
-        const newStratId = guessStrategyForTrade(
-          normalized,
-          r.detectedAt,
-          r.assignedStrategyId,
-          strategies,
-        );
-        return {
-          ...r,
-          symbol: normalized,
-          assignedStrategyId: newStratId,
-        };
-      }),
-    );
-  };
-
   // Grupos únicos detectados con su conteo
   const detectedGroupList = useMemo(() => {
     if (!rows) return [];
@@ -578,35 +685,40 @@ export function TradeImportDialog() {
     setImporting(true);
     try {
       await addTrades(
-        chosen.map((r) => ({
-          accountId: r.assignedAccountId || defaultAccountId,
-          strategyId: r.assignedStrategyId || defaultStrategyId,
-          symbol: normalizeSymbol(r.symbol) || "MNQ",
-          direction: r.direction,
-          openedAt: toIso(r.openedAt ?? r.closedAt),
-          closedAt: toIso(r.closedAt ?? r.openedAt),
-          entryPrice: r.entryPrice ?? 0,
-          exitPrice: r.exitPrice ?? 0,
-          size: r.size ?? 0,
-          pnl: r.pnl,
-          mistakes: [],
-          tags: r.accountName ? [r.accountName] : [],
-          notes: r.accountFirm
-            ? `Importada vía Trade Vision · ${r.accountFirm}${r.accountName ? ` (${r.accountName})` : ""}`
-            : "Importada vía Trade Vision",
-          screenshots: images.slice(0, 1),
-          source: "manual" as const,
-        })),
+        chosen.map((r) => {
+          const finalIso = combineDateTimeToIso(r.customDate || batchDate || todayKey(), r.customTime);
+          return {
+            accountId: r.assignedAccountId || defaultAccountId,
+            strategyId: r.assignedStrategyId || defaultStrategyId,
+            symbol: normalizeSymbol(r.symbol) || "MNQ",
+            direction: r.direction,
+            openedAt: finalIso,
+            closedAt: finalIso,
+            entryPrice: r.entryPrice ?? 0,
+            exitPrice: r.exitPrice ?? 0,
+            size: r.size ?? 0,
+            pnl: r.pnl,
+            mistakes: [],
+            tags: r.accountName ? [r.accountName] : [],
+            notes: r.accountFirm
+              ? `Importada vía Trade Vision · ${r.accountFirm}${r.accountName ? ` (${r.accountName})` : ""}`
+              : "Importada vía Trade Vision",
+            screenshots: images.slice(0, 1),
+            source: "manual" as const,
+          };
+        }),
       );
 
       const distinctAccounts = new Set(chosen.map((r) => r.assignedAccountId));
       toast.success(
-        `${chosen.length} operaciones importadas en ${distinctAccounts.size} ${distinctAccounts.size === 1 ? "cuenta" : "cuentas distintas"}`,
+        `${chosen.length} operaciones importadas con fecha ${formatDisplayDate(batchDate)} en ${distinctAccounts.size} ${distinctAccounts.size === 1 ? "cuenta" : "cuentas distintas"}`,
       );
       setOpen(false);
       setImages([]);
       setRows(null);
       setAccountMappings({});
+      setBatchDate(todayKey());
+      setDetectedCaptureDate(null);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "No se pudieron importar las operaciones");
     } finally {
@@ -639,7 +751,7 @@ export function TradeImportDialog() {
                   Importador de Operaciones & Prop Firms
                 </DialogTitle>
                 <p className="text-xs text-muted-foreground">
-                  Detección automática de activos (GCM / Oro, MNQ / IFT, Asia, Fondeo) y asignación multicuenta
+                  Confirmación de fecha, asignación de cuentas y preselección automática de estrategias
                 </p>
               </div>
             </div>
@@ -757,6 +869,8 @@ export function TradeImportDialog() {
                   setImages([]);
                   setRows(null);
                   setAccountMappings({});
+                  setBatchDate(todayKey());
+                  setDetectedCaptureDate(null);
                 }}
                 className="text-[11px] text-loss hover:underline cursor-pointer"
               >
@@ -785,17 +899,104 @@ export function TradeImportDialog() {
               className="w-full gap-2 font-bold shadow-xs cursor-pointer mt-2"
             >
               {loading ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />}
-              {loading ? "Analizando y preseleccionando estrategias y cuentas…" : "Analizar con IA Gemini"}
+              {loading ? "Analizando y preseleccionando estrategias, cuentas y fechas…" : "Analizar con IA Gemini"}
             </Button>
           </div>
         )}
 
         {/* ========================================================================= */}
-        {/* BLOQUE DE MAPEO Y CONFIRMACIÓN DE CUENTAS / PROP FIRMS DETECTADAS        */}
+        {/* BLOQUE DE MAPEO Y CONFIRMACIÓN DE FECHAS & CUENTAS / PROP FIRMS          */}
         {/* ========================================================================= */}
         {rows && rows.length > 0 && (
           <div className="space-y-4 pt-2 border-t border-border/60">
-            {/* Cabecera de Confirmación */}
+
+            {/* ===================================================================== */}
+            {/* 1. CONFIRMACIÓN DE FECHA DE OPERACIONES                              */}
+            {/* ===================================================================== */}
+            <div className="rounded-xl border border-brand/40 bg-brand/[0.04] p-4 space-y-3 shadow-xs">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/60 pb-2.5">
+                <div className="flex items-center gap-2">
+                  <div className="flex size-7 items-center justify-center rounded-lg bg-brand/10 text-brand">
+                    <CalendarDays className="size-4" />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold font-display uppercase tracking-wider text-foreground">
+                      Confirmación de Fecha de Operaciones
+                    </h4>
+                    <p className="text-[11px] text-muted-foreground">
+                      Verifica y confirma la fecha en que se ejecutaron las operaciones de la captura
+                    </p>
+                  </div>
+                </div>
+
+                <span className="inline-flex items-center gap-1 text-[11px] font-bold text-brand bg-brand/10 border border-brand/20 px-2.5 py-0.5 rounded-full">
+                  <Check className="size-3" /> Fecha confirmada: {batchDate}
+                </span>
+              </div>
+
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 bg-card border border-border rounded-lg p-3 shadow-xs">
+                <div className="space-y-0.5">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                    Fecha asignada al lote ({rows.length} {rows.length === 1 ? "operación" : "operaciones"})
+                  </span>
+                  <p className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                    <Calendar className="size-3.5 text-brand" />
+                    {formatDisplayDate(batchDate)}
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="flex items-center gap-1.5">
+                    <Label className="text-[11px] font-semibold text-muted-foreground shrink-0">Cambiar fecha:</Label>
+                    <Input
+                      type="date"
+                      value={batchDate}
+                      onChange={(e) => {
+                        if (e.target.value) handleUpdateBatchDate(e.target.value);
+                      }}
+                      className="h-8 w-36 text-xs font-semibold bg-background"
+                    />
+                  </div>
+
+                  {/* Botones rápidos de acceso a fechas habituales */}
+                  <div className="flex items-center gap-1">
+                    <Button
+                      type="button"
+                      variant={batchDate === todayKey() ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => handleUpdateBatchDate(todayKey())}
+                      className="h-8 text-xs font-semibold px-2.5 cursor-pointer"
+                    >
+                      Hoy
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={batchDate === getYesterdayKey() ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => handleUpdateBatchDate(getYesterdayKey())}
+                      className="h-8 text-xs font-semibold px-2.5 cursor-pointer"
+                    >
+                      Ayer
+                    </Button>
+                    {detectedCaptureDate && detectedCaptureDate !== todayKey() && detectedCaptureDate !== getYesterdayKey() && (
+                      <Button
+                        type="button"
+                        variant={batchDate === detectedCaptureDate ? "default" : "secondary"}
+                        size="sm"
+                        onClick={() => handleUpdateBatchDate(detectedCaptureDate)}
+                        className="h-8 text-xs font-semibold px-2.5 cursor-pointer gap-1"
+                      >
+                        <Sparkles className="size-3 text-brand" /> Detectada ({detectedCaptureDate.slice(8, 10)}/{detectedCaptureDate.slice(5, 7)})
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* ===================================================================== */}
+            {/* 2. CONFIRMACIÓN DE CUENTAS & PROP FIRMS DETECTADAS                    */}
+            {/* ===================================================================== */}
             <div className="rounded-xl border border-brand/40 bg-brand/[0.04] p-4 space-y-3">
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
@@ -891,7 +1092,7 @@ export function TradeImportDialog() {
             </div>
 
             {/* ========================================================================= */}
-            {/* LISTA DETALLADA DE OPERACIONES EXTRAÍDAS                                  */}
+            {/* 3. LISTA DETALLADA DE OPERACIONES EXTRAÍDAS                               */}
             {/* ========================================================================= */}
             <div className="space-y-2">
               <div className="flex items-center justify-between text-xs">
@@ -922,7 +1123,7 @@ export function TradeImportDialog() {
                 </span>
               </div>
 
-              <div className="divide-y divide-border/60 rounded-xl border border-border bg-card max-h-72 overflow-y-auto">
+              <div className="divide-y divide-border/60 rounded-xl border border-border bg-card max-h-80 overflow-y-auto">
                 {rows.map((r, i) => {
                   const targetAcc = accounts.find((a) => a.id === r.assignedAccountId);
 
@@ -948,9 +1149,9 @@ export function TradeImportDialog() {
                           className="size-4 rounded border-border text-brand focus:ring-brand cursor-pointer shrink-0"
                         />
 
-                        <div className="space-y-1 min-w-0 flex-1">
+                        <div className="space-y-1.5 min-w-0 flex-1">
                           <div className="flex items-center gap-2 flex-wrap">
-                            {/* Activo / Símbolo con Selector Rápido */}
+                            {/* Activo / Símbolo */}
                             <div className="inline-flex items-center gap-1">
                               <span
                                 className={cn(
@@ -1010,20 +1211,36 @@ export function TradeImportDialog() {
                             )}
                           </div>
 
-                          <p className="text-[11px] text-muted-foreground">
-                            {r.detectedAt
-                              ? new Date(r.detectedAt).toLocaleString("es-ES", {
-                                  day: "2-digit",
-                                  month: "2-digit",
-                                  year: "numeric",
-                                  hour: "2-digit",
-                                  minute: "2-digit",
-                                })
-                              : "Fecha por defecto hoy"}
+                          {/* Fila editable de Fecha y Hora confirmadas para esta operación */}
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <div className="inline-flex items-center gap-1">
+                              <Calendar className="size-3 text-muted-foreground shrink-0" />
+                              <input
+                                type="date"
+                                value={r.customDate}
+                                onChange={(e) => handleUpdateRowDate(i, e.target.value)}
+                                className="h-6 w-31 rounded border border-border bg-background px-1 text-[11px] font-medium text-foreground focus:outline-none focus:ring-1 focus:ring-brand cursor-pointer"
+                                title="Modificar fecha para esta operación"
+                              />
+                            </div>
+
+                            <div className="inline-flex items-center gap-1">
+                              <Clock className="size-3 text-muted-foreground shrink-0" />
+                              <input
+                                type="time"
+                                value={r.customTime}
+                                onChange={(e) => handleUpdateRowTime(i, e.target.value)}
+                                className="h-6 w-20 rounded border border-border bg-background px-1 text-[11px] font-medium text-foreground focus:outline-none focus:ring-1 focus:ring-brand cursor-pointer"
+                                title="Modificar hora para esta operación"
+                              />
+                            </div>
+
                             {r.entryPrice != null && r.exitPrice != null && (
-                              <span> · Entry: {r.entryPrice} ➔ Exit: {r.exitPrice}</span>
+                              <span className="text-[11px] text-muted-foreground pl-0.5">
+                                · Entry: {r.entryPrice} ➔ Exit: {r.exitPrice}
+                              </span>
                             )}
-                          </p>
+                          </div>
                         </div>
                       </div>
 
