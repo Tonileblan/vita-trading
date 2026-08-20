@@ -392,7 +392,7 @@ export function GoAccountPlanManager() {
         {/* TABLA ESTILO HOJA DE CÁLCULO MAQUEADA */}
         <div className="rounded-xl border border-border/80 bg-card overflow-hidden shadow-xs">
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[900px] text-xs">
+            <table className="w-full min-w-[720px] text-xs">
               <thead>
                 <tr className="border-b border-border bg-muted/50 text-left text-muted-foreground font-semibold">
                   {/* Checkbox All */}
@@ -404,28 +404,28 @@ export function GoAccountPlanManager() {
                     />
                   </th>
 
-                  {/* Nombre Cuenta */}
+                  {/* Nombre Cuenta + Balance Inicial debajo */}
                   <th className="px-3 py-3 whitespace-nowrap">
                     <button
                       type="button"
                       onClick={() => handleSort("name")}
                       className="inline-flex items-center gap-1 hover:text-foreground font-semibold"
                     >
-                      <span>Cuenta / Firma</span>
+                      <span>Cuenta</span>
                       {sortField === "name" && (
                         sortDirection === "asc" ? <ArrowUp className="size-3 text-brand" /> : <ArrowDown className="size-3 text-brand" />
                       )}
                     </button>
                   </th>
 
-                  {/* Tipo / Fase */}
+                  {/* Fase (Live / Eval) */}
                   <th className="px-3 py-3 whitespace-nowrap">
                     <button
                       type="button"
                       onClick={() => handleSort("type")}
                       className="inline-flex items-center gap-1 hover:text-foreground font-semibold"
                     >
-                      <span>Tipo / Fase</span>
+                      <span>Fase</span>
                       {sortField === "type" && (
                         sortDirection === "asc" ? <ArrowUp className="size-3 text-brand" /> : <ArrowDown className="size-3 text-brand" />
                       )}
@@ -439,66 +439,48 @@ export function GoAccountPlanManager() {
                       onClick={() => handleSort("balance")}
                       className="inline-flex items-center gap-1 hover:text-foreground font-semibold"
                     >
-                      <span>Balance Actual</span>
+                      <span>Balance</span>
                       {sortField === "balance" && (
                         sortDirection === "asc" ? <ArrowUp className="size-3 text-brand" /> : <ArrowDown className="size-3 text-brand" />
                       )}
                     </button>
                   </th>
 
-                  {/* Inicial */}
-                  <th className="px-3 py-3 whitespace-nowrap font-semibold">Balance Inicial</th>
-
-                  {/* PnL Neto */}
-                  <th className="px-3 py-3 whitespace-nowrap">
-                    <button
-                      type="button"
-                      onClick={() => handleSort("pnl")}
-                      className="inline-flex items-center gap-1 hover:text-foreground font-semibold"
-                    >
-                      <span>PnL Neto</span>
-                      {sortField === "pnl" && (
-                        sortDirection === "asc" ? <ArrowUp className="size-3 text-brand" /> : <ArrowDown className="size-3 text-brand" />
-                      )}
-                    </button>
-                  </th>
-
-                  {/* Colchón Drawdown */}
-                  <th className="px-3 py-3 whitespace-nowrap min-w-[150px]">
+                  {/* Drawdown */}
+                  <th className="px-3 py-3 whitespace-nowrap min-w-[170px]">
                     <button
                       type="button"
                       onClick={() => handleSort("drawdown")}
                       className="inline-flex items-center gap-1 hover:text-foreground font-semibold"
                     >
-                      <span>Colchón Drawdown</span>
+                      <span>Drawdown</span>
                       {sortField === "drawdown" && (
                         sortDirection === "asc" ? <ArrowUp className="size-3 text-brand" /> : <ArrowDown className="size-3 text-brand" />
                       )}
                     </button>
                   </th>
 
-                  {/* Estrategia Asignada */}
+                  {/* Estrategia */}
                   <th className="px-3 py-3 whitespace-nowrap">
                     <button
                       type="button"
                       onClick={() => handleSort("strategy")}
                       className="inline-flex items-center gap-1 hover:text-foreground font-semibold"
                     >
-                      <span>Estrategia Activa</span>
+                      <span>Estrategia</span>
                       {sortField === "strategy" && (
                         sortDirection === "asc" ? <ArrowUp className="size-3 text-brand" /> : <ArrowDown className="size-3 text-brand" />
                       )}
                     </button>
                   </th>
-
-                  {/* Horario / Planing */}
-                  <th className="px-3 py-3 whitespace-nowrap font-semibold">Planing Asignado</th>
                 </tr>
               </thead>
 
               <tbody className="divide-y divide-border/60 font-mono">
                 {sortedAccounts.map((acc) => {
                   const isSelected = selectedAccountIds.includes(acc.id);
+                  const isEval = acc.type === "funded" && acc.phase === "eval";
+                  const isLive = !isEval; // funded live o personal
 
                   return (
                     <tr
@@ -520,35 +502,32 @@ export function GoAccountPlanManager() {
                         />
                       </td>
 
-                      {/* Nombre y Firma */}
-                      <td className="px-3 py-3 font-sans font-medium">
+                      {/* Nombre Cuenta + Raya + Balance Inicial */}
+                      <td className="px-3 py-3 font-sans">
                         <div className="flex items-center gap-2">
                           <Wallet className="size-3.5 text-muted-foreground shrink-0" />
                           <div>
                             <span className="font-bold block text-foreground leading-tight">
                               {acc.name}
                             </span>
-                            {acc.firm && (
-                              <span className="text-[10px] text-muted-foreground block font-mono">
-                                {acc.firm}
-                              </span>
-                            )}
+                            <span className="text-[11px] text-muted-foreground block font-mono">
+                              — {formatCurrency(acc.initialBalance)}
+                            </span>
                           </div>
                         </div>
                       </td>
 
-                      {/* Tipo / Fase */}
+                      {/* Fase: Live (verde) / Eval (azul) */}
                       <td className="px-3 py-3 font-sans">
-                        <Badge
-                          variant={acc.type === "funded" ? "default" : "secondary"}
-                          className="text-[10px] px-1.5 py-0 uppercase tracking-wide"
-                        >
-                          {acc.type === "funded"
-                            ? acc.phase === "live"
-                              ? "Live (Fondeada)"
-                              : "Evaluación"
-                            : "Personal"}
-                        </Badge>
+                        {isEval ? (
+                          <span className="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-semibold bg-sky-500/15 text-sky-600 dark:text-sky-400 border border-sky-500/30">
+                            Eval
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-semibold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
+                            Live
+                          </span>
+                        )}
                       </td>
 
                       {/* Balance Actual */}
@@ -556,33 +535,7 @@ export function GoAccountPlanManager() {
                         {formatCurrency(acc.currentBalance)}
                       </td>
 
-                      {/* Balance Inicial */}
-                      <td className="px-3 py-3 text-muted-foreground">
-                        {formatCurrency(acc.initialBalance)}
-                      </td>
-
-                      {/* PnL Neto */}
-                      <td className="px-3 py-3 font-bold">
-                        <span
-                          className={cn(
-                            acc.netPnl > 0
-                              ? "text-emerald-600 dark:text-emerald-400"
-                              : acc.netPnl < 0
-                                ? "text-rose-600 dark:text-rose-400"
-                                : "text-muted-foreground",
-                          )}
-                        >
-                          {acc.netPnl > 0 ? "+" : ""}
-                          {formatCurrency(acc.netPnl)}
-                        </span>
-                        {acc.initialBalance > 0 && acc.netPnl !== 0 && (
-                          <span className="text-[10px] text-muted-foreground ml-1 font-sans">
-                            ({acc.pnlPct >= 0 ? "+" : ""}{acc.pnlPct.toFixed(1)}%)
-                          </span>
-                        )}
-                      </td>
-
-                      {/* Colchón Drawdown */}
+                      {/* Drawdown */}
                       <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
                         {acc.ddStatus ? (
                           <DrawdownProgress status={acc.ddStatus} variant="compact" />
@@ -591,15 +544,15 @@ export function GoAccountPlanManager() {
                         )}
                       </td>
 
-                      {/* Estrategia Activa */}
+                      {/* Estrategia */}
                       <td className="px-3 py-3 font-sans">
                         {acc.strategy ? (
                           <div className="flex items-center gap-1.5">
                             <span
-                              className="size-2 rounded-full shrink-0"
+                              className="size-2.5 rounded-full shrink-0"
                               style={{ backgroundColor: acc.strategy.color || "var(--brand)" }}
                             />
-                            <span className="font-semibold text-foreground truncate max-w-[130px]">
+                            <span className="font-semibold text-foreground truncate max-w-[180px]">
                               {acc.strategy.name}
                             </span>
                             {acc.strategy.mainSymbol && (
@@ -610,17 +563,6 @@ export function GoAccountPlanManager() {
                           </div>
                         ) : (
                           <span className="text-muted-foreground italic">Sin asignar</span>
-                        )}
-                      </td>
-
-                      {/* Planing (Días y Horario) */}
-                      <td className="px-3 py-3 font-sans text-muted-foreground">
-                        {acc.slotsCount > 0 ? (
-                          <span className="text-foreground font-medium text-[11px] font-mono">
-                            {acc.daysCount} días ({acc.firstSlot?.start_time || "15:30"} - {acc.firstSlot?.end_time || "17:30"})
-                          </span>
-                        ) : (
-                          <span className="text-muted-foreground italic text-[11px]">Por configurar</span>
                         )}
                       </td>
                     </tr>
