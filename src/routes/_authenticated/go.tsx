@@ -108,8 +108,11 @@ function GoPage() {
     activePlan.id === "default-plan" ? undefined : activePlan.id,
   );
 
-  // Pestaña activa dentro de GO
-  const [activeTab, setActiveTab] = useState<string>("planing");
+  // Pestaña activa dentro de GO (por defecto Cockpit Hoy)
+  const [activeTab, setActiveTab] = useState<string>("cockpit");
+
+  // Modo configuración de cuentas / planing
+  const [isConfiguringAccounts, setIsConfiguringAccounts] = useState(false);
 
   // Diálogo Nuevo Plan
   const [newPlanDialogOpen, setNewPlanDialogOpen] = useState(false);
@@ -139,7 +142,8 @@ function GoPage() {
         setSelectedPlanId(created.id);
       }
       setNewPlanDialogOpen(false);
-      toast.success(`Plan "${trimmed}" creado y activado`);
+      setIsConfiguringAccounts(true);
+      toast.success(`Plan "${trimmed}" creado. Selecciona ahora las cuentas y horarios.`);
     } catch (err: any) {
       toast.error("Error al crear plan: " + (err.message || ""));
     }
@@ -218,7 +222,7 @@ function GoPage() {
           </Badge>
         </div>
       }
-      subtitle="Diseñador de cuentas, asignación de estrategias, periodos de vigencia, operativa (L-V) y gestión de riesgo"
+      subtitle="Centro de mando operativo: control en vivo, cumplimiento, matriz semanal (L-V) y reglas de disciplina"
       showAccountPanel={false}
     >
       <div className="space-y-6">
@@ -236,7 +240,10 @@ function GoPage() {
               <div className="flex items-center gap-2">
                 <Select
                   value={activePlan.id}
-                  onValueChange={(val) => setSelectedPlanId(val)}
+                  onValueChange={(val) => {
+                    setSelectedPlanId(val);
+                    setIsConfiguringAccounts(false);
+                  }}
                 >
                   <SelectTrigger className="h-8 text-xs font-semibold w-[260px] bg-muted/40">
                     <SelectValue />
@@ -288,12 +295,22 @@ function GoPage() {
 
           <div className="flex items-center gap-2">
             <Button
-              variant="outline"
+              variant={isConfiguringAccounts ? "secondary" : "outline"}
               size="sm"
-              onClick={handleOpenNewPlanDialog}
+              onClick={() => setIsConfiguringAccounts((prev) => !prev)}
               className="h-8 text-xs gap-1.5 font-medium"
             >
-              <Plus className="size-3.5 text-brand" />
+              <Layers className="size-3.5 text-brand" />
+              <span>{isConfiguringAccounts ? "Ver Cockpit" : "Configurar Cuentas"}</span>
+            </Button>
+
+            <Button
+              variant="default"
+              size="sm"
+              onClick={handleOpenNewPlanDialog}
+              className="h-8 text-xs gap-1.5 font-medium shadow-xs"
+            >
+              <Plus className="size-3.5" />
               <span>Nuevo Plan</span>
             </Button>
           </div>
@@ -346,7 +363,7 @@ function GoPage() {
                 className="gap-1.5 text-xs shadow-xs"
               >
                 <Check className="size-3.5" />
-                Crear y Activar Plan
+                Crear y Configurar
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -399,64 +416,81 @@ function GoPage() {
           </DialogContent>
         </Dialog>
 
-        {/* PESTAÑAS DEL MÓDULO GO */}
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-2 md:grid-cols-5 h-auto p-1 bg-muted/60">
-            <TabsTrigger value="planing" className="gap-1.5 py-2 text-xs">
-              <Layers className="size-3.5 text-brand" />
-              <span>Planing por Cuentas</span>
-            </TabsTrigger>
-
-            <TabsTrigger value="cockpit" className="gap-1.5 py-2 text-xs">
-              <Zap className="size-3.5 text-amber-500" />
-              <span>Cockpit Hoy</span>
-            </TabsTrigger>
-
-            <TabsTrigger value="matrix" className="gap-1.5 py-2 text-xs">
-              <CalendarDays className="size-3.5 text-indigo-500" />
-              <span>Matriz Semanal (L-V)</span>
-            </TabsTrigger>
-
-            <TabsTrigger value="compliance" className="gap-1.5 py-2 text-xs">
-              <LineChart className="size-3.5 text-emerald-500" />
-              <span>Cumplimiento</span>
-            </TabsTrigger>
-
-            <TabsTrigger value="cheatsheet" className="gap-1.5 py-2 text-xs">
-              <CheckSquare className="size-3.5 text-purple-500" />
-              <span>Cheat Sheet</span>
-            </TabsTrigger>
-          </TabsList>
-
-          {/* 1. PLANING Y ASIGNACIÓN POR CUENTAS (FLUJO PRINCIPAL DE 3 PASOS) */}
-          <TabsContent value="planing" className="space-y-6 m-0">
-            <GoAccountPlanManager plan={activePlan} slots={slots} />
-          </TabsContent>
-
-          {/* 2. COCKPIT HOY */}
-          <TabsContent value="cockpit" className="space-y-6 m-0">
-            <GoCockpit
+        {/* VISTA CONDICIONAL: CONFIGURAR CUENTAS / PLANING O TABS PRINCIPALES */}
+        {isConfiguringAccounts ? (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between bg-muted/40 p-3 rounded-xl border border-border/80">
+              <div className="flex items-center gap-2">
+                <Layers className="size-4 text-brand" />
+                <span className="text-xs font-semibold text-foreground">
+                  Configurando cuentas y operativa para: <strong>{activePlan.name}</strong>
+                </span>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIsConfiguringAccounts(false)}
+                className="text-xs h-7"
+              >
+                Volver al Cockpit
+              </Button>
+            </div>
+            <GoAccountPlanManager
               plan={activePlan}
               slots={slots}
-              onNavigateToMatrix={() => setActiveTab("matrix")}
+              onSaved={() => setIsConfiguringAccounts(false)}
             />
-          </TabsContent>
+          </div>
+        ) : (
+          /* PESTAÑAS OPERATIVAS DEL PLAN SELECCIONADO */
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+            <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 h-auto p-1 bg-muted/60">
+              <TabsTrigger value="cockpit" className="gap-1.5 py-2 text-xs">
+                <Zap className="size-3.5 text-amber-500" />
+                <span>Cockpit Hoy</span>
+              </TabsTrigger>
 
-          {/* 3. MATRIZ SEMANAL L-V */}
-          <TabsContent value="matrix" className="space-y-6 m-0">
-            <GoWeeklyMatrix plan={activePlan} slots={slots} />
-          </TabsContent>
+              <TabsTrigger value="matrix" className="gap-1.5 py-2 text-xs">
+                <CalendarDays className="size-3.5 text-indigo-500" />
+                <span>Matriz Semanal (L-V)</span>
+              </TabsTrigger>
 
-          {/* 4. CUMPLIMIENTO & AUDITORÍA */}
-          <TabsContent value="compliance" className="space-y-6 m-0">
-            <GoCompliance plan={activePlan} slots={slots} />
-          </TabsContent>
+              <TabsTrigger value="compliance" className="gap-1.5 py-2 text-xs">
+                <LineChart className="size-3.5 text-emerald-500" />
+                <span>Cumplimiento</span>
+              </TabsTrigger>
 
-          {/* 5. CHEAT SHEET IMPRIMIBLE */}
-          <TabsContent value="cheatsheet" className="space-y-6 m-0">
-            <GoCheatSheet plan={activePlan} slots={slots} />
-          </TabsContent>
-        </Tabs>
+              <TabsTrigger value="cheatsheet" className="gap-1.5 py-2 text-xs">
+                <CheckSquare className="size-3.5 text-purple-500" />
+                <span>Cheat Sheet</span>
+              </TabsTrigger>
+            </TabsList>
+
+            {/* 1. COCKPIT HOY (PANEL PRINCIPAL) */}
+            <TabsContent value="cockpit" className="space-y-6 m-0">
+              <GoCockpit
+                plan={activePlan}
+                slots={slots}
+                onNavigateToMatrix={() => setActiveTab("matrix")}
+              />
+            </TabsContent>
+
+            {/* 2. MATRIZ SEMANAL L-V */}
+            <TabsContent value="matrix" className="space-y-6 m-0">
+              <GoWeeklyMatrix plan={activePlan} slots={slots} />
+            </TabsContent>
+
+            {/* 3. CUMPLIMIENTO & AUDITORÍA */}
+            <TabsContent value="compliance" className="space-y-6 m-0">
+              <GoCompliance plan={activePlan} slots={slots} />
+            </TabsContent>
+
+            {/* 4. CHEAT SHEET IMPRIMIBLE */}
+            <TabsContent value="cheatsheet" className="space-y-6 m-0">
+              <GoCheatSheet plan={activePlan} slots={slots} />
+            </TabsContent>
+          </Tabs>
+        )}
       </div>
     </AppShell>
   );

@@ -103,8 +103,17 @@ export function GoCockpit({
   const todayNetPnl = todayTrades.reduce((acc, t) => acc + (t.pnl || 0), 0);
   const todayTradesCount = todayTrades.length;
 
-  // Checklist state con fallback
-  const checklist: TradingPlanChecklist = checklistData || {
+  // Checklist state con actualización optimista inmediata
+  const [optimisticChecklist, setOptimisticChecklist] = useState<TradingPlanChecklist | null>(null);
+
+  // Sincronizar cuando lleguen datos remotos
+  useEffect(() => {
+    if (checklistData) {
+      setOptimisticChecklist(checklistData);
+    }
+  }, [checklistData]);
+
+  const checklist: TradingPlanChecklist = optimisticChecklist || checklistData || {
     id: "local",
     plan_id: plan.id,
     journal_id: activeJournalId || "",
@@ -131,11 +140,12 @@ export function GoCockpit({
   const isPreFlightReady = completedChecksCount === totalChecksCount && totalChecksCount > 0;
 
   const toggleCheck = (key: "checked_news" | "checked_levels" | "checked_mind" | "checked_risk") => {
-    const updated = {
+    const updated: TradingPlanChecklist = {
       ...checklist,
       plan_id: plan.id,
       [key]: !checklist[key],
     };
+    setOptimisticChecklist(updated);
     saveChecklistMutation.mutate(updated);
   };
 
@@ -143,11 +153,13 @@ export function GoCockpit({
     const updatedCustom = checklist.custom_checks.map((c) =>
       c.id === id ? { ...c, done: !c.done } : c,
     );
-    saveChecklistMutation.mutate({
+    const updated: TradingPlanChecklist = {
       ...checklist,
       plan_id: plan.id,
       custom_checks: updatedCustom,
-    });
+    };
+    setOptimisticChecklist(updated);
+    saveChecklistMutation.mutate(updated);
   };
 
   const addCustomCheckItem = () => {
@@ -158,21 +170,25 @@ export function GoCockpit({
       done: false,
     };
     const updatedCustom = [...checklist.custom_checks, newItem];
-    saveChecklistMutation.mutate({
+    const updated: TradingPlanChecklist = {
       ...checklist,
       plan_id: plan.id,
       custom_checks: updatedCustom,
-    });
+    };
+    setOptimisticChecklist(updated);
+    saveChecklistMutation.mutate(updated);
     setNewCheckItem("");
   };
 
   const removeCustomCheckItem = (id: string) => {
     const updatedCustom = checklist.custom_checks.filter((c) => c.id !== id);
-    saveChecklistMutation.mutate({
+    const updated: TradingPlanChecklist = {
       ...checklist,
       plan_id: plan.id,
       custom_checks: updatedCustom,
-    });
+    };
+    setOptimisticChecklist(updated);
+    saveChecklistMutation.mutate(updated);
   };
 
   return (

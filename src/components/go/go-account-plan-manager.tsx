@@ -65,11 +65,13 @@ export type SortDirection = "asc" | "desc";
 interface GoAccountPlanManagerProps {
   plan?: TradingPlan;
   slots?: TradingPlanSlot[];
+  onSaved?: () => void;
 }
 
 export function GoAccountPlanManager({
   plan: propPlan,
   slots: propSlots,
+  onSaved,
 }: GoAccountPlanManagerProps = {}) {
   const {
     accounts,
@@ -316,6 +318,7 @@ export function GoAccountPlanManager({
 
     try {
       await savePlanMutation.mutateAsync({
+        ...plan,
         daily_risk_budget: parseFloat(dailyLossLimit) || 400,
         max_loss_streak: parseInt(maxLossStreak, 10) || 2,
         max_daily_trades: parseInt(maxTradesPerDay, 10) || 3,
@@ -342,6 +345,9 @@ export function GoAccountPlanManager({
       toast.success(
         `Planing operativo y riesgo guardados para ${selectedAccounts.length} cuenta(s) en ${activeDays.length} días (L-V)`,
       );
+      if (onSaved) {
+        onSaved();
+      }
     } catch (err: any) {
       toast.error("Error al guardar operativa: " + (err.message || ""));
     }
