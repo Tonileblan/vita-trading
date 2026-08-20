@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useJournal } from "@/lib/journal-store";
+import { useJournals } from "@/lib/journals";
 import { OPERATING_DAYS, type TradingPlan, type TradingPlanSlot } from "@/lib/planing";
 import { formatCurrency } from "@/lib/metrics";
 
@@ -14,7 +15,9 @@ interface GoCheatSheetProps {
 }
 
 export function GoCheatSheet({ plan, slots }: GoCheatSheetProps) {
-  const { accounts, strategies, activeJournal } = useJournal();
+  const { accounts, strategies, activeJournalId } = useJournal();
+  const { data: journals = [] } = useJournals();
+  const activeJournal = journals.find((j) => j.id === activeJournalId);
   const [copied, setCopied] = useState(false);
 
   const accountMap = new Map(accounts.map((a) => [a.id, a]));
