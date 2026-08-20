@@ -193,7 +193,7 @@ export function generateRecommendedPlanName(): string {
 
 /**
  * Calcula el cumplimiento y adherencia de los trades con respecto al plan.
- * Solo evalúa operaciones ejecutadas a partir de la fecha de creación del plan.
+ * Solo evalúa operaciones de las cuentas implicadas en el plan y a partir de la fecha de creación del plan.
  */
 export function computePlanCompliance(
   trades: Trade[],
@@ -203,19 +203,44 @@ export function computePlanCompliance(
   strategies: Strategy[],
   options?: { dateFilter?: "since_plan" | "last_7d" | "last_30d" | "all" },
 ) {
+  // 1. Extraer las cuentas implicadas en este plan (a partir de los slots)
+  const planAccountIds = new Set(
+    slots
+      .map((s) => s.account_id)
+      .filter((id): id is string => Boolean(id)),
+  );
+
+  // Si no hay slots configurados para este plan, no hay nada que auditar
+  if (slots.length === 0) {
+    return {
+      adherenceRate: 100,
+      totalTrades: 0,
+      onPlanTrades: 0,
+      offPlanTrades: 0,
+      onPlanPnl: 0,
+      offPlanPnl: 0,
+      onPlanWinRate: 0,
+      offPlanWinRate: 0,
+      infractions: [],
+      hasEvaluatedTrades: false,
+    };
+  }
+
   const dateFilter = options?.dateFilter || "since_plan";
 
-  // Determinar fecha de corte para evaluar cumplimiento
+  // 2. Determinar fecha de corte para evaluar cumplimiento
   let minTimestamp = 0;
-  if (dateFilter === "since_plan" && plan.created_at) {
-    const createdDate = new Date(plan.created_at);
-    if (!isNaN(createdDate.getTime())) {
-      // Corte a las 00:00:00 del día de creación del plan
-      minTimestamp = new Date(
-        createdDate.getFullYear(),
-        createdDate.getMonth(),
-        createdDate.getDate(),
-      ).getTime();
+  if (dateFilter === "since_plan") {
+    const createdDateStr = plan.created_at || (plan as any).updated_at;
+    if (createdDateStr) {
+      const d = new Date(createdDateStr);
+      if (!isNaN(d.getTime())) {
+        minTimestamp = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0).getTime();
+      }
+    }
+    if (minTimestamp === 0) {
+      const now = new Date();
+      minTimestamp = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0).getTime();
     }
   } else if (dateFilter === "last_7d") {
     minTimestamp = Date.now() - 7 * 24 * 60 * 60 * 1000;
@@ -223,11 +248,25 @@ export function computePlanCompliance(
     minTimestamp = Date.now() - 30 * 24 * 60 * 60 * 1000;
   }
 
-  // Filtrar operaciones dentro del periodo del plan
+  // 3. Filtrar operaciones:
+  //    - Deben pertenecer ESTRICTAMENTE a las cuentas asignadas a este plan.
+  //    - Deben ser de fecha igual o posterior al inicio/creación del plan.
   const eligibleTrades = trades.filter((t) => {
-    const tradeTime = new Date(t.openedAt || t.closedAt || "").getTime();
+    // Si el plan tiene cuentas asignadas, descartar absolutamente cualquier otra cuenta
+    if (planAccountIds.size > 0 && !planAccountIds.has(t.accountId)) {
+      return false;
+    }
+
+    const rawDate = t.openedAt || t.closedAt || (t as any).date || "";
+    const tradeTime = new Date(rawDate).getTime();
     if (isNaN(tradeTime)) return false;
-    return minTimestamp === 0 || tradeTime >= minTimestamp;
+
+    // Descartar operaciones anteriores a la fecha del plan
+    if (minTimestamp > 0 && tradeTime < minTimestamp) {
+      return false;
+    }
+
+    return true;
   });
 
   if (eligibleTrades.length === 0) {
@@ -245,12 +284,12 @@ export function computePlanCompliance(
     };
   }
 
-  const slotMap = new Map<string, TradingPlanSlot[]>();
+  const slotMap = new Map<number, TradingPlanSlot[]>();
   for (const s of slots) {
-    const key = `${s.day_of_week}`;
-    const list = slotMap.get(key) || [];
+    if (!s.is_active) continue;
+    const list = slotMap.get(s.day_of_week) || [];
     list.push(s);
-    slotMap.set(key, list);
+    slotMap.set(s.day_of_week, list);
   }
 
   const infractions: {
@@ -271,13 +310,8 @@ export function computePlanCompliance(
   const strategyMap = new Map(strategies.map((s) => [s.id, s.name]));
 
   for (const trade of eligibleTrades) {
-    const tradeDate = new Date(trade.openedAt || trade.closedAt || "");
-    if (isNaN(tradeDate.getTime())) {
-      onPlanCount++;
-      onPlanPnl += trade.pnl || 0;
-      continue;
-    }
-
+    const rawDate = trade.openedAt || trade.closedAt || (trade as any).date || "";
+    const tradeDate = new Date(rawDate);
     const dayOfWeek = tradeDate.getDay(); // 0=Dom, 1=Lun ... 6=Sab
     const tradeHours = tradeDate.getHours();
     const tradeMinutes = tradeDate.getMinutes();
@@ -287,13 +321,13 @@ export function computePlanCompliance(
 
     // 1. ¿Operado en fin de semana?
     if (dayOfWeek === 0 || dayOfWeek === 6) {
-      reasons.push("Operación realizada en fin de semana (fuera de L-V)");
+      reasons.push("Operación realizada en fin de semana (fuera de los días operativos L-V)");
     } else {
-      const daySlots = slotMap.get(`${dayOfWeek}`) || [];
+      const daySlots = slotMap.get(dayOfWeek) || [];
       if (daySlots.length === 0) {
-        reasons.push(`No había ningún slot operativo planificado para ${OPERATING_DAYS[dayOfWeek - 1]?.label || "este día"}`);
+        reasons.push(`No hay sesiones planificadas en este plan para los ${OPERATING_DAYS[dayOfWeek - 1]?.label || "este día"}`);
       } else {
-        // Buscar si encaja con algún slot de ese día
+        // Buscar si encaja con algún slot de ese día para esta cuenta
         const matchingSlot = daySlots.find((s) => {
           const matchAcc = !s.account_id || s.account_id === trade.accountId;
           const matchStrat = !s.strategy_id || s.strategy_id === trade.strategyId;
@@ -301,7 +335,7 @@ export function computePlanCompliance(
         });
 
         if (!matchingSlot) {
-          reasons.push("La cuenta o estrategia usada no estaba asignada en el planing para este día");
+          reasons.push("La estrategia usada no coincide con la asignada en el plan para este día");
         } else {
           // Comprobar horario si está definido
           const [startH, startM] = matchingSlot.start_time.split(":").map(Number);
@@ -311,7 +345,7 @@ export function computePlanCompliance(
             const endMin = endH * 60 + endM;
             // Damos 15 minutos de margen de cortesía
             if (tradeTimeMinutes < startMin - 15 || tradeTimeMinutes > endMin + 15) {
-              reasons.push(`Operado fuera del horario (${matchingSlot.start_time} - ${matchingSlot.end_time})`);
+              reasons.push(`Operado fuera de horario (${matchingSlot.start_time} - ${matchingSlot.end_time})`);
             }
           }
         }
@@ -325,7 +359,7 @@ export function computePlanCompliance(
       if (trade.pnl > 0) offPlanWins++;
       infractions.push({
         trade,
-        accountName: accountMap.get(trade.accountId) || "Cuenta no especificada",
+        accountName: accountMap.get(trade.accountId) || "Cuenta del plan",
         strategyName: (trade.strategyId && strategyMap.get(trade.strategyId)) || "Sin estrategia",
         reasons,
       });

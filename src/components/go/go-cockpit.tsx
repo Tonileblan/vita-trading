@@ -77,14 +77,29 @@ export function GoCockpit({
   // Filtrar los slots para el día seleccionado
   const daySlots = slots.filter((s) => s.day_of_week === selectedDay && s.is_active);
 
-  // Filtrar trades de hoy
-  const todayTrades = trades.filter((t) => tradeDayKey(t) === todayDate);
+  // Cuentas implicadas en este plan (a partir de los slots)
+  const planAccountIds = useMemo(() => {
+    const ids = new Set<string>();
+    slots.forEach((s) => {
+      if (s.account_id) ids.add(s.account_id);
+    });
+    return ids;
+  }, [slots]);
+
+  // Filtrar trades de hoy pertenecientes a este plan
+  const todayTrades = useMemo(() => {
+    return trades.filter((t) => {
+      if (tradeDayKey(t) !== todayDate) return false;
+      if (planAccountIds.size > 0 && !planAccountIds.has(t.accountId)) return false;
+      return true;
+    });
+  }, [trades, todayDate, planAccountIds]);
 
   // Mapeos rápidos
   const accountMap = new Map(accounts.map((a) => [a.id, a]));
   const strategyMap = new Map(strategies.map((s) => [s.id, s]));
 
-  // Totales de hoy en general
+  // Totales de hoy del plan
   const todayNetPnl = todayTrades.reduce((acc, t) => acc + (t.pnl || 0), 0);
   const todayTradesCount = todayTrades.length;
 
