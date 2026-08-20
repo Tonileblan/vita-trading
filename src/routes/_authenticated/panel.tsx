@@ -20,6 +20,7 @@ import { Button } from "@/components/ui/button";
 import { EquityChart } from "@/components/equity-chart";
 import { PnlCalendar } from "@/components/pnl-calendar";
 import { PerformanceAnalysis } from "@/components/performance-analysis";
+import { PhaseChip, TargetProgress } from "@/components/target-progress";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { TradesTable } from "@/components/trades-table";
@@ -764,18 +765,7 @@ function Overview() {
               </div>
 
               <div className="flex items-center gap-2 flex-wrap">
-                {fundedTarget && (
-                  <span
-                    className={cn(
-                      "rounded-full px-2.5 py-0.5 text-xs font-bold uppercase tracking-wider",
-                      fundedTarget.phase === "live"
-                        ? "bg-profit/15 text-profit border border-profit/30"
-                        : "bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30",
-                    )}
-                  >
-                    {fundedTarget.phase === "live" ? "Fondeada / Live" : "Fase de Evaluación"}
-                  </span>
-                )}
+                {fundedTarget && <PhaseChip phase={fundedTarget.phase} />}
                 <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs font-semibold text-muted-foreground">
                   {isStrategy
                     ? `${strategyAccounts.length} ${strategyAccounts.length === 1 ? "cuenta vinculada" : "cuentas vinculadas"}`
@@ -878,44 +868,7 @@ function Overview() {
             )}
 
             {fundedTarget && (
-              <div className="mt-4 border-t border-border pt-3">
-                <div className="flex items-baseline justify-between text-xs">
-                  <span className="font-semibold text-foreground">{fundedTarget.label}</span>
-                  <span className="num font-bold text-sm">{fundedTarget.pct.toFixed(0)}%</span>
-                </div>
-                <div className="mt-2 h-2.5 overflow-hidden rounded-full bg-muted">
-                  <div
-                    className={cn(
-                      "h-full transition-all duration-500",
-                      fundedTarget.reached ? "bg-profit" : "bg-amber-500",
-                    )}
-                    style={{ width: `${Math.min(100, fundedTarget.pct)}%` }}
-                  />
-                </div>
-                <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
-                  <span>
-                    {fundedTarget.reached ? (
-                      <span className="font-bold text-profit">
-                        ✓{" "}
-                        {fundedTarget.phase === "live"
-                          ? "Listo para solicitar retiro"
-                          : "Objetivo superado"}
-                      </span>
-                    ) : (
-                      <>
-                        Faltan{" "}
-                        <span className="num font-bold text-foreground">
-                          {formatCurrency(fundedTarget.remaining)}
-                        </span>{" "}
-                        para meta
-                      </>
-                    )}
-                  </span>
-                  <span className="num font-medium">
-                    {formatCurrency(fundedTarget.balance)} / {formatCurrency(fundedTarget.target)}
-                  </span>
-                </div>
-              </div>
+              <TargetProgress status={fundedTarget} className="mt-4" />
             )}
           </section>
         )}

@@ -531,11 +531,10 @@ function AccountsPage() {
                   />
                 )}
               </div>
-              <p className="text-xs text-muted-foreground mt-1">
+              <p className="text-xs text-muted-foreground mt-1 font-medium">
                 {acc.type === "funded"
-                  ? (acc.firm ?? "Prop firm")
-                  : (acc.broker ?? "Cuenta personal")}{" "}
-                · <span className="font-semibold text-foreground">{acc.currency}</span>
+                  ? `${acc.firm ?? "Prop firm"} — ${formatCurrency(acc.initialBalance)}`
+                  : `${acc.broker ?? "Cuenta personal"} — ${formatCurrency(acc.initialBalance)}`}
               </p>
             </Link>
 
@@ -555,7 +554,7 @@ function AccountsPage() {
               />
               <span
                 className={cn(
-                  "num rounded-lg px-2.5 py-0.5 text-xs font-bold whitespace-nowrap",
+                  "num rounded-lg px-2.5 py-0.5 text-xs font-bold font-mono whitespace-nowrap",
                   result >= 0
                     ? "bg-profit/15 text-profit border border-profit/20"
                     : "bg-loss/15 text-loss border border-loss/20",
@@ -567,20 +566,20 @@ function AccountsPage() {
           </div>
 
           {/* 3 Metric Grid */}
-          <div className="grid grid-cols-3 gap-2 rounded-xl border border-border/80 bg-muted/30 p-3 text-center">
+          <div className="grid grid-cols-3 gap-2 rounded-xl border border-border/80 bg-muted/30 p-2.5 text-center">
             <div>
-              <p className="text-[11px] text-muted-foreground">Inicial</p>
-              <p className="num text-xs font-bold text-foreground">
+              <p className="text-[11px] text-muted-foreground font-medium">Inicial</p>
+              <p className="num text-xs font-bold font-mono text-foreground">
                 {formatCurrency(acc.initialBalance)}
               </p>
             </div>
             <div>
-              <p className="text-[11px] text-muted-foreground">Actual</p>
-              <p className="num text-xs font-bold text-foreground">{formatCurrency(balance)}</p>
+              <p className="text-[11px] text-muted-foreground font-medium">Actual</p>
+              <p className="num text-xs font-bold font-mono text-foreground">{formatCurrency(balance)}</p>
             </div>
             <div>
-              <p className="text-[11px] text-muted-foreground">Win Rate</p>
-              <p className="num text-xs font-bold text-foreground">{m.winRate.toFixed(1)}%</p>
+              <p className="text-[11px] text-muted-foreground font-medium">Win Rate</p>
+              <p className="num text-xs font-bold font-mono text-foreground">{m.winRate.toFixed(1)}%</p>
             </div>
           </div>
 

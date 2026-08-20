@@ -8,7 +8,8 @@ import {
   accountTarget,
   formatCurrency,
 } from "@/lib/metrics";
-import { TargetProgress } from "@/components/target-progress";
+import { PhaseChip, TargetProgress } from "@/components/target-progress";
+import { DrawdownProgress } from "@/components/drawdown-progress";
 import { DrawdownAlertButton } from "@/components/drawdown-corner-alert";
 import { cn } from "@/lib/utils";
 
@@ -26,7 +27,7 @@ export function AccountSidePanel() {
           Todas
         </button>
       </div>
-      <div className="flex-1 space-y-1 overflow-y-auto px-3 pb-4">
+      <div className="flex-1 space-y-1.5 overflow-y-auto px-3 pb-4">
         {accounts.map((acc) => {
           const active = selectedAccountIds.includes(acc.id);
           const result = accountResult(acc, trades, withdrawals);
@@ -44,11 +45,11 @@ export function AccountSidePanel() {
               key={acc.id}
               onClick={() => toggleAccount(acc.id)}
               className={cn(
-                "w-full rounded-md border px-3 py-2 text-left transition-colors",
-                isLowDrawdown && "border-loss/40",
+                "w-full rounded-lg border p-2.5 text-left transition-colors",
+                isLowDrawdown && "border-rose-500/40 bg-rose-500/5",
                 active
                   ? "border-brand/50 bg-sidebar-accent"
-                  : "border-transparent opacity-55 hover:opacity-90",
+                  : "border-transparent opacity-65 hover:opacity-95 hover:bg-muted/30",
               )}
             >
               <div className="flex items-center justify-between gap-1.5 min-w-0">
@@ -58,7 +59,8 @@ export function AccountSidePanel() {
                   ) : (
                     <User className="size-3.5 shrink-0 text-muted-foreground" />
                   )}
-                  <span className="truncate text-sm font-medium">{acc.name}</span>
+                  <span className="truncate text-xs font-bold">{acc.name}</span>
+                  {acc.type === "funded" && <PhaseChip phase={acc.phase ?? "eval"} />}
                 </div>
                 {isLowDrawdown && (
                   <DrawdownAlertButton
@@ -70,12 +72,14 @@ export function AccountSidePanel() {
                   />
                 )}
               </div>
-              <div className="mt-1 flex items-center justify-between">
-                <span className="num text-xs text-muted-foreground">{formatCurrency(balance)}</span>
+              <div className="mt-1.5 flex items-center justify-between">
+                <span className="num text-xs font-mono font-medium text-muted-foreground">
+                  {formatCurrency(balance)}
+                </span>
 
                 <span
                   className={cn(
-                    "num text-xs font-semibold",
+                    "num text-xs font-mono font-bold",
                     result >= 0 ? "text-profit" : "text-loss",
                   )}
                 >
@@ -83,6 +87,7 @@ export function AccountSidePanel() {
                 </span>
               </div>
               {target && <TargetProgress status={target} compact />}
+              {dd && <DrawdownProgress status={dd} variant="compact" className="mt-1" />}
             </button>
           );
         })}

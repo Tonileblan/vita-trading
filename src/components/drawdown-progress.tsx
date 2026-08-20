@@ -1,4 +1,4 @@
-import { AlertTriangle, ShieldAlert } from "lucide-react";
+import { AlertTriangle, Shield, ShieldAlert, ShieldCheck } from "lucide-react";
 import { formatCurrency, type DrawdownStatus } from "@/lib/metrics";
 import { cn } from "@/lib/utils";
 
@@ -17,7 +17,8 @@ const TYPE_SHORT_LABELS: Record<NonNullable<DrawdownStatus["type"]>, string> = {
 
 /**
  * Componente visual para mostrar el estado y colchón de Drawdown
- * con mínima carga de texto y máxima claridad visual del margen restante.
+ * Mide el margen de vida restante antes de que la cuenta toque el suelo de liquidación.
+ * Si remaining > 600: Verde. Si <= 600: Ámbar. Si <= 0 o rota: Rojo.
  */
 export function DrawdownProgress({
   status,
@@ -25,41 +26,41 @@ export function DrawdownProgress({
   className,
   variant = "card",
 }: DrawdownProgressProps) {
-  const isBreached = status.breached;
-  const isCritical = !isBreached && (status.remaining < threshold || status.pct >= 75);
-  const isWarning = !isBreached && !isCritical && status.pct >= 50;
+  const isBreached = status.breached || status.remaining <= 0;
+  const isLowHealth = !isBreached && status.remaining <= threshold;
+  const isHealthy = !isBreached && !isLowHealth;
 
   const typeLabel = TYPE_SHORT_LABELS[status.type] ?? status.label;
-
   const healthPct = Math.min(100, Math.max(0, (status.remaining / (status.limit || 1)) * 100));
 
+  // Color de texto y barra
+  const colorClass = isBreached
+    ? "text-rose-600 dark:text-rose-400"
+    : isLowHealth
+      ? "text-amber-600 dark:text-amber-400"
+      : "text-emerald-600 dark:text-emerald-400";
+
+  const barBgClass = isBreached
+    ? "bg-rose-500"
+    : isLowHealth
+      ? "bg-amber-500"
+      : "bg-emerald-500";
+
+  // VARIANTE COMPACTA (para tablas y listas)
   if (variant === "compact") {
     return (
-      <div className={cn("space-y-1", className)}>
+      <div className={cn("space-y-1 min-w-[100px]", className)}>
         <div className="flex items-center justify-between text-xs">
-          <span
-            className={cn(
-              "num text-xs font-bold",
-              isBreached || isCritical ? "text-loss" : isWarning ? "text-brand" : "text-profit",
-            )}
-          >
+          <span className={cn("num font-bold font-mono text-xs", colorClass)}>
             {formatCurrency(status.remaining)}
           </span>
-          <span
-            className={cn(
-              "text-[10px] font-mono",
-              isBreached || isCritical ? "text-loss" : isWarning ? "text-brand" : "text-profit",
-            )}
-          >
+          <span className={cn("text-[10px] font-mono font-semibold", colorClass)}>
             {healthPct.toFixed(0)}%
           </span>
         </div>
-        <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted/60">
+        <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted/60 dark:bg-muted/40">
           <div
-            className={cn(
-              "h-full transition-all duration-300 rounded-full",
-              isBreached || isCritical ? "bg-loss" : isWarning ? "bg-brand" : "bg-profit",
-            )}
+            className={cn("h-full transition-all duration-300 rounded-full", barBgClass)}
             style={{ width: `${healthPct}%` }}
           />
         </div>
@@ -67,104 +68,107 @@ export function DrawdownProgress({
     );
   }
 
+  // VARIANTE DETALLADA (para vista individual de cuenta)
   if (variant === "detail") {
     return (
       <div
         className={cn(
-          "rounded-xl border p-4 space-y-3.5 transition-colors",
+          "rounded-xl border p-4.5 space-y-4 transition-all shadow-xs bg-card",
           isBreached
-            ? "border-loss/60 bg-loss/10 shadow-xs"
-            : isCritical
-              ? "border-loss/40 bg-loss/[0.06] dark:bg-loss/[0.12] shadow-xs"
-              : "border-border/80 bg-card/60",
+            ? "border-rose-500/40 bg-rose-500/5 ring-1 ring-rose-500/20"
+            : isLowHealth
+              ? "border-amber-500/40 bg-amber-500/5 ring-1 ring-amber-500/20"
+              : "border-border/80",
           className,
         )}
       >
         {/* Header */}
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-1.5 min-w-0">
-            <ShieldAlert className="size-4 text-muted-foreground shrink-0" />
-            <span className="text-sm font-bold text-foreground">Drawdown</span>
-            <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+        <div className="flex items-center justify-between gap-2 border-b border-border/60 pb-3">
+          <div className="flex items-center gap-2 min-w-0">
+            {isBreached ? (
+              <ShieldAlert className="size-4 text-rose-500 shrink-0" />
+            ) : isLowHealth ? (
+              <AlertTriangle className="size-4 text-amber-500 shrink-0" />
+            ) : (
+              <ShieldCheck className="size-4 text-emerald-500 shrink-0" />
+            )}
+            <span className="text-sm font-bold text-foreground">Colchón de Drawdown</span>
+            <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider font-mono">
               {typeLabel}
             </span>
             {status.frozen && (
               <span className="rounded bg-brand/15 px-1.5 py-0.5 text-[10px] font-semibold text-brand">
-                Suelo fijo
+                Suelo congelado
               </span>
             )}
           </div>
 
           {isBreached ? (
-            <span className="inline-flex items-center gap-1 rounded-md bg-loss/15 px-2 py-0.5 text-xs font-bold text-loss border border-loss/30 animate-pulse">
+            <span className="inline-flex items-center gap-1 rounded-md bg-rose-500/15 px-2 py-0.5 text-xs font-bold text-rose-600 dark:text-rose-400 border border-rose-500/30 animate-pulse">
               <AlertTriangle className="size-3.5" /> Cuenta rota
             </span>
-          ) : isCritical ? (
-            <span className="inline-flex items-center gap-1 rounded-md bg-loss/15 px-2 py-0.5 text-xs font-bold text-loss border border-loss/30">
-              <AlertTriangle className="size-3.5" /> Crítico (&lt; {formatCurrency(threshold)})
+          ) : isLowHealth ? (
+            <span className="inline-flex items-center gap-1 rounded-md bg-amber-500/15 px-2 py-0.5 text-xs font-bold text-amber-600 dark:text-amber-400 border border-amber-500/30">
+              <AlertTriangle className="size-3.5" /> Colchón Crítico (&lt; {formatCurrency(threshold)})
             </span>
           ) : (
-            <span className="rounded-md bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground num">
-              {status.pct.toFixed(0)}% usado
+            <span className="inline-flex items-center gap-1 rounded-md bg-emerald-500/10 px-2 py-0.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+              <ShieldCheck className="size-3.5" /> Saludable ({healthPct.toFixed(0)}%)
             </span>
           )}
         </div>
 
         {/* Hero metrics */}
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 rounded-lg bg-muted/25 p-3 border border-border/40">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 rounded-lg bg-muted/30 p-3 border border-border/50">
           <div>
             <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-              Colchón restante
+              Margen Restante
             </p>
-            <p
-              className={cn(
-                "num text-base sm:text-lg font-black tracking-tight",
-                isBreached || isCritical ? "text-loss" : "text-foreground",
-              )}
-            >
+            <p className={cn("num text-lg sm:text-xl font-black font-mono tracking-tight", colorClass)}>
               {formatCurrency(status.remaining)}
             </p>
           </div>
           <div>
             <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-              Suelo liquidación
+              Suelo de Liquidación
             </p>
-            <p className="num text-base font-bold text-foreground">
+            <p className="num text-base sm:text-lg font-bold font-mono text-foreground">
               {formatCurrency(status.floor)}
             </p>
           </div>
           <div>
             <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-              Referencia
+              Máximo Alcanzado
             </p>
-            <p className="num text-base font-bold text-foreground">
+            <p className="num text-base sm:text-lg font-bold font-mono text-foreground">
               {formatCurrency(status.reference)}
             </p>
           </div>
           <div>
             <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-              Límite total
+              Límite Drawdown
             </p>
-            <p className="num text-base font-bold text-foreground">
+            <p className="num text-base sm:text-lg font-bold font-mono text-muted-foreground">
               {formatCurrency(status.limit)}
             </p>
           </div>
         </div>
 
-        {/* Progress Bar */}
+        {/* Barra de Progreso de Salud */}
         <div className="space-y-1.5">
-          <div className="h-2.5 w-full overflow-hidden rounded-full bg-muted/60">
-            <div
-              className={cn(
-                "h-full transition-all duration-300 rounded-full",
-                isBreached || isCritical ? "bg-loss" : isWarning ? "bg-brand" : "bg-profit",
-              )}
-              style={{ width: `${Math.min(100, Math.max(0, status.pct))}%` }}
-            />
+          <div className="flex items-center justify-between text-xs">
+            <span className="text-muted-foreground text-[11px]">
+              {healthPct.toFixed(1)}% de margen de supervivencia
+            </span>
+            <span className="font-mono text-xs font-semibold text-muted-foreground">
+              Consumido: {formatCurrency(status.used)} / {formatCurrency(status.limit)}
+            </span>
           </div>
-          <div className="flex justify-between text-xs text-muted-foreground num">
-            <span>Consumido: {formatCurrency(status.used)} ({status.pct.toFixed(1)}%)</span>
-            <span>Margen restante: {formatCurrency(status.remaining)}</span>
+          <div className="h-2.5 w-full overflow-hidden rounded-full bg-muted/60 dark:bg-muted/40">
+            <div
+              className={cn("h-full transition-all duration-300 rounded-full", barBgClass)}
+              style={{ width: `${healthPct}%` }}
+            />
           </div>
         </div>
 
@@ -177,16 +181,16 @@ export function DrawdownProgress({
     );
   }
 
-  // Variant "card" (por defecto)
+  // VARIANTE CARD (para tarjetas de cuentas en la vista /cuentas)
   return (
     <div
       className={cn(
-        "rounded-xl border p-3 space-y-2.5 transition-colors",
+        "rounded-xl border p-3.5 space-y-2.5 transition-all shadow-xs bg-muted/20",
         isBreached
-          ? "border-loss/60 bg-loss/10"
-          : isCritical
-            ? "border-loss/40 bg-loss/[0.05] dark:bg-loss/[0.10]"
-            : "border-border/80 bg-muted/20",
+          ? "border-rose-500/40 bg-rose-500/5 ring-1 ring-rose-500/20"
+          : isLowHealth
+            ? "border-amber-500/40 bg-amber-500/5 ring-1 ring-amber-500/20"
+            : "border-border/80",
         className,
       )}
     >
@@ -196,7 +200,7 @@ export function DrawdownProgress({
           <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
             Drawdown
           </span>
-          <span className="rounded bg-muted/90 px-1.5 py-0.5 text-[10px] font-semibold text-foreground/80 uppercase">
+          <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-foreground/80 uppercase font-mono">
             {typeLabel}
           </span>
           {status.frozen && (
@@ -207,32 +211,27 @@ export function DrawdownProgress({
         </div>
 
         {isBreached ? (
-          <span className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-bold bg-loss/15 text-loss border border-loss/30 animate-pulse">
+          <span className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-bold bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30 animate-pulse">
             <AlertTriangle className="size-3" /> Rota
           </span>
-        ) : isCritical ? (
-          <span className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-bold bg-loss/15 text-loss border border-loss/30">
+        ) : isLowHealth ? (
+          <span className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-bold bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30">
             <AlertTriangle className="size-3" /> Crítico
           </span>
         ) : (
-          <span className="text-[10px] font-semibold text-muted-foreground num">
-            {status.pct.toFixed(0)}% usado
+          <span className={cn("text-[10px] font-mono font-bold", colorClass)}>
+            {healthPct.toFixed(0)}% salud
           </span>
         )}
       </div>
 
-      {/* Hero numbers: Colchón restante vs Suelo */}
+      {/* Hero numbers: Margen restante vs Suelo */}
       <div className="flex items-end justify-between gap-2 pt-0.5">
         <div>
           <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-            Colchón restante
+            Margen restante
           </span>
-          <p
-            className={cn(
-              "num text-lg font-black tracking-tight leading-none mt-0.5",
-              isBreached || isCritical ? "text-loss" : "text-foreground",
-            )}
-          >
+          <p className={cn("num text-lg font-black font-mono tracking-tight leading-none mt-0.5", colorClass)}>
             {formatCurrency(status.remaining)}
           </p>
         </div>
@@ -241,30 +240,23 @@ export function DrawdownProgress({
           <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
             Suelo
           </span>
-          <p className="num text-xs font-bold text-foreground mt-0.5">
+          <p className="num text-xs font-bold font-mono text-foreground mt-0.5">
             {formatCurrency(status.floor)}
           </p>
         </div>
       </div>
 
-      {/* Visual Bar */}
+      {/* Visual Bar: Mide la salud restante */}
       <div className="space-y-1">
         <div className="h-2 w-full overflow-hidden rounded-full bg-muted/60 dark:bg-muted/40">
           <div
-            className={cn(
-              "h-full transition-all duration-300 rounded-full",
-              isBreached || isCritical
-                ? "bg-loss"
-                : isWarning
-                  ? "bg-brand"
-                  : "bg-profit",
-            )}
-            style={{ width: `${Math.min(100, Math.max(0, status.pct))}%` }}
+            className={cn("h-full transition-all duration-300 rounded-full", barBgClass)}
+            style={{ width: `${healthPct}%` }}
           />
         </div>
 
         {/* Micro-footer info */}
-        <div className="flex items-center justify-between text-[10px] text-muted-foreground/80 num">
+        <div className="flex items-center justify-between text-[10px] text-muted-foreground font-mono">
           <span>Consumido: {formatCurrency(status.used)}</span>
           <span>Límite: {formatCurrency(status.limit)}</span>
         </div>

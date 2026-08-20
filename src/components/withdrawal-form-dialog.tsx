@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -118,12 +119,27 @@ export function WithdrawalFormDialog({
 
           {(() => {
             const acc = accounts.find((a) => a.id === accountId);
-            const status = acc ? accountTarget(acc, trades, withdrawals) : null;
-            if (!status || status.phase !== "live" || status.reached) return null;
+            const targetStatus = acc ? accountTarget(acc, trades, withdrawals) : null;
+            if (!targetStatus || targetStatus.phase !== "live") return null;
+
+            if (targetStatus.reached) {
+              const withdrawable = Math.max(0, targetStatus.balance - targetStatus.target);
+              return (
+                <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-xs text-emerald-700 dark:text-emerald-300">
+                  <p className="font-bold flex items-center gap-1.5">
+                    <CheckCircle2 className="size-4 text-emerald-500 shrink-0" /> Umbral de retiro alcanzado
+                  </p>
+                  <p className="mt-1 font-mono">
+                    Retirable estimado: <strong className="font-bold">{formatCurrency(withdrawable)}</strong> (Balance: {formatCurrency(targetStatus.balance)} - Suelo: {formatCurrency(targetStatus.target)}).
+                  </p>
+                </div>
+              );
+            }
+
             return (
-              <p className="rounded-md border border-border bg-accent px-3 py-2 text-xs text-muted-foreground">
-                Esta cuenta aún no alcanza el objetivo de retiro: faltan{" "}
-                <span className="num font-semibold">{formatCurrency(status.remaining)}</span>.
+              <p className="rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
+                Esta cuenta aún no supera el umbral de retiro: faltan{" "}
+                <span className="num font-bold font-mono">{formatCurrency(targetStatus.remaining)}</span> para desbloquear cobros.
               </p>
             );
           })()}

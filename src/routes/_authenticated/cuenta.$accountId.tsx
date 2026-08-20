@@ -99,6 +99,7 @@ function AccountDetail() {
       title={
         <div className="flex items-center gap-2.5 flex-wrap">
           <span>{account.name}</span>
+          {account.type === "funded" && <PhaseChip phase={account.phase ?? "eval"} />}
           {isLowDrawdown && (
             <DrawdownAlertButton
               remaining={dd?.remaining ?? 0}
@@ -109,7 +110,11 @@ function AccountDetail() {
           )}
         </div>
       }
-      subtitle={`${account.firm ?? "Cuenta personal"} · ${account.currency}`}
+      subtitle={
+        account.type === "funded"
+          ? `${account.firm ?? "Prop firm"} — ${formatCurrency(account.initialBalance)}`
+          : `${account.broker ?? "Cuenta personal"} — ${account.currency}`
+      }
       actions={
         <Link
           to="/cuentas"
@@ -128,26 +133,26 @@ function AccountDetail() {
         >
           <div>
             <p className="text-xs text-muted-foreground">Balance inicial</p>
-            <p className="num text-lg font-semibold">{formatCurrency(account.initialBalance)}</p>
+            <p className="num text-lg font-bold font-mono">{formatCurrency(account.initialBalance)}</p>
           </div>
           <div>
             <p className="text-xs text-muted-foreground">Balance actual</p>
-            <p className="num text-lg font-semibold">{formatCurrency(balance)}</p>
+            <p className="num text-lg font-bold font-mono">{formatCurrency(balance)}</p>
           </div>
           <div>
             <p className="text-xs text-muted-foreground">Resultado de cuenta</p>
             <p
-              className={cn("num text-lg font-semibold", result >= 0 ? "text-profit" : "text-loss")}
+              className={cn("num text-lg font-bold font-mono", result >= 0 ? "text-profit" : "text-loss")}
             >
               {formatCurrency(result, true)}
             </p>
           </div>
           <div>
-            <p className="text-xs text-muted-foreground">Tipo</p>
-            <p className="flex items-center gap-2 text-lg font-semibold">
+            <p className="text-xs text-muted-foreground">Tipo de Cuenta</p>
+            <p className="flex items-center gap-2 text-base font-semibold mt-0.5">
               {account.type === "funded" ? (
                 <>
-                  <Building2 className="size-4 text-brand-soft" /> Fondeo
+                  <Building2 className="size-4 text-brand-soft" /> Fondeo ({account.phase === "live" ? "Live" : "Eval"})
                 </>
               ) : (
                 <>
@@ -161,29 +166,7 @@ function AccountDetail() {
         {(() => {
           const target = accountTarget(account, trades, withdrawals);
           if (!target) return null;
-          return (
-            <section className="panel p-4">
-              <div className="flex items-center gap-2">
-                <PhaseChip phase={target.phase} />
-                <h2 className="text-base font-semibold">{target.label}</h2>
-              </div>
-              <div className="mt-3 grid grid-cols-3 gap-3 text-sm">
-                <div>
-                  <p className="text-xs text-muted-foreground">Inicial</p>
-                  <p className="num font-semibold">{formatCurrency(account.initialBalance)}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Actual</p>
-                  <p className="num font-semibold">{formatCurrency(target.balance)}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Objetivo</p>
-                  <p className="num font-semibold">{formatCurrency(target.target)}</p>
-                </div>
-              </div>
-              <TargetProgress status={target} />
-            </section>
-          );
+          return <TargetProgress status={target} />;
         })()}
 
         <AccountCostCard accountId={account.id} pnl={pnl} />
