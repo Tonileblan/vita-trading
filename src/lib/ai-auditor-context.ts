@@ -68,7 +68,7 @@ export function groupSimultaneousTrades(
     // Buscar si encaja en un grupo existente (mismo símbolo, misma dirección, diferencia < 3 minutos)
     const existing = groups.find((g) => {
       if (g.symbol !== t.symbol || g.direction !== t.direction) return false;
-      const gTime = new Date(g.trades[0].trade.closedAt || g.trades[0].trade.openedAt).getTime();
+      const gTime = new Date(g.trades[0]!.trade.closedAt || g.trades[0]!.trade.openedAt).getTime();
       return Math.abs(tTime - gTime) <= 3 * 60 * 1000; // 3 minutos
     });
 
@@ -139,7 +139,7 @@ export function computeAuditorStatus(ctx: AuditorContextData): AuditorStatusSumm
   const multiAccountLossGroups = simultaneousGroups.filter((g) => g.isMultiAccount && g.totalPnl < 0);
   if (multiAccountLossGroups.length > 0) {
     activeAlerts.push(
-      `Detectada réplica multicuenta perdedora en ${multiAccountLossGroups[0].symbol}: ${multiAccountLossGroups[0].trades.length} cuentas afectadas simultáneamente (-$${Math.abs(multiAccountLossGroups[0].totalPnl).toFixed(2)}). Riesgo de sobreexposición global.`,
+      `Detectada réplica multicuenta perdedora en ${multiAccountLossGroups[0]!.symbol}: ${multiAccountLossGroups[0]!.trades.length} cuentas afectadas simultáneamente (-$${Math.abs(multiAccountLossGroups[0]!.totalPnl).toFixed(2)}). Riesgo de sobreexposición global.`,
     );
     hasWarning = true;
   }

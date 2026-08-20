@@ -229,10 +229,10 @@ export function AiAuditorPanel({
   // Selección por defecto
   useEffect(() => {
     if (strategies.length > 0 && !selectedStrategyId) {
-      setSelectedStrategyId(strategies[0].id);
+      setSelectedStrategyId(strategies[0]!.id);
     }
     if (accounts.length > 0 && !selectedAccountId) {
-      setSelectedAccountId(accounts[0].id);
+      setSelectedAccountId(accounts[0]!.id);
     }
   }, [strategies, accounts, selectedStrategyId, selectedAccountId]);
 

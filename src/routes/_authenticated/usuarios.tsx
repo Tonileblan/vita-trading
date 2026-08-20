@@ -243,7 +243,7 @@ function UsersPage() {
         .update({
           assigned_supervisor_id: targetId,
           is_private: targetId ? false : isPrivate,
-        })
+        } as any)
         .eq("id", user!.id);
       if (error) throw error;
       return targetId;
@@ -442,7 +442,7 @@ function UsersPage() {
             .order("created_at", { ascending: true });
           return (simpleData ?? []) as UserRow[];
         }
-        return (data ?? []) as UserRow[];
+        return (data ?? []) as unknown as UserRow[];
       } catch {
         return [];
       }
@@ -476,7 +476,7 @@ function UsersPage() {
         const { error } = await supabase.from("user_roles").insert({ user_id: userId, role });
         if (error) throw error;
         if (role === "supervisor") {
-          await supabase.from("profiles").update({ supervisor_status: "approved" }).eq("id", userId);
+          await supabase.from("profiles").update({ supervisor_status: "approved" } as any).eq("id", userId);
         }
       } else {
         const { error } = await supabase
@@ -486,7 +486,7 @@ function UsersPage() {
           .eq("role", role);
         if (error) throw error;
         if (role === "supervisor") {
-          await supabase.from("profiles").update({ supervisor_status: "none" }).eq("id", userId);
+          await supabase.from("profiles").update({ supervisor_status: "none" } as any).eq("id", userId);
         }
       }
     },
@@ -583,7 +583,7 @@ function UsersPage() {
 
       // 5. Fallback directo en cliente (desvincular supervisor y borrar perfil)
       try {
-        await supabase.from("profiles").update({ assigned_supervisor_id: null } as any).eq("assigned_supervisor_id", userId);
+        await supabase.from("profiles").update({ assigned_supervisor_id: null } as any).eq("assigned_supervisor_id" as any, userId);
         await supabase.from("user_roles").delete().eq("user_id", userId);
         const { error: pErr } = await supabase.from("profiles").delete().eq("id", userId);
         if (!pErr) return;

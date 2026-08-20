@@ -44,7 +44,7 @@ export const deleteUserAdminFn = createServerFn({ method: "POST" })
     // 3. Fallback exhaustivo de borrado directo en cascada (con Service Role para ignorar RLS)
     try {
       // 3.1 Desvincular de otros perfiles si era supervisor
-      await client.from("profiles").update({ assigned_supervisor_id: null } as any).eq("assigned_supervisor_id", userId);
+      await client.from("profiles").update({ assigned_supervisor_id: null } as any).eq("assigned_supervisor_id" as any, userId);
 
       // 3.2 Eliminar todas las tablas secundarias del usuario
       await client.from("account_strategy_periods").delete().eq("user_id", userId);
@@ -110,8 +110,8 @@ export const updateCredentialsAdminFn = createServerFn({ method: "POST" })
     // 2. Intentar Admin SDK
     if ((client as any).auth?.admin?.updateUserById) {
       const updatePayload: Record<string, string> = {};
-      if (email) updatePayload.email = email;
-      if (password) updatePayload.password = password;
+      if (email) updatePayload['email'] = email;
+      if (password) updatePayload['password'] = password;
 
       if (Object.keys(updatePayload).length > 0) {
         const { error: authErr } = await (client as any).auth.admin.updateUserById(
