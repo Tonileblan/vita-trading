@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import {
   Area,
   CartesianGrid,
@@ -15,6 +16,44 @@ export function EquityChart({
   data: { index: number; date: string; equity: number; drawdownFloor?: number | undefined }[];
 }) {
   const hasDrawdown = data.some((d) => d.drawdownFloor !== undefined);
+
+  // Escala dinámica del eje Y para que la curva muestre relieve real y no quede plana
+  const { minVal, maxVal } = useMemo(() => {
+    if (!data || data.length === 0) return { minVal: 0, maxVal: 100 };
+    let min = Infinity;
+    let max = -Infinity;
+    for (const d of data) {
+      if (typeof d.equity === "number" && !isNaN(d.equity)) {
+        if (d.equity < min) min = d.equity;
+        if (d.equity > max) max = d.equity;
+      }
+      if (typeof d.drawdownFloor === "number" && !isNaN(d.drawdownFloor)) {
+        if (d.drawdownFloor < min) min = d.drawdownFloor;
+        if (d.drawdownFloor > max) max = d.drawdownFloor;
+      }
+    }
+    if (!isFinite(min) || !isFinite(max)) return { minVal: 0, maxVal: 100 };
+    if (min === max) {
+      const pad = Math.max(Math.abs(min) * 0.05, 100);
+      return { minVal: Math.floor(min - pad), maxVal: Math.ceil(max + pad) };
+    }
+    const padding = Math.max((max - min) * 0.12, 50);
+    return {
+      minVal: Math.floor(min - padding),
+      maxVal: Math.ceil(max + padding),
+    };
+  }, [data]);
+
+  if (!data || data.length === 0) {
+    return (
+      <div className="flex h-[320px] w-full flex-col items-center justify-center rounded-xl border border-dashed border-border/80 bg-muted/10 p-6 text-center text-muted-foreground">
+        <p className="text-sm font-medium">Sin operaciones para generar la curva</p>
+        <p className="text-xs text-muted-foreground/80 mt-1">
+          Registra operaciones o cambia el filtro para ver la evolución del capital.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="h-[320px] w-full">
@@ -35,6 +74,7 @@ export function EquityChart({
             minTickGap={40}
           />
           <YAxis
+            domain={[minVal, maxVal]}
             tick={{ fontSize: 11, fill: "var(--color-muted-foreground)" }}
             tickLine={false}
             axisLine={false}

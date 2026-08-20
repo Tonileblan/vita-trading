@@ -207,8 +207,14 @@ export function buildEquityCurve(
   startBalance: number,
   fundedAccount?: Account | null,
 ) {
+  if (!trades || trades.length === 0) {
+    return [];
+  }
+
   const sorted = [...trades].sort(
-    (a, b) => new Date(a.openedAt || a.closedAt).getTime() - new Date(b.openedAt || b.closedAt).getTime(),
+    (a, b) =>
+      new Date(a.openedAt || a.closedAt || a.createdAt || 0).getTime() -
+      new Date(b.openedAt || b.closedAt || b.createdAt || 0).getTime(),
   );
 
   let equity = startBalance;
@@ -216,15 +222,36 @@ export function buildEquityCurve(
   const ddLimit = isFunded ? (fundedAccount.drawdownLimit ?? 0) : 0;
   const ddType = isFunded ? (fundedAccount.drawdownType ?? "static") : "static";
   const initial = fundedAccount?.initialBalance ?? startBalance;
-  const maxRef = initial + ddLimit;
 
   let peak = Math.max(initial, startBalance);
   let eodRef = initial;
   let lastDay: string | null = null;
 
-  return sorted.map((t, i) => {
+  const firstDateStr = sorted[0]?.openedAt || sorted[0]?.closedAt || sorted[0]?.createdAt || "";
+  const initialDrawdownFloor =
+    isFunded && ddLimit > 0
+      ? ddType === "static"
+        ? Number((initial - ddLimit).toFixed(2))
+        : Number((Math.max(initial, startBalance) - ddLimit).toFixed(2))
+      : undefined;
+
+  const points = [
+    {
+      index: 0,
+      date: firstDateStr
+        ? new Date(firstDateStr).toLocaleDateString("es-ES", {
+            day: "2-digit",
+            month: "short",
+          })
+        : "Inicio",
+      equity: Number(startBalance.toFixed(2)),
+      ...(initialDrawdownFloor !== undefined ? { drawdownFloor: initialDrawdownFloor } : {}),
+    },
+  ];
+
+  sorted.forEach((t, i) => {
     equity += t.pnl;
-    const dateStr = t.openedAt || t.closedAt;
+    const dateStr = t.openedAt || t.closedAt || t.createdAt || "";
     const day = dateStr ? dateStr.slice(0, 10) : "";
 
     peak = Math.max(peak, equity);
@@ -245,16 +272,20 @@ export function buildEquityCurve(
       }
     }
 
-    return {
+    points.push({
       index: i + 1,
-      date: new Date(dateStr).toLocaleDateString("es-ES", {
-        day: "2-digit",
-        month: "short",
-      }),
+      date: dateStr
+        ? new Date(dateStr).toLocaleDateString("es-ES", {
+            day: "2-digit",
+            month: "short",
+          })
+        : `T${i + 1}`,
       equity: Number(equity.toFixed(2)),
       ...(drawdownFloor !== undefined ? { drawdownFloor } : {}),
-    };
+    });
   });
+
+  return points;
 }
 
 export function filterByRange(
