@@ -541,6 +541,7 @@ export interface StrategyStats {
   currentCapital: number;
   accounts: Account[];
   trades: number;
+  daysOperated: number;
   winRate: number;
   profitFactor: number;
   returnPct: number;
@@ -562,6 +563,8 @@ export function computeStrategyStats(
   const withdrawn = mine.reduce((s, a) => s + accountWithdrawn(approved, a.id), 0);
   const initialCapital = mine.reduce((s, a) => s + a.initialBalance, 0);
   const currentCapital = mine.reduce((s, a) => s + accountBalance(a, trades, approved), 0);
+  const uniqueDays = new Set(own.map((t) => tradeDayKey(t)).filter(Boolean));
+
   return {
     strategy,
     initialCapital,
@@ -570,6 +573,7 @@ export function computeStrategyStats(
     currentCapital,
     accounts: mine,
     trades: m.total,
+    daysOperated: uniqueDays.size,
     winRate: m.winRate,
     profitFactor: m.profitFactor,
     returnPct: initialCapital ? (m.totalPnl / initialCapital) * 100 : 0,

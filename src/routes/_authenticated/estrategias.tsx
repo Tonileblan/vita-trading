@@ -22,6 +22,7 @@ import { StrategyDialog } from "@/components/strategy-dialog";
 import { Button } from "@/components/ui/button";
 import { useJournal } from "@/lib/journal-store";
 import { computeStrategyStats, formatCurrency } from "@/lib/metrics";
+import { tradeDayKey } from "@/lib/emotions";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/estrategias")({
@@ -74,6 +75,7 @@ function EstrategiasPage() {
     const grossLoss = Math.abs(trades.filter((t) => t.pnl < 0).reduce((s, t) => s + t.pnl, 0));
     const globalPf = grossLoss > 0 ? grossProfit / grossLoss : grossProfit > 0 ? Infinity : 0;
     const returnPct = initial > 0 ? (net / initial) * 100 : 0;
+    const totalDaysOperated = new Set(trades.map((t) => tradeDayKey(t)).filter(Boolean)).size;
 
     return {
       initial,
@@ -84,6 +86,7 @@ function EstrategiasPage() {
       globalWinRate,
       globalPf,
       returnPct,
+      totalDaysOperated,
     };
   }, [stats, trades]);
 
@@ -275,6 +278,10 @@ function EstrategiasPage() {
                               {(s.riskPct * 100).toFixed(1)}%
                             </strong>{" "}
                             ·{" "}
+                            <span className="font-semibold text-foreground">
+                              Días: {s.days || "Lun - Vie"}
+                            </span>{" "}
+                            ·{" "}
                             {st?.accounts.length
                               ? `${st.accounts.length} ${st.accounts.length === 1 ? "cuenta" : "cuentas"}`
                               : "Sin cuentas fijas"}
@@ -301,9 +308,9 @@ function EstrategiasPage() {
                         </div>
                       </div>
 
-                      {/* Barra de métricas rápidas */}
+                      {/* Barra de métricas rápidas con Días Operados */}
                       {st && (
-                        <div className="mt-3 grid grid-cols-3 gap-1 rounded-lg border border-border/70 bg-muted/30 p-2 text-center text-xs">
+                        <div className="mt-3 grid grid-cols-4 gap-1 rounded-lg border border-border/70 bg-muted/30 p-2 text-center text-xs">
                           <div>
                             <span className="text-[10px] text-muted-foreground block">Neto</span>
                             <span
@@ -328,15 +335,23 @@ function EstrategiasPage() {
                               {Number.isFinite(st.profitFactor) ? st.profitFactor.toFixed(2) : "—"}
                             </span>
                           </div>
+                          <div>
+                            <span className="text-[10px] text-muted-foreground block">Días Op.</span>
+                            <span className="num font-bold text-brand">
+                              {st.daysOperated} {st.daysOperated === 1 ? "día" : "días"}
+                            </span>
+                          </div>
                         </div>
                       )}
 
-                      {/* Parámetros Operativos (Badges limpios) */}
+                      {/* Parámetros Operativos (Badges con Días Operativos destacados) */}
                       <div className="mt-3 flex flex-wrap gap-1.5">
                         {[
+                          s.days && { label: "Días", val: s.days, highlight: true },
                           s.market && { label: "Mercado", val: s.market },
                           s.chart && { label: "TF", val: s.chart },
                           s.schedule && { label: "Horario", val: s.schedule },
+                          s.execution && { label: "Operación", val: s.execution },
                           s.setup && { label: "Setup", val: s.setup },
                           s.management && { label: "Gestión", val: s.management },
                           s.contracts && { label: "Contratos", val: s.contracts },
@@ -345,7 +360,12 @@ function EstrategiasPage() {
                           .map((item, idx) => (
                             <span
                               key={idx}
-                              className="inline-flex items-center gap-1 rounded-md bg-muted/60 border border-border/50 px-2 py-0.5 text-[11px] text-foreground/80"
+                              className={cn(
+                                "inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[11px]",
+                                item!.highlight
+                                  ? "bg-brand/10 border-brand/40 text-brand font-semibold"
+                                  : "bg-muted/60 border-border/50 text-foreground/80",
+                              )}
                             >
                               <strong className="font-semibold text-muted-foreground text-[10px]">
                                 {item!.label}:
@@ -359,7 +379,7 @@ function EstrategiasPage() {
                     {/* Footer de la tarjeta con acción de filtrado */}
                     <div className="pt-2 border-t border-border/50 flex items-center justify-between text-xs">
                       <span className="text-[11px] text-muted-foreground">
-                        {st?.trades ?? 0} trades ejecutados
+                        {st?.trades ?? 0} trades ejecutados ({st?.daysOperated ?? 0} días)
                       </span>
                       <span
                         className={cn(
@@ -404,10 +424,11 @@ function EstrategiasPage() {
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[850px] text-sm">
+            <table className="w-full min-w-[920px] text-sm">
               <thead className="border-b border-border bg-muted/40 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
                 <tr>
                   <th className="py-2.5 px-4 text-left">Estrategia</th>
+                  <th className="py-2.5 px-3 text-center">Días Operativos</th>
                   <th className="py-2.5 px-3 text-right">Cap. Inicial</th>
                   <th className="py-2.5 px-3 text-right">Cap. Actual</th>
                   <th className="py-2.5 px-3 text-right">Neto (P&L)</th>
@@ -461,6 +482,16 @@ function EstrategiasPage() {
                             </span>
                           </div>
                         </div>
+                      </td>
+
+                      {/* Días Operativos */}
+                      <td className="py-3 px-3 text-center">
+                        <span className="font-bold text-foreground text-xs block">
+                          {s.strategy.days || "Lun - Vie"}
+                        </span>
+                        <span className="text-[10px] text-muted-foreground num block">
+                          {s.daysOperated} {s.daysOperated === 1 ? "día con ops" : "días con ops"}
+                        </span>
                       </td>
 
                       {/* Cap Inicial */}
@@ -561,6 +592,9 @@ function EstrategiasPage() {
                 <tr>
                   <td className="py-3 px-4 text-foreground uppercase tracking-wider text-xs">
                     Total Portafolio
+                  </td>
+                  <td className="py-3 px-3 text-center num text-xs text-muted-foreground">
+                    {totals.totalDaysOperated} {totals.totalDaysOperated === 1 ? "día operado" : "días operados"}
                   </td>
                   <td className="py-3 px-3 text-right num">
                     {formatCurrency(totals.initial)}

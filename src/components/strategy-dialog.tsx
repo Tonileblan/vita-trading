@@ -17,14 +17,14 @@ import { useJournal } from "@/lib/journal-store";
 import type { Strategy } from "@/lib/types";
 
 const TEXT_FIELDS = [
-  { key: "market", label: "Mercado / instrumento" },
-  { key: "chart", label: "Gráfico" },
-  { key: "days", label: "Días" },
-  { key: "schedule", label: "Horario" },
-  { key: "execution", label: "Operación" },
-  { key: "setup", label: "Configuración" },
-  { key: "management", label: "Gestión" },
-  { key: "contracts", label: "Contratos" },
+  { key: "market", label: "Mercado / Instrumento", placeholder: "Ej: Nasdaq (NQ / MNQ), S&P 500, EURUSD..." },
+  { key: "chart", label: "Temporalidad / Gráfico (TF)", placeholder: "Ej: 1m, 5m, 15m, 1h..." },
+  { key: "days", label: "Días Operativos", placeholder: "Ej: Lun - Vie, Mar y Jue, Lun a Jue..." },
+  { key: "schedule", label: "Horario Operativo", placeholder: "Ej: 09:30 - 11:30 EST, Sesión NY / London..." },
+  { key: "execution", label: "Tipo de Operación", placeholder: "Ej: Scalping, Day Trading, Swing..." },
+  { key: "setup", label: "Setup / Configuración", placeholder: "Ej: Ruptura de rango, FVG + ChoCH, Doble suelo..." },
+  { key: "management", label: "Gestión de Posición", placeholder: "Ej: 1:2 R:R, Stop a BE tras +1R, Parciales 50%..." },
+  { key: "contracts", label: "Contratos / Lotes", placeholder: "Ej: 1 a 3 micro contratos..." },
 ] as const;
 
 type TextKey = (typeof TEXT_FIELDS)[number]["key"];
@@ -140,6 +140,7 @@ export function StrategyDialog({
               <Label>{f.label}</Label>
               <Input
                 value={text[f.key]}
+                placeholder={f.placeholder}
                 onChange={(e) => setText((prev) => ({ ...prev, [f.key]: e.target.value }))}
               />
             </div>
