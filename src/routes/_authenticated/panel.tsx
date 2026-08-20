@@ -757,7 +757,7 @@ function Overview() {
                   </div>
                   <p className="text-xs text-muted-foreground mt-0.5">
                     {isStrategy
-                      ? selectedStrategy?.description || `Rendimiento exclusivo de la estrategia ${selectedStrategy?.name ?? ""}`
+                      ? `Rendimiento exclusivo de la estrategia ${selectedStrategy?.name ?? ""}`
                       : "Supervisión detallada de cuenta"}
                   </p>
                 </div>

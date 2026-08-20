@@ -232,7 +232,7 @@ export function TradeFormDialog({
       if (isEditing && trade) {
         await updateTrade(trade.id, {
           accountId,
-          strategyId: strategyId || null,
+          strategyId: strategyId || undefined,
           symbol: symbol.trim().toUpperCase(),
           direction,
           openedAt: fromDatetimeLocal(openedAt),
@@ -254,7 +254,7 @@ export function TradeFormDialog({
       } else {
         await addTrade({
           accountId,
-          strategyId: strategyId || null,
+          strategyId: strategyId || undefined,
           symbol: symbol.trim().toUpperCase(),
           direction,
           openedAt: fromDatetimeLocal(openedAt),
