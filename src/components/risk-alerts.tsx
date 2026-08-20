@@ -23,7 +23,6 @@ import { useJournal } from "@/lib/journal-store";
 import { accountDrawdown, accountTarget, formatCurrency } from "@/lib/metrics";
 import { useCheckins, useJournalRules, DEFAULT_RULES } from "@/lib/mood";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
 
 const DISMISSED_KEY_PREFIX = "tj:dismissed-alerts-v4";
 
