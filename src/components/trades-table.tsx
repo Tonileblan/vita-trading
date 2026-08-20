@@ -3,6 +3,7 @@ import {
   ArrowDown,
   ArrowUp,
   ArrowUpDown,
+  Eye,
   FileText,
   Image as ImageIcon,
   Layers,
@@ -34,6 +35,7 @@ export function TradesTable({
   sortField,
   sortDirection,
   onSortChange,
+  readOnly = false,
 }: {
   trades: Trade[];
   accounts: Account[];
@@ -47,6 +49,7 @@ export function TradesTable({
   sortField?: TradeSortField | null;
   sortDirection?: SortDirection;
   onSortChange?: (field: TradeSortField, direction: SortDirection) => void;
+  readOnly?: boolean;
 }) {
   const store = useJournal();
   const strategies = propStrategies ?? store.strategies;
@@ -78,7 +81,7 @@ export function TradesTable({
   const nameOf = (id: string) => accounts.find((a) => a.id === id)?.name ?? "—";
   /** Treats empty or "N/D" (legacy) symbols as unavailable. */
   const symbolOf = (s: string) => (s && s !== "N/D" ? s : "—");
-  const selectable = !!onToggleSelect;
+  const selectable = !!onToggleSelect && !readOnly;
   const isSelected = (id: string) => (selectedIds ?? []).includes(id);
   const colCount = 10 + (selectable ? 1 : 0);
 
@@ -316,12 +319,12 @@ export function TradesTable({
                       <button
                         onClick={() => handleEdit(t)}
                         className="rounded p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-                        title="Editar / completar información"
-                        aria-label="Editar operación"
+                        title={readOnly ? "Ver detalle de la operación" : "Editar / completar información"}
+                        aria-label={readOnly ? "Ver operación" : "Editar operación"}
                       >
-                        <Pencil className="size-4" />
+                        {readOnly ? <Eye className="size-4" /> : <Pencil className="size-4" />}
                       </button>
-                      {onDelete && (
+                      {!readOnly && onDelete && (
                         <button
                           onClick={() => onDelete(t)}
                           className="rounded p-1 text-muted-foreground transition-colors hover:bg-loss/20 hover:text-loss"
@@ -439,6 +442,7 @@ export function TradesTable({
         trade={editingTrade}
         open={Boolean(editingTrade)}
         trigger={null}
+        readOnly={readOnly}
         onOpenChange={(isOpen) => {
           if (!isOpen) setEditingTrade(null);
         }}

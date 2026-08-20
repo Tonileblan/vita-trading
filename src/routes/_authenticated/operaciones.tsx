@@ -5,6 +5,7 @@ import {
   AlertTriangle,
   ArrowUpDown,
   Building2,
+  Eye,
   Filter,
   History as HistoryIcon,
   Layers,
@@ -13,6 +14,8 @@ import {
   Plus,
   Scale,
   Search,
+  ShieldAlert,
+  ShieldCheck,
   TrendingUp,
   Trash2,
   Undo2,
@@ -74,7 +77,7 @@ type Pending =
   { kind: "trades"; ids: string[]; label: string } | { kind: "batch"; id: string; label: string };
 
 function TradesPage() {
-  const { isSupervisor, isAdmin, user } = useAuth();
+  const { isSupervisor, isAdmin, user, canEditOtherUsers } = useAuth();
   const journalStore = useJournal();
   const {
     importBatches,
@@ -146,6 +149,8 @@ function TradesPage() {
   });
 
   const isSupervisedView = (isSupervisor || isAdmin) && supervisorUserFilter !== "mine";
+  const canEdit = !isSupervisedView || canEditOtherUsers;
+
   const accounts = useMemo(
     () => (isSupervisedView ? (svData?.accounts ?? []) : journalStore.accounts),
     [isSupervisedView, svData?.accounts, journalStore.accounts],
@@ -278,7 +283,7 @@ function TradesPage() {
   const m = useMemo(() => computeMetrics(filtered), [filtered]);
 
   const confirm = async () => {
-    if (!pending) return;
+    if (!pending || !canEdit) return;
     setWorking(true);
     try {
       if (pending.kind === "trades") {
@@ -310,10 +315,17 @@ function TradesPage() {
           : "Supervisa cada trade registrado, clasifícalo por estrategia e importa ejecuciones masivas"
       }
       actions={
-        <div className="flex flex-wrap items-center gap-2">
-          <TradeImportDialog />
-          <TradeFormDialog />
-        </div>
+        canEdit ? (
+          <div className="flex flex-wrap items-center gap-2">
+            <TradeImportDialog />
+            <TradeFormDialog />
+          </div>
+        ) : (
+          <div className="flex items-center gap-1.5 rounded-full border border-sky-500/30 bg-sky-500/10 px-3 py-1.5 text-xs font-semibold text-sky-300">
+            <ShieldCheck className="size-3.5" />
+            <span>Modo Supervisión: Solo Lectura</span>
+          </div>
+        )
       }
     >
       <div className="space-y-6">
@@ -415,6 +427,36 @@ function TradesPage() {
         {/* TAB 1: OPERACIONES */}
         {tab === "operaciones" && (
           <div className="space-y-4">
+            {/* Banner informativo de supervisión */}
+            {isSupervisedView && (
+              <div
+                className={cn(
+                  "flex flex-wrap items-center justify-between gap-3 rounded-xl border px-4 py-2.5 text-xs",
+                  canEdit
+                    ? "border-amber-500/40 bg-amber-500/10 text-amber-200"
+                    : "border-sky-500/30 bg-sky-500/10 text-sky-200",
+                )}
+              >
+                <div className="flex items-center gap-2">
+                  {canEdit ? (
+                    <ShieldAlert className="size-4 shrink-0 text-amber-400" />
+                  ) : (
+                    <ShieldCheck className="size-4 shrink-0 text-sky-400" />
+                  )}
+                  <span>
+                    {canEdit
+                      ? "Modo edición de supervisión activo: Las modificaciones y eliminaciones afectarán directamente a los datos de este usuario."
+                      : "Modo supervisión (Solo lectura): No se pueden editar ni eliminar datos de otros usuarios."}
+                  </span>
+                </div>
+                {!canEdit && isAdmin && (
+                  <span className="text-[11px] text-muted-foreground">
+                    (Puedes habilitar la edición desde tu Perfil de Administrador)
+                  </span>
+                )}
+              </div>
+            )}
+
             {/* Banner informativo de filtro lateral activo */}
             {!isSupervisedView &&
               selectedAccountIds.length < accounts.length &&
@@ -566,7 +608,7 @@ function TradesPage() {
             </div>
 
             {/* Bulk Selection Bar */}
-            {selected.length > 0 && (
+            {canEdit && selected.length > 0 && (
               <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-brand/40 bg-brand/5 p-3 text-sm">
                 <span className="font-semibold text-foreground">
                   {selected.length}{" "}
@@ -604,17 +646,24 @@ function TradesPage() {
               sortField={sortField}
               sortDirection={sortDirection}
               onSortChange={handleSortChange}
-              onToggleSelect={(id) =>
-                setSelected((prev) =>
-                  prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
-                )
+              readOnly={!canEdit}
+              onToggleSelect={
+                canEdit
+                  ? (id) =>
+                      setSelected((prev) =>
+                        prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+                      )
+                  : undefined
               }
-              onDelete={(t) =>
-                setPending({
-                  kind: "trades",
-                  ids: [t.id],
-                  label: `Se eliminará la operación de ${t.symbol} (${formatCurrency(t.pnl, true)}) y se recalculará el balance.`,
-                })
+              onDelete={
+                canEdit
+                  ? (t) =>
+                      setPending({
+                        kind: "trades",
+                        ids: [t.id],
+                        label: `Se eliminará la operación de ${t.symbol} (${formatCurrency(t.pnl, true)}) y se recalculará el balance.`,
+                      })
+                  : undefined
               }
             />
 
@@ -685,7 +734,7 @@ function TradesPage() {
                 <p className="text-sm text-muted-foreground">
                   Aún no hay importaciones registradas.
                 </p>
-                <TradeImportDialog />
+                {canEdit && <TradeImportDialog />}
               </div>
             ) : (
               <div className="grid gap-3">
@@ -722,20 +771,22 @@ function TradesPage() {
                       </p>
                     </div>
 
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="gap-1.5 text-xs text-destructive hover:bg-destructive/10 hover:text-destructive"
-                      onClick={() =>
-                        setPending({
-                          kind: "batch",
-                          id: b.id,
-                          label: `Se eliminarán las ${b.count} operaciones importadas en este lote y se revertirán los balances.`,
-                        })
-                      }
-                    >
-                      <Undo2 className="size-3.5" /> Deshacer lote
-                    </Button>
+                    {canEdit && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="gap-1.5 text-xs text-destructive hover:bg-destructive/10 hover:text-destructive"
+                        onClick={() =>
+                          setPending({
+                            kind: "batch",
+                            id: b.id,
+                            label: `Se eliminarán las ${b.count} operaciones importadas en este lote y se revertirán los balances.`,
+                          })
+                        }
+                      >
+                        <Undo2 className="size-3.5" /> Deshacer lote
+                      </Button>
+                    )}
                   </div>
                 ))}
               </div>

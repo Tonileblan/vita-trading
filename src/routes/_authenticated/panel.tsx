@@ -8,6 +8,8 @@ import {
   CalendarIcon,
   Filter,
   Layers,
+  ShieldAlert,
+  ShieldCheck,
   Sparkles,
   User,
   Wallet,
@@ -75,15 +77,15 @@ type RangeKey = (typeof RANGES)[number]["key"] | "custom";
 type DateRange = { from: Date | undefined; to: Date | undefined };
 
 const SCOPES = [
-  { key: "all", label: "Capital total", icon: Wallet },
-  { key: "funded", label: "Capital fondeo", icon: Building2 },
+  { key: "all", label: "Consolidado", icon: Layers },
+  { key: "funded", label: "Cuentas fondeo", icon: Building2 },
   { key: "real", label: "Capital real", icon: User },
 ] as const;
 
 type Scope = (typeof SCOPES)[number]["key"];
 
 function Overview() {
-  const { isSupervisor, isAdmin, user } = useAuth();
+  const { isSupervisor, isAdmin, user, canEditOtherUsers } = useAuth();
   const journalStore = useJournal();
 
   // Filtro de usuario para supervisores: "mine" (mi diario) o userId específico
@@ -152,7 +154,8 @@ function Overview() {
     },
   });
 
-  const isSupervisedView = isSupervisor && supervisorUserFilter !== "mine";
+  const isSupervisedView = (isSupervisor || isAdmin) && supervisorUserFilter !== "mine";
+  const canEdit = !isSupervisedView || canEditOtherUsers;
   const accounts = useMemo(
     () => (isSupervisedView ? (svData?.accounts ?? []) : journalStore.accounts),
     [isSupervisedView, svData?.accounts, journalStore.accounts],
@@ -407,6 +410,36 @@ function Overview() {
       }
     >
       <div className="space-y-6">
+        {/* Banner informativo de supervisión */}
+        {isSupervisedView && (
+          <div
+            className={cn(
+              "flex flex-wrap items-center justify-between gap-3 rounded-xl border px-4 py-2.5 text-xs",
+              canEdit
+                ? "border-amber-500/40 bg-amber-500/10 text-amber-200"
+                : "border-sky-500/30 bg-sky-500/10 text-sky-200",
+            )}
+          >
+            <div className="flex items-center gap-2">
+              {canEdit ? (
+                <ShieldAlert className="size-4 shrink-0 text-amber-400" />
+              ) : (
+                <ShieldCheck className="size-4 shrink-0 text-sky-400" />
+              )}
+              <span>
+                {canEdit
+                  ? "Modo edición de supervisión activo: Las modificaciones afectarán directamente a los datos de este usuario."
+                  : "Modo supervisión (Solo lectura): No se pueden editar ni eliminar datos de otros usuarios."}
+              </span>
+            </div>
+            {!canEdit && isAdmin && (
+              <span className="text-[11px] text-muted-foreground">
+                (Puedes habilitar la edición desde tu Perfil de Administrador)
+              </span>
+            )}
+          </div>
+        )}
+
         {/* Banner informativo de filtro lateral activo */}
         {!isSupervisedView &&
           journalStore.selectedAccountIds &&
@@ -1039,6 +1072,7 @@ function Overview() {
             accounts={accounts}
             strategies={strategies}
             strategyPeriods={strategyPeriods}
+            readOnly={!canEdit}
             limit={showAllTrades || selectedCalendarDate ? undefined : 15}
           />
         </section>

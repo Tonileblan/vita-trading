@@ -66,12 +66,14 @@ export function TradeFormDialog({
   open: controlledOpen,
   onOpenChange: setControlledOpen,
   onSuccess,
+  readOnly = false,
 }: {
   trade?: Trade | null;
   trigger?: ReactNode;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
   onSuccess?: () => void;
+  readOnly?: boolean;
 } = {}) {
   const { accounts, strategies, strategyPeriods, addTrade, updateTrade } = useJournal();
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
@@ -208,21 +210,30 @@ export function TradeFormDialog({
         reader.onload = () => setShots((prev) => [...prev, String(reader.result)]);
         reader.readAsDataURL(f);
       });
-  };
+  }
 
   const submit = async () => {
-    if (!accountId || !symbol || pnl === "") {
-      toast.error("Completa cuenta, activo y PnL");
+    if (readOnly) return;
+    if (!accountId) {
+      toast.error("Selecciona una cuenta");
       return;
     }
+    if (!symbol.trim()) {
+      toast.error("Indica el activo (ej. NQ1!, EURUSD)");
+      return;
+    }
+    if (pnl === "" || isNaN(Number(pnl))) {
+      toast.error("Indica el resultado (PnL) de la operación");
+      return;
+    }
+
     setSaving(true);
     try {
-      const cleanStrategyId = strategyId && strategyId !== "none" ? strategyId : undefined;
       if (isEditing && trade) {
         await updateTrade(trade.id, {
           accountId,
-          strategyId: cleanStrategyId,
-          symbol: symbol.toUpperCase().trim(),
+          strategyId: strategyId || null,
+          symbol: symbol.trim().toUpperCase(),
           direction,
           openedAt: fromDatetimeLocal(openedAt),
           closedAt: fromDatetimeLocal(closedAt),
@@ -235,7 +246,7 @@ export function TradeFormDialog({
           screenshots: shots,
           emotionBefore: emotionBefore || undefined,
           emotionAfter: emotionAfter || undefined,
-          followedPlan: (followedPlan as FollowedPlan) || undefined,
+          followedPlan: followedPlan || undefined,
           mistakes,
           emotionNote: emotionNote.trim() || undefined,
         });
@@ -243,8 +254,8 @@ export function TradeFormDialog({
       } else {
         await addTrade({
           accountId,
-          strategyId: cleanStrategyId,
-          symbol: symbol.toUpperCase().trim(),
+          strategyId: strategyId || null,
+          symbol: symbol.trim().toUpperCase(),
           direction,
           openedAt: fromDatetimeLocal(openedAt),
           closedAt: fromDatetimeLocal(closedAt),
@@ -289,11 +300,19 @@ export function TradeFormDialog({
       {defaultTrigger ? <DialogTrigger asChild>{defaultTrigger}</DialogTrigger> : null}
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
         <DialogHeader>
-          <DialogTitle>{isEditing ? "Editar operación" : "Registro de operación"}</DialogTitle>
-          <DialogDescription>
+          <DialogTitle>
             {isEditing
-              ? "Modifica los datos, añade capturas, notas o completa el registro emocional."
-              : "Registro rápido manual. Los campos numéricos aceptan decimales."}
+              ? readOnly
+                ? "Detalle de la operación"
+                : "Editar operación"
+              : "Registro de operación"}
+          </DialogTitle>
+          <DialogDescription>
+            {readOnly
+              ? "Consulta los datos registrados, notas, capturas y emociones en modo solo lectura."
+              : isEditing
+                ? "Modifica los datos, añade capturas, notas o completa el registro emocional."
+                : "Registro rápido manual. Los campos numéricos aceptan decimales."}
           </DialogDescription>
         </DialogHeader>
 
@@ -644,12 +663,18 @@ export function TradeFormDialog({
         </div>
 
         <DialogFooter>
-          <Button variant="outline" disabled={saving} onClick={() => setOpen(false)}>
-            Cancelar
-          </Button>
-          <Button disabled={saving} onClick={submit}>
-            {saving ? "Guardando…" : isEditing ? "Guardar cambios" : "Guardar operación"}
-          </Button>
+          {readOnly ? (
+            <Button onClick={() => setOpen(false)}>Cerrar</Button>
+          ) : (
+            <>
+              <Button variant="outline" disabled={saving} onClick={() => setOpen(false)}>
+                Cancelar
+              </Button>
+              <Button disabled={saving} onClick={submit}>
+                {saving ? "Guardando…" : isEditing ? "Guardar cambios" : "Guardar operación"}
+              </Button>
+            </>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>

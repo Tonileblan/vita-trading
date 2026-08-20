@@ -131,7 +131,7 @@ interface AvailableSupervisor {
 }
 
 function UsersPage() {
-  const { user, profile, isAdmin, isSupervisor } = useAuth();
+  const { user, profile, isAdmin, isSupervisor, canEditOtherUsers, setCanEditOtherUsers } = useAuth();
   const { theme, setTheme } = useTheme();
   const qc = useQueryClient();
   const deleteUserServer = useServerFn(deleteUserAdminFn);
@@ -1217,6 +1217,8 @@ function UsersPage() {
                 cancelSupervisorApplication={cancelSupervisorApplication}
                 isSupervisor={isSupervisor}
                 isAdmin={isAdmin}
+                canEditOtherUsers={canEditOtherUsers}
+                setCanEditOtherUsers={setCanEditOtherUsers}
                 theme={theme}
                 setTheme={setTheme}
               />
@@ -1500,6 +1502,8 @@ function ProfileSettingsGrid({
   cancelSupervisorApplication,
   isSupervisor,
   isAdmin,
+  canEditOtherUsers,
+  setCanEditOtherUsers,
   theme,
   setTheme,
 }: {
@@ -1522,6 +1526,8 @@ function ProfileSettingsGrid({
   cancelSupervisorApplication: any;
   isSupervisor: boolean;
   isAdmin: boolean;
+  canEditOtherUsers: boolean;
+  setCanEditOtherUsers: (v: boolean) => void;
   theme: string;
   setTheme: (t: "light" | "dark") => void;
 }) {
@@ -1755,6 +1761,74 @@ function ProfileSettingsGrid({
             )}
           </div>
         </section>
+
+        {/* Card: Permisos de Edición en Modo Supervisión (Solo Admin) */}
+        {isAdmin && (
+          <section className="panel flex flex-col justify-between p-5 border-amber-500/30 bg-amber-500/5">
+            <div className="space-y-4">
+              <div className="flex items-center gap-2.5">
+                <div className="flex size-9 items-center justify-center rounded-lg bg-amber-500/20 text-amber-600 dark:text-amber-400">
+                  <ShieldAlert className="size-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold">Edición de Otros Usuarios</h3>
+                  <p className="text-xs text-muted-foreground">Control exclusivo de Administrador</p>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <div className="flex items-center justify-between rounded-xl border border-amber-500/30 bg-background/60 p-3.5">
+                  <div className="space-y-0.5 pr-2">
+                    <span className="text-xs font-bold text-foreground">
+                      {canEditOtherUsers ? "Edición Habilitada" : "Modo Solo Lectura (Por defecto)"}
+                    </span>
+                    <p className="text-[11px] text-muted-foreground">
+                      {canEditOtherUsers
+                        ? "Puedes crear, editar y eliminar datos de los demás usuarios."
+                        : "Los datos de otros usuarios están protegidos contra modificaciones."}
+                    </p>
+                  </div>
+                  <Switch
+                    checked={canEditOtherUsers}
+                    onCheckedChange={(checked) => {
+                      setCanEditOtherUsers(checked);
+                      if (checked) {
+                        toast.warning("Modo de edición de otros usuarios activado", {
+                          description:
+                            "Ahora podrás editar o eliminar operaciones y cuentas de otros usuarios durante la supervisión.",
+                        });
+                      } else {
+                        toast.success("Modo solo lectura activado para supervisión");
+                      }
+                    }}
+                  />
+                </div>
+
+                <div className="rounded-xl border border-border/80 bg-muted/30 p-3 text-[11px] text-muted-foreground leading-relaxed space-y-1.5">
+                  <p>
+                    <strong>Regla de seguridad:</strong> Los supervisores y administradores consultan las cuentas de otros usuarios en modo <em>Solo Lectura</em> por defecto para evitar alteraciones accidentales.
+                  </p>
+                  <p>
+                    Al activar esta opción, tendrás permisos de modificación directa sobre la operativa y cuentas de cualquier usuario supervisado.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-5 pt-3 border-t border-border/60 text-center text-[11px]">
+              <span
+                className={cn(
+                  "inline-flex items-center gap-1.5 font-semibold px-2.5 py-1 rounded-full",
+                  canEditOtherUsers
+                    ? "bg-amber-500/20 text-amber-700 dark:text-amber-300"
+                    : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+                )}
+              >
+                {canEditOtherUsers ? "⚠️ Edición de terceros permitida" : "🔒 Protección activa (Solo lectura)"}
+              </span>
+            </div>
+          </section>
+        )}
 
         {/* Card 4: Google AI Studio (Gemini) */}
         <GoogleAiSettingsCard />

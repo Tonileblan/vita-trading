@@ -19,6 +19,8 @@ interface AuthState {
   profile: Profile | null;
   isAdmin: boolean;
   isSupervisor: boolean;
+  canEditOtherUsers: boolean;
+  setCanEditOtherUsers: (enabled: boolean) => void;
   signOut: () => Promise<void>;
 }
 
@@ -27,6 +29,10 @@ const AuthContext = createContext<AuthState | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [canEditOtherUsersState, setCanEditOtherUsersState] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    return localStorage.getItem("vita_admin_can_edit_other_users") === "true";
+  });
   const queryClient = useQueryClient();
 
   useEffect(() => {
@@ -84,18 +90,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const roles = userMeta.roles;
   const userEmail = session?.user?.email?.toLowerCase() ?? "";
   const isOwnerEmail = userEmail.includes("toni") || userEmail.includes("admin") || userEmail.includes("leblan");
+  const isAdmin = roles.includes("admin") || isOwnerEmail || roles.length === 0;
+  const isSupervisor =
+    roles.includes("admin") ||
+    roles.includes("supervisor") ||
+    isOwnerEmail ||
+    roles.length === 0;
+
+  const setCanEditOtherUsers = (enabled: boolean) => {
+    setCanEditOtherUsersState(enabled);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("vita_admin_can_edit_other_users", enabled ? "true" : "false");
+    }
+  };
 
   const value: AuthState = {
     session,
     user: session?.user ?? null,
     loading,
     profile: userMeta.profile,
-    isAdmin: roles.includes("admin") || isOwnerEmail || roles.length === 0,
-    isSupervisor:
-      roles.includes("admin") ||
-      roles.includes("supervisor") ||
-      isOwnerEmail ||
-      roles.length === 0,
+    isAdmin,
+    isSupervisor,
+    canEditOtherUsers: isAdmin && canEditOtherUsersState,
+    setCanEditOtherUsers,
     signOut: async () => {
       await queryClient.cancelQueries();
       queryClient.clear();
