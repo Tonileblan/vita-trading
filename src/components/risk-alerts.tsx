@@ -4,12 +4,10 @@ import {
   AlertTriangle,
   Bell,
   Brain,
-  CheckCircle2,
   ChevronDown,
   ChevronRight,
   ChevronUp,
   ShieldAlert,
-  Sparkles,
   Trophy,
   X,
 } from "lucide-react";
@@ -26,7 +24,7 @@ import { accountDrawdown, accountTarget, formatCurrency } from "@/lib/metrics";
 import { useCheckins, useJournalRules, DEFAULT_RULES } from "@/lib/mood";
 import { cn } from "@/lib/utils";
 
-const DISMISSED_KEY_PREFIX = "tj:dismissed-alerts-v3";
+const DISMISSED_KEY_PREFIX = "tj:dismissed-alerts-v4";
 
 /** Hook para obtener y gestionar alertas activas del día */
 export function useActiveRiskAlerts() {
@@ -145,7 +143,7 @@ export function useActiveRiskAlerts() {
     [allAlerts, dismissedKeys],
   );
 
-  // Estado de mayor severidad
+  // Nivel de mayor severidad para el estilo del botón
   const highestTone = useMemo(() => {
     if (activeAlerts.some((a) => a.tone === "danger")) return "danger";
     if (activeAlerts.some((a) => a.tone === "warn")) return "warn";
@@ -163,7 +161,7 @@ export function useActiveRiskAlerts() {
   };
 }
 
-/** Renderiza una tarjeta individual de alerta con su botón X */
+/** Tarjeta individual de alerta con su botón X para cerrarla */
 export function AlertCard({
   alert,
   onDismiss,
@@ -173,28 +171,28 @@ export function AlertCard({
 }) {
   const toneStyles = {
     danger: {
-      card: "border-loss/40 bg-loss/[0.08] dark:bg-loss/[0.12] text-foreground hover:border-loss/60 shadow-xs",
+      card: "border-loss/40 bg-loss/[0.08] dark:bg-loss/[0.14] text-foreground hover:border-loss/60 shadow-xs",
       iconBg: "bg-loss/20 text-loss border border-loss/30",
       tag: "bg-loss/15 text-loss border border-loss/30",
       action: "text-loss hover:text-loss/80",
       Icon: ShieldAlert,
     },
     warn: {
-      card: "border-amber-500/40 bg-amber-500/[0.08] dark:bg-amber-500/[0.12] text-foreground hover:border-amber-500/60 shadow-xs",
+      card: "border-amber-500/40 bg-amber-500/[0.08] dark:bg-amber-500/[0.14] text-foreground hover:border-amber-500/60 shadow-xs",
       iconBg: "bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30",
       tag: "bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30",
       action: "text-amber-600 dark:text-amber-400 hover:opacity-80",
       Icon: AlertTriangle,
     },
     success: {
-      card: "border-emerald-500/40 bg-emerald-500/[0.08] dark:bg-emerald-500/[0.12] text-foreground hover:border-emerald-500/60 shadow-xs",
+      card: "border-emerald-500/40 bg-emerald-500/[0.08] dark:bg-emerald-500/[0.14] text-foreground hover:border-emerald-500/60 shadow-xs",
       iconBg: "bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30",
       tag: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30",
       action: "text-emerald-600 dark:text-emerald-400 hover:opacity-80",
       Icon: Trophy,
     },
     info: {
-      card: "border-brand/40 bg-brand/[0.06] dark:bg-brand/[0.10] text-foreground hover:border-brand/60 shadow-xs",
+      card: "border-brand/40 bg-brand/[0.06] dark:bg-brand/[0.12] text-foreground hover:border-brand/60 shadow-xs",
       iconBg: "bg-brand/20 text-brand border border-brand/30",
       tag: "bg-brand/15 text-brand border border-brand/30",
       action: "text-brand hover:opacity-80",
@@ -207,7 +205,7 @@ export function AlertCard({
   return (
     <div
       className={cn(
-        "group relative flex items-center justify-between gap-3 rounded-xl border p-3 transition-all backdrop-blur-xs",
+        "group relative flex items-center justify-between gap-3 rounded-xl border p-3 transition-all backdrop-blur-xs shadow-xs",
         toneStyles.card,
       )}
     >
@@ -282,8 +280,8 @@ export function AlertCard({
 }
 
 /**
- * Botón de alertas para la barra de navegación superior (Header)
- * Siempre visible y accesible desde cualquier página.
+ * Botón parpadeante de "Alertas" para la cabecera (Header / Navbar).
+ * Al hacer clic abre el centro de avisos una detrás de otra.
  */
 export function HeaderAlertsButton() {
   const { activeAlerts, dismissAlert, dismissAll, highestTone } = useActiveRiskAlerts();
@@ -291,47 +289,46 @@ export function HeaderAlertsButton() {
 
   if (activeAlerts.length === 0) return null;
 
-  const badgeStyle = {
-    danger: "border-loss/60 bg-loss/15 text-loss hover:bg-loss/25",
-    warn: "border-amber-500/60 bg-amber-500/15 text-amber-600 dark:text-amber-400 hover:bg-amber-500/25",
-    success: "border-emerald-500/60 bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/25",
-    info: "border-brand/60 bg-brand/15 text-brand hover:bg-brand/25",
+  const buttonStyle = {
+    danger: "border-loss/70 bg-loss/15 text-loss hover:bg-loss/25 shadow-loss/20 animate-pulse",
+    warn: "border-amber-500/70 bg-amber-500/15 text-amber-600 dark:text-amber-400 hover:bg-amber-500/25 shadow-amber-500/20 animate-pulse",
+    success: "border-emerald-500/70 bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/25 shadow-emerald-500/20 animate-pulse",
+    info: "border-brand/70 bg-brand/15 text-brand hover:bg-brand/25 shadow-brand/20 animate-pulse",
     none: "border-border text-muted-foreground",
   }[highestTone];
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button
-          variant="outline"
-          size="sm"
+        <button
+          type="button"
           className={cn(
-            "relative gap-1.5 font-display text-sm tracking-wide transition-all cursor-pointer shadow-xs",
-            badgeStyle,
+            "relative inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 font-display text-sm tracking-wide font-bold transition-all cursor-pointer shadow-xs",
+            buttonStyle,
           )}
-          aria-label={`Ver ${activeAlerts.length} avisos`}
+          aria-label={`Ver ${activeAlerts.length} alertas`}
         >
           {highestTone === "danger" ? (
-            <ShieldAlert className="size-4 animate-pulse text-loss" />
+            <ShieldAlert className="size-4 text-loss shrink-0 animate-bounce" />
           ) : highestTone === "warn" ? (
-            <AlertTriangle className="size-4 text-amber-500" />
+            <AlertTriangle className="size-4 text-amber-500 shrink-0" />
           ) : (
-            <Bell className="size-4 text-brand" />
+            <Bell className="size-4 text-brand shrink-0" />
           )}
 
-          <span className="hidden sm:inline">Avisos</span>
-          <span className="flex size-4.5 items-center justify-center rounded-full bg-foreground text-[10px] font-bold text-background">
+          <span>Alertas</span>
+          <span className="flex size-4 items-center justify-center rounded-full bg-foreground text-[10px] font-black text-background">
             {activeAlerts.length}
           </span>
-        </Button>
+        </button>
       </PopoverTrigger>
 
-      <PopoverContent align="end" className="w-[380px] sm:w-[440px] p-4 space-y-3 shadow-xl">
+      <PopoverContent align="end" className="w-[380px] sm:w-[460px] p-4 space-y-3 shadow-2xl">
         <div className="flex items-center justify-between border-b border-border/60 pb-2.5">
           <div className="flex items-center gap-2">
-            <Bell className="size-4 text-brand" />
+            <AlertTriangle className="size-4 text-brand" />
             <h4 className="text-xs font-bold font-display uppercase tracking-wider text-foreground">
-              Avisos de Riesgo & Disciplina ({activeAlerts.length})
+              Avisos Activos ({activeAlerts.length})
             </h4>
           </div>
 
@@ -344,7 +341,8 @@ export function HeaderAlertsButton() {
           </button>
         </div>
 
-        <div className="space-y-2 max-h-[60vh] overflow-y-auto pr-1">
+        {/* Lista de alertas una detrás de otra */}
+        <div className="flex flex-col gap-2 max-h-[60vh] overflow-y-auto pr-1">
           {activeAlerts.map((a) => (
             <AlertCard key={a.key} alert={a} onDismiss={dismissAlert} />
           ))}
@@ -355,92 +353,66 @@ export function HeaderAlertsButton() {
 }
 
 /**
- * Componente in-page para panel.tsx y mente.tsx:
- * Se muestra como un elegante botón/píldora plegable que no satura la pantalla
- * y que al pulsarlo despliega las tarjetas con sus botones 'X'.
+ * Componente in-page:
+ * Si hay alertas, las alertas NO se muestran de golpe.
+ * En su lugar, aparece un BOTÓN PARPADEANTE "Alertas" que, al ser pulsado,
+ * despliega las alertas una detrás de otra (con el botón X para descartar cada una).
  */
 export function RiskAlerts() {
   const { activeAlerts, dismissAlert, highestTone } = useActiveRiskAlerts();
-  const [expanded, setExpanded] = useState(false);
+  const [open, setOpen] = useState(false);
 
   if (activeAlerts.length === 0) return null;
 
-  const triggerStyles = {
-    danger: {
-      bar: "border-loss/40 bg-loss/[0.08] dark:bg-loss/[0.14] text-foreground hover:border-loss/60 shadow-xs",
-      pill: "bg-loss/20 text-loss border border-loss/30",
-      Icon: ShieldAlert,
-    },
-    warn: {
-      bar: "border-amber-500/40 bg-amber-500/[0.08] dark:bg-amber-500/[0.14] text-foreground hover:border-amber-500/60 shadow-xs",
-      pill: "bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30",
-      Icon: AlertTriangle,
-    },
-    success: {
-      bar: "border-emerald-500/40 bg-emerald-500/[0.08] dark:bg-emerald-500/[0.14] text-foreground hover:border-emerald-500/60 shadow-xs",
-      pill: "bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30",
-      Icon: Trophy,
-    },
-    info: {
-      bar: "border-brand/40 bg-brand/[0.06] dark:bg-brand/[0.12] text-foreground hover:border-brand/60 shadow-xs",
-      pill: "bg-brand/20 text-brand border border-brand/30",
-      Icon: Bell,
-    },
-    none: {
-      bar: "border-border bg-card text-foreground",
-      pill: "bg-muted text-muted-foreground",
-      Icon: Bell,
-    },
+  const buttonStyle = {
+    danger: "border-loss/70 bg-loss/15 text-loss hover:bg-loss/25 shadow-loss/25 animate-pulse",
+    warn: "border-amber-500/70 bg-amber-500/15 text-amber-600 dark:text-amber-400 hover:bg-amber-500/25 shadow-amber-500/25 animate-pulse",
+    success: "border-emerald-500/70 bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/25 shadow-emerald-500/25 animate-pulse",
+    info: "border-brand/70 bg-brand/15 text-brand hover:bg-brand/25 shadow-brand/25 animate-pulse",
+    none: "border-border text-muted-foreground",
   }[highestTone];
 
-  const IconComponent = triggerStyles.Icon;
-
   return (
-    <section aria-label="Avisos de riesgo y disciplina" className="space-y-2.5">
-      {/* Botón Píldora Desplegable */}
-      <div
-        onClick={() => setExpanded(!expanded)}
-        className={cn(
-          "flex items-center justify-between gap-3 rounded-xl border p-2.5 sm:px-4 cursor-pointer transition-all backdrop-blur-xs select-none",
-          triggerStyles.bar,
-        )}
-      >
-        <div className="flex items-center gap-2.5 min-w-0">
-          <div
-            className={cn(
-              "flex size-7 shrink-0 items-center justify-center rounded-lg font-bold text-xs",
-              triggerStyles.pill,
-            )}
-          >
-            <IconComponent className="size-3.5" />
-          </div>
+    <div className="space-y-3">
+      {/* Botón Parpadeante de Alertas */}
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={() => setOpen(!open)}
+          className={cn(
+            "inline-flex items-center gap-2 rounded-xl border-2 px-3.5 py-1.5 text-xs font-black uppercase tracking-wider transition-all cursor-pointer select-none shadow-md",
+            buttonStyle,
+          )}
+          aria-expanded={open}
+        >
+          {highestTone === "danger" ? (
+            <ShieldAlert className="size-4 shrink-0 animate-bounce" />
+          ) : (
+            <AlertTriangle className="size-4 shrink-0" />
+          )}
 
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-xs font-bold text-foreground">
-              {activeAlerts.length === 1
-                ? "1 aviso de riesgo o disciplina activo"
-                : `${activeAlerts.length} avisos de riesgo o disciplina activos`}
-            </span>
-            <span className="text-[11px] text-muted-foreground hidden sm:inline">
-              · Pulsa para {expanded ? "ocultar" : "desplegar detalles"}
-            </span>
-          </div>
-        </div>
+          <span>Alertas</span>
 
-        <div className="flex items-center gap-1.5 shrink-0 text-xs font-bold text-muted-foreground hover:text-foreground">
-          <span>{expanded ? "Ocultar" : "Ver avisos"}</span>
-          {expanded ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
-        </div>
+          <span className="flex size-4.5 items-center justify-center rounded-full bg-foreground text-[10px] font-black text-background">
+            {activeAlerts.length}
+          </span>
+
+          {open ? <ChevronUp className="size-3.5" /> : <ChevronDown className="size-3.5" />}
+        </button>
+
+        <span className="text-[11px] text-muted-foreground font-medium">
+          {open ? "Pulsa para ocultar las alertas" : "Pulsa para ver los avisos"}
+        </span>
       </div>
 
-      {/* Tarjetas Desplegadas con Botón 'X' */}
-      {expanded && (
-        <div className="grid gap-2.5 sm:grid-cols-1 md:grid-cols-2 pt-1 animate-in fade-in-50 duration-200">
+      {/* Lista de alertas desplegadas UNA DETRÁS DE OTRA */}
+      {open && (
+        <div className="flex flex-col gap-2.5 animate-in fade-in slide-in-from-top-2 duration-200">
           {activeAlerts.map((a) => (
             <AlertCard key={a.key} alert={a} onDismiss={dismissAlert} />
           ))}
         </div>
       )}
-    </section>
+    </div>
   );
 }
