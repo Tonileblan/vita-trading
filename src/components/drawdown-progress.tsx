@@ -31,18 +31,27 @@ export function DrawdownProgress({
 
   const typeLabel = TYPE_SHORT_LABELS[status.type] ?? status.label;
 
+  const healthPct = Math.min(100, Math.max(0, (status.remaining / (status.limit || 1)) * 100));
+
   if (variant === "compact") {
     return (
       <div className={cn("space-y-1", className)}>
         <div className="flex items-center justify-between text-xs">
-          <span className="text-[11px] font-medium text-muted-foreground">Colchón</span>
           <span
             className={cn(
               "num text-xs font-bold",
-              isBreached || isCritical ? "text-loss" : "text-foreground",
+              isBreached || isCritical ? "text-loss" : isWarning ? "text-brand" : "text-profit",
             )}
           >
             {formatCurrency(status.remaining)}
+          </span>
+          <span
+            className={cn(
+              "text-[10px] font-mono",
+              isBreached || isCritical ? "text-loss" : isWarning ? "text-brand" : "text-profit",
+            )}
+          >
+            {healthPct.toFixed(0)}%
           </span>
         </div>
         <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted/60">
@@ -51,7 +60,7 @@ export function DrawdownProgress({
               "h-full transition-all duration-300 rounded-full",
               isBreached || isCritical ? "bg-loss" : isWarning ? "bg-brand" : "bg-profit",
             )}
-            style={{ width: `${Math.min(100, Math.max(0, status.pct))}%` }}
+            style={{ width: `${healthPct}%` }}
           />
         </div>
       </div>

@@ -537,38 +537,58 @@ export function GoAccountPlanManager() {
 
                       {/* Drawdown (Compacto sin la palabra colchón) */}
                       <td className="px-3 py-3 w-36 min-w-[120px]" onClick={(e) => e.stopPropagation()}>
-                        {acc.ddStatus ? (
-                          <div className="space-y-1 max-w-[130px]">
-                            <div className="flex items-center justify-between text-xs">
-                              <span
-                                className={cn(
-                                  "font-bold font-mono text-xs",
-                                  acc.ddStatus.breached || acc.ddStatus.remaining < 600
-                                    ? "text-loss"
-                                    : "text-foreground",
-                                )}
-                              >
-                                {formatCurrency(acc.ddStatus.remaining)}
-                              </span>
-                              <span className="text-[10px] text-muted-foreground font-mono">
-                                {acc.ddStatus.pct.toFixed(0)}%
-                              </span>
+                        {acc.ddStatus ? (() => {
+                          const rem = acc.ddStatus.remaining;
+                          const lim = acc.ddStatus.limit || 1;
+                          const healthPct = Math.min(100, Math.max(0, (rem / lim) * 100));
+                          const isBreached = acc.ddStatus.breached || rem <= 0;
+                          const isCritical = !isBreached && rem <= 600;
+                          const isWarning = !isBreached && !isCritical && rem <= 1000;
+
+                          return (
+                            <div className="space-y-1 max-w-[130px]">
+                              <div className="flex items-center justify-between text-xs">
+                                <span
+                                  className={cn(
+                                    "font-bold font-mono text-xs",
+                                    isBreached || isCritical
+                                      ? "text-rose-600 dark:text-rose-400"
+                                      : isWarning
+                                        ? "text-amber-500"
+                                        : "text-emerald-600 dark:text-emerald-400",
+                                  )}
+                                >
+                                  {formatCurrency(rem)}
+                                </span>
+                                <span
+                                  className={cn(
+                                    "text-[10px] font-mono",
+                                    isBreached || isCritical
+                                      ? "text-rose-600 dark:text-rose-400"
+                                      : isWarning
+                                        ? "text-amber-500"
+                                        : "text-emerald-600 dark:text-emerald-400",
+                                  )}
+                                >
+                                  {healthPct.toFixed(0)}%
+                                </span>
+                              </div>
+                              <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted/60">
+                                <div
+                                  className={cn(
+                                    "h-full transition-all duration-300 rounded-full",
+                                    isBreached || isCritical
+                                      ? "bg-rose-500"
+                                      : isWarning
+                                        ? "bg-amber-500"
+                                        : "bg-emerald-500",
+                                  )}
+                                  style={{ width: `${healthPct}%` }}
+                                />
+                              </div>
                             </div>
-                            <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted/60">
-                              <div
-                                className={cn(
-                                  "h-full transition-all duration-300 rounded-full",
-                                  acc.ddStatus.breached || acc.ddStatus.remaining < 600
-                                    ? "bg-loss"
-                                    : acc.ddStatus.pct >= 50
-                                      ? "bg-amber-500"
-                                      : "bg-emerald-500",
-                                )}
-                                style={{ width: `${Math.min(100, Math.max(0, acc.ddStatus.pct))}%` }}
-                              />
-                            </div>
-                          </div>
-                        ) : (
+                          );
+                        })() : (
                           <span className="text-muted-foreground italic font-sans">—</span>
                         )}
                       </td>
