@@ -371,7 +371,66 @@ export function generateDefaultSlotsFromJournal(
 }
 
 // ==========================================
-// REACT QUERY HOOKS CON SUPABASE
+// PERSISTENCIA Y FALLBACK LOCAL RESILIENTE
+// ==========================================
+
+const LOCAL_PLAN_KEY = (jid: string) => `vita_trading_plan_${jid}`;
+const LOCAL_SLOTS_KEY = (planId: string) => `vita_trading_slots_${planId}`;
+const LOCAL_CHECKLIST_KEY = (jid: string, date: string) => `vita_trading_chk_${jid}_${date}`;
+
+function getLocalPlan(journalId: string): TradingPlan | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(LOCAL_PLAN_KEY(journalId));
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+function setLocalPlan(journalId: string, plan: TradingPlan): void {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(LOCAL_PLAN_KEY(journalId), JSON.stringify(plan));
+  } catch {}
+}
+
+function getLocalSlots(planId: string): TradingPlanSlot[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(LOCAL_SLOTS_KEY(planId));
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+function setLocalSlots(planId: string, slots: TradingPlanSlot[]): void {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(LOCAL_SLOTS_KEY(planId), JSON.stringify(slots));
+  } catch {}
+}
+
+function getLocalChecklist(journalId: string, date: string): TradingPlanChecklist | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(LOCAL_CHECKLIST_KEY(journalId, date));
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+function setLocalChecklist(journalId: string, date: string, chk: TradingPlanChecklist): void {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(LOCAL_CHECKLIST_KEY(journalId, date), JSON.stringify(chk));
+  } catch {}
+}
+
+// ==========================================
+// REACT QUERY HOOKS CON SUPABASE + FALLBACK
 // ==========================================
 
 export function useTradingPlan(journalId?: string) {
@@ -380,17 +439,22 @@ export function useTradingPlan(journalId?: string) {
     enabled: !!journalId,
     queryFn: async (): Promise<TradingPlan | null> => {
       if (!journalId) return null;
-      const { data, error } = await supabase
-        .from("trading_plans" as any)
-        .select("*")
-        .eq("journal_id", journalId)
-        .maybeSingle();
+      try {
+        const { data, error } = await supabase
+          .from("trading_plans" as any)
+          .select("*")
+          .eq("journal_id", journalId)
+          .maybeSingle();
 
-      if (error) {
-        console.warn("trading_plans table query warning:", error.message);
-        return null;
+        if (!error && data) {
+          const plan = data as unknown as TradingPlan;
+          setLocalPlan(journalId, plan);
+          return plan;
+        }
+      } catch (err) {
+        console.warn("trading_plans query fallback to local storage:", err);
       }
-      return data as unknown as TradingPlan | null;
+      return getLocalPlan(journalId);
     },
   });
 }
@@ -400,31 +464,52 @@ export function useSaveTradingPlan(journalId?: string) {
   return useMutation({
     mutationFn: async (plan: Partial<TradingPlan>) => {
       if (!journalId) throw new Error("Journal ID no disponible");
-      const { data: userData } = await supabase.auth.getUser();
-      const uid = userData.user?.id;
-      if (!uid) throw new Error("Usuario no autenticado");
+      let uid = "local-user";
+      try {
+        const { data: userData } = await supabase.auth.getUser();
+        if (userData?.user?.id) uid = userData.user.id;
+      } catch {}
 
-      const payload = {
+      const existing = getLocalPlan(journalId);
+      const planId = plan.id && plan.id !== "default-plan" ? plan.id : existing?.id || `plan-${journalId}`;
+
+      const payload: TradingPlan = {
+        id: planId,
         journal_id: journalId,
         user_id: uid,
-        name: plan.name || DEFAULT_PLAN_SETTINGS.name,
-        is_active: plan.is_active ?? DEFAULT_PLAN_SETTINGS.is_active,
-        weekly_risk_budget: plan.weekly_risk_budget ?? DEFAULT_PLAN_SETTINGS.weekly_risk_budget,
-        daily_risk_budget: plan.daily_risk_budget ?? DEFAULT_PLAN_SETTINGS.daily_risk_budget,
-        max_daily_trades: plan.max_daily_trades ?? DEFAULT_PLAN_SETTINGS.max_daily_trades,
-        max_loss_streak: plan.max_loss_streak ?? DEFAULT_PLAN_SETTINGS.max_loss_streak,
-        profit_lock_target: plan.profit_lock_target ?? null,
-        notes: plan.notes ?? null,
+        name: plan.name || existing?.name || DEFAULT_PLAN_SETTINGS.name,
+        is_active: plan.is_active ?? existing?.is_active ?? DEFAULT_PLAN_SETTINGS.is_active,
+        weekly_risk_budget: plan.weekly_risk_budget ?? existing?.weekly_risk_budget ?? DEFAULT_PLAN_SETTINGS.weekly_risk_budget,
+        daily_risk_budget: plan.daily_risk_budget ?? existing?.daily_risk_budget ?? DEFAULT_PLAN_SETTINGS.daily_risk_budget,
+        max_daily_trades: plan.max_daily_trades ?? existing?.max_daily_trades ?? DEFAULT_PLAN_SETTINGS.max_daily_trades,
+        max_loss_streak: plan.max_loss_streak ?? existing?.max_loss_streak ?? DEFAULT_PLAN_SETTINGS.max_loss_streak,
+        profit_lock_target: plan.profit_lock_target ?? existing?.profit_lock_target ?? null,
+        notes: plan.notes ?? existing?.notes ?? null,
+        created_at: existing?.created_at || new Date().toISOString(),
+        updated_at: new Date().toISOString(),
       };
 
-      const { data, error } = await supabase
-        .from("trading_plans" as any)
-        .upsert(payload, { onConflict: "journal_id,user_id" })
-        .select()
-        .single();
+      // Guardar en local siempre para asegurar respuesta instantánea y offline
+      setLocalPlan(journalId, payload);
 
-      if (error) throw error;
-      return data as unknown as TradingPlan;
+      // Intentar sincronizar con Supabase
+      try {
+        const { data, error } = await supabase
+          .from("trading_plans" as any)
+          .upsert(payload, { onConflict: "journal_id,user_id" })
+          .select()
+          .single();
+
+        if (!error && data) {
+          const remote = data as unknown as TradingPlan;
+          setLocalPlan(journalId, remote);
+          return remote;
+        }
+      } catch (err: any) {
+        console.warn("Supabase trading_plans no disponible aún, guardado localmente:", err?.message || err);
+      }
+
+      return payload;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["trading-plan", journalId] });
@@ -438,18 +523,23 @@ export function useTradingPlanSlots(planId?: string) {
     enabled: !!planId,
     queryFn: async (): Promise<TradingPlanSlot[]> => {
       if (!planId) return [];
-      const { data, error } = await supabase
-        .from("trading_plan_slots" as any)
-        .select("*")
-        .eq("plan_id", planId)
-        .order("day_of_week", { ascending: true })
-        .order("start_time", { ascending: true });
+      try {
+        const { data, error } = await supabase
+          .from("trading_plan_slots" as any)
+          .select("*")
+          .eq("plan_id", planId)
+          .order("day_of_week", { ascending: true })
+          .order("start_time", { ascending: true });
 
-      if (error) {
-        console.warn("trading_plan_slots query error:", error.message);
-        return [];
+        if (!error && data && data.length > 0) {
+          const remoteSlots = data as unknown as TradingPlanSlot[];
+          setLocalSlots(planId, remoteSlots);
+          return remoteSlots;
+        }
+      } catch (err) {
+        console.warn("trading_plan_slots query fallback to local storage:", err);
       }
-      return (data || []) as unknown as TradingPlanSlot[];
+      return getLocalSlots(planId);
     },
   });
 }
@@ -459,12 +549,15 @@ export function useSavePlanSlot(planId?: string, journalId?: string) {
   return useMutation({
     mutationFn: async (slot: Partial<TradingPlanSlot>) => {
       if (!planId || !journalId) throw new Error("Plan ID o Journal ID faltante");
-      const { data: userData } = await supabase.auth.getUser();
-      const uid = userData.user?.id;
-      if (!uid) throw new Error("Usuario no autenticado");
+      let uid = "local-user";
+      try {
+        const { data: userData } = await supabase.auth.getUser();
+        if (userData?.user?.id) uid = userData.user.id;
+      } catch {}
 
-      const payload = {
-        ...(slot.id ? { id: slot.id } : {}),
+      const slotId = slot.id || `slot-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+      const payload: TradingPlanSlot = {
+        id: slotId,
         plan_id: planId,
         journal_id: journalId,
         user_id: uid,
@@ -481,16 +574,48 @@ export function useSavePlanSlot(planId?: string, journalId?: string) {
         setup_notes: slot.setup_notes ?? null,
         is_active: slot.is_active ?? true,
         order_index: slot.order_index ?? 0,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
       };
 
-      const { data, error } = await supabase
-        .from("trading_plan_slots" as any)
-        .upsert(payload)
-        .select()
-        .single();
+      // Guardar localmente
+      const currentSlots = getLocalSlots(planId);
+      const existingIdx = currentSlots.findIndex(
+        (s) =>
+          (slot.id && s.id === slot.id) ||
+          (s.day_of_week === payload.day_of_week &&
+            s.account_id === payload.account_id &&
+            s.strategy_id === payload.strategy_id),
+      );
 
-      if (error) throw error;
-      return data as unknown as TradingPlanSlot;
+      let nextSlots: TradingPlanSlot[];
+      if (existingIdx >= 0) {
+        nextSlots = [...currentSlots];
+        nextSlots[existingIdx] = { ...currentSlots[existingIdx], ...payload };
+      } else {
+        nextSlots = [...currentSlots, payload];
+      }
+      setLocalSlots(planId, nextSlots);
+
+      // Intentar guardar en Supabase
+      try {
+        const { data, error } = await supabase
+          .from("trading_plan_slots" as any)
+          .upsert(payload)
+          .select()
+          .single();
+
+        if (!error && data) {
+          const remoteSlot = data as unknown as TradingPlanSlot;
+          const updated = nextSlots.map((s) => (s.id === slotId ? remoteSlot : s));
+          setLocalSlots(planId, updated);
+          return remoteSlot;
+        }
+      } catch (err: any) {
+        console.warn("Supabase trading_plan_slots no disponible aún, guardado localmente:", err?.message || err);
+      }
+
+      return payload;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["trading-plan-slots", planId] });
@@ -502,12 +627,17 @@ export function useDeletePlanSlot(planId?: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (slotId: string) => {
-      const { error } = await supabase
-        .from("trading_plan_slots" as any)
-        .delete()
-        .eq("id", slotId);
+      if (planId) {
+        const currentSlots = getLocalSlots(planId);
+        setLocalSlots(planId, currentSlots.filter((s) => s.id !== slotId));
+      }
 
-      if (error) throw error;
+      try {
+        await supabase
+          .from("trading_plan_slots" as any)
+          .delete()
+          .eq("id", slotId);
+      } catch {}
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["trading-plan-slots", planId] });
@@ -520,11 +650,20 @@ export function useSeedPlanSlots(planId?: string, journalId?: string) {
   return useMutation({
     mutationFn: async (slots: Omit<TradingPlanSlot, "id">[]) => {
       if (!planId || !journalId || !slots.length) return;
-      const { error } = await supabase
-        .from("trading_plan_slots" as any)
-        .insert(slots);
+      const hydratedSlots: TradingPlanSlot[] = slots.map((s, idx) => ({
+        ...s,
+        id: `seed-slot-${Date.now()}-${idx}`,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      }));
 
-      if (error) throw error;
+      setLocalSlots(planId, hydratedSlots);
+
+      try {
+        await supabase
+          .from("trading_plan_slots" as any)
+          .insert(slots);
+      } catch {}
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["trading-plan-slots", planId] });
@@ -538,18 +677,21 @@ export function usePlanChecklist(date: string, journalId?: string) {
     enabled: !!journalId && !!date,
     queryFn: async (): Promise<TradingPlanChecklist | null> => {
       if (!journalId || !date) return null;
-      const { data, error } = await supabase
-        .from("trading_plan_checklists" as any)
-        .select("*")
-        .eq("journal_id", journalId)
-        .eq("date", date)
-        .maybeSingle();
+      try {
+        const { data, error } = await supabase
+          .from("trading_plan_checklists" as any)
+          .select("*")
+          .eq("journal_id", journalId)
+          .eq("date", date)
+          .maybeSingle();
 
-      if (error) {
-        console.warn("trading_plan_checklists query error:", error.message);
-        return null;
-      }
-      return data as unknown as TradingPlanChecklist | null;
+        if (!error && data) {
+          const remoteChk = data as unknown as TradingPlanChecklist;
+          setLocalChecklist(journalId, date, remoteChk);
+          return remoteChk;
+        }
+      } catch {}
+      return getLocalChecklist(journalId, date);
     },
   });
 }
@@ -559,15 +701,19 @@ export function useSavePlanChecklist(date: string, journalId?: string) {
   return useMutation({
     mutationFn: async (checklist: Partial<TradingPlanChecklist>) => {
       if (!journalId || !date) throw new Error("Datos incompletos para guardar checklist");
-      const { data: userData } = await supabase.auth.getUser();
-      const uid = userData.user?.id;
-      if (!uid) throw new Error("Usuario no autenticado");
+      let uid = "local-user";
+      try {
+        const { data: userData } = await supabase.auth.getUser();
+        if (userData?.user?.id) uid = userData.user.id;
+      } catch {}
 
-      const payload = {
+      const chkId = checklist.id || `chk-${journalId}-${date}`;
+      const payload: TradingPlanChecklist = {
+        id: chkId,
         journal_id: journalId,
         user_id: uid,
         date,
-        plan_id: checklist.plan_id,
+        plan_id: checklist.plan_id || `plan-${journalId}`,
         slot_id: checklist.slot_id || null,
         checked_news: checklist.checked_news ?? false,
         checked_levels: checklist.checked_levels ?? false,
@@ -576,16 +722,27 @@ export function useSavePlanChecklist(date: string, journalId?: string) {
         custom_checks: checklist.custom_checks ?? [],
         notes: checklist.notes ?? null,
         status: checklist.status ?? "active",
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
       };
 
-      const { data, error } = await supabase
-        .from("trading_plan_checklists" as any)
-        .upsert(payload, { onConflict: "journal_id,user_id,date,slot_id" })
-        .select()
-        .single();
+      setLocalChecklist(journalId, date, payload);
 
-      if (error) throw error;
-      return data as unknown as TradingPlanChecklist;
+      try {
+        const { data, error } = await supabase
+          .from("trading_plan_checklists" as any)
+          .upsert(payload, { onConflict: "journal_id,user_id,date,slot_id" })
+          .select()
+          .single();
+
+        if (!error && data) {
+          const remote = data as unknown as TradingPlanChecklist;
+          setLocalChecklist(journalId, date, remote);
+          return remote;
+        }
+      } catch {}
+
+      return payload;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["trading-plan-checklist", journalId, date] });
