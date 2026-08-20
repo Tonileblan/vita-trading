@@ -44,6 +44,7 @@ recógela igualmente con ese pnl y esa fecha, dejando el resto de campos en null
 Cada importe con signo o color (verde/rojo, +/−, entre paréntesis = negativo) cuenta como una entrada.
 
 Reglas:
+- REGLA CRÍTICA DE OMISIÓN DE CUENTAS SIMULADAS: OMITE y NO EXTRAIGAS NINGUNA fila u operación que pertenezca a una cuenta que contenga "SIM" o "SIMULATOR" (en mayúsculas, minúsculas o mixto) en cualquier parte de su nombre o identificador (ej: "SIM101", "Apex-SIM", "SimAccount", "DEMO-SIM", "SIM-1", "NinjaTrader Sim", etc.). Descarta por completo las cuentas SIM.
 - "pnl" (obligatorio) es el resultado NETO en dólares como número; negativo si es pérdida.
   Quita símbolos de moneda, separadores de miles y espacios. "(120,50)" → -120.5.
 - "symbol": el activo si es visible (MNQ, NQ, ES, GC, EURUSD…). Si no aparece, null.
@@ -86,7 +87,7 @@ export const extractTradesFromImages = createServerFn({ method: "POST" })
       : "";
 
     const accountHint = data.accountHints?.length
-      ? `Cuentas registradas del usuario en el sistema: ${data.accountHints.join(", ")}. Si las capturas corresponden a alguna de estas cuentas o prop firms, asocia el accountName correspondiente.`
+      ? `Cuentas registradas del usuario en el sistema: ${data.accountHints.join(", ")}. Recuerda omitir cuentas que contengan "SIM".`
       : "";
 
     const hints = [symbolHint, accountHint].filter(Boolean).join("\n");
@@ -114,7 +115,7 @@ export const extractTradesFromImages = createServerFn({ method: "POST" })
         [
           {
             parts: [
-              { text: `${PROMPT}\n${hints}\nExtrae todas las operaciones de estas capturas.` },
+              { text: `${PROMPT}\n${hints}\nExtrae todas las operaciones reales de estas capturas (omitiendo cuentas SIM).` },
               ...imageParts,
             ],
           },
@@ -139,7 +140,7 @@ export const extractTradesFromImages = createServerFn({ method: "POST" })
             {
               role: "user",
               content: [
-                { type: "text", text: "Extrae todas las operaciones de estas capturas." },
+                { type: "text", text: "Extrae todas las operaciones de estas capturas (omitiendo cuentas SIM)." },
                 ...data.images.map((url) => ({ type: "image_url", image_url: { url } })),
               ],
             },
@@ -175,5 +176,13 @@ export const extractTradesFromImages = createServerFn({ method: "POST" })
 
     const parsed = responseSchema.safeParse(parsedJson);
     if (!parsed.success) throw new Error("No se pudieron interpretar las operaciones de la imagen");
-    return parsed.data.trades;
+
+    // Filtrar estrictamente cualquier operación que contenga "sim" en el nombre o empresa de la cuenta
+    const nonSimTrades = parsed.data.trades.filter((t) => {
+      const name = (t.accountName || "").toLowerCase();
+      const firm = (t.accountFirm || "").toLowerCase();
+      return !name.includes("sim") && !firm.includes("sim");
+    });
+
+    return nonSimTrades;
   });

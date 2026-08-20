@@ -221,6 +221,16 @@ export function TradeImportDialog() {
         },
       });
 
+      // Omitir cualquier operación que tenga "sim" en cualquier parte del nombre de cuenta o prop firm
+      const isSim = (t: ExtractedTrade) => {
+        const name = (t.accountName || "").toLowerCase();
+        const firm = (t.accountFirm || "").toLowerCase();
+        return name.includes("sim") || firm.includes("sim");
+      };
+
+      const validFound = found.filter((t) => !isSim(t));
+      const omittedSimCount = found.length - validFound.length;
+
       // Cuenta cuántas operaciones idénticas ya existen
       const existingCounts = new Map<string, number>();
       for (const t of trades) {
@@ -232,7 +242,7 @@ export function TradeImportDialog() {
       const newMappings: Record<string, { targetAccountId: string; targetStrategyId: string }> = {};
       const detectedGroups = new Set<string>();
 
-      found.forEach((t) => {
+      validFound.forEach((t) => {
         const accTag = t.accountName
           ? t.accountFirm
             ? `${t.accountName} (${t.accountFirm})`
@@ -258,7 +268,7 @@ export function TradeImportDialog() {
       const usedCounts = new Map<string, number>();
       const parsedRows: Row[] = [];
 
-      found.forEach((t, i) => {
+      validFound.forEach((t, i) => {
         const key = dedupeKey(t);
         const used = usedCounts.get(key) ?? 0;
         usedCounts.set(key, used + 1);
@@ -288,11 +298,16 @@ export function TradeImportDialog() {
       setRows(parsedRows);
 
       if (parsedRows.length === 0) {
-        toast.error("No se detectaron operaciones en las capturas");
+        if (omittedSimCount > 0) {
+          toast.info(`Se detectaron ${omittedSimCount} operaciones de cuentas SIM que fueron omitidas automáticamente.`);
+        } else {
+          toast.error("No se detectaron operaciones en las capturas");
+        }
       } else {
         const uniqueAccountsDetected = detectedGroups.size;
+        const simNote = omittedSimCount > 0 ? ` · ${omittedSimCount} ops SIM omitidas` : "";
         toast.success(
-          `${parsedRows.length} operaciones detectadas · ${uniqueAccountsDetected} ${uniqueAccountsDetected === 1 ? "cuenta/prop firm" : "cuentas/prop firms distintas"}`,
+          `${parsedRows.length} operaciones detectadas · ${uniqueAccountsDetected} ${uniqueAccountsDetected === 1 ? "cuenta" : "cuentas distintas"}${simNote}`,
         );
       }
     } catch (e: any) {
