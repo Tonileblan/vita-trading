@@ -15,7 +15,7 @@ const extractedTrade = z.object({
     .string()
     .max(20)
     .nullish()
-    .transform((v) => (v && v.trim() ? v.trim() : "")),
+    .transform((v) => (v && v.trim() ? v.trim().toUpperCase() : "")),
   direction: z
     .union([z.enum(["long", "short"]), z.null(), z.undefined()])
     .transform((v) => v ?? "long"),
@@ -47,9 +47,14 @@ Reglas:
 - REGLA CRÍTICA DE OMISIÓN DE CUENTAS SIMULADAS: OMITE y NO EXTRAIGAS NINGUNA fila u operación que pertenezca a una cuenta que contenga "SIM" o "SIMULATOR" (en mayúsculas, minúsculas o mixto) en cualquier parte de su nombre o identificador (ej: "SIM101", "Apex-SIM", "SimAccount", "DEMO-SIM", "SIM-1", "NinjaTrader Sim", etc.). Descarta por completo las cuentas SIM.
 - "pnl" (obligatorio) es el resultado NETO en dólares como número; negativo si es pérdida.
   Quita símbolos de moneda, separadores de miles y espacios. "(120,50)" → -120.5.
-- "symbol": el activo si es visible (MNQ, NQ, ES, GC, EURUSD…). Si no aparece, null.
+- "symbol": el activo o ticker negociado.
+  * Si ves Oro / Gold ("GCM", "GC", "MGC", "GCM6", "GCZ", "GCJ", "XAUUSD"), devuelve "GCM".
+  * Si ves Micro Nasdaq ("MNQ", "MNQM6", "MNQU6"), devuelve "MNQ".
+  * Si ves Nasdaq ("NQ", "NQM6", "NQU6"), devuelve "NQ".
+  * Si ves S&P 500 ("ES", "MES"), devuelve "ES" o "MES".
+  * Si ves Petróleo ("CL", "MCL"), devuelve "CL" o "MCL".
 - "direction": long para compras/buy/largo, short para ventas/sell/corto. Si no aparece, null.
-- "accountName": el nombre, código o identificador de cuenta o prop firm que aparece en la fila/operación (ej: "Apex-101", "PA-50K-1", "Topstep #2", "123456", "MFF-PA", "Tradovate DEMO", etc.). Si no aparece, null.
+- "accountName": el nombre, código o identificador de cuenta o prop firm que aparece en la fila/operación (ej: "Apex-101", "PA-50K-1", "Topstep #2", "123456", "MFF-PA", "Tradovate LIVE", etc.). Si no aparece, null.
 - "accountFirm": la empresa de fondeo o broker si es visible (ej: "Apex", "Topstep", "FundingPips", "MyFundedFutures", "NinjaTrader", etc.). Si no aparece, null.
 - Fechas: SIEMPRE que aparezca una fecha o marca de tiempo (columna, cabecera, tarjeta, fila o pie),
   devuélvela en ISO 8601 con hora si está disponible (ej. 2026-05-14T15:32:00). Convierte 12h (am/pm) a 24h.
@@ -62,7 +67,7 @@ Reglas:
   (misma fecha o fechas distintas), devuélvelas TODAS por separado, una entrada por fila visible.
   El número de entradas del JSON debe coincidir exactamente con el número de filas/operaciones
   visibles en las imágenes.
-Responde SOLO con JSON válido: {"trades":[{"symbol":"MNQ","direction":"long","openedAt":"2026-05-14T15:30:00","closedAt":"2026-05-14T15:32:00","entryPrice":18500,"exitPrice":18520,"size":1,"pnl":80.0,"accountName":"Apex-50K-1","accountFirm":"Apex"}]}`;
+Responde SOLO con JSON válido: {"trades":[{"symbol":"GCM","direction":"long","openedAt":"2026-05-14T15:30:00","closedAt":"2026-05-14T15:32:00","entryPrice":2350.5,"exitPrice":2355.0,"size":1,"pnl":450.0,"accountName":"Apex-50K-1","accountFirm":"Apex"}]}`;
 
 function parseDataUrl(dataUrl: string): { mime_type: string; data: string } {
   const match = dataUrl.match(/^data:([^;]+);base64,(.+)$/);
@@ -83,8 +88,8 @@ export const extractTradesFromImages = createServerFn({ method: "POST" })
     const lovableKey = process.env["LOVABLE_API_KEY"];
 
     const symbolHint = data.symbols?.length
-      ? `Activos habituales del usuario: ${data.symbols.join(", ")}.`
-      : "";
+      ? `Activos habituales del usuario: ${data.symbols.join(", ")}, GCM (Oro), MNQ (Nasdaq), NQ, ES, MES.`
+      : "Activos habituales: GCM (Oro), MNQ, NQ, ES, MES.";
 
     const accountHint = data.accountHints?.length
       ? `Cuentas registradas del usuario en el sistema: ${data.accountHints.join(", ")}. Recuerda omitir cuentas que contengan "SIM".`

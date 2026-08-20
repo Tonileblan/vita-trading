@@ -5,8 +5,6 @@ import {
   ArrowRight,
   Building2,
   Camera,
-  Check,
-  CheckCircle2,
   Coins,
   DollarSign,
   HelpCircle,
@@ -14,6 +12,7 @@ import {
   Layers,
   Loader2,
   Sparkles,
+  TrendingUp,
   Wallet,
   X,
 } from "lucide-react";
@@ -49,6 +48,116 @@ import { parseDetectedDate } from "@/lib/parse-date";
 import type { Account, Strategy } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
+/** Normalización inteligente de símbolos y activos */
+function normalizeSymbol(sym?: string | null): string {
+  if (!sym) return "MNQ";
+  const s = sym.toUpperCase().trim();
+  if (
+    s.startsWith("GCM") ||
+    s === "GC" ||
+    s.startsWith("MGC") ||
+    s.includes("GOLD") ||
+    s.includes("XAU") ||
+    s.includes("ORO")
+  ) {
+    return "GCM";
+  }
+  if (s.startsWith("MNQ") || s.includes("MICRO NASDAQ")) {
+    return "MNQ";
+  }
+  if (s.startsWith("NQ") || s.includes("E-MINI NASDAQ")) {
+    return "NQ";
+  }
+  if (s.startsWith("MES") || s.includes("MICRO S&P")) {
+    return "MES";
+  }
+  if (s.startsWith("ES") || s.includes("E-MINI S&P")) {
+    return "ES";
+  }
+  if (s.startsWith("MCL") || s.includes("MICRO CRUDE")) {
+    return "MCL";
+  }
+  if (s.startsWith("CL") || s.includes("CRUDE OIL") || s.includes("PETROLEO")) {
+    return "CL";
+  }
+  return s;
+}
+
+/** Preselección inteligente de estrategia basada en el activo (GCM -> Oro, MNQ -> IFT/Asia/Fondeo) y horario */
+function guessStrategyForTrade(
+  symbol: string,
+  timeIso: string | null | undefined,
+  accountDefaultStrategyId: string,
+  strategies: Strategy[],
+): string {
+  const norm = normalizeSymbol(symbol);
+
+  // 1. Si el activo es Oro (GCM / MGC / GC) -> Preselecciona estrategia "Oro"
+  if (norm === "GCM" || norm === "MGC" || norm === "GC") {
+    const goldStrat = strategies.find(
+      (s) =>
+        s.name.toLowerCase().includes("oro") ||
+        s.name.toLowerCase().includes("gold") ||
+        s.mainSymbol?.toUpperCase() === "GCM" ||
+        s.mainSymbol?.toUpperCase() === "MGC" ||
+        s.mainSymbol?.toUpperCase() === "GC",
+    );
+    if (goldStrat) return goldStrat.id;
+  }
+
+  // 2. Si el activo es MNQ / NQ -> Preselecciona entre IFT, Asia, Fondeo, etc.
+  if (norm === "MNQ" || norm === "NQ") {
+    // Si se detectó hora, verificar si corresponde a sesión asiática nocturna
+    if (timeIso) {
+      try {
+        const d = new Date(timeIso);
+        const hour = d.getHours();
+        if ((hour >= 18 || hour <= 5) && strategies.some((s) => s.name.toLowerCase().includes("asia"))) {
+          const asiaStrat = strategies.find((s) => s.name.toLowerCase().includes("asia"));
+          if (asiaStrat) return asiaStrat.id;
+        }
+      } catch {}
+    }
+
+    // Si la cuenta tiene una estrategia asignada de MNQ/NQ, usarla
+    const accStrat = strategies.find((s) => s.id === accountDefaultStrategyId);
+    if (accStrat && (accStrat.mainSymbol?.toUpperCase() === "MNQ" || accStrat.mainSymbol?.toUpperCase() === "NQ")) {
+      return accStrat.id;
+    }
+
+    // Preferir IFT si existe
+    const iftStrat = strategies.find((s) => s.name.toLowerCase().includes("ift"));
+    if (iftStrat) return iftStrat.id;
+
+    // Preferir Fondeo si existe
+    const fondeoStrat = strategies.find((s) => s.name.toLowerCase().includes("fondeo"));
+    if (fondeoStrat) return fondeoStrat.id;
+
+    // Preferir Asia si existe
+    const asiaStrat = strategies.find((s) => s.name.toLowerCase().includes("asia"));
+    if (asiaStrat) return asiaStrat.id;
+
+    // Cualquier estrategia con mainSymbol MNQ
+    const mnqStrat = strategies.find((s) => s.mainSymbol?.toUpperCase() === "MNQ" || s.mainSymbol?.toUpperCase() === "NQ");
+    if (mnqStrat) return mnqStrat.id;
+  }
+
+  // 3. Si es ES / MES
+  if (norm === "ES" || norm === "MES") {
+    const swingStrat = strategies.find(
+      (s) => s.name.toLowerCase().includes("swing") || s.mainSymbol?.toUpperCase() === "ES" || s.mainSymbol?.toUpperCase() === "MES",
+    );
+    if (swingStrat) return swingStrat.id;
+  }
+
+  // 4. Coincidencia por mainSymbol de la estrategia
+  const bySymbol = strategies.find((s) => s.mainSymbol?.toUpperCase() === norm);
+  if (bySymbol) return bySymbol.id;
+
+  // 5. Fallback a la estrategia por defecto de la cuenta o primera disponible
+  return accountDefaultStrategyId || strategies[0]?.id || "";
+}
+
 /** Clave de deduplicación: mismo activo, dirección, día y PnL. */
 function dedupeKey(t: {
   symbol: string;
@@ -58,7 +167,7 @@ function dedupeKey(t: {
 }) {
   const parsed = parseDetectedDate(t.closedAt);
   const day = parsed ? parsed.slice(0, 10) : "sin-fecha";
-  return [t.symbol.toUpperCase().trim(), t.direction, day, t.pnl.toFixed(2)].join("|");
+  return [normalizeSymbol(t.symbol), t.direction, day, t.pnl.toFixed(2)].join("|");
 }
 
 const toIso = (value?: string | null) => {
@@ -214,7 +323,7 @@ export function TradeImportDialog() {
       const found = await extract({
         data: {
           images,
-          symbols: strategies.map((s) => s.mainSymbol),
+          symbols: ["GCM", "MNQ", "NQ", "ES", "MES", "MGC", "GC", ...strategies.map((s) => s.mainSymbol)],
           accountHints: accounts.map((a) => `${a.name}${a.firm ? ` [${a.firm}]` : ""}`),
           apiKey: googleAiKey || undefined,
           model: googleAiModel,
@@ -269,7 +378,8 @@ export function TradeImportDialog() {
       const parsedRows: Row[] = [];
 
       validFound.forEach((t, i) => {
-        const key = dedupeKey(t);
+        const normalized = normalizeSymbol(t.symbol);
+        const key = dedupeKey({ ...t, symbol: normalized });
         const used = usedCounts.get(key) ?? 0;
         usedCounts.set(key, used + 1);
         const duplicate = used < (existingCounts.get(key) ?? 0);
@@ -282,16 +392,26 @@ export function TradeImportDialog() {
           : t.accountFirm || "";
         const groupKey = accTag.trim() || "Cuenta principal (sin nombre detectado)";
         const mapping = newMappings[groupKey];
+        const assignedAccId = mapping?.targetAccountId || defaultAccountId;
+
+        // Preselección inteligente de estrategia: GCM -> Oro, MNQ -> IFT/Asia/Fondeo
+        const assignedStratId = guessStrategyForTrade(
+          normalized,
+          detectedAt,
+          mapping?.targetStrategyId || defaultStrategyId,
+          strategies,
+        );
 
         parsedRows.push({
           ...t,
+          symbol: normalized,
           key: `${key}#${i}`,
           duplicate,
           selected: !duplicate,
           detectedAt,
           detectedAccountKey: groupKey,
-          assignedAccountId: mapping?.targetAccountId || defaultAccountId,
-          assignedStrategyId: mapping?.targetStrategyId || defaultStrategyId,
+          assignedAccountId: assignedAccId,
+          assignedStrategyId: assignedStratId,
         });
       });
 
@@ -358,7 +478,12 @@ export function TradeImportDialog() {
           ? {
               ...r,
               assignedAccountId: newAccountId,
-              assignedStrategyId: newStratId,
+              assignedStrategyId: guessStrategyForTrade(
+                r.symbol,
+                r.detectedAt,
+                newStratId,
+                strategies,
+              ),
             }
           : r,
       ),
@@ -387,19 +512,38 @@ export function TradeImportDialog() {
     );
   };
 
-  // Actualizar cuenta de una fila individual
-  const handleUpdateRowAccount = (rowIndex: number, newAccountId: string) => {
-    const acc = accounts.find((a) => a.id === newAccountId);
+  // Actualizar estrategia de una fila individual
+  const handleUpdateRowStrategy = (rowIndex: number, newStrategyId: string) => {
     setRows((prev) =>
       (prev ?? []).map((r, i) =>
         i === rowIndex
           ? {
               ...r,
-              assignedAccountId: newAccountId,
-              assignedStrategyId: acc?.strategyId || r.assignedStrategyId,
+              assignedStrategyId: newStrategyId,
             }
           : r,
       ),
+    );
+  };
+
+  // Actualizar símbolo de una fila individual
+  const handleUpdateRowSymbol = (rowIndex: number, newSymbol: string) => {
+    const normalized = normalizeSymbol(newSymbol);
+    setRows((prev) =>
+      (prev ?? []).map((r, i) => {
+        if (i !== rowIndex) return r;
+        const newStratId = guessStrategyForTrade(
+          normalized,
+          r.detectedAt,
+          r.assignedStrategyId,
+          strategies,
+        );
+        return {
+          ...r,
+          symbol: normalized,
+          assignedStrategyId: newStratId,
+        };
+      }),
     );
   };
 
@@ -416,8 +560,6 @@ export function TradeImportDialog() {
       mapping: accountMappings[key],
     }));
   }, [rows, accountMappings]);
-
-  const hasMultipleDetectedAccounts = detectedGroupList.length > 1 || (detectedGroupList.length === 1 && detectedGroupList[0].groupKey !== "Cuenta principal (sin nombre detectado)");
 
   const importSelected = async () => {
     const chosen = (rows ?? []).filter((r) => r.selected);
@@ -439,7 +581,7 @@ export function TradeImportDialog() {
         chosen.map((r) => ({
           accountId: r.assignedAccountId || defaultAccountId,
           strategyId: r.assignedStrategyId || defaultStrategyId,
-          symbol: r.symbol.toUpperCase() || "TRADE",
+          symbol: normalizeSymbol(r.symbol) || "MNQ",
           direction: r.direction,
           openedAt: toIso(r.openedAt ?? r.closedAt),
           closedAt: toIso(r.closedAt ?? r.openedAt),
@@ -497,7 +639,7 @@ export function TradeImportDialog() {
                   Importador de Operaciones & Prop Firms
                 </DialogTitle>
                 <p className="text-xs text-muted-foreground">
-                  Extrae múltiples operaciones y asígnalas simultáneamente a cada cuenta
+                  Detección automática de activos (GCM / Oro, MNQ / IFT, Asia, Fondeo) y asignación multicuenta
                 </p>
               </div>
             </div>
@@ -562,7 +704,7 @@ export function TradeImportDialog() {
             Arrastra capturas, pega con Ctrl+V / Cmd+V o sube archivos (máx. 6)
           </p>
           <p className="text-[11px] text-muted-foreground mt-1">
-            Soporta paneles de Prop Firms (Apex, Topstep, MFF, FTMO), Trade Copiers, Tradovate, NinjaTrader o tablas
+            Detecta automáticamente GCM (Oro), MNQ, NQ, ES y asigna a tus estrategias (Oro, IFT, Asia, Fondeo...)
           </p>
 
           <div className="mt-3.5 flex flex-wrap justify-center gap-2">
@@ -643,7 +785,7 @@ export function TradeImportDialog() {
               className="w-full gap-2 font-bold shadow-xs cursor-pointer mt-2"
             >
               {loading ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />}
-              {loading ? "Analizando y extrayendo operaciones por cuenta…" : "Analizar con IA Gemini"}
+              {loading ? "Analizando y preseleccionando estrategias y cuentas…" : "Analizar con IA Gemini"}
             </Button>
           </div>
         )}
@@ -668,7 +810,7 @@ export function TradeImportDialog() {
               </div>
 
               <p className="text-xs text-muted-foreground leading-relaxed">
-                Revisa cómo se relacionan los nombres de cuentas leídos en tu captura con tus cuentas reales en Vita-Trading. Todas las operaciones se guardarán al mismo tiempo en sus respectivas cuentas.
+                Se han relacionado automáticamente los nombres de cuentas leídos en tu captura con tus cuentas de Vita-Trading. Las operaciones se preseleccionaron con la estrategia correspondiente (ej: <strong>GCM ➔ Oro</strong>, <strong>MNQ ➔ IFT / Asia / Fondeo</strong>).
               </p>
 
               {/* Lista de Mapeo por Grupo */}
@@ -723,7 +865,7 @@ export function TradeImportDialog() {
 
                         <div className="space-y-1">
                           <Label className="text-[10px] text-muted-foreground uppercase font-bold">
-                            Estrategia
+                            Estrategia por defecto
                           </Label>
                           <Select
                             value={currentStrategyId}
@@ -735,7 +877,7 @@ export function TradeImportDialog() {
                             <SelectContent>
                               {strategies.map((s) => (
                                 <SelectItem key={s.id} value={s.id}>
-                                  {s.name}
+                                  {s.name} ({s.mainSymbol})
                                 </SelectItem>
                               ))}
                             </SelectContent>
@@ -780,7 +922,7 @@ export function TradeImportDialog() {
                 </span>
               </div>
 
-              <div className="divide-y divide-border/60 rounded-xl border border-border bg-card max-h-60 overflow-y-auto">
+              <div className="divide-y divide-border/60 rounded-xl border border-border bg-card max-h-72 overflow-y-auto">
                 {rows.map((r, i) => {
                   const targetAcc = accounts.find((a) => a.id === r.assignedAccountId);
 
@@ -792,7 +934,7 @@ export function TradeImportDialog() {
                         !r.selected && "opacity-40 bg-muted/10",
                       )}
                     >
-                      <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="flex items-center gap-2.5 min-w-0 flex-1">
                         <input
                           type="checkbox"
                           checked={r.selected}
@@ -803,14 +945,26 @@ export function TradeImportDialog() {
                               ),
                             )
                           }
-                          className="size-4 rounded border-border text-brand focus:ring-brand cursor-pointer"
+                          className="size-4 rounded border-border text-brand focus:ring-brand cursor-pointer shrink-0"
                         />
 
-                        <div>
+                        <div className="space-y-1 min-w-0 flex-1">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <span className="font-bold text-foreground uppercase">
-                              {r.symbol || "MNQ"}
-                            </span>
+                            {/* Activo / Símbolo con Selector Rápido */}
+                            <div className="inline-flex items-center gap-1">
+                              <span
+                                className={cn(
+                                  "font-bold uppercase px-1.5 py-0.5 rounded text-[11px]",
+                                  r.symbol === "GCM"
+                                    ? "bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30"
+                                    : "bg-muted font-bold text-foreground border border-border",
+                                )}
+                              >
+                                {r.symbol || "MNQ"}
+                              </span>
+                            </div>
+
+                            {/* Dirección Long / Short */}
                             <span
                               className={cn(
                                 "rounded px-1.5 py-0.2 text-[10px] font-bold uppercase",
@@ -823,10 +977,31 @@ export function TradeImportDialog() {
                             </span>
 
                             {/* Badge de Cuenta Asignada */}
-                            <span className="inline-flex items-center gap-1 rounded bg-muted/70 border border-border px-1.5 py-0.5 text-[10px] font-semibold text-foreground truncate max-w-[160px]">
+                            <span className="inline-flex items-center gap-1 rounded bg-muted/70 border border-border px-1.5 py-0.5 text-[10px] font-semibold text-foreground truncate max-w-[130px]">
                               <Wallet className="size-2.5 text-brand shrink-0" />
                               {targetAcc?.name ?? "Cuenta"}
                             </span>
+
+                            {/* Selector de Estrategia Preseleccionada por Fila */}
+                            <div className="inline-flex items-center gap-1">
+                              <span className="text-[10px] text-muted-foreground font-semibold">Estrategia:</span>
+                              <select
+                                value={r.assignedStrategyId}
+                                onChange={(e) => handleUpdateRowStrategy(i, e.target.value)}
+                                className={cn(
+                                  "h-6 rounded border px-1.5 text-[10px] font-bold focus:outline-none focus:ring-1 focus:ring-brand cursor-pointer",
+                                  r.symbol === "GCM"
+                                    ? "border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300"
+                                    : "border-border bg-background text-foreground",
+                                )}
+                              >
+                                {strategies.map((s) => (
+                                  <option key={s.id} value={s.id}>
+                                    {s.name} ({s.mainSymbol})
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
 
                             {r.duplicate && (
                               <span className="rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-500 px-1.5 py-0.2 text-[9px] font-bold uppercase">
@@ -835,7 +1010,7 @@ export function TradeImportDialog() {
                             )}
                           </div>
 
-                          <p className="text-[11px] text-muted-foreground mt-0.5">
+                          <p className="text-[11px] text-muted-foreground">
                             {r.detectedAt
                               ? new Date(r.detectedAt).toLocaleString("es-ES", {
                                   day: "2-digit",
@@ -854,7 +1029,7 @@ export function TradeImportDialog() {
 
                       <span
                         className={cn(
-                          "num font-bold text-sm shrink-0",
+                          "num font-bold text-sm shrink-0 pl-2",
                           r.pnl >= 0 ? "text-profit" : "text-loss",
                         )}
                       >
