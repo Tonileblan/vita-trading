@@ -11,12 +11,14 @@ import {
   Clock,
   Coins,
   DollarSign,
+  FileSpreadsheet,
   HelpCircle,
   ImagePlus,
   Layers,
   Loader2,
   Sparkles,
   TrendingUp,
+  Wand2,
   Wallet,
   X,
 } from "lucide-react";
@@ -51,6 +53,9 @@ import {
 import { formatCurrency } from "@/lib/metrics";
 import { parseDetectedDate } from "@/lib/parse-date";
 import { todayKey } from "@/lib/emotions";
+import { parseCsv } from "@/lib/journal-csv";
+import { CsvRepairDialog } from "@/components/csv-repair-dialog";
+import type { CsvRepairResult } from "@/lib/csv-repair.functions";
 import type { Account, Strategy } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -335,17 +340,323 @@ export function TradeImportDialog() {
   const [importing, setImporting] = useState(false);
   const [dragging, setDragging] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const csvFileRef = useRef<HTMLInputElement>(null);
+
+  // Estados para reparación de CSV con IA
+  const [csvRepairOpen, setCsvRepairOpen] = useState(false);
+  const [failedCsvText, setFailedCsvText] = useState("");
+  const [failedFileName, setFailedFileName] = useState("");
+  const [failedErrorDetails, setFailedErrorDetails] = useState("");
 
   const googleAiKey = typeof window !== "undefined" ? getLocalGoogleAiKey() : "";
   const googleAiModel = typeof window !== "undefined" ? getLocalGoogleAiModel() : DEFAULT_GEMINI_MODEL;
 
+  /** Procesa un listado de operaciones extraídas (de imagen o de CSV) y genera las filas interactivas */
+  const processExtractedTrades = (rawTrades: ExtractedTrade[], customSuccessMsg?: string) => {
+    // Omitir cualquier operación que tenga "sim" en cualquier parte del nombre de cuenta o prop firm
+    const isSim = (t: ExtractedTrade) => {
+      const name = (t.accountName || "").toLowerCase();
+      const firm = (t.accountFirm || "").toLowerCase();
+      return name.includes("sim") || firm.includes("sim");
+    };
+
+    const validFound = rawTrades.filter((t) => !isSim(t));
+    const omittedSimCount = rawTrades.length - validFound.length;
+
+    if (validFound.length === 0) {
+      if (omittedSimCount > 0) {
+        toast.info(`Se detectaron ${omittedSimCount} operaciones de cuentas SIM que fueron omitidas automáticamente.`);
+      } else {
+        toast.error("No se encontraron operaciones válidas en el archivo.");
+      }
+      return;
+    }
+
+    // Cuenta cuántas operaciones idénticas ya existen
+    const existingCounts = new Map<string, number>();
+    for (const t of trades) {
+      const k = dedupeKey(t);
+      existingCounts.set(k, (existingCounts.get(k) ?? 0) + 1);
+    }
+
+    // Detectar fecha principal
+    let detectedDay: string | null = null;
+    for (const t of validFound) {
+      const parsed = parseDetectedDate(t.closedAt ?? t.openedAt);
+      if (parsed && parsed.includes("T")) {
+        const day = parsed.split("T")[0];
+        if (day && day.length === 10) {
+          detectedDay = day;
+          break;
+        }
+      }
+    }
+
+    const initialDate = detectedDay || todayKey();
+    setBatchDate(initialDate);
+    setDetectedCaptureDate(detectedDay);
+
+    // Detectar grupos de cuentas presentes
+    const newMappings: Record<string, { targetAccountId: string; targetStrategyId: string }> = {};
+    const detectedGroups = new Set<string>();
+
+    validFound.forEach((t) => {
+      const accTag = t.accountName
+        ? t.accountFirm
+          ? `${t.accountName} (${t.accountFirm})`
+          : t.accountName
+        : t.accountFirm || "";
+      const groupKey = accTag.trim() || "Cuenta principal (sin nombre detectado)";
+      detectedGroups.add(groupKey);
+    });
+
+    // Emparejar cada grupo detectado con una cuenta de Vita-Trading
+    detectedGroups.forEach((groupKey) => {
+      const matched = findBestAccountMatch(groupKey, accounts);
+      const targetAcc = matched || accounts[0];
+      const targetStratId = targetAcc?.strategyId || strategies[0]?.id || "";
+      newMappings[groupKey] = {
+        targetAccountId: targetAcc ? targetAcc.id : defaultAccountId,
+        targetStrategyId: targetStratId,
+      };
+    });
+
+    setAccountMappings(newMappings);
+
+    const usedCounts = new Map<string, number>();
+    const parsedRows: Row[] = [];
+
+    validFound.forEach((t, i) => {
+      const normalized = normalizeSymbol(t.symbol);
+      const key = dedupeKey({ ...t, symbol: normalized });
+      const used = usedCounts.get(key) ?? 0;
+      usedCounts.set(key, used + 1);
+      const duplicate = used < (existingCounts.get(key) ?? 0);
+      const detectedAt = parseDetectedDate(t.closedAt ?? t.openedAt);
+
+      let rowDate = initialDate;
+      let rowTime = "15:30";
+
+      if (detectedAt && detectedAt.includes("T")) {
+        const parts = detectedAt.split("T");
+        if (parts[0] && parts[0].length === 10) {
+          rowDate = parts[0];
+        }
+        if (parts[1]) {
+          rowTime = parts[1].slice(0, 5);
+        }
+      }
+
+      const accTag = t.accountName
+        ? t.accountFirm
+          ? `${t.accountName} (${t.accountFirm})`
+          : t.accountName
+        : t.accountFirm || "";
+      const groupKey = accTag.trim() || "Cuenta principal (sin nombre detectado)";
+      const mapping = newMappings[groupKey];
+      const assignedAccId = mapping?.targetAccountId || defaultAccountId;
+
+      const assignedStratId = guessStrategyForTrade(
+        normalized,
+        detectedAt,
+        mapping?.targetStrategyId || defaultStrategyId,
+        strategies,
+      );
+
+      parsedRows.push({
+        ...t,
+        symbol: normalized,
+        key: `${key}#${i}`,
+        duplicate,
+        selected: !duplicate,
+        detectedAt,
+        customDate: rowDate,
+        customTime: rowTime,
+        detectedAccountKey: groupKey,
+        assignedAccountId: assignedAccId,
+        assignedStrategyId: assignedStratId,
+      });
+    });
+
+    setRows(parsedRows);
+
+    if (customSuccessMsg) {
+      toast.success(customSuccessMsg);
+    } else {
+      const uniqueAccountsDetected = detectedGroups.size;
+      const simNote = omittedSimCount > 0 ? ` · ${omittedSimCount} ops SIM omitidas` : "";
+      const dateNote = detectedDay ? ` · Fecha: ${formatDisplayDate(detectedDay)}` : "";
+      toast.success(
+        `${parsedRows.length} operaciones detectadas · ${uniqueAccountsDetected} ${uniqueAccountsDetected === 1 ? "cuenta" : "cuentas distintas"}${dateNote}${simNote}`,
+      );
+    }
+  };
+
+  /** Parsea un número de forma tolerante a formatos de brokers */
+  const parseNum = (v: string | undefined): number => {
+    if (!v) return 0;
+    const s = v.trim().replace(/\s/g, "").replace(/[€$]/g, "");
+    const normalized =
+      s.includes(",") && !s.includes(".") ? s.replace(",", ".") : s.replace(/,(?=\d{3}\b)/g, "");
+    const n = Number(normalized);
+    return Number.isFinite(n) ? n : 0;
+  };
+
+  /** Procesa un archivo CSV de operaciones o abre el reparador con IA si falla */
+  const handleCsvFile = async (file: File) => {
+    let rawText = "";
+    try {
+      rawText = await file.text();
+      const rawRows = parseCsv(rawText);
+      if (rawRows.length < 2) throw new Error("El archivo CSV no contiene datos suficientes.");
+
+      const header = rawRows[0]!.map((h) => h.trim().toLowerCase());
+      const pnlIdx = header.findIndex(
+        (h) =>
+          h.includes("pnl") ||
+          h.includes("profit") ||
+          h.includes("resultado") ||
+          h.includes("ganancia") ||
+          h.includes("net") ||
+          h.includes("benefit"),
+      );
+
+      if (pnlIdx === -1) {
+        throw new Error(
+          "No se detectó columna de PnL o resultado monetario. El archivo necesita ser estructurado con IA.",
+        );
+      }
+
+      const symIdx = header.findIndex(
+        (h) =>
+          h.includes("simbolo") ||
+          h.includes("symbol") ||
+          h.includes("activo") ||
+          h.includes("instrument") ||
+          h.includes("contract") ||
+          h.includes("item"),
+      );
+      const dateIdx = header.findIndex(
+        (h) =>
+          h.includes("fecha") ||
+          h.includes("date") ||
+          h.includes("time") ||
+          h.includes("cierre") ||
+          h.includes("exit"),
+      );
+      const dirIdx = header.findIndex(
+        (h) =>
+          h.includes("direccion") ||
+          h.includes("dir") ||
+          h.includes("side") ||
+          h.includes("type") ||
+          h.includes("tipo"),
+      );
+      const entryIdx = header.findIndex(
+        (h) =>
+          h.includes("entrada") ||
+          h.includes("entry") ||
+          h.includes("open price") ||
+          h.includes("buy price"),
+      );
+      const exitIdx = header.findIndex(
+        (h) =>
+          h.includes("salida") ||
+          h.includes("exit") ||
+          h.includes("close price") ||
+          h.includes("sell price"),
+      );
+      const sizeIdx = header.findIndex(
+        (h) =>
+          h.includes("tamano") ||
+          h.includes("size") ||
+          h.includes("qty") ||
+          h.includes("contracts") ||
+          h.includes("contratos"),
+      );
+      const accIdx = header.findIndex(
+        (h) => h.includes("cuenta") || h.includes("account") || h.includes("account name"),
+      );
+
+      const parsedTrades: ExtractedTrade[] = [];
+
+      for (let i = 1; i < rawRows.length; i++) {
+        const r = rawRows[i]!;
+        if (!r.some((c) => c.trim())) continue;
+        const pnlVal = parseNum(r[pnlIdx]);
+        const symVal = symIdx >= 0 ? r[symIdx]?.trim() || "MNQ" : "MNQ";
+        const dateVal = dateIdx >= 0 ? r[dateIdx]?.trim() : undefined;
+        const dirRaw = dirIdx >= 0 ? (r[dirIdx] || "").toLowerCase() : "";
+        const dirVal: "long" | "short" =
+          dirRaw.includes("short") || dirRaw.includes("sell") || dirRaw.includes("venta")
+            ? "short"
+            : "long";
+        const entryVal = entryIdx >= 0 ? parseNum(r[entryIdx]) : null;
+        const exitVal = exitIdx >= 0 ? parseNum(r[exitIdx]) : null;
+        const sizeVal = sizeIdx >= 0 ? parseNum(r[sizeIdx]) || 1 : 1;
+        const accVal = accIdx >= 0 ? r[accIdx]?.trim() : null;
+
+        parsedTrades.push({
+          symbol: symVal,
+          direction: dirVal,
+          closedAt: dateVal,
+          openedAt: dateVal,
+          entryPrice: entryVal,
+          exitPrice: exitVal,
+          size: sizeVal,
+          pnl: pnlVal,
+          accountName: accVal,
+          accountFirm: null,
+        });
+      }
+
+      if (parsedTrades.length === 0) {
+        throw new Error("No se encontraron operaciones válidas en el CSV.");
+      }
+
+      processExtractedTrades(
+        parsedTrades,
+        `Se cargaron ${parsedTrades.length} operaciones desde ${file.name}`,
+      );
+    } catch (err: any) {
+      const errMsg = err.message || "Error al procesar el archivo CSV";
+      setFailedCsvText(rawText);
+      setFailedFileName(file.name);
+      setFailedErrorDetails(errMsg);
+      setCsvRepairOpen(true);
+
+      toast.error(errMsg, {
+        action: {
+          label: "✨ Arreglar con IA",
+          onClick: () => setCsvRepairOpen(true),
+        },
+        duration: 9000,
+      });
+    }
+  };
+
   const addFiles = async (files: FileList | File[] | null) => {
     if (!files) return;
-    const fileList = Array.from(files)
+    const fileArray = Array.from(files);
+
+    // Si contiene un archivo CSV / texto
+    const csvFile = fileArray.find(
+      (f) =>
+        f.name.endsWith(".csv") ||
+        f.name.endsWith(".txt") ||
+        f.type === "text/csv" ||
+        f.type === "text/plain",
+    );
+    if (csvFile) {
+      void handleCsvFile(csvFile);
+      return;
+    }
+
+    const imageList = fileArray
       .filter((f) => f.type.startsWith("image/"))
       .slice(0, 6);
 
-    for (const f of fileList) {
+    for (const f of imageList) {
       const compressed = await compressImageFile(f);
       if (compressed) {
         setImages((prev) => [...prev, compressed].slice(0, 6));
@@ -355,7 +666,7 @@ export function TradeImportDialog() {
 
   const analyse = async () => {
     if (images.length === 0) {
-      toast.error("Añade al menos una captura");
+      toast.error("Añade al menos una captura o sube un archivo CSV");
       return;
     }
     if (!googleAiKey) {
@@ -383,139 +694,7 @@ export function TradeImportDialog() {
         },
       });
 
-      // Omitir cualquier operación que tenga "sim" en cualquier parte del nombre de cuenta o prop firm
-      const isSim = (t: ExtractedTrade) => {
-        const name = (t.accountName || "").toLowerCase();
-        const firm = (t.accountFirm || "").toLowerCase();
-        return name.includes("sim") || firm.includes("sim");
-      };
-
-      const validFound = found.filter((t) => !isSim(t));
-      const omittedSimCount = found.length - validFound.length;
-
-      // Cuenta cuántas operaciones idénticas ya existen
-      const existingCounts = new Map<string, number>();
-      for (const t of trades) {
-        const k = dedupeKey(t);
-        existingCounts.set(k, (existingCounts.get(k) ?? 0) + 1);
-      }
-
-      // Detectar fecha principal en la captura
-      let detectedDay: string | null = null;
-      for (const t of validFound) {
-        const parsed = parseDetectedDate(t.closedAt ?? t.openedAt);
-        if (parsed && parsed.includes("T")) {
-          const day = parsed.split("T")[0];
-          if (day && day.length === 10) {
-            detectedDay = day;
-            break;
-          }
-        }
-      }
-
-      const initialDate = detectedDay || todayKey();
-      setBatchDate(initialDate);
-      setDetectedCaptureDate(detectedDay);
-
-      // Detectar grupos de cuentas presentes en la extracción
-      const newMappings: Record<string, { targetAccountId: string; targetStrategyId: string }> = {};
-      const detectedGroups = new Set<string>();
-
-      validFound.forEach((t) => {
-        const accTag = t.accountName
-          ? t.accountFirm
-            ? `${t.accountName} (${t.accountFirm})`
-            : t.accountName
-          : t.accountFirm || "";
-        const groupKey = accTag.trim() || "Cuenta principal (sin nombre detectado)";
-        detectedGroups.add(groupKey);
-      });
-
-      // Emparejar cada grupo detectado con una cuenta de Vita-Trading
-      detectedGroups.forEach((groupKey) => {
-        const matched = findBestAccountMatch(groupKey, accounts);
-        const targetAcc = matched || accounts[0];
-        const targetStratId = targetAcc?.strategyId || strategies[0]?.id || "";
-        newMappings[groupKey] = {
-          targetAccountId: targetAcc ? targetAcc.id : defaultAccountId,
-          targetStrategyId: targetStratId,
-        };
-      });
-
-      setAccountMappings(newMappings);
-
-      const usedCounts = new Map<string, number>();
-      const parsedRows: Row[] = [];
-
-      validFound.forEach((t, i) => {
-        const normalized = normalizeSymbol(t.symbol);
-        const key = dedupeKey({ ...t, symbol: normalized });
-        const used = usedCounts.get(key) ?? 0;
-        usedCounts.set(key, used + 1);
-        const duplicate = used < (existingCounts.get(key) ?? 0);
-        const detectedAt = parseDetectedDate(t.closedAt ?? t.openedAt);
-
-        let rowDate = initialDate;
-        let rowTime = "15:30";
-
-        if (detectedAt && detectedAt.includes("T")) {
-          const parts = detectedAt.split("T");
-          if (parts[0] && parts[0].length === 10) {
-            rowDate = parts[0];
-          }
-          if (parts[1]) {
-            rowTime = parts[1].slice(0, 5);
-          }
-        }
-
-        const accTag = t.accountName
-          ? t.accountFirm
-            ? `${t.accountName} (${t.accountFirm})`
-            : t.accountName
-          : t.accountFirm || "";
-        const groupKey = accTag.trim() || "Cuenta principal (sin nombre detectado)";
-        const mapping = newMappings[groupKey];
-        const assignedAccId = mapping?.targetAccountId || defaultAccountId;
-
-        // Preselección inteligente de estrategia: GCM -> Oro, MNQ -> IFT/Asia/Fondeo
-        const assignedStratId = guessStrategyForTrade(
-          normalized,
-          detectedAt,
-          mapping?.targetStrategyId || defaultStrategyId,
-          strategies,
-        );
-
-        parsedRows.push({
-          ...t,
-          symbol: normalized,
-          key: `${key}#${i}`,
-          duplicate,
-          selected: !duplicate,
-          detectedAt,
-          customDate: rowDate,
-          customTime: rowTime,
-          detectedAccountKey: groupKey,
-          assignedAccountId: assignedAccId,
-          assignedStrategyId: assignedStratId,
-        });
-      });
-
-      setRows(parsedRows);
-
-      if (parsedRows.length === 0) {
-        if (omittedSimCount > 0) {
-          toast.info(`Se detectaron ${omittedSimCount} operaciones de cuentas SIM que fueron omitidas automáticamente.`);
-        } else {
-          toast.error("No se detectaron operaciones en las capturas");
-        }
-      } else {
-        const uniqueAccountsDetected = detectedGroups.size;
-        const simNote = omittedSimCount > 0 ? ` · ${omittedSimCount} ops SIM omitidas` : "";
-        const dateNote = detectedDay ? ` · Fecha: ${formatDisplayDate(detectedDay)}` : "";
-        toast.success(
-          `${parsedRows.length} operaciones detectadas · ${uniqueAccountsDetected} ${uniqueAccountsDetected === 1 ? "cuenta" : "cuentas distintas"}${dateNote}${simNote}`,
-        );
-      }
+      processExtractedTrades(found);
     } catch (e: any) {
       const msg = e instanceof Error ? e.message : String(e);
       if (
@@ -791,7 +970,7 @@ export function TradeImportDialog() {
           </div>
         )}
 
-        {/* Zona de Carga de Imágenes */}
+        {/* Zona de Carga de Imágenes y CSV */}
         <div
           onDragOver={(e) => {
             e.preventDefault();
@@ -811,12 +990,15 @@ export function TradeImportDialog() {
               : "border-border/80 bg-muted/20 text-muted-foreground hover:bg-muted/30",
           )}
         >
-          <ImagePlus className="mx-auto mb-2 size-8 text-brand/80" />
+          <div className="flex items-center justify-center gap-2 mx-auto mb-2 text-brand/80">
+            <ImagePlus className="size-7" />
+            <FileSpreadsheet className="size-7 text-emerald-500" />
+          </div>
           <p className="font-bold text-foreground text-xs">
-            Arrastra capturas, pega con Ctrl+V / Cmd+V o sube archivos (máx. 6)
+            Arrastra capturas, archivos CSV de broker o pega con Ctrl+V / Cmd+V
           </p>
           <p className="text-[11px] text-muted-foreground mt-1">
-            Detecta automáticamente GCM (Oro), MNQ, NQ, ES y asigna a tus estrategias (Oro, IFT, Asia, Fondeo...)
+            Compatible con fotos de TradingView, NinjaTrader, Tradovate, MetaTrader 4/5 y CSVs exportados
           </p>
 
           <div className="mt-3.5 flex flex-wrap justify-center gap-2">
@@ -836,16 +1018,37 @@ export function TradeImportDialog() {
               onClick={() => fileRef.current?.click()}
               className="gap-1.5 text-xs font-semibold shadow-xs cursor-pointer"
             >
-              <ImagePlus className="size-4" /> Seleccionar capturas
+              <ImagePlus className="size-4 text-brand" /> Seleccionar capturas
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => csvFileRef.current?.click()}
+              className="gap-1.5 text-xs font-semibold shadow-xs cursor-pointer border-emerald-500/30 hover:bg-emerald-500/10"
+            >
+              <FileSpreadsheet className="size-4 text-emerald-600 dark:text-emerald-400" /> Subir archivo CSV
             </Button>
           </div>
+
           <input
             ref={fileRef}
             type="file"
-            accept="image/*"
+            accept="image/*,.csv,text/csv,text/plain"
             multiple
             hidden
             onChange={(e) => addFiles(e.target.files)}
+          />
+          <input
+            ref={csvFileRef}
+            type="file"
+            accept=".csv,text/csv,text/plain,.txt"
+            hidden
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              e.target.value = "";
+              if (f) void handleCsvFile(f);
+            }}
           />
         </div>
 
@@ -1277,6 +1480,37 @@ export function TradeImportDialog() {
           </Button>
         </DialogFooter>
       </DialogContent>
+
+      {/* Reparación asistida de CSV con IA */}
+      <CsvRepairDialog
+        open={csvRepairOpen}
+        onOpenChange={setCsvRepairOpen}
+        rawCsvText={failedCsvText}
+        fileName={failedFileName}
+        errorDetails={failedErrorDetails}
+        context="trades"
+        onApplyRepaired={(result) => {
+          if (result.trades && result.trades.length > 0) {
+            const mapped: ExtractedTrade[] = result.trades.map((t) => ({
+              symbol: t.symbol || "MNQ",
+              direction: t.direction || "long",
+              openedAt: t.openedAt || undefined,
+              closedAt: t.closedAt || undefined,
+              entryPrice: t.entryPrice ?? null,
+              exitPrice: t.exitPrice ?? null,
+              size: t.size ?? 1,
+              pnl: t.pnl,
+              accountName: t.accountName ?? null,
+              accountFirm: t.accountFirm ?? null,
+            }));
+            processExtractedTrades(
+              mapped,
+              `¡${mapped.length} operaciones recuperadas con IA e incorporadas a la vista previa!`,
+            );
+            setCsvRepairOpen(false);
+          }
+        }}
+      />
     </Dialog>
   );
 }

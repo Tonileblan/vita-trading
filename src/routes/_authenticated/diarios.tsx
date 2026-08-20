@@ -40,6 +40,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { CsvRepairDialog } from "@/components/csv-repair-dialog";
+import type { CsvRepairResult } from "@/lib/csv-repair.functions";
 import {
   useCreateJournal,
   useDeleteJournal,
@@ -154,11 +156,19 @@ function JournalsPage() {
     fileRef.current?.click();
   }
 
+  const [isRepairDialogOpen, setIsRepairDialogOpen] = useState(false);
+  const [failedCsvText, setFailedCsvText] = useState("");
+  const [failedFileName, setFailedFileName] = useState("");
+  const [failedErrorDetails, setFailedErrorDetails] = useState("");
+  const [repairTargetId, setRepairTargetId] = useState("");
+
   async function handleFile(file: File) {
     const targetId = importTarget?.id ?? activeJournalId;
     setBusyId(importTarget?.id ?? "all");
+    let rawText = "";
     try {
-      const res = await importJournalCsv(targetId, await file.text());
+      rawText = await file.text();
+      const res = await importJournalCsv(targetId, rawText);
       await qc.invalidateQueries({ queryKey: ["journals"] });
       await qc.invalidateQueries({ queryKey: ["journal-data"] });
       await qc.invalidateQueries({ queryKey: ["expenses"] });
@@ -179,11 +189,74 @@ function JournalsPage() {
         (parts.length ? `Importado: ${parts.join(", ")}` : "Nada nuevo que importar") +
           (res.duplicates ? ` · ${res.duplicates} duplicados omitidos` : ""),
       );
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "No se pudo importar el CSV");
+    } catch (e: any) {
+      const errMsg = e instanceof Error ? e.message : "No se pudo importar el CSV";
+      setFailedCsvText(rawText);
+      setFailedFileName(file.name);
+      setFailedErrorDetails(errMsg);
+      setRepairTargetId(targetId);
+      setIsRepairDialogOpen(true);
+
+      toast.error(errMsg, {
+        action: {
+          label: "✨ Arreglar con IA",
+          onClick: () => setIsRepairDialogOpen(true),
+        },
+        duration: 9000,
+      });
     } finally {
       setBusyId(null);
       setImportTarget(null);
+    }
+  }
+
+  async function handleApplyRepaired(result: CsvRepairResult) {
+    const targetId = repairTargetId || activeJournalId;
+    if (result.repairedCsvText) {
+      try {
+        const res = await importJournalCsv(targetId, result.repairedCsvText);
+        await qc.invalidateQueries({ queryKey: ["journals"] });
+        await qc.invalidateQueries({ queryKey: ["journal-data"] });
+        await qc.invalidateQueries({ queryKey: ["expenses"] });
+        await qc.invalidateQueries({ queryKey: ["mood-checkins"] });
+        await qc.invalidateQueries({ queryKey: ["journal-rules"] });
+        toast.success(`Importación completada con éxito tras la reparación con IA (${res.trades} operaciones)`);
+        return;
+      } catch (err: any) {
+        console.warn("Fallo al re-importar CSV reparado, procesando trades individuales...", err);
+      }
+    }
+
+    if (result.trades && result.trades.length > 0) {
+      const { data: journalData } = await supabase.from("accounts").select("id, name").eq("journal_id", targetId);
+      const accList = journalData ?? [];
+      const defaultAccId = accList[0]?.id;
+
+      let importedCount = 0;
+      for (const t of result.trades) {
+        const matchingAcc = accList.find((a) => a.name.toLowerCase() === t.accountName?.toLowerCase());
+        const accId = matchingAcc?.id || defaultAccId;
+        if (!accId) continue;
+
+        await supabase.from("trades").insert({
+          journal_id: targetId,
+          account_id: accId,
+          symbol: t.symbol || "MNQ",
+          direction: t.direction || "long",
+          opened_at: t.openedAt || new Date().toISOString(),
+          closed_at: t.closedAt || new Date().toISOString(),
+          entry_price: t.entryPrice ?? null,
+          exit_price: t.exitPrice ?? null,
+          size: t.size ?? 1,
+          pnl: t.pnl,
+          notes: t.notes ?? null,
+        });
+        importedCount++;
+      }
+
+      await qc.invalidateQueries({ queryKey: ["journals"] });
+      await qc.invalidateQueries({ queryKey: ["journal-data"] });
+      toast.success(`Se importaron ${importedCount} operaciones reparadas por IA en tu diario`);
     }
   }
 
@@ -640,6 +713,17 @@ function JournalsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Reparación asistida de CSV con IA */}
+      <CsvRepairDialog
+        open={isRepairDialogOpen}
+        onOpenChange={setIsRepairDialogOpen}
+        rawCsvText={failedCsvText}
+        fileName={failedFileName}
+        errorDetails={failedErrorDetails}
+        context="full_journal"
+        onApplyRepaired={handleApplyRepaired}
+      />
     </AppShell>
   );
 }
