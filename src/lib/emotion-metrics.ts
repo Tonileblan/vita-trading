@@ -98,8 +98,13 @@ export interface RiskRules {
 
 export interface RiskAlert {
   key: string;
+  tag?: string;
+  title?: string;
   message: string;
-  tone: "warn" | "info";
+  detail?: string;
+  tone: "danger" | "warn" | "info" | "success";
+  actionLabel?: string;
+  actionUrl?: string;
 }
 
 /** Comprueba las reglas contra las operaciones de hoy. */
@@ -124,30 +129,48 @@ export function checkRules(
   if (rules.max_loss_streak > 0 && streak >= rules.max_loss_streak) {
     alerts.push({
       key: "streak",
-      tone: "warn",
+      tag: "Freno de Emergencia",
+      title: `${streak} pérdidas seguidas hoy`,
+      detail: "Considera pausar la sesión para proteger tu capital.",
       message: `Llevas ${streak} pérdidas seguidas hoy — considera parar.`,
+      tone: "warn",
+      actionLabel: "Ver psicología",
+      actionUrl: "/mente",
     });
   }
   if (rules.max_trades_day > 0 && today.length >= rules.max_trades_day) {
     alerts.push({
       key: "count",
-      tone: "warn",
+      tag: "Límite de Trades",
+      title: `${today.length} de ${rules.max_trades_day} operaciones`,
+      detail: "Has alcanzado el límite máximo diario de trades.",
       message: `Ya llevas ${today.length} operaciones hoy (límite ${rules.max_trades_day}).`,
+      tone: "warn",
     });
   }
   const dayPnl = today.reduce((s, t) => s + t.pnl, 0);
   if (rules.max_daily_loss != null && rules.max_daily_loss > 0 && dayPnl <= -rules.max_daily_loss) {
     alerts.push({
       key: "loss",
-      tone: "warn",
+      tag: "Stop Diario Superado",
+      title: `Pérdida hoy: ${dayPnl < 0 ? "-" : ""}$${Math.abs(dayPnl).toFixed(2)}`,
+      detail: `Supera tu límite diario establecido ($${rules.max_daily_loss.toFixed(2)}).`,
       message: `Has superado tu pérdida máxima diaria (${dayPnl.toFixed(2)}).`,
+      tone: "danger",
+      actionLabel: "Ver plan",
+      actionUrl: "/mente",
     });
   }
   if (rules.require_checkin && !hasCheckinToday) {
     alerts.push({
       key: "checkin",
-      tone: "info",
+      tag: "Check-in Pendiente",
+      title: "Registra tu estado mental",
+      detail: "Haz tu check-in emocional antes de abrir posiciones hoy.",
       message: "Aún no has hecho el check-in emocional de hoy.",
+      tone: "info",
+      actionLabel: "Hacer check-in",
+      actionUrl: "/mente",
     });
   }
   return alerts;
