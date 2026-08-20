@@ -473,7 +473,7 @@ function Overview() {
                   className="bg-transparent text-xs font-semibold text-foreground focus:outline-none cursor-pointer"
                   aria-label="Cuenta o estrategia"
                 >
-                  <option value="all">🌐 Todas las cuentas</option>
+                  <option value="all">🌐 TODO</option>
                   {accounts.filter((a) => a.type === "funded").length > 0 && (
                     <optgroup label="🏢 Cuentas de Fondeo">
                       {accounts
