@@ -1,30 +1,37 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import {
-  CandlestickChart,
-  LineChart,
-  NotebookPen,
-  Wallet,
-  ListOrdered,
-  Layers,
-  Receipt,
-  Brain,
-  Users,
-  MessageSquare,
-  ShieldCheck,
-  EyeOff,
-  Webhook,
-  ServerCog,
-  Download,
-  Palette,
-  BookOpen,
-  CheckCircle2,
-  Lightbulb,
+  AlertTriangle,
   ArrowRight,
-  TrendingUp,
-  Wind,
-  PlusCircle,
+  BookOpen,
+  Brain,
+  CandlestickChart,
+  CheckCircle2,
+  Download,
+  EyeOff,
   HelpCircle,
+  History,
+  Layers,
+  Lightbulb,
+  LineChart,
+  ListOrdered,
+  Lock,
+  MessageSquare,
+  NotebookPen,
+  Palette,
+  Receipt,
+  RotateCcw,
+  ServerCog,
+  ShieldAlert,
+  ShieldCheck,
+  Sliders,
+  Sparkles,
+  TrendingUp,
+  UserCheck,
+  Users,
+  Wallet,
+  Webhook,
+  Wind,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth-context";
@@ -32,17 +39,17 @@ import { useAuth } from "@/lib/auth-context";
 export const Route = createFileRoute("/funciones")({
   head: () => ({
     meta: [
-      { title: "Funciones y Ayuda — Vita-Trading" },
+      { title: "Funciones y Guía de Uso — Vita-Trading" },
       {
         name: "description",
         content:
-          "Guía de uso, mini-tutoriales por pestaña y todas las funciones de Vita-Trading para tu bitácora de trading.",
+          "Guía de uso completa, mini-tutoriales por pestaña y todas las funciones avanzadas de Vita-Trading para tu bitácora de trading.",
       },
-      { property: "og:title", content: "Funciones y Ayuda — Vita-Trading" },
+      { property: "og:title", content: "Funciones y Guía de Uso — Vita-Trading" },
       {
         property: "og:description",
         content:
-          "Mini-tutoriales y explicaciones paso a paso de cada sección de Vita-Trading: Resumen, Diarios, Cuentas, Operaciones, Estrategias, Conta y Mente.",
+          "Manual detallado y explicaciones paso a paso de cada sección de Vita-Trading: Resumen, Operaciones, Estrategias, Cuentas, Conta, Mente, Diarios y Mi Perfil.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -53,61 +60,82 @@ export const Route = createFileRoute("/funciones")({
 
 const FEATURES = [
   {
-    icon: NotebookPen,
-    title: "Diarios independientes",
-    text: "Crea varios diarios, cada uno con sus cuentas, estrategias y operaciones. Edita, elimina y exporta o importa todo en CSV como respaldo completo.",
-  },
-  {
-    icon: Wallet,
-    title: "Cuentas de fondeo y personales",
-    text: "Fases Eval y Live, objetivo de capital y tipos de drawdown (estático, trailing y a cierre del día). Abre cualquier cuenta para ver su detalle y progreso hacia el retiro o la evaluación.",
+    icon: LineChart,
+    title: "Resumen Inteligente y Adaptable",
+    text: "KPIs en tiempo real (Win Rate, Profit Factor, Expectativa) y curva de capital con Trailing Drawdown. Al seleccionar una estrategia, todo el panel (curva, calendario y métricas) se adapta instantáneamente a ella. Incluye botón de alertas de drawdown en la cabecera.",
   },
   {
     icon: ListOrdered,
-    title: "Operaciones",
-    text: "Alta manual, importación por webhook y extracción automática desde capturas o fotos con detección de duplicados para no registrar la misma operación dos veces.",
+    title: "Operaciones con Selector Unificado e IA",
+    text: "Filtra en un solo clic entre TODO, cuentas de fondeo, personales o cualquier estrategia. Alta manual rápida, extracción con Trade Vision mediante IA con confirmación de fecha, y pestaña de historial de importaciones para deshacer lotes.",
   },
   {
     icon: Layers,
-    title: "Estrategias",
-    text: "Ficha operativa de cada estrategia, horarios de las bolsas de Asia, Europa y Nueva York convertidos a tu zona horaria, y asignación de cuentas por fechas en un calendario.",
+    title: "Estrategias y Asignación por Tramos",
+    text: "Fichas técnicas con reglas de entrada, activos principales y horarios de bolsas mundiales en hora local. Asignación de estrategias a cuentas mediante tramos de fechas en calendario y sincronización automática de trades.",
   },
   {
-    icon: LineChart,
-    title: "Resumen",
-    text: "KPIs en tiempo real: win rate, profit factor, expectativa y curva de capital. Capital de fondeo y real separados, calendario de PnL e indicadores de evaluación y retiro.",
+    icon: Wallet,
+    title: "Cuentas de Fondeo y Personales",
+    text: "Configuración de fases (Eval y Live), límites de drawdown (Trailing, Estático y EOD) y alertas visuales cuando la cuenta se acerca a su límite de pérdida (<$600). Registro de cobros y retiros (payouts).",
   },
   {
-    icon: Receipt,
-    title: "Conta",
-    text: "Registra gastos por categoría (incluidas App y Suministros), calcula el resultado neto y visualízalo con un gráfico 3D de tarta y barras mensuales.",
-  },
-  {
-    icon: Brain,
-    title: "Mente",
-    text: "Check-in diario de ánimo, energía y foco. Ejercicio guiado de respiración en 3 fases para calmar el tilt, analítica emocional cruzada y alertas de riesgo.",
-  },
-  {
-    icon: Users,
-    title: "Usuarios y roles",
-    text: "Perfil propio para cada trader con roles de administrador, supervisor y usuario. Integraciones de API y webhook y elección de modo claro u oscuro.",
+    icon: Sparkles,
+    title: "Trade Vision con Google AI Studio (Gemini)",
+    text: "Procesa capturas de pantalla de NinjaTrader, TradingView, MetaTrader o fotos del historial con Gemini 2.0 Flash usando tu propia API Key gratuita y detección inteligente de duplicados.",
   },
   {
     icon: ShieldCheck,
-    title: "Supervisión y chat interno",
-    text: "Acceso restringido al supervisor para ver el resumen de todos y comentar el desempeño en un chat interno con el equipo.",
+    title: "Supervisión Segura y Roles Protegidos",
+    text: "Los supervisores y administradores consultan el diario de otros usuarios en modo Solo Lectura por defecto. El Administrador cuenta con un interruptor exclusivo en su perfil para habilitar la edición controlada.",
+  },
+  {
+    icon: Brain,
+    title: "Mente y Psicología Anti-Tilt",
+    text: "Check-in diario de ánimo, energía y foco pre-sesión. Ejercicio interactivo de respiración en 3 fases (Triangular, Calma y Anti-Tilt) con orbe animado y sonido, y analítica cruzada de emociones.",
+  },
+  {
+    icon: NotebookPen,
+    title: "Diarios Independientes y Plantillas",
+    text: "Crea espacios de trabajo separados para cada operativa, genera diarios de ejemplo para practicar, clona plantillas y haz copias de seguridad completas en CSV.",
+  },
+  {
+    icon: Receipt,
+    title: "Conta y Control de Costes",
+    text: "Registra gastos categorizados (pruebas de fondeo, software, datos, suministros o app), calcula tu beneficio neto real tras costes y analízalos con gráficos 3D interactivos y barras mensuales.",
   },
 ];
 
 const TECH = [
-  { icon: Webhook, title: "Webhook de operaciones", text: "Recibe operaciones automáticamente desde tu plataforma de trading vía un endpoint público." },
-  { icon: ServerCog, title: "Servidor MCP", text: "Conecta un asistente externo para consultar diarios, cuentas, estrategias y registrar operaciones." },
-  { icon: Palette, title: "Autenticación", text: "Entra con Google o por email. Cada diario y sus datos quedan protegidos por control de acceso." },
-  { icon: Download, title: "Respaldo completo", text: "Exporta e importa todo (diarios, cuentas, estrategias, operaciones, retiros, gastos y mente) en CSV." },
+  {
+    icon: Sparkles,
+    title: "Trade Vision con IA (Gemini 2.0 Flash)",
+    text: "Lectura óptica inteligente de capturas y fotos de operaciones con confirmación de fecha real y descarte automático de duplicados.",
+  },
+  {
+    icon: ShieldAlert,
+    title: "Protección de Datos & Modo Solo Lectura",
+    text: "Restricción de edición para supervisores por defecto. Solo el Administrador puede habilitar temporalmente la edición de datos de otros usuarios.",
+  },
+  {
+    icon: Webhook,
+    title: "Webhook y Conectores de Trading",
+    text: "Endpoint público seguro para recibir ejecuciones automáticas desde TradingView, NinjaTrader 8, MT4/5 o flujos automatizados de n8n.",
+  },
+  {
+    icon: ServerCog,
+    title: "Servidor MCP Integrado",
+    text: "Protocolo Model Context Protocol para conectar asistentes de inteligencia artificial externos directamente a tu bitácora de trading.",
+  },
+  {
+    icon: Download,
+    title: "Respaldo Completo en CSV",
+    text: "Exportación e importación integral de diarios, cuentas, estrategias, operaciones, retiros, gastos y registros psicológicos.",
+  },
   {
     icon: EyeOff,
-    title: "Modo Perfil privado",
-    text: "Cada usuario puede activar un modo de perfil privado para mantener sus datos fuera de la vista de supervisión.",
+    title: "Modo de Perfil Privado",
+    text: "Permite a cualquier trader ocultar totalmente sus estadísticas y operativas de la vista de supervisores y directorios públicos.",
   },
 ];
 
@@ -117,86 +145,38 @@ const TAB_TUTORIALS = [
     tab: "Resumen",
     path: "/panel",
     icon: LineChart,
-    badge: "Panel de Control Principal",
-    summary: "Tu cuadro de mandos global con KPIs en tiempo real, curva de capital interactiva con trailing drawdown y calendario de rendimiento.",
+    badge: "Cuadro de Mandos Principal",
+    summary:
+      "Tu centro de control global con KPIs en tiempo real, curva de capital interactiva, calendario de PnL y adaptación completa al seleccionar cuentas o estrategias.",
     steps: [
       {
         num: "1",
-        title: "Filtra por Ámbito o Cuenta",
-        detail: "En la parte superior puedes alternar entre 'Total' (todo consolidado), 'Fondeo' (solo cuentas financiadas) o 'Real' (cuentas personales). También puedes seleccionar una cuenta o estrategia específica en el desplegable.",
+        title: "Selector Desplegable Unificado",
+        detail:
+          "Usa el desplegable superior para elegir entre '🌐 TODO' (consolidado global), una cuenta de fondeo o personal concreta, o bien una Estrategia específica. Toda la interfaz se adaptará a tu selección.",
       },
       {
         num: "2",
-        title: "Interpreta la Curva de Capital y Drawdown",
-        detail: "La curva azul muestra la evolución de tu balance trade a trade. En cuentas de fondeo, la línea roja discontinua representa el suelo de liquidación (Trailing Drawdown), que sube conforme ganas para proteger tu beneficio.",
-        tip: "La distancia entre la curva azul y la línea roja es tu colchón de seguridad antes de romper la cuenta.",
+        title: "Adaptación Total por Estrategia",
+        detail:
+          "Al seleccionar una estrategia, la curva de capital mostrará la evolución acumulada de dicha estrategia, el calendario de PnL filtrará sus días y verás una tarjeta con Win Rate, Profit Factor y cuentas asociadas.",
+        tip: "Ideal para saber exactamente cuánto dinero te está generando cada modelo de trading por separado.",
       },
       {
         num: "3",
-        title: "Analiza Rachas y Volumen de Ganadas vs Pérdidas",
-        detail: "El bloque de Rachas y Capital te muestra el total ganado frente al total perdido, el ratio beneficio/pérdida ($) y tu racha activa luminosa.",
+        title: "Curva de Capital y Alerta de Drawdown",
+        detail:
+          "La curva azul representa tu balance trade a trade y la línea roja discontinua el suelo de liquidación. Si alguna cuenta entra en zona de riesgo (<$600 para el límite) o se vulnera, un botón de alerta en la cabecera te avisará de inmediato.",
+        tip: "Haz clic en el botón de alerta de la cabecera para ir directamente a la cuenta en peligro.",
       },
       {
         num: "4",
-        title: "Navega por el Calendario y Consulta Operaciones",
-        detail: "Haz clic en cualquier día del calendario para aislar los trades de esa fecha. En la tabla inferior 'Operaciones', puedes consultar las más recientes o ver el historial completo.",
+        title: "Calendario de Rendimiento y Selector de Supervisión",
+        detail:
+          "Haz clic en cualquier día para filtrar los trades de esa fecha. Si eres supervisor o administrador, usa el selector de diario superior para revisar el rendimiento de cualquier usuario registrado.",
       },
     ],
-    tips: "Usa el selector de rango temporal (7D, 30D, 90D, Mes actual, Todo) para evaluar tu evolución a corto y largo plazo.",
-  },
-  {
-    id: "diarios",
-    tab: "Diarios",
-    path: "/diarios",
-    icon: NotebookPen,
-    badge: "Espacios de Trabajo",
-    summary: "Crea y organiza bitácoras totalmente independientes para separar distintas metodologías, cuentas de evaluación o carteras personales.",
-    steps: [
-      {
-        num: "1",
-        title: "Crear un Nuevo Diario",
-        detail: "Haz clic en 'Nuevo Diario' y nómbralo según su propósito (ejemplo: 'Fondeo Futuros', 'Personal Cripto', 'Forex Swing'). Cada diario almacena sus propias cuentas, estrategias y trades.",
-      },
-      {
-        num: "2",
-        title: "Activar un Diario",
-        detail: "Pulsa el botón 'Seleccionar' en la tarjeta del diario que deseas trabajar. Toda la plataforma cambiará automáticamente a ese diario.",
-      },
-      {
-        num: "3",
-        title: "Exportar e Importar Respaldos (CSV)",
-        detail: "Descarga una copia completa en CSV con todos tus datos con un solo clic. También puedes restaurar o migrar operaciones usando el botón de importación.",
-        tip: "Haz un respaldo en CSV periódicamente para tener siempre tus datos salvaguardados en tu ordenador.",
-      },
-    ],
-    tips: "Tener diarios separados te permite mantener limpias las métricas de tus cuentas personales respecto a las evaluaciones de fondeo.",
-  },
-  {
-    id: "cuentas",
-    tab: "Cuentas",
-    path: "/cuentas",
-    icon: Wallet,
-    badge: "Gestión de Capital",
-    summary: "Configura tus cuentas de fondeo (Apex, Topstep, FTMO, etc.) y cuentas personales, fijando límites de drawdown y registrando retiros (payouts).",
-    steps: [
-      {
-        num: "1",
-        title: "Añadir Cuenta de Fondeo o Personal",
-        detail: "Haz clic en 'Nueva Cuenta'. Elige si es 'Fondeo' (evaluación o live) o 'Personal', indica el balance inicial (ej: $50,000) y la divisa.",
-      },
-      {
-        num: "2",
-        title: "Configurar Reglas de Drawdown",
-        detail: "Elige el tipo de pérdida máxima: 'Estático' (fijo sobre el inicio), 'Trailing' (sube con cada nuevo máximo) o 'EOD' (sube al cierre del día). Define el límite en dólares (ej: $2,500).",
-      },
-      {
-        num: "3",
-        title: "Registrar Retiros (Payouts)",
-        detail: "Cuando solicites un cobro, regístralo en la sección de retiros. La aplicación recalculará tu capital real neto sin alterar el histórico de operaciones.",
-        tip: "El progreso hacia el objetivo se actualiza automáticamente indicándote cuánto te falta para superar la fase o solicitar retiro.",
-      },
-    ],
-    tips: "Puedes hacer clic en cualquier tarjeta de cuenta para abrir su vista individual con su propia curva de capital y lista de operaciones.",
+    tips: "Usa los botones de rango rápido (7D, 30D, 90D, Mes Actual, Todo) para evaluar tu consistencia en diferentes horizontes temporales.",
   },
   {
     id: "operaciones",
@@ -204,26 +184,36 @@ const TAB_TUTORIALS = [
     path: "/operaciones",
     icon: ListOrdered,
     badge: "Registro de Trades",
-    summary: "Registra cada compra o venta de forma manual, mediante Trade Vision con IA a partir de capturas, o conectando un webhook automático.",
+    summary:
+      "Consulta, filtra, añade e importa masivamente tus operaciones, con control de fechas, Trade Vision con IA y protección de datos para supervisores.",
     steps: [
       {
         num: "1",
-        title: "Alta Rápida de Operación",
-        detail: "Pulsa en 'Nueva Operación'. Selecciona cuenta, estrategia, símbolo (NQ, ES, BTC, etc.), dirección (Long o Short), precio de entrada, salida y el resultado ($ PnL).",
+        title: "Filtro Unificado y Búsqueda Rápida",
+        detail:
+          "Filtra fácilmente desde el selector unificado ('🌐 TODO', Cuentas de Fondeo, Personales o Estrategias) y busca activos (NQ, ES, EURUSD, BTC…) o notas desde la barra de búsqueda.",
       },
       {
         num: "2",
-        title: "Trade Vision con IA (Desde Captura o Foto)",
-        detail: "Arrastra o pega una captura de pantalla de tu plataforma (NinjaTrader, TradingView, MetaTrader, etc.). La IA leerá los datos y rellenará el formulario automáticamente con detección de duplicados.",
-        tip: "Asegúrate de que en la captura se vea claro el precio de entrada, salida, hora y contrato.",
+        title: "Trade Vision con IA y Confirmación de Fecha",
+        detail:
+          "Pulsa 'Importar Operaciones' y arrastra una captura de pantalla de tu plataforma. La IA extraerá los datos y te permitirá confirmar o corregir la fecha exacta de las ejecuciones antes de guardarlas.",
+        tip: "Si la captura contiene operaciones de días anteriores, el sistema te avisará con una alerta visual para que verifiques la fecha real.",
       },
       {
         num: "3",
-        title: "Registra tu Estado Emocional",
-        detail: "Asigna la emoción con la que tomaste la operación (Calma, Ansiedad, Disciplina, Venganza, etc.) para alimentar la analítica psicológica.",
+        title: "Historial de Lotes y Opción de Deshacer",
+        detail:
+          "En la pestaña 'Historial de Importaciones', revisa cada lote importado por captura o CSV. Si cometiste algún error, pulsa 'Deshacer lote' para eliminarlo y restaurar los balances automáticamente.",
+      },
+      {
+        num: "4",
+        title: "Modo Supervisión Seguro (Solo Lectura)",
+        detail:
+          "Al supervisar las operaciones de otro usuario, la vista se bloquea en modo de solo lectura para evitar modificaciones accidentales. Solo un administrador con el permiso activo podrá editar o eliminar trades.",
       },
     ],
-    tips: "Puedes filtrar operaciones por cuenta, estrategia, dirección o buscar por notas directamente desde la cabecera de la tabla.",
+    tips: "Al abrir una operación para editarla, la estrategia preseleccionada coincidirá con la jerarquía activa (estrategia directa > tramo de fecha > cuenta).",
   },
   {
     id: "estrategias",
@@ -231,53 +221,111 @@ const TAB_TUTORIALS = [
     path: "/estrategias",
     icon: Layers,
     badge: "Modelos & Horarios",
-    summary: "Define tus sistemas de trading (IFT, Scalping, Breakout, etc.), consulta los horarios de las bolsas mundiales en tu zona y asigna estrategias por fechas.",
+    summary:
+      "Gestiona tus sistemas de trading, consulta los horarios de las bolsas mundiales en tu zona y asigna estrategias a cuentas mediante tramos de fechas.",
     steps: [
       {
         num: "1",
-        title: "Crear Estrategia Operativa",
-        detail: "Añade tu estrategia indicando nombre, color identificativo, riesgo objetivo por operación (%), activo principal y descripción de sus reglas de entrada y gestión.",
+        title: "Crear Ficha de Estrategia",
+        detail:
+          "Define el nombre, color identificativo, riesgo objetivo por operación (%), activo principal (ej. NQ1!) y descripción de las reglas de entrada, confirmación y salida.",
       },
       {
         num: "2",
-        title: "Consulta de Horarios de Bolsas Mundiales",
-        detail: "En la pestaña 'Horarios', consulta en tiempo real cuándo abren y cierran las sesiones de Tokio, Londres, Nueva York, etc., convertidas automáticamente a tu hora local.",
+        title: "Horarios de Sesiones Mundiales en Tiempo Real",
+        detail:
+          "En la pestaña 'Horarios', consulta las aperturas y cierres de las sesiones de Asia (Tokio), Europa (Londres) y América (Nueva York), convertidas a tu hora local con estado abierto/cerrado.",
       },
       {
         num: "3",
-        title: "Asignación de Cuentas por Periodos",
-        detail: "Utiliza el calendario de asignación para definir qué estrategia se utilizó en cada cuenta durante un rango específico de fechas.",
-        tip: "Al asignar una estrategia por defecto a una cuenta, todas las operaciones registradas en ella la adoptarán automáticamente.",
+        title: "Asignación por Tramos de Fechas en Calendario",
+        detail:
+          "En la pestaña 'Asignar a Cuentas', selecciona una cuenta y define periodos de fechas en los que operaste una estrategia específica. Todas las operaciones de ese rango adoptarán dicha estrategia.",
+        tip: "Los tramos por fecha tienen prioridad sobre la estrategia por defecto de la cuenta, permitiéndote cambiar de modelo a lo largo del tiempo sin alterar trades antiguos.",
+      },
+      {
+        num: "4",
+        title: "Métricas y Análisis de Rendimiento",
+        detail:
+          "Cada estrategia calcula su Win Rate, Profit Factor, PnL total acumulado y número de operaciones para que identifiques tu modelo más rentable.",
       },
     ],
-    tips: "Compara el win rate y expectativa de cada estrategia para saber qué modelo te aporta mayor ventaja estadística.",
+    tips: "Combina el análisis de horarios con tus estrategias para evitar operar en solapes de baja liquidez o fuera de tu ventana óptima.",
   },
   {
-    id: "conta",
-    tab: "Conta",
-    path: "/conta",
-    icon: Receipt,
-    badge: "Control de Gastos",
-    summary: "Lleva el balance contable de todos los costes asociados a tu actividad: pruebas de fondeo, suscripciones, software, datos de mercado y suministros.",
+    id: "cuentas",
+    tab: "Cuentas",
+    path: "/cuentas",
+    icon: Wallet,
+    badge: "Gestión de Capital",
+    summary:
+      "Administra cuentas de fondeo y personales, define reglas de pérdida máxima (drawdown), supervisa alertas de liquidación y gestiona retiros.",
     steps: [
       {
         num: "1",
-        title: "Registrar un Nuevo Gasto",
-        detail: "Haz clic en 'Nuevo Gasto'. Asigna el concepto, importe, fecha y categoría (Pruebas de Fondeo, Software, Datos de Mercado, Educación, App o Suministros).",
+        title: "Configurar Fondeo (Eval / Live) o Cuenta Personal",
+        detail:
+          "Añade cuentas indicando nombre, broker o empresa de fondeo, balance inicial, objetivo de profit y límite de drawdown.",
       },
       {
         num: "2",
-        title: "Resultado Neto Real",
-        detail: "El panel calcula tu beneficio neto exacto restando los gastos acumulados a las ganancias obtenidas en el trading.",
+        title: "Tipos de Drawdown y Alertas de Riesgo",
+        detail:
+          "Configura si el drawdown es 'Trailing' (sube con los nuevos máximos), 'Estático' o 'EOD' (al cierre del día). La barra de progreso te muestra el colchón restante y activa alertas si te quedan menos de $600.",
+        tip: "El indicador de alerta te ayuda a pausar la operativa antes de romper la regla de pérdida máxima.",
       },
       {
         num: "3",
-        title: "Gráficos de Distribución 3D y Mensual",
-        detail: "Visualiza mediante el gráfico de tarta interactivo en qué categorías se va tu capital y comprueba la barra mensual de costes.",
-        tip: "Registrar tus gastos te da una visión empresarial 100% realista de tu negocio de trading.",
+        title: "Detalle Individual de Cuenta",
+        detail:
+          "Haz clic en cualquier tarjeta de cuenta para abrir su página individual (`/cuenta/ID`) con su curva de capital dedicada, desglose por estrategia y listado de trades.",
+      },
+      {
+        num: "4",
+        title: "Registrar Retiros (Payouts)",
+        detail:
+          "Añade tus solicitudes de cobro aprobadas para que el balance real se actualice sin distorsionar el historial de operaciones ni el PnL operativo.",
       },
     ],
-    tips: "Guarda las facturas o recibos en las notas del gasto para tenerlo todo preparado para tu declaración fiscal.",
+    tips: "Usa la tarjeta de costes de cuenta para registrar pagos de resets, activaciones o suscripciones mensuales de cada cuenta de fondeo.",
+  },
+  {
+    id: "usuarios",
+    tab: "Mi Perfil",
+    path: "/usuarios",
+    icon: Users,
+    badge: "Perfil, IA & Permisos",
+    summary:
+      "Personaliza tus datos, configura tu clave de Google AI Studio, solicita supervisor o tutor, y gestiona los permisos de edición para administradores.",
+    steps: [
+      {
+        num: "1",
+        title: "Datos del Perfil y Tutor Asignado",
+        detail:
+          "Actualiza tu nombre y avatar. En 'Supervisión de mi Cuenta', puedes elegir voluntariamente un tutor o supervisor del directorio para que revise tu operativa.",
+      },
+      {
+        num: "2",
+        title: "Configuración de Google AI Studio (Gemini)",
+        detail:
+          "Introduce tu clave gratuita de Google AI Studio y selecciona el modelo (Gemini 2.0 Flash) para habilitar Trade Vision y procesar capturas de trades sin límite.",
+        tip: "Puedes obtener una clave gratuita en pocos segundos desde aistudio.google.com/app/apikey.",
+      },
+      {
+        num: "3",
+        title: "Permisos de Edición en Supervisión (Solo Admin)",
+        detail:
+          "Los administradores disponen de un interruptor exclusivo para activar o desactivar la edición de datos de otros usuarios durante las sesiones de supervisión.",
+        tip: "Por seguridad, mantén esta opción desactivada para operar en modo solo lectura y evitar alteraciones accidentales.",
+      },
+      {
+        num: "4",
+        title: "Tema, Modo Privado e Integraciones",
+        detail:
+          "Alterna entre modo claro u oscuro, activa el 'Perfil Privado' si no deseas compartir tus datos con supervisores, y consulta las credenciales de webhook y API.",
+      },
+    ],
+    tips: "Si eres supervisor, puedes responder a las dudas de tus alumnos directamente desde la pestaña 'Chat' interna.",
   },
   {
     id: "mente",
@@ -285,53 +333,98 @@ const TAB_TUTORIALS = [
     path: "/mente",
     icon: Brain,
     badge: "Psicología & Anti-Tilt",
-    summary: "Cuida tu rendimiento psicológico con check-ins diarios, ejercicio interactivo de respiración en 3 fases y analítica de sesgo emocional.",
+    summary:
+      "Controla el estado emocional, ejecuta respiraciones guiadas para calmar la mente antes o después de operar y detecta sesgos que afecten tu operativa.",
     steps: [
       {
         num: "1",
         title: "Check-in Diario Pre-Sesión",
-        detail: "Antes de abrir el mercado, evalúa del 1 al 10 tu nivel de ánimo, energía y enfoque mental, y anota cualquier distracción o sesgo del día.",
+        detail:
+          "Evalúa del 1 al 10 tu estado de ánimo, energía y nivel de foco antes de que abra el mercado, anotando cualquier factor externo distractor.",
       },
       {
         num: "2",
         title: "Ejercicio de Respiración en 3 Fases",
-        detail: "Accede a la pestaña 'Respiración 3 Fases'. Elige un patrón (Triangular 4-4-4, Calma 4-4-6 o Anti-Tilt 4-7-8) y sigue el orbe guiado con sonido relajante para reducir pulsaciones y evitar sobreoperar.",
-        tip: "Haz 2 minutos de respiración si notas frustración o prisa por recuperar pérdidas.",
+        detail:
+          "En la pestaña 'Respiración', selecciona un patrón ('Triangular 4-4-4', 'Calma 4-4-6' o 'Anti-Tilt 4-7-8') y sigue el orbe animado con sonido relajante.",
+        tip: "Realiza 2 o 3 minutos de respiración guiada si sientes impulsividad por revancha tras una pérdida.",
       },
       {
         num: "3",
         title: "Analítica Emocional Cruzada",
-        detail: "Comprueba en qué estados emocionales eres más rentable y cuáles te generan 'drawdown mental' para crear reglas de bloqueo y disciplina.",
+        detail:
+          "Compara tu rentabilidad ($ PnL) y tasa de acierto según la emoción registrada (Calma, Disciplina, Euforia, Miedo, Venganza) para identificar tus patrones tóxicos.",
+      },
+      {
+        num: "4",
+        title: "Historial Psicológico",
+        detail:
+          "Revisa la evolución de tu bienestar mental semana a semana para correlacionar la calidad de tu descanso y foco con tus resultados financieros.",
       },
     ],
-    tips: "Si tu check-in mental marca un ánimo o enfoque bajo (<5), reduce el apalancamiento o plantéate no operar esa sesión.",
+    tips: "Si tu puntuación de enfoque o ánimo es inferior a 5, plantéate reducir el tamaño de posición a la mitad o no operar ese día.",
   },
   {
-    id: "usuarios",
-    tab: "Mi Perfil",
-    path: "/usuarios",
-    icon: Users,
-    badge: "Perfil & Privacidad",
-    summary: "Personaliza tu nombre, avatar, gestiona tus credenciales y activa el modo privado para proteger tus estadísticas.",
+    id: "diarios",
+    tab: "Diarios",
+    path: "/diarios",
+    icon: NotebookPen,
+    badge: "Espacios de Trabajo",
+    summary:
+      "Separa distintas bitácoras independientes, crea diarios de ejemplo con datos de muestra y realiza respaldos completos en CSV.",
     steps: [
       {
         num: "1",
-        title: "Datos del Perfil",
-        detail: "Edita tu nombre público y visualiza tu rol actual dentro de la plataforma.",
+        title: "Múltiples Diarios Independientes",
+        detail:
+          "Crea diarios para diferentes cuentas o estilos (ejemplo: 'Fondeo Apex', 'Forex Swing', 'Cripto Spot'). Cada diario mantiene sus propias cuentas, estrategias y trades.",
       },
       {
         num: "2",
-        title: "Modo Perfil Privado",
-        detail: "Si activas la opción de 'Perfil Privado', tus cuentas y operaciones quedarán totalmente ocultas de la vista de supervisores y chats grupales.",
-        tip: "Ideal si deseas usar la herramienta de forma 100% individual y confidencial.",
+        title: "Diario de Ejemplo & Plantillas",
+        detail:
+          "Genera un diario de muestra con datos precargados para explorar todas las gráficas y funciones de la app sin alterar tus cuentas reales.",
       },
       {
         num: "3",
-        title: "Tema Visual y Conectores",
-        detail: "Alterna entre tema claro y oscuro y consulta las credenciales de webhook y endpoints API para conectar herramientas externas.",
+        title: "Exportación e Importación CSV Completa",
+        detail:
+          "Descarga una copia de seguridad integral en CSV con todos tus datos y restáurala en cualquier momento con un solo clic.",
+        tip: "Haz una exportación periódica para tener siempre un respaldo físico de tu historial de trading.",
       },
     ],
-    tips: "Tu nombre de perfil se mostrará de forma personalizada en la barra superior de navegación de la app.",
+    tips: "El diario seleccionado actualmente se muestra en la barra superior y sincroniza todas las vistas de la plataforma.",
+  },
+  {
+    id: "conta",
+    tab: "Conta",
+    path: "/conta",
+    icon: Receipt,
+    badge: "Control Contable",
+    summary:
+      "Registra todos los costes de tu negocio de trading (pruebas de fondeo, suscripciones, software, datos, app y suministros) y visualiza tu beneficio neto real.",
+    steps: [
+      {
+        num: "1",
+        title: "Registro de Gastos Categorizados",
+        detail:
+          "Pulsa 'Nuevo Gasto' e introduce concepto, importe, fecha y categoría (Pruebas de Fondeo, Software, Datos de Mercado, Educación, App o Suministros).",
+      },
+      {
+        num: "2",
+        title: "Cálculo de Rendimiento Neto Real",
+        detail:
+          "El sistema resta los gastos acumulados a las ganancias brutas de tus operaciones para mostrarte el beneficio neto exacto que te queda en el bolsillo.",
+      },
+      {
+        num: "3",
+        title: "Gráficos de Distribución 3D y Evolución Mensual",
+        detail:
+          "Visualiza con el gráfico de tarta interactivo en qué categorías se concentra tu gasto y compara las barras mensuales de costes.",
+        tip: "Añade notas o adjunta números de factura en la descripción del gasto para tu contabilidad fiscal.",
+      },
+    ],
+    tips: "Tener control estricto de los gastos en pruebas de fondeo te ayuda a evitar gastar en resets innecesarios.",
   },
 ];
 
