@@ -1,9 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import {
   AlertTriangle,
   ArrowUpDown,
+  Building2,
+  Filter,
   History as HistoryIcon,
+  Layers,
   List as ListIcon,
   Percent,
   Plus,
@@ -13,6 +17,7 @@ import {
   Trash2,
   Undo2,
   Upload,
+  User,
   Zap,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -32,7 +37,16 @@ import {
 import { TradeFormDialog } from "@/components/trade-form-dialog";
 import { TradeImportDialog } from "@/components/trade-import-dialog";
 import { TradesTable, type SortDirection, type TradeSortField } from "@/components/trades-table";
-import { useJournal } from "@/lib/journal-store";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/lib/auth-context";
+import {
+  useJournal,
+  toAccount,
+  toStrategy,
+  toTrade,
+  toWithdrawal,
+  toPeriod,
+} from "@/lib/journal-store";
 import { computeMetrics, effectiveStrategyId, formatCurrency, formatDateTime } from "@/lib/metrics";
 import { cn } from "@/lib/utils";
 
@@ -60,21 +74,139 @@ type Pending =
   { kind: "trades"; ids: string[]; label: string } | { kind: "batch"; id: string; label: string };
 
 function TradesPage() {
+  const { isSupervisor, isAdmin, user } = useAuth();
+  const journalStore = useJournal();
   const {
-    trades,
-    visibleTrades,
-    accounts,
-    strategies,
-    strategyPeriods,
     importBatches,
     removeTrades,
     removeImportBatch,
-    selectedAccountIds,
     selectAll,
-  } = useJournal();
+  } = journalStore;
+
+  // Filtro de usuario para supervisores/admin: "mine" o userId específico
+  const [supervisorUserFilter, setSupervisorUserFilter] = useState<string>("mine");
+
+  const { data: svProfiles = [] } = useQuery({
+    queryKey: ["sv-profiles", user?.id],
+    enabled: isSupervisor || isAdmin,
+    queryFn: async () => {
+      try {
+        const { data, error } = await supabase
+          .from("profiles")
+          .select("id, display_name, created_at, is_private")
+          .order("created_at", { ascending: true });
+
+        if (error) throw error;
+        return (data ?? []).filter((p) => p.id !== user?.id && !p.is_private) as {
+          id: string;
+          display_name: string | null;
+          created_at: string;
+        }[];
+      } catch (e) {
+        console.warn("Error al cargar perfiles para supervisión:", e);
+        return [];
+      }
+    },
+  });
+
+  const { data: svData } = useQuery({
+    queryKey: ["sv-operaciones-data", supervisorUserFilter],
+    enabled: (isSupervisor || isAdmin) && supervisorUserFilter !== "mine",
+    queryFn: async () => {
+      const targetUserId = supervisorUserFilter;
+      const [accs, trds, strats, wds, pers] = await Promise.all([
+        supabase.from("accounts").select("*").eq("user_id", targetUserId),
+        supabase
+          .from("trades")
+          .select("*")
+          .eq("user_id", targetUserId)
+          .order("closed_at", { ascending: false }),
+        supabase.from("strategies").select("*").eq("user_id", targetUserId),
+        supabase
+          .from("withdrawals")
+          .select("*")
+          .eq("user_id", targetUserId)
+          .order("date", { ascending: false }),
+        supabase
+          .from("account_strategy_periods")
+          .select("*")
+          .eq("user_id", targetUserId)
+          .order("start_date", { ascending: true }),
+      ]);
+      return {
+        accounts: (accs.data ?? []).map((r) => toAccount(r as Record<string, unknown>)),
+        trades: (trds.data ?? []).map((r) => toTrade(r as Record<string, unknown>)),
+        strategies: (strats.data ?? []).map((r) => toStrategy(r as Record<string, unknown>)),
+        withdrawals: (wds.data ?? [])
+          .map((r) => toWithdrawal(r as Record<string, unknown>))
+          .filter((w) => w.status === "approved"),
+        strategyPeriods: (pers.data ?? []).map((r) => toPeriod(r as Record<string, unknown>)),
+      };
+    },
+  });
+
+  const isSupervisedView = (isSupervisor || isAdmin) && supervisorUserFilter !== "mine";
+  const accounts = useMemo(
+    () => (isSupervisedView ? (svData?.accounts ?? []) : journalStore.accounts),
+    [isSupervisedView, svData?.accounts, journalStore.accounts],
+  );
+  const strategies = useMemo(
+    () => (isSupervisedView ? (svData?.strategies ?? []) : journalStore.strategies),
+    [isSupervisedView, svData?.strategies, journalStore.strategies],
+  );
+  const allTrades = useMemo(
+    () => (isSupervisedView ? (svData?.trades ?? []) : journalStore.trades),
+    [isSupervisedView, svData?.trades, journalStore.trades],
+  );
+  const visibleTrades = isSupervisedView ? allTrades : journalStore.visibleTrades;
+  const strategyPeriods = useMemo(
+    () => (isSupervisedView ? (svData?.strategyPeriods ?? []) : journalStore.strategyPeriods),
+    [isSupervisedView, svData?.strategyPeriods, journalStore.strategyPeriods],
+  );
+  const selectedAccountIds = useMemo(
+    () => (isSupervisedView ? accounts.map((a) => a.id) : journalStore.selectedAccountIds),
+    [isSupervisedView, accounts, journalStore.selectedAccountIds],
+  );
+
   const [query, setQuery] = useState("");
-  const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
-  const [selectedStrategyId, setSelectedStrategyId] = useState<string | null>(null);
+  // Filtro unificado idéntico a Resumen: "all" | account.id | `strategy:${strategyId}`
+  const [filter, setFilter] = useState<string>("all");
+  const isStrategy = filter.startsWith("strategy:");
+  const accountFilter = isStrategy ? "all" : filter;
+  const strategyFilter = isStrategy ? filter.slice("strategy:".length) : "all";
+
+  const selectedAccounts = useMemo(
+    () =>
+      accounts.filter((a) =>
+        accountFilter === "all" ? selectedAccountIds.includes(a.id) : a.id === accountFilter,
+      ),
+    [accounts, selectedAccountIds, accountFilter],
+  );
+  const scopedIds = useMemo(() => new Set(selectedAccounts.map((a) => a.id)), [selectedAccounts]);
+
+  const accountStrategies = useMemo(() => {
+    if (accountFilter === "all") return strategies;
+    const used = new Set(
+      visibleTrades
+        .filter((t) => t.accountId === accountFilter)
+        .map((t) => effectiveStrategyId(t, accounts, strategyPeriods)),
+    );
+    const filtered = strategies.filter((s) => used.has(s.id));
+    return filtered.length ? filtered : strategies;
+  }, [strategies, visibleTrades, accountFilter, accounts, strategyPeriods]);
+
+  const scopedTrades = useMemo(
+    () =>
+      visibleTrades.filter(
+        (t) =>
+          (scopedIds.size === 0 || scopedIds.has(t.accountId) || !t.accountId) &&
+          (strategyFilter === "all" ||
+            effectiveStrategyId(t, accounts, strategyPeriods) === strategyFilter ||
+            t.strategyId === strategyFilter),
+      ),
+    [visibleTrades, scopedIds, strategyFilter, accounts, strategyPeriods],
+  );
+
   const [selected, setSelected] = useState<string[]>([]);
   const [pending, setPending] = useState<Pending | null>(null);
   const [working, setWorking] = useState(false);
@@ -84,22 +216,10 @@ function TradesPage() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(50);
 
-  const baseTrades = selectedAccountId
-    ? trades.filter((t) => t.accountId === selectedAccountId)
-    : visibleTrades;
-
   const filtered = useMemo(
     () =>
-      baseTrades
+      scopedTrades
         .filter((t) => {
-          // Filtro por estrategia (usa effectiveStrategyId para coincidir con la estrategia directa, de tramo o de cuenta)
-          if (selectedStrategyId) {
-            const stratId = effectiveStrategyId(t, accounts, strategyPeriods);
-            if (stratId !== selectedStrategyId && t.strategyId !== selectedStrategyId) {
-              return false;
-            }
-          }
-
           // Búsqueda por texto (símbolo, notas, nombre de cuenta o etiquetas)
           if (query && query.trim()) {
             const q = query.toLowerCase().trim();
@@ -140,7 +260,7 @@ function TradesPage() {
           }
           return sortDirection === "asc" ? cmp : -cmp;
         }),
-    [baseTrades, accounts, strategies, strategyPeriods, query, selectedStrategyId, sortField, sortDirection],
+    [scopedTrades, accounts, strategies, strategyPeriods, query, sortField, sortDirection],
   );
 
   const handleSortChange = (field: TradeSortField, direction: SortDirection) => {
@@ -184,7 +304,11 @@ function TradesPage() {
   return (
     <AppShell
       title="Registro de Operaciones"
-      subtitle="Supervisa cada trade registrado, clasifícalo por estrategia e importa ejecuciones masivas"
+      subtitle={
+        isSupervisedView
+          ? `Supervisando a ${svProfiles.find((p) => p.id === supervisorUserFilter)?.display_name ?? "usuario"} · ${accounts.length} cuenta(s) · ${filtered.length} operación(es)`
+          : "Supervisa cada trade registrado, clasifícalo por estrategia e importa ejecuciones masivas"
+      }
       actions={
         <div className="flex flex-wrap items-center gap-2">
           <TradeImportDialog />
@@ -292,192 +416,152 @@ function TradesPage() {
         {tab === "operaciones" && (
           <div className="space-y-4">
             {/* Banner informativo de filtro lateral activo */}
-            {selectedAccountIds.length < accounts.length && !selectedAccountId && (
-              <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-2.5 text-xs text-amber-200">
-                <div className="flex items-center gap-2">
-                  <AlertTriangle className="size-4 shrink-0 text-amber-400" />
-                  <span>
-                    Filtro lateral activo: se muestran solo {visibleTrades.length} operaciones de{" "}
-                    {selectedAccountIds.length} de {accounts.length} cuentas.
-                  </span>
-                </div>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="h-7 text-xs border-amber-500/40 text-amber-100 hover:bg-amber-500/20"
-                  onClick={selectAll}
-                >
-                  Mostrar todas las cuentas
-                </Button>
-              </div>
-            )}
-
-            {/* Filter Toolbar */}
-            <div className="space-y-2.5">
-              {/* Selector de Cuentas */}
-              {accounts.length > 1 && (
-                <div className="flex flex-wrap items-center gap-1.5 pb-1">
-                  <span className="text-xs font-semibold text-muted-foreground mr-1">Cuenta:</span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSelectedAccountId(null);
-                      selectAll();
-                    }}
-                    className={cn(
-                      "rounded-full px-3 py-1 text-xs font-semibold transition-colors",
-                      selectedAccountId === null && selectedAccountIds.length === accounts.length
-                        ? "bg-brand text-brand-foreground shadow-xs"
-                        : "border border-border text-muted-foreground hover:text-foreground",
-                    )}
-                  >
-                    Todas ({trades.length})
-                  </button>
-                  {accounts.map((a) => {
-                    const isSelected = selectedAccountId === a.id;
-                    const count = trades.filter((t) => t.accountId === a.id).length;
-                    return (
-                      <button
-                        key={a.id}
-                        type="button"
-                        onClick={() => setSelectedAccountId(isSelected ? null : a.id)}
-                        className={cn(
-                          "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold transition-all",
-                          isSelected
-                            ? "bg-brand text-brand-foreground shadow-xs"
-                            : "border border-border text-muted-foreground hover:text-foreground",
-                        )}
-                      >
-                        <span className="max-w-[140px] truncate">{a.name}</span>
-                        <span
-                          className={cn(
-                            "ml-0.5 rounded-full px-1.5 py-0.2 text-[10px]",
-                            isSelected
-                              ? "bg-brand-foreground/20 text-brand-foreground"
-                              : "bg-muted text-muted-foreground",
-                          )}
-                        >
-                          {count}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="flex flex-wrap items-center gap-2.5 flex-1 min-w-[280px]">
-                  <div className="relative flex-1 max-w-sm">
-                    <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                    <Input
-                      className="pl-9 h-9 text-xs"
-                      placeholder="Buscar activo (NQ, EURUSD, BTC…)"
-                      value={query}
-                      onChange={(e) => setQuery(e.target.value)}
-                    />
+            {!isSupervisedView &&
+              selectedAccountIds.length < accounts.length &&
+              accountFilter === "all" && (
+                <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-2.5 text-xs text-amber-200">
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle className="size-4 shrink-0 text-amber-400" />
+                    <span>
+                      Filtro lateral activo: se muestran solo {visibleTrades.length} operaciones de{" "}
+                      {selectedAccountIds.length} de {accounts.length} cuentas.
+                    </span>
                   </div>
                   <Button
                     size="sm"
                     variant="outline"
-                    className="h-9 gap-1.5 text-xs"
-                    onClick={() => {
-                      if (sortField === "date") {
-                        setSortDirection((d) => (d === "desc" ? "asc" : "desc"));
-                      } else {
-                        setSortField("date");
-                        setSortDirection("desc");
-                      }
-                      setPage(1);
-                    }}
-                    title="Alternar orden"
+                    className="h-7 text-xs border-amber-500/40 text-amber-100 hover:bg-amber-500/20"
+                    onClick={selectAll}
                   >
-                    <ArrowUpDown className="size-3.5" />
-                    {sortField === "date"
-                      ? sortDirection === "desc"
-                        ? "Fecha: Más recientes"
-                        : "Fecha: Más antiguas"
-                      : sortField === "strategy"
-                        ? sortDirection === "asc"
-                          ? "Estrategia: A → Z"
-                          : "Estrategia: Z → A"
-                        : sortField === "pnl"
-                          ? sortDirection === "desc"
-                            ? "PnL: Mayor a menor"
-                            : "PnL: Menor a mayor"
-                          : sortField === "account"
-                            ? sortDirection === "asc"
-                              ? "Cuenta: A → Z"
-                              : "Cuenta: Z → A"
-                            : "Orden: " + sortField}
+                    Mostrar todas las cuentas
                   </Button>
                 </div>
+              )}
 
-                {/* Strategy Pills */}
-                {strategies.length > 0 && (
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    <button
-                      type="button"
-                      onClick={() => setSelectedStrategyId(null)}
-                      className={cn(
-                        "rounded-full px-3 py-1 text-xs font-semibold transition-colors",
-                        selectedStrategyId === null
-                          ? "bg-brand text-brand-foreground shadow-xs"
-                          : "border border-border text-muted-foreground hover:text-foreground",
-                      )}
+            {/* Filter Toolbar */}
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              {/* Izquierda: Selectores de Diario y Entidad (TODO / Cuentas / Estrategias) */}
+              <div className="flex flex-wrap items-center gap-2">
+                {(isSupervisor || isAdmin) && svProfiles.length > 0 && (
+                  <div className="flex items-center gap-1.5 rounded-md border border-brand/50 bg-brand/5 px-2 py-1">
+                    <User className="size-3.5 text-brand" />
+                    <select
+                      value={supervisorUserFilter}
+                      onChange={(e) => {
+                        setSupervisorUserFilter(e.target.value);
+                        setFilter("all");
+                        setPage(1);
+                      }}
+                      className="bg-transparent text-xs font-bold text-brand focus:outline-none cursor-pointer"
+                      aria-label="Ver operaciones de usuario"
                     >
-                      Todas ({visibleTrades.length})
-                    </button>
-                    {strategies.map((s) => {
-                      const count = visibleTrades.filter(
-                        (t) =>
-                          effectiveStrategyId(t, accounts, strategyPeriods) === s.id ||
-                          t.strategyId === s.id,
-                      ).length;
-                      const isSelected = selectedStrategyId === s.id;
-
-                      return (
-                        <button
-                          key={s.id}
-                          type="button"
-                          onClick={() => setSelectedStrategyId(isSelected ? null : s.id)}
-                          className={cn(
-                            "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold transition-all",
-                            isSelected
-                              ? "bg-brand text-brand-foreground shadow-xs"
-                              : "border border-border text-muted-foreground hover:text-foreground",
-                          )}
-                          style={
-                            isSelected
-                              ? undefined
-                              : {
-                                  borderColor: s.color ? `${s.color}60` : undefined,
-                                }
-                          }
-                        >
-                          {s.color && (
-                            <span
-                              className="size-2 rounded-full shrink-0"
-                              style={{
-                                backgroundColor: isSelected ? "currentColor" : s.color,
-                              }}
-                            />
-                          )}
-                          <span>{s.name}</span>
-                          <span
-                            className={cn(
-                              "ml-0.5 rounded-full px-1.5 py-0.2 text-[10px]",
-                              isSelected
-                                ? "bg-brand-foreground/20 text-brand-foreground"
-                                : "bg-muted text-muted-foreground",
-                            )}
-                          >
-                            {count}
-                          </span>
-                        </button>
-                      );
-                    })}
+                      <option value="mine">Mi diario personal</option>
+                      <optgroup label="Usuarios registrados">
+                        {svProfiles.map((p) => (
+                          <option key={p.id} value={p.id}>
+                            {p.display_name ?? `Usuario ${p.id.slice(0, 6)}`}
+                          </option>
+                        ))}
+                      </optgroup>
+                    </select>
                   </div>
                 )}
+
+                <div className="flex items-center gap-1.5 rounded-md border border-border bg-card px-2 py-1">
+                  <Filter className="size-3.5 text-muted-foreground" />
+                  <select
+                    value={filter}
+                    onChange={(e) => {
+                      setFilter(e.target.value);
+                      setPage(1);
+                    }}
+                    className="bg-transparent text-xs font-semibold text-foreground focus:outline-none cursor-pointer"
+                    aria-label="Cuenta o estrategia"
+                  >
+                    <option value="all">🌐 TODO</option>
+                    {accounts.filter((a) => a.type === "funded").length > 0 && (
+                      <optgroup label="🏢 Cuentas de Fondeo">
+                        {accounts
+                          .filter((a) => a.type === "funded")
+                          .map((a) => (
+                            <option key={a.id} value={a.id}>
+                              {a.name}
+                            </option>
+                          ))}
+                      </optgroup>
+                    )}
+                    {accounts.filter((a) => a.type !== "funded").length > 0 && (
+                      <optgroup label="👤 Cuentas Personales">
+                        {accounts
+                          .filter((a) => a.type !== "funded")
+                          .map((a) => (
+                            <option key={a.id} value={a.id}>
+                              {a.name}
+                            </option>
+                          ))}
+                      </optgroup>
+                    )}
+                    {accountStrategies.length > 0 && (
+                      <optgroup label="⚡ Estrategias">
+                        {accountStrategies.map((s) => (
+                          <option key={s.id} value={`strategy:${s.id}`}>
+                            Estrategia: {s.name}
+                          </option>
+                        ))}
+                      </optgroup>
+                    )}
+                  </select>
+                </div>
+              </div>
+
+              {/* Derecha: Buscador y Botón de Ordenación */}
+              <div className="flex flex-wrap items-center gap-2.5 flex-1 min-w-[280px] md:justify-end">
+                <div className="relative flex-1 max-w-sm">
+                  <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    className="pl-9 h-9 text-xs"
+                    placeholder="Buscar activo (NQ, EURUSD, BTC…)"
+                    value={query}
+                    onChange={(e) => {
+                      setQuery(e.target.value);
+                      setPage(1);
+                    }}
+                  />
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-9 gap-1.5 text-xs"
+                  onClick={() => {
+                    if (sortField === "date") {
+                      setSortDirection((d) => (d === "desc" ? "asc" : "desc"));
+                    } else {
+                      setSortField("date");
+                      setSortDirection("desc");
+                    }
+                    setPage(1);
+                  }}
+                  title="Alternar orden"
+                >
+                  <ArrowUpDown className="size-3.5" />
+                  {sortField === "date"
+                    ? sortDirection === "desc"
+                      ? "Fecha: Más recientes"
+                      : "Fecha: Más antiguas"
+                    : sortField === "strategy"
+                      ? sortDirection === "asc"
+                        ? "Estrategia: A → Z"
+                        : "Estrategia: Z → A"
+                      : sortField === "pnl"
+                        ? sortDirection === "desc"
+                          ? "PnL: Mayor a menor"
+                          : "PnL: Menor a mayor"
+                        : sortField === "account"
+                          ? sortDirection === "asc"
+                            ? "Cuenta: A → Z"
+                            : "Cuenta: Z → A"
+                          : "Orden: " + sortField}
+                </Button>
               </div>
             </div>
 
