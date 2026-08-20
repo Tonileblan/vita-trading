@@ -87,7 +87,7 @@ export function AppShell({
   bareHeader?: boolean;
 }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const { user, profile } = useAuth();
+  const { user, profile, isAdmin } = useAuth();
 
   // Obtener únicamente la primera palabra del nombre del usuario (ej: "Toni" de "Toni Garcia")
   const rawName = profile?.display_name || user?.email?.split("@")[0] || "Usuario";
@@ -101,6 +101,7 @@ export function AppShell({
     { to: "/estrategias", label: "Estrategias", icon: Layers },
     { to: "/conta", label: "Conta", icon: Receipt },
     { to: "/mente", label: "Mente", icon: Brain },
+    ...(isAdmin ? [{ to: "/go", label: "GO", icon: Zap, isGo: true }] : []),
     { to: "/usuarios", label: userFirstWord, icon: Users },
   ];
 
@@ -138,6 +139,7 @@ export function AppShell({
                     active
                       ? "bg-foreground text-background"
                       : "text-muted-foreground hover:bg-accent hover:text-foreground",
+                    item.isGo && !active && "text-brand hover:text-brand font-semibold",
                   )}
                 >
                   {item.label}
