@@ -81,14 +81,14 @@ export function AccountStrategyCalendar({
     if (selectedStrategyId) {
       setSelectedStrategyToAssign(selectedStrategyId);
     } else if (strategies.length > 0 && !selectedStrategyToAssign) {
-      setSelectedStrategyToAssign(strategies[0].id);
+      setSelectedStrategyToAssign(strategies[0]!.id);
     }
   }, [selectedStrategyId, strategies, selectedStrategyToAssign]);
 
   // Actualizar cuenta por defecto seleccionada si cambia el filtro
   useEffect(() => {
     if (accountIds.length === 1) {
-      setSelectedAccountToAssign(accountIds[0]);
+      setSelectedAccountToAssign(accountIds[0]!);
     }
   }, [accountIds]);
 

@@ -356,7 +356,7 @@ function EstrategiasPage() {
                           s.management && { label: "Gestión", val: s.management },
                           s.contracts && { label: "Contratos", val: s.contracts },
                         ]
-                          .filter(Boolean)
+                          .filter((x): x is { label: string; val: string; highlight?: boolean } => Boolean(x))
                           .map((item, idx) => (
                             <span
                               key={idx}

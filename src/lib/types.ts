@@ -61,6 +61,7 @@ export type Direction = "long" | "short";
 
 export interface Trade {
   id: string;
+  journalId?: string | undefined;
   accountId: string;
   strategyId?: string | undefined;
   symbol: string;
@@ -113,6 +114,7 @@ export interface Strategy {
 /** Los retiros restan capital pero NO cuentan como pérdida operativa. */
 export interface Withdrawal {
   id: string;
+  journalId?: string | undefined;
   strategyId?: string | undefined;
   accountId?: string | undefined;
   date: string;

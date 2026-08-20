@@ -937,8 +937,8 @@ export function JournalProvider({ children }: { children: ReactNode }) {
         const optimisticWd: Withdrawal = {
           id: tempId,
           journalId: activeJournalId,
-          status: withdrawal.status ?? "approved",
           ...withdrawal,
+          status: withdrawal.status ?? "approved",
         };
 
         updateCache((old) => ({
@@ -1142,7 +1142,7 @@ export function JournalProvider({ children }: { children: ReactNode }) {
             const { data: sharedStrats } = await supabase
               .from("strategies")
               .select("*")
-              .eq("is_shared", true);
+              .eq("is_shared" as any, true);
             if (sharedStrats && sharedStrats.length > 0) {
               sourceStrategies = sharedStrats.map(toStrategy);
             }
