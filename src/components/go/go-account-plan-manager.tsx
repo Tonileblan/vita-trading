@@ -99,7 +99,7 @@ export function GoAccountPlanManager({
       is_active: true,
       weekly_risk_budget: 1500,
       daily_risk_budget: 400,
-      max_daily_trades: 3,
+      max_daily_trades: 1,
       max_loss_streak: 2,
       profit_lock_target: 600,
       notes: "Operar respetando los slots, límites de pérdida diaria y pausas de disciplina.",
@@ -255,7 +255,7 @@ export function GoAccountPlanManager({
   const [sessionStartTime, setSessionStartTime] = useState(initialStratDefaults.startTime || "15:30");
   const [sessionEndTime, setSessionEndTime] = useState(initialStratDefaults.endTime || "17:30");
   const [riskPerTrade, setRiskPerTrade] = useState(String(initialStratDefaults.riskAmount || 250));
-  const [maxTradesPerDay, setMaxTradesPerDay] = useState("2");
+  const [maxTradesPerDay, setMaxTradesPerDay] = useState("1");
   const [dailyLossLimit, setDailyLossLimit] = useState(String(plan.daily_risk_budget));
   const [maxLossStreak, setMaxLossStreak] = useState(String(plan.max_loss_streak));
   const [allowedSymbols, setAllowedSymbols] = useState(initialStratDefaults.symbols || "MNQ, NQ");
@@ -319,7 +319,7 @@ export function GoAccountPlanManager({
         ...plan,
         daily_risk_budget: parseFloat(dailyLossLimit) || 400,
         max_loss_streak: parseInt(maxLossStreak, 10) || 2,
-        max_daily_trades: parseInt(maxTradesPerDay, 10) || 3,
+        max_daily_trades: parseInt(maxTradesPerDay, 10) || 1,
       });
 
       // 3. Guardar slots operativos para cada cuenta y día activo
@@ -343,7 +343,7 @@ export function GoAccountPlanManager({
             end_time: finalEndTime,
             account_id: acc.id,
             strategy_id: assignStratId || acc.strategyId || null,
-            max_trades: parseInt(maxTradesPerDay, 10) || 2,
+            max_trades: parseInt(maxTradesPerDay, 10) || 1,
             risk_amount: parseFloat(riskPerTrade) || 250,
             allowed_symbols: finalSymbols.trim() || "MNQ, NQ",
             setup_notes: sessionNotes.trim() || null,

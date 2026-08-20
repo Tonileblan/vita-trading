@@ -50,7 +50,7 @@ export function GoRiskBudget({ plan }: GoRiskBudgetProps) {
     const payload: Partial<TradingPlan> = {
       weekly_risk_budget: Math.max(10, parseFloat(weeklyBudget) || 1500),
       daily_risk_budget: Math.max(10, parseFloat(dailyBudget) || 400),
-      max_daily_trades: Math.max(1, parseInt(maxTrades, 10) || 3),
+      max_daily_trades: Math.max(1, parseInt(maxTrades, 10) || 1),
       max_loss_streak: Math.max(1, parseInt(maxLossStreak, 10) || 2),
       profit_lock_target: profitLock ? parseFloat(profitLock) : null,
       notes: notes.trim() || null,

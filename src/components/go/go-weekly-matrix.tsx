@@ -73,7 +73,7 @@ export function GoWeeklyMatrix({ plan, slots }: GoWeeklyMatrixProps) {
   const [formEndTime, setFormEndTime] = useState<string>("17:30");
   const [formAccountId, setFormAccountId] = useState<string>("none");
   const [formStrategyId, setFormStrategyId] = useState<string>("none");
-  const [formMaxTrades, setFormMaxTrades] = useState<string>("2");
+  const [formMaxTrades, setFormMaxTrades] = useState<string>("1");
   const [formRiskAmount, setFormRiskAmount] = useState<string>("250");
   const [formRiskPct, setFormRiskPct] = useState<string>("1.0");
   const [formSymbols, setFormSymbols] = useState<string>("MNQ, NQ");
@@ -93,7 +93,7 @@ export function GoWeeklyMatrix({ plan, slots }: GoWeeklyMatrixProps) {
     setFormEndTime(defaults.endTime || "17:30");
     setFormAccountId(accounts[0]?.id || "none");
     setFormStrategyId(defaultStrat?.id || "none");
-    setFormMaxTrades("2");
+    setFormMaxTrades("1");
     setFormRiskAmount(defaults.riskAmount ? String(defaults.riskAmount) : "250");
     setFormRiskPct(defaultStrat?.riskPct ? String((defaultStrat.riskPct * 100).toFixed(1)) : "1.0");
     setFormSymbols(defaults.symbols || "MNQ, NQ");
@@ -112,7 +112,7 @@ export function GoWeeklyMatrix({ plan, slots }: GoWeeklyMatrixProps) {
     setFormEndTime(sched.endTime);
     setFormAccountId(slot.account_id || "none");
     setFormStrategyId(slot.strategy_id || "none");
-    setFormMaxTrades(String(slot.max_trades || 2));
+    setFormMaxTrades(String(slot.max_trades || 1));
     setFormRiskAmount(slot.risk_amount ? String(slot.risk_amount) : "250");
     setFormRiskPct(slot.risk_pct ? String(slot.risk_pct * 100) : "1.0");
     setFormSymbols(sched.allowedSymbols || "MNQ, NQ");
@@ -158,7 +158,7 @@ export function GoWeeklyMatrix({ plan, slots }: GoWeeklyMatrixProps) {
       end_time: formEndTime.trim() || "17:30",
       account_id: formAccountId === "none" ? null : formAccountId,
       strategy_id: formStrategyId === "none" ? null : formStrategyId,
-      max_trades: Math.max(1, parseInt(formMaxTrades, 10) || 2),
+      max_trades: Math.max(1, parseInt(formMaxTrades, 10) || 1),
       risk_amount: formRiskAmount ? parseFloat(formRiskAmount) : null,
       risk_pct: formRiskPct ? parseFloat(formRiskPct) / 100 : null,
       allowed_symbols: formSymbols.trim() || null,
