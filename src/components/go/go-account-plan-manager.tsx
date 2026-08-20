@@ -97,17 +97,10 @@ export function GoAccountPlanManager() {
   const saveSlotMutation = useSavePlanSlot(plan.id, activeJournalId);
   const savePlanMutation = useSaveTradingPlan(activeJournalId);
 
-  // SELECCIÓN MÚLTIPLE DE CUENTAS
+  // SELECCIÓN MÚLTIPLE DE CUENTAS (Inicializa con la primera cuenta, pero permite deseleccionar libremente)
   const [selectedAccountIds, setSelectedAccountIds] = useState<string[]>(() =>
     accounts.length > 0 ? [accounts[0]!.id] : [],
   );
-
-  // Asegurar que si hay cuentas y ninguna seleccionada, se seleccione la primera
-  useEffect(() => {
-    if (accounts.length > 0 && selectedAccountIds.length === 0) {
-      setSelectedAccountIds([accounts[0]!.id]);
-    }
-  }, [accounts, selectedAccountIds.length]);
 
   // ORDENACIÓN DE LA HOJA DE CÁLCULO
   const [sortField, setSortField] = useState<AccountSortField>("name");
@@ -135,19 +128,20 @@ export function GoAccountPlanManager() {
     [accounts, selectedAccountIds],
   );
 
-  // Toggle cuenta individual
+  // Toggle cuenta individual (permite deseleccionar totalmente a 0)
   const toggleSelectAccount = (id: string) => {
     setSelectedAccountIds((prev) =>
-      prev.includes(id) ? (prev.length > 1 ? prev.filter((x) => x !== id) : prev) : [...prev, id],
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
     );
   };
 
-  // Toggle seleccionar todas
+  // Toggle seleccionar todas / deseleccionar todas
   const isAllSelected = accounts.length > 0 && selectedAccountIds.length === accounts.length;
+  const isSomeSelected = selectedAccountIds.length > 0;
+
   const toggleSelectAll = () => {
-    if (isAllSelected) {
-      // Dejar al menos la primera seleccionada
-      setSelectedAccountIds(accounts.length > 0 ? [accounts[0]!.id] : []);
+    if (isSomeSelected) {
+      setSelectedAccountIds([]);
     } else {
       setSelectedAccountIds(accounts.map((a) => a.id));
     }
@@ -380,8 +374,8 @@ export function GoAccountPlanManager() {
               onClick={toggleSelectAll}
               className="h-8 text-xs gap-1.5 font-mono"
             >
-              {isAllSelected ? <CheckSquare className="size-3.5 text-brand" /> : <Square className="size-3.5" />}
-              {isAllSelected ? "Deseleccionar todas" : "Seleccionar todas"}
+              {isSomeSelected ? <CheckSquare className="size-3.5 text-brand" /> : <Square className="size-3.5" />}
+              {isSomeSelected ? "Deseleccionar todas" : "Seleccionar todas"}
             </Button>
             <Badge variant="secondary" className="font-mono text-xs">
               {selectedAccountIds.length} / {accounts.length} seleccionada(s)
@@ -628,18 +622,22 @@ export function GoAccountPlanManager() {
                 {selectedAccounts.length} cuenta(s) seleccionada(s):
               </span>
               <span className="text-muted-foreground truncate max-w-md font-sans">
-                {selectedAccounts.map((a) => a.name).join(", ")}
+                {selectedAccounts.length > 0
+                  ? selectedAccounts.map((a) => a.name).join(", ")
+                  : "Ninguna cuenta seleccionada (haz clic en las filas para seleccionar)"}
               </span>
             </div>
-            <div className="flex items-center gap-4 font-mono text-muted-foreground">
-              <span>Capital Total: <strong className="text-foreground">{formatCurrency(selectedTotalBalance)}</strong></span>
-              <span>Colchón Total: <strong className="text-emerald-600 dark:text-emerald-400">{formatCurrency(selectedTotalDrawdownRemaining)}</strong></span>
-            </div>
+            {selectedAccounts.length > 0 && (
+              <div className="flex items-center gap-4 font-mono text-muted-foreground">
+                <span>Capital Total: <strong className="text-foreground">{formatCurrency(selectedTotalBalance)}</strong></span>
+                <span>Drawdown Total: <strong className="text-emerald-600 dark:text-emerald-400">{formatCurrency(selectedTotalDrawdownRemaining)}</strong></span>
+              </div>
+            )}
           </div>
         </div>
       </div>
 
-      {selectedAccounts.length > 0 && (
+      {selectedAccounts.length > 0 ? (
         <>
           {/* ========================================================================= */}
           {/* PASO 2: ASIGNACIÓN DE ESTRATEGIA & TIEMPO / VIGENCIA                        */}
@@ -981,6 +979,16 @@ export function GoAccountPlanManager() {
             </div>
           </div>
         </>
+      ) : (
+        <div className="rounded-xl border border-dashed border-border/80 bg-muted/20 p-8 text-center space-y-2">
+          <div className="mx-auto flex size-10 items-center justify-center rounded-full bg-brand/10 text-brand">
+            <Layers className="size-5" />
+          </div>
+          <p className="text-sm font-semibold text-foreground">Selecciona una o más cuentas en la tabla superior</p>
+          <p className="text-xs text-muted-foreground max-w-md mx-auto">
+            Haz clic en las filas o en las casillas de verificación de la tabla para asignarles estrategia, horario y gestión de riesgo en lote.
+          </p>
+        </div>
       )}
     </div>
   );
