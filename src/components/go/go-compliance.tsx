@@ -1,9 +1,11 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import {
   AlertTriangle,
   ArrowDownRight,
   ArrowUpRight,
+  Calendar,
   CheckCircle2,
+  Filter,
   HelpCircle,
   Percent,
   PieChart,
@@ -17,6 +19,7 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useJournal } from "@/lib/journal-store";
 import {
   computePlanCompliance,
@@ -33,16 +36,68 @@ interface GoComplianceProps {
 
 export function GoCompliance({ plan, slots }: GoComplianceProps) {
   const { trades, accounts, strategies } = useJournal();
+  const [dateFilter, setDateFilter] = useState<"since_plan" | "last_7d" | "last_30d" | "all">("since_plan");
 
   const compliance = useMemo(
-    () => computePlanCompliance(trades, slots, plan, accounts, strategies),
-    [trades, slots, plan, accounts, strategies],
+    () => computePlanCompliance(trades, slots, plan, accounts, strategies, { dateFilter }),
+    [trades, slots, plan, accounts, strategies, dateFilter],
   );
 
   const adherencePct = Math.round(compliance.adherenceRate);
+  const planDateStr = plan.created_at
+    ? new Date(plan.created_at).toLocaleDateString("es-ES", { day: "2-digit", month: "short", year: "numeric" })
+    : "hoy";
 
   return (
     <div className="space-y-6">
+      {/* FILTRO TEMPORAL DE EVALUACIÓN */}
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between bg-card p-4 rounded-xl border border-border/80 shadow-xs">
+        <div>
+          <h4 className="font-display text-sm font-bold text-foreground flex items-center gap-2">
+            <ShieldCheck className="size-4 text-brand" />
+            Evaluación de Cumplimiento: {plan.name}
+          </h4>
+          <p className="text-xs text-muted-foreground">
+            {dateFilter === "since_plan"
+              ? `Analizando únicamente operaciones ejecutadas desde la creación del plan (${planDateStr}).`
+              : "Analizando operaciones en el rango de tiempo seleccionado."}
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-muted-foreground whitespace-nowrap">Periodo:</span>
+          <Select value={dateFilter} onValueChange={(v: any) => setDateFilter(v)}>
+            <SelectTrigger className="h-8 text-xs w-[210px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="since_plan">Desde creación del plan ({planDateStr})</SelectItem>
+              <SelectItem value="last_7d">Últimos 7 días</SelectItem>
+              <SelectItem value="last_30d">Últimos 30 días</SelectItem>
+              <SelectItem value="all">Todo el histórico</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      {/* SI NO HAY TRADES EN EL PERIODO */}
+      {compliance.totalTrades === 0 ? (
+        <Card className="border-border/80 shadow-xs">
+          <CardContent className="flex flex-col items-center justify-center py-12 text-center space-y-3">
+            <div className="flex size-12 items-center justify-center rounded-full bg-brand/10 text-brand">
+              <Calendar className="size-6" />
+            </div>
+            <div className="space-y-1">
+              <h3 className="font-display text-base font-semibold">Sin operaciones en el periodo del plan</h3>
+              <p className="text-xs text-muted-foreground max-w-md">
+                Este plan fue creado el <strong>{planDateStr}</strong> y aún no se han registrado operaciones desde esa fecha.
+                A medida que ejecutes y registres trades en tus sesiones, se calculará aquí la tasa de adherencia y disciplina.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      ) : (
+        <>
       {/* 1. SCORE GENERAL DE ADHERENCIA AL PLAN */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         <Card className="border-border/80 shadow-xs md:col-span-1">
@@ -225,6 +280,8 @@ export function GoCompliance({ plan, slots }: GoComplianceProps) {
           )}
         </CardContent>
       </Card>
+      </>
+      )}
     </div>
   );
 }

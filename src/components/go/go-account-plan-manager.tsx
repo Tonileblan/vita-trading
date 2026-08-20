@@ -62,7 +62,15 @@ import { cn } from "@/lib/utils";
 export type AccountSortField = "name" | "type" | "balance" | "pnl" | "drawdown" | "strategy";
 export type SortDirection = "asc" | "desc";
 
-export function GoAccountPlanManager() {
+interface GoAccountPlanManagerProps {
+  plan?: TradingPlan;
+  slots?: TradingPlanSlot[];
+}
+
+export function GoAccountPlanManager({
+  plan: propPlan,
+  slots: propSlots,
+}: GoAccountPlanManagerProps = {}) {
   const {
     accounts,
     strategies,
@@ -74,15 +82,16 @@ export function GoAccountPlanManager() {
     updateAccount,
   } = useJournal();
 
-  // 1. Cargar Planing general
-  const { data: planData } = useTradingPlan(activeJournalId);
+  // 1. Cargar Planing general (o usar prop)
+  const { data: planData } = useTradingPlan(activeJournalId, propPlan?.id);
   const plan: TradingPlan = useMemo(() => {
+    if (propPlan) return propPlan;
     if (planData) return planData;
     return {
       id: "default-plan",
       journal_id: activeJournalId || "",
       user_id: "",
-      name: "Plan Operativo GO Principal",
+      name: "Plan Operativo Principal",
       is_active: true,
       weekly_risk_budget: 1500,
       daily_risk_budget: 400,
@@ -91,9 +100,10 @@ export function GoAccountPlanManager() {
       profit_lock_target: 600,
       notes: "Operar respetando los slots, límites de pérdida diaria y pausas de disciplina.",
     };
-  }, [planData, activeJournalId]);
+  }, [propPlan, planData, activeJournalId]);
 
-  const { data: slots = [] } = useTradingPlanSlots(plan.id === "default-plan" ? undefined : plan.id);
+  const { data: queriedSlots = [] } = useTradingPlanSlots(plan.id === "default-plan" ? undefined : plan.id);
+  const slots = propSlots || queriedSlots;
   const saveSlotMutation = useSavePlanSlot(plan.id, activeJournalId);
   const savePlanMutation = useSaveTradingPlan(activeJournalId);
 

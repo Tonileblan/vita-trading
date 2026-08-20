@@ -177,25 +177,71 @@ export function computeSlotLiveStatus(
 
 /**
  * Analiza el cumplimiento del plan (Plan Compliance Rate & Infractions).
+ * Genera un nombre recomendado inteligente para un nuevo plan de trading.
+ */
+export function generateRecommendedPlanName(): string {
+  const now = new Date();
+  const monthNames = [
+    "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+    "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
+  ];
+  const month = monthNames[now.getMonth()];
+  const year = now.getFullYear();
+  const quarter = Math.floor(now.getMonth() / 3) + 1;
+  return `Plan Operativo Q${quarter} (${month} ${year})`;
+}
+
+/**
+ * Calcula el cumplimiento y adherencia de los trades con respecto al plan.
+ * Solo evalúa operaciones ejecutadas a partir de la fecha de creación del plan.
  */
 export function computePlanCompliance(
   trades: Trade[],
   slots: TradingPlanSlot[],
-  plan: TradingPlan | null,
+  plan: TradingPlan,
   accounts: Account[],
   strategies: Strategy[],
+  options?: { dateFilter?: "since_plan" | "last_7d" | "last_30d" | "all" },
 ) {
-  if (!trades.length || !slots.length) {
+  const dateFilter = options?.dateFilter || "since_plan";
+
+  // Determinar fecha de corte para evaluar cumplimiento
+  let minTimestamp = 0;
+  if (dateFilter === "since_plan" && plan.created_at) {
+    const createdDate = new Date(plan.created_at);
+    if (!isNaN(createdDate.getTime())) {
+      // Corte a las 00:00:00 del día de creación del plan
+      minTimestamp = new Date(
+        createdDate.getFullYear(),
+        createdDate.getMonth(),
+        createdDate.getDate(),
+      ).getTime();
+    }
+  } else if (dateFilter === "last_7d") {
+    minTimestamp = Date.now() - 7 * 24 * 60 * 60 * 1000;
+  } else if (dateFilter === "last_30d") {
+    minTimestamp = Date.now() - 30 * 24 * 60 * 60 * 1000;
+  }
+
+  // Filtrar operaciones dentro del periodo del plan
+  const eligibleTrades = trades.filter((t) => {
+    const tradeTime = new Date(t.openedAt || t.closedAt || "").getTime();
+    if (isNaN(tradeTime)) return false;
+    return minTimestamp === 0 || tradeTime >= minTimestamp;
+  });
+
+  if (eligibleTrades.length === 0) {
     return {
       adherenceRate: 100,
-      totalTrades: trades.length,
-      onPlanTrades: trades.length,
+      totalTrades: 0,
+      onPlanTrades: 0,
       offPlanTrades: 0,
-      onPlanPnl: trades.reduce((acc, t) => acc + (t.pnl || 0), 0),
+      onPlanPnl: 0,
       offPlanPnl: 0,
       onPlanWinRate: 0,
       offPlanWinRate: 0,
       infractions: [],
+      hasEvaluatedTrades: false,
     };
   }
 
@@ -224,7 +270,7 @@ export function computePlanCompliance(
   const accountMap = new Map(accounts.map((a) => [a.id, a.name]));
   const strategyMap = new Map(strategies.map((s) => [s.id, s.name]));
 
-  for (const trade of trades) {
+  for (const trade of eligibleTrades) {
     const tradeDate = new Date(trade.openedAt || trade.closedAt || "");
     if (isNaN(tradeDate.getTime())) {
       onPlanCount++;
@@ -290,7 +336,7 @@ export function computePlanCompliance(
     }
   }
 
-  const total = trades.length;
+  const total = eligibleTrades.length;
   const adherenceRate = total > 0 ? (onPlanCount / total) * 100 : 100;
   const onPlanWinRate = onPlanCount > 0 ? (onPlanWins / onPlanCount) * 100 : 0;
   const offPlanWinRate = offPlanCount > 0 ? (offPlanWins / offPlanCount) * 100 : 0;
@@ -305,6 +351,7 @@ export function computePlanCompliance(
     onPlanWinRate,
     offPlanWinRate,
     infractions,
+    hasEvaluatedTrades: true,
   };
 }
 
@@ -374,9 +421,30 @@ export function generateDefaultSlotsFromJournal(
 // PERSISTENCIA Y FALLBACK LOCAL RESILIENTE
 // ==========================================
 
+const LOCAL_PLANS_KEY = (jid: string) => `vita_trading_plans_list_${jid}`;
 const LOCAL_PLAN_KEY = (jid: string) => `vita_trading_plan_${jid}`;
 const LOCAL_SLOTS_KEY = (planId: string) => `vita_trading_slots_${planId}`;
 const LOCAL_CHECKLIST_KEY = (jid: string, date: string) => `vita_trading_chk_${jid}_${date}`;
+
+export function getLocalPlans(journalId: string): TradingPlan[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(LOCAL_PLANS_KEY(journalId));
+    if (raw) return JSON.parse(raw);
+    const single = getLocalPlan(journalId);
+    if (single) return [single];
+    return [];
+  } catch {
+    return [];
+  }
+}
+
+export function setLocalPlans(journalId: string, plans: TradingPlan[]): void {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(LOCAL_PLANS_KEY(journalId), JSON.stringify(plans));
+  } catch {}
+}
 
 function getLocalPlan(journalId: string): TradingPlan | null {
   if (typeof window === "undefined") return null;
@@ -433,18 +501,49 @@ function setLocalChecklist(journalId: string, date: string, chk: TradingPlanChec
 // REACT QUERY HOOKS CON SUPABASE + FALLBACK
 // ==========================================
 
-export function useTradingPlan(journalId?: string) {
+export function useTradingPlans(journalId?: string) {
   return useQuery({
-    queryKey: ["trading-plan", journalId],
+    queryKey: ["trading-plans", journalId],
     enabled: !!journalId,
-    queryFn: async (): Promise<TradingPlan | null> => {
-      if (!journalId) return null;
+    queryFn: async (): Promise<TradingPlan[]> => {
+      if (!journalId) return [];
       try {
         const { data, error } = await supabase
           .from("trading_plans" as any)
           .select("*")
           .eq("journal_id", journalId)
-          .maybeSingle();
+          .order("created_at", { ascending: false });
+
+        if (!error && data && data.length > 0) {
+          const plans = data as unknown as TradingPlan[];
+          setLocalPlans(journalId, plans);
+          return plans;
+        }
+      } catch (err) {
+        console.warn("trading_plans query fallback to local storage:", err);
+      }
+      return getLocalPlans(journalId);
+    },
+  });
+}
+
+export function useTradingPlan(journalId?: string, planId?: string) {
+  return useQuery({
+    queryKey: ["trading-plan", journalId, planId],
+    enabled: !!journalId,
+    queryFn: async (): Promise<TradingPlan | null> => {
+      if (!journalId) return null;
+      try {
+        let query = supabase
+          .from("trading_plans" as any)
+          .select("*")
+          .eq("journal_id", journalId);
+
+        if (planId && planId !== "default-plan") {
+          query = query.eq("id", planId);
+        }
+
+        const { data, error } = await query.maybeSingle();
 
         if (!error && data) {
           const plan = data as unknown as TradingPlan;
@@ -454,7 +553,13 @@ export function useTradingPlan(journalId?: string) {
       } catch (err) {
         console.warn("trading_plans query fallback to local storage:", err);
       }
-      return getLocalPlan(journalId);
+
+      const allPlans = getLocalPlans(journalId);
+      if (planId && planId !== "default-plan") {
+        const match = allPlans.find((p) => p.id === planId);
+        if (match) return match;
+      }
+      return allPlans[0] || getLocalPlan(journalId);
     },
   });
 }
@@ -470,14 +575,19 @@ export function useSaveTradingPlan(journalId?: string) {
         if (userData?.user?.id) uid = userData.user.id;
       } catch {}
 
-      const existing = getLocalPlan(journalId);
-      const planId = plan.id && plan.id !== "default-plan" ? plan.id : existing?.id || `plan-${journalId}`;
+      const currentPlans = getLocalPlans(journalId);
+      const isNew = !plan.id || plan.id === "default-plan" || !currentPlans.some((p) => p.id === plan.id);
+      const planId = isNew
+        ? `plan-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`
+        : plan.id!;
+
+      const existing = currentPlans.find((p) => p.id === planId);
 
       const payload: TradingPlan = {
         id: planId,
         journal_id: journalId,
         user_id: uid,
-        name: plan.name || existing?.name || DEFAULT_PLAN_SETTINGS.name,
+        name: plan.name || existing?.name || generateRecommendedPlanName(),
         is_active: plan.is_active ?? existing?.is_active ?? DEFAULT_PLAN_SETTINGS.is_active,
         weekly_risk_budget: plan.weekly_risk_budget ?? existing?.weekly_risk_budget ?? DEFAULT_PLAN_SETTINGS.weekly_risk_budget,
         daily_risk_budget: plan.daily_risk_budget ?? existing?.daily_risk_budget ?? DEFAULT_PLAN_SETTINGS.daily_risk_budget,
@@ -489,14 +599,23 @@ export function useSaveTradingPlan(journalId?: string) {
         updated_at: new Date().toISOString(),
       };
 
-      // Guardar en local siempre para asegurar respuesta instantánea y offline
+      // Actualizar lista local de planes
+      let updatedPlans: TradingPlan[];
+      const idx = currentPlans.findIndex((p) => p.id === planId);
+      if (idx >= 0) {
+        updatedPlans = [...currentPlans];
+        updatedPlans[idx] = payload;
+      } else {
+        updatedPlans = [payload, ...currentPlans];
+      }
+      setLocalPlans(journalId, updatedPlans);
       setLocalPlan(journalId, payload);
 
       // Intentar sincronizar con Supabase
       try {
         const { data, error } = await supabase
           .from("trading_plans" as any)
-          .upsert(payload, { onConflict: "journal_id,user_id" })
+          .upsert(payload)
           .select()
           .single();
 
@@ -512,6 +631,31 @@ export function useSaveTradingPlan(journalId?: string) {
       return payload;
     },
     onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["trading-plans", journalId] });
+      qc.invalidateQueries({ queryKey: ["trading-plan", journalId] });
+    },
+  });
+}
+
+export function useDeleteTradingPlan(journalId?: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (planId: string) => {
+      if (!journalId) return;
+      const currentPlans = getLocalPlans(journalId);
+      const remaining = currentPlans.filter((p) => p.id !== planId);
+      setLocalPlans(journalId, remaining);
+      if (remaining[0]) setLocalPlan(journalId, remaining[0]);
+
+      try {
+        await supabase
+          .from("trading_plans" as any)
+          .delete()
+          .eq("id", planId);
+      } catch {}
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["trading-plans", journalId] });
       qc.invalidateQueries({ queryKey: ["trading-plan", journalId] });
     },
   });
