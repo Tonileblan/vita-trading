@@ -107,10 +107,8 @@ export function GoAccountPlanManager({
   const saveSlotMutation = useSavePlanSlot(plan.id, activeJournalId);
   const savePlanMutation = useSaveTradingPlan(activeJournalId);
 
-  // SELECCIÓN MÚLTIPLE DE CUENTAS (Inicializa con la primera cuenta, pero permite deseleccionar libremente)
-  const [selectedAccountIds, setSelectedAccountIds] = useState<string[]>(() =>
-    accounts.length > 0 ? [accounts[0]!.id] : [],
-  );
+  // SELECCIÓN MÚLTIPLE DE CUENTAS (Deseleccionadas al principio)
+  const [selectedAccountIds, setSelectedAccountIds] = useState<string[]>([]);
 
   // ORDENACIÓN DE LA HOJA DE CÁLCULO
   const [sortField, setSortField] = useState<AccountSortField>("name");
