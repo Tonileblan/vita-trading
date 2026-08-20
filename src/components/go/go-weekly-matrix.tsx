@@ -33,6 +33,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { useAuth } from "@/lib/auth-context";
 import { useJournal } from "@/lib/journal-store";
 import {
   DEFAULT_SESSIONS,
@@ -53,7 +54,8 @@ interface GoWeeklyMatrixProps {
 }
 
 export function GoWeeklyMatrix({ plan, slots }: GoWeeklyMatrixProps) {
-  const { accounts, strategies, activeJournalId, user } = useJournal();
+  const { accounts, strategies, activeJournalId } = useJournal();
+  const { user } = useAuth();
 
   const saveSlotMutation = useSavePlanSlot(plan.id, activeJournalId);
   const deleteSlotMutation = useDeletePlanSlot(plan.id);

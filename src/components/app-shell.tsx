@@ -14,6 +14,7 @@ import {
   HelpCircle,
   LogOut,
   Bot,
+  Zap,
 } from "lucide-react";
 import { type ReactNode } from "react";
 import { AiAuditorTrigger, HeaderAuditorButton, openAiAuditor } from "@/components/ai-auditor-trigger";
