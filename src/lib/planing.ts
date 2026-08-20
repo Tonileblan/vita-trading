@@ -55,6 +55,8 @@ export interface TradingPlanChecklist {
   custom_checks: { id: string; text: string; done: boolean }[];
   notes: string | null;
   status: "pending" | "active" | "completed" | "skipped";
+  created_at?: string;
+  updated_at?: string;
 }
 
 export const OPERATING_DAYS = [
