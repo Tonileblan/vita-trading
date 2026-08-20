@@ -447,7 +447,7 @@ export function GoAccountPlanManager() {
                   </th>
 
                   {/* Drawdown */}
-                  <th className="px-3 py-3 whitespace-nowrap min-w-[170px]">
+                  <th className="px-3 py-3 whitespace-nowrap w-36 min-w-[120px]">
                     <button
                       type="button"
                       onClick={() => handleSort("drawdown")}
@@ -480,7 +480,7 @@ export function GoAccountPlanManager() {
                 {sortedAccounts.map((acc) => {
                   const isSelected = selectedAccountIds.includes(acc.id);
                   const isEval = acc.type === "funded" && acc.phase === "eval";
-                  const isLive = !isEval; // funded live o personal
+                  const firmLabel = acc.firm || (acc.type === "funded" ? "Prop Firm" : "Personal");
 
                   return (
                     <tr
@@ -502,7 +502,7 @@ export function GoAccountPlanManager() {
                         />
                       </td>
 
-                      {/* Nombre Cuenta + Raya + Balance Inicial */}
+                      {/* Nombre Cuenta + Prop firm delante de raya + Balance Inicial */}
                       <td className="px-3 py-3 font-sans">
                         <div className="flex items-center gap-2">
                           <Wallet className="size-3.5 text-muted-foreground shrink-0" />
@@ -511,7 +511,7 @@ export function GoAccountPlanManager() {
                               {acc.name}
                             </span>
                             <span className="text-[11px] text-muted-foreground block font-mono">
-                              — {formatCurrency(acc.initialBalance)}
+                              {firmLabel} — {formatCurrency(acc.initialBalance)}
                             </span>
                           </div>
                         </div>
@@ -535,10 +535,39 @@ export function GoAccountPlanManager() {
                         {formatCurrency(acc.currentBalance)}
                       </td>
 
-                      {/* Drawdown */}
-                      <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
+                      {/* Drawdown (Compacto sin la palabra colchón) */}
+                      <td className="px-3 py-3 w-36 min-w-[120px]" onClick={(e) => e.stopPropagation()}>
                         {acc.ddStatus ? (
-                          <DrawdownProgress status={acc.ddStatus} variant="compact" />
+                          <div className="space-y-1 max-w-[130px]">
+                            <div className="flex items-center justify-between text-xs">
+                              <span
+                                className={cn(
+                                  "font-bold font-mono text-xs",
+                                  acc.ddStatus.breached || acc.ddStatus.remaining < 600
+                                    ? "text-loss"
+                                    : "text-foreground",
+                                )}
+                              >
+                                {formatCurrency(acc.ddStatus.remaining)}
+                              </span>
+                              <span className="text-[10px] text-muted-foreground font-mono">
+                                {acc.ddStatus.pct.toFixed(0)}%
+                              </span>
+                            </div>
+                            <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted/60">
+                              <div
+                                className={cn(
+                                  "h-full transition-all duration-300 rounded-full",
+                                  acc.ddStatus.breached || acc.ddStatus.remaining < 600
+                                    ? "bg-loss"
+                                    : acc.ddStatus.pct >= 50
+                                      ? "bg-amber-500"
+                                      : "bg-emerald-500",
+                                )}
+                                style={{ width: `${Math.min(100, Math.max(0, acc.ddStatus.pct))}%` }}
+                              />
+                            </div>
+                          </div>
                         ) : (
                           <span className="text-muted-foreground italic font-sans">—</span>
                         )}
