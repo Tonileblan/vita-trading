@@ -243,42 +243,7 @@ export function GoAccountPlanManager({
 
   const selectedStrategy = strategyMap.get(assignStratId) || strategies[0] || null;
 
-  // Guardar asignación en todas las cuentas seleccionadas
-  const handleSaveStrategyToSelectedAccounts = async () => {
-    if (selectedAccounts.length === 0) {
-      toast.error("Selecciona al menos una cuenta");
-      return;
-    }
-    if (!assignStratId) {
-      toast.error("Selecciona una estrategia");
-      return;
-    }
-
-    setIsSavingPeriod(true);
-    try {
-      for (const acc of selectedAccounts) {
-        await addStrategyPeriod({
-          accountId: acc.id,
-          strategyId: assignStratId,
-          startDate: startDate || todayStr,
-          endDate: periodType === "range" && endDate ? endDate : undefined,
-          note: periodNote.trim() || undefined,
-        });
-
-        await updateAccount(acc.id, {
-          strategyId: assignStratId,
-        });
-      }
-
-      toast.success(
-        `Estrategia y periodo asignados a ${selectedAccounts.length} cuenta(s) seleccionada(s)`,
-      );
-    } catch (err: any) {
-      toast.error("Error al asignar estrategia: " + (err.message || ""));
-    } finally {
-      setIsSavingPeriod(false);
-    }
-  };
+  const [isSavingUnified, setIsSavingUnified] = useState(false);
 
   // =========================================================================
   // PASO 3: PLANING OPERATIVO (L-V) Y RIESGO (MULTI-CUENTA)
@@ -309,14 +274,37 @@ export function GoAccountPlanManager({
     );
   };
 
-  // Guardar Planing Operativo en todas las cuentas seleccionadas
-  const handleSaveOperationalPlanToSelectedAccounts = async () => {
+  // Guardado unificado del Planing completo (Estrategia + Horarios + Riesgo)
+  const handleSaveUnifiedPlan = async () => {
     if (selectedAccounts.length === 0) {
-      toast.error("Selecciona al menos una cuenta");
+      toast.error("Selecciona al menos una cuenta en la tabla superior");
+      return;
+    }
+    if (activeDays.length === 0) {
+      toast.error("Selecciona al menos un día operativo (L-V)");
       return;
     }
 
+    setIsSavingUnified(true);
     try {
+      // 1. Si hay estrategia seleccionada, asignar periodo y actualizar estrategia en las cuentas
+      if (assignStratId) {
+        for (const acc of selectedAccounts) {
+          await addStrategyPeriod({
+            accountId: acc.id,
+            strategyId: assignStratId,
+            startDate: startDate || todayStr,
+            endDate: periodType === "range" && endDate ? endDate : undefined,
+            note: periodNote.trim() || undefined,
+          });
+
+          await updateAccount(acc.id, {
+            strategyId: assignStratId,
+          });
+        }
+      }
+
+      // 2. Guardar parámetros de riesgo del plan
       await savePlanMutation.mutateAsync({
         ...plan,
         daily_risk_budget: parseFloat(dailyLossLimit) || 400,
@@ -324,6 +312,7 @@ export function GoAccountPlanManager({
         max_daily_trades: parseInt(maxTradesPerDay, 10) || 3,
       });
 
+      // 3. Guardar slots operativos para cada cuenta y día activo
       for (const acc of selectedAccounts) {
         for (const day of activeDays) {
           await saveSlotMutation.mutateAsync({
@@ -343,13 +332,15 @@ export function GoAccountPlanManager({
       }
 
       toast.success(
-        `Planing operativo y riesgo guardados para ${selectedAccounts.length} cuenta(s) en ${activeDays.length} días (L-V)`,
+        `Planing guardado y activado con éxito para ${selectedAccounts.length} cuenta(s) en ${activeDays.length} días (L-V)`,
       );
       if (onSaved) {
         onSaved();
       }
     } catch (err: any) {
-      toast.error("Error al guardar operativa: " + (err.message || ""));
+      toast.error("Error al guardar el planing: " + (err.message || ""));
+    } finally {
+      setIsSavingUnified(false);
     }
   };
 
@@ -787,28 +778,18 @@ export function GoAccountPlanManager({
                 </div>
               </div>
 
-              {/* Notas del periodo y botón guardar */}
-              <div className="space-y-3 flex flex-col justify-between">
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-medium">Notas / Objetivo del Periodo</Label>
-                  <Input
-                    value={periodNote}
-                    onChange={(e) => setPeriodNote(e.target.value)}
-                    placeholder="Ej: Sprint mensual de evaluación con micro contratos..."
-                    className="h-8 text-xs"
-                  />
-                  <span className="text-[10px] text-muted-foreground block">
-                    Se guardará en el historial de periodos de cada cuenta seleccionada.
-                  </span>
-                </div>
-
-                <Button
-                  onClick={handleSaveStrategyToSelectedAccounts}
-                  disabled={isSavingPeriod || !assignStratId}
-                  className="gap-1.5 text-xs shadow-xs h-9"
-                >
-                  <Save className="size-3.5" /> Aplicar a {selectedAccounts.length} Cuenta(s)
-                </Button>
+              {/* Notas del periodo */}
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium">Notas / Objetivo del Periodo</Label>
+                <Input
+                  value={periodNote}
+                  onChange={(e) => setPeriodNote(e.target.value)}
+                  placeholder="Ej: Sprint mensual de evaluación con micro contratos..."
+                  className="h-8 text-xs"
+                />
+                <span className="text-[10px] text-muted-foreground block">
+                  Se asignará automáticamente a las cuentas seleccionadas al guardar el planing al final.
+                </span>
               </div>
             </div>
           </div>
@@ -983,11 +964,11 @@ export function GoAccountPlanManager({
                 </div>
 
                 <Button
-                  onClick={handleSaveOperationalPlanToSelectedAccounts}
-                  disabled={saveSlotMutation.isPending || savePlanMutation.isPending || activeDays.length === 0}
-                  className="gap-1.5 text-xs shadow-xs h-9 mt-2"
+                  onClick={handleSaveUnifiedPlan}
+                  disabled={isSavingUnified || saveSlotMutation.isPending || savePlanMutation.isPending || activeDays.length === 0}
+                  className="gap-2 text-xs shadow-xs h-10 mt-2 font-semibold"
                 >
-                  <ShieldCheck className="size-3.5" /> Guardar Planing en {selectedAccounts.length} Cuenta(s)
+                  <ShieldCheck className="size-4" /> Guardar y Activar Planing en {selectedAccounts.length} Cuenta(s)
                 </Button>
               </div>
             </div>
