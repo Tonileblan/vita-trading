@@ -241,9 +241,9 @@ function UsersPage() {
       const { error } = await supabase
         .from("profiles")
         .update({
-          assigned_supervisor_id: targetId as any,
+          assigned_supervisor_id: targetId,
           is_private: targetId ? false : isPrivate,
-        })
+        } as any)
         .eq("id", user!.id);
       if (error) throw error;
       return targetId;
