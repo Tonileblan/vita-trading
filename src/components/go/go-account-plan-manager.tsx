@@ -250,15 +250,16 @@ export function GoAccountPlanManager({
   // =========================================================================
   // PASO 3: PLANING OPERATIVO (L-V) Y RIESGO (MULTI-CUENTA)
   // =========================================================================
-  const [activeDays, setActiveDays] = useState<number[]>([1, 2, 3, 4, 5]);
-  const [sessionStartTime, setSessionStartTime] = useState("15:30");
-  const [sessionEndTime, setSessionEndTime] = useState("17:30");
-  const [riskPerTrade, setRiskPerTrade] = useState("250");
+  const initialStratDefaults = getStrategyPresetDefaults(selectedStrategy);
+  const [activeDays, setActiveDays] = useState<number[]>(initialStratDefaults.activeDays || [1, 2, 3, 4, 5]);
+  const [sessionStartTime, setSessionStartTime] = useState(initialStratDefaults.startTime || "15:30");
+  const [sessionEndTime, setSessionEndTime] = useState(initialStratDefaults.endTime || "17:30");
+  const [riskPerTrade, setRiskPerTrade] = useState(String(initialStratDefaults.riskAmount || 250));
   const [maxTradesPerDay, setMaxTradesPerDay] = useState("2");
   const [dailyLossLimit, setDailyLossLimit] = useState(String(plan.daily_risk_budget));
   const [maxLossStreak, setMaxLossStreak] = useState(String(plan.max_loss_streak));
-  const [allowedSymbols, setAllowedSymbols] = useState(selectedStrategy?.mainSymbol || "MNQ, NQ");
-  const [sessionNotes, setSessionNotes] = useState(selectedStrategy?.setup || "");
+  const [allowedSymbols, setAllowedSymbols] = useState(initialStratDefaults.symbols || "MNQ, NQ");
+  const [sessionNotes, setSessionNotes] = useState(initialStratDefaults.notes || "");
 
   // Auto-selección inteligente de horario, símbolos, notas y riesgo según la estrategia
   useEffect(() => {
@@ -322,18 +323,29 @@ export function GoAccountPlanManager({
       });
 
       // 3. Guardar slots operativos para cada cuenta y día activo
+      const isGold =
+        (selectedStrategy?.name || "").toLowerCase().includes("oro") ||
+        (selectedStrategy?.name || "").toLowerCase().includes("gold") ||
+        (selectedStrategy?.market || "").toLowerCase().includes("oro") ||
+        (selectedStrategy?.market || "").toLowerCase().includes("asia");
+
+      const finalStartTime = isGold && sessionStartTime === "15:30" ? "01:00" : sessionStartTime;
+      const finalEndTime = isGold && sessionEndTime === "17:30" ? "05:00" : sessionEndTime;
+      const finalSymbols =
+        isGold && (!allowedSymbols || allowedSymbols === "MNQ, NQ") ? "MGC, GC" : allowedSymbols;
+
       for (const acc of selectedAccounts) {
         for (const day of activeDays) {
           await saveSlotMutation.mutateAsync({
             day_of_week: day,
             session_name: selectedStrategy?.name || "Sesión Principal",
-            start_time: sessionStartTime,
-            end_time: sessionEndTime,
+            start_time: finalStartTime,
+            end_time: finalEndTime,
             account_id: acc.id,
             strategy_id: assignStratId || acc.strategyId || null,
             max_trades: parseInt(maxTradesPerDay, 10) || 2,
             risk_amount: parseFloat(riskPerTrade) || 250,
-            allowed_symbols: allowedSymbols.trim() || "MNQ, NQ",
+            allowed_symbols: finalSymbols.trim() || "MNQ, NQ",
             setup_notes: sessionNotes.trim() || null,
             is_active: true,
           });

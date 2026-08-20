@@ -38,6 +38,7 @@ import { useJournal } from "@/lib/journal-store";
 import {
   DEFAULT_SESSIONS,
   generateDefaultSlotsFromJournal,
+  getEffectiveSlotSchedule,
   getStrategyPresetDefaults,
   OPERATING_DAYS,
   useDeletePlanSlot,
@@ -102,16 +103,19 @@ export function GoWeeklyMatrix({ plan, slots }: GoWeeklyMatrixProps) {
 
   const openEditSlotDialog = (slot: TradingPlanSlot) => {
     setEditingSlot(slot);
+    const strategy = slot.strategy_id ? strategyMap.get(slot.strategy_id) : null;
+    const sched = getEffectiveSlotSchedule(slot, strategy);
+
     setFormDay(slot.day_of_week);
     setFormSessionName(slot.session_name);
-    setFormStartTime(slot.start_time);
-    setFormEndTime(slot.end_time);
+    setFormStartTime(sched.startTime);
+    setFormEndTime(sched.endTime);
     setFormAccountId(slot.account_id || "none");
     setFormStrategyId(slot.strategy_id || "none");
     setFormMaxTrades(String(slot.max_trades || 2));
     setFormRiskAmount(slot.risk_amount ? String(slot.risk_amount) : "250");
     setFormRiskPct(slot.risk_pct ? String(slot.risk_pct * 100) : "1.0");
-    setFormSymbols(slot.allowed_symbols || "MNQ, NQ");
+    setFormSymbols(sched.allowedSymbols || "MNQ, NQ");
     setFormSetupNotes(slot.setup_notes || "");
     setDialogOpen(true);
   };
@@ -284,6 +288,7 @@ export function GoWeeklyMatrix({ plan, slots }: GoWeeklyMatrixProps) {
                   daySlots.map((slot) => {
                     const strategy = slot.strategy_id ? strategyMap.get(slot.strategy_id) : null;
                     const account = slot.account_id ? accountMap.get(slot.account_id) : null;
+                    const sched = getEffectiveSlotSchedule(slot, strategy);
 
                     return (
                       <div
@@ -328,7 +333,7 @@ export function GoWeeklyMatrix({ plan, slots }: GoWeeklyMatrixProps) {
                           <div className="flex items-center gap-1 font-mono text-[11px] text-muted-foreground">
                             <Clock className="size-3" />
                             <span>
-                              {slot.start_time} - {slot.end_time}
+                              {sched.startTime} - {sched.endTime}
                             </span>
                           </div>
 

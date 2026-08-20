@@ -34,6 +34,7 @@ import { useJournal } from "@/lib/journal-store";
 import {
   computeSlotLiveStatus,
   getCurrentOperatingDay,
+  getEffectiveSlotSchedule,
   getTodayDateStr,
   isCurrentTimeInSlot,
   OPERATING_DAYS,
@@ -321,7 +322,8 @@ export function GoCockpit({
               {daySlots.map((slot) => {
                 const account = slot.account_id ? accountMap.get(slot.account_id) : null;
                 const strategy = slot.strategy_id ? strategyMap.get(slot.strategy_id) : null;
-                const isNowInSlot = isCurrentTimeInSlot(slot.start_time, slot.end_time) && isViewingToday;
+                const sched = getEffectiveSlotSchedule(slot, strategy);
+                const isNowInSlot = isCurrentTimeInSlot(sched.startTime, sched.endTime) && isViewingToday;
 
                 const liveStatus = computeSlotLiveStatus(slot, todayTrades, plan);
 
@@ -372,7 +374,7 @@ export function GoCockpit({
                         <div className="flex items-center gap-1 font-mono text-xs text-muted-foreground">
                           <Clock className="size-3.5" />
                           <span>
-                            {slot.start_time} - {slot.end_time}
+                            {sched.startTime} - {sched.endTime}
                           </span>
                         </div>
                       </div>

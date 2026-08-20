@@ -202,6 +202,53 @@ export function getStrategyPresetDefaults(strategy: Strategy | null | undefined)
   };
 }
 
+/**
+ * Determina el horario operativo y símbolos efectivos de un slot.
+ * Si el slot está vinculado a la estrategia "Oro" (o tiene nombre "ORO" / mercado de Oro o Asia) y conserva
+ * el horario genérico inicial "15:30 - 17:30", lo adapta automáticamente al horario de Asia ("01:00 - 05:00").
+ */
+export function getEffectiveSlotSchedule(
+  slot: TradingPlanSlot | Omit<TradingPlanSlot, "id">,
+  strategy?: Strategy | null,
+): {
+  startTime: string;
+  endTime: string;
+  allowedSymbols: string;
+  sessionName: string;
+} {
+  const stratDefaults = getStrategyPresetDefaults(strategy);
+  const isGold =
+    (strategy?.name || "").toLowerCase().includes("oro") ||
+    (strategy?.name || "").toLowerCase().includes("gold") ||
+    (strategy?.market || "").toLowerCase().includes("oro") ||
+    (strategy?.market || "").toLowerCase().includes("asia") ||
+    (slot.session_name || "").toLowerCase().includes("oro") ||
+    (slot.session_name || "").toLowerCase().includes("gold");
+
+  let startTime = slot.start_time || "15:30";
+  let endTime = slot.end_time || "17:30";
+  let allowedSymbols = slot.allowed_symbols || "MNQ, NQ";
+  let sessionName = strategy?.name || slot.session_name || "Sesión Principal";
+
+  // Si la estrategia es Oro y el slot tiene el horario default de NY (15:30 - 17:30), forzar horario de Asia (01:00 - 05:00)
+  if (isGold) {
+    if (startTime === "15:30" && endTime === "17:30") {
+      startTime = "01:00";
+      endTime = "05:00";
+    }
+    if (!allowedSymbols || allowedSymbols === "MNQ, NQ") {
+      allowedSymbols = stratDefaults.symbols || "MGC, GC";
+    }
+  }
+
+  return {
+    startTime,
+    endTime,
+    allowedSymbols,
+    sessionName,
+  };
+}
+
 export const DEFAULT_PLAN_SETTINGS: Omit<TradingPlan, "id" | "journal_id" | "user_id"> = {
   name: "Plan Operativo GO Principal",
   is_active: true,
@@ -533,45 +580,27 @@ export function generateDefaultSlotsFromJournal(
   const defaultAccount = accounts[0]?.id || null;
 
   strategies.forEach((strat, sIdx) => {
-    const rawDays = (strat.days || "").toLowerCase();
-    const rawSchedule = strat.schedule || "";
+    const defaults = getStrategyPresetDefaults(strat);
+    const targetDays = defaults.activeDays.length > 0 ? defaults.activeDays : [1, 2, 3, 4, 5];
 
-    // Determinar días de la semana
-    const targetDays: number[] = [];
-    if (rawDays.includes("lun") || rawDays.includes("lunes")) targetDays.push(1);
-    if (rawDays.includes("mar") || rawDays.includes("martes")) targetDays.push(2);
-    if (rawDays.includes("mie") || rawDays.includes("mié") || rawDays.includes("miercoles")) targetDays.push(3);
-    if (rawDays.includes("jue") || rawDays.includes("jueves")) targetDays.push(4);
-    if (rawDays.includes("vie") || rawDays.includes("viernes")) targetDays.push(5);
-
-    // Si no tiene días especificados o dice "lun a vie", asignar los 5 días
-    const daysToAssign = targetDays.length > 0 ? targetDays : [1, 2, 3, 4, 5];
-
-    // Extraer horario si existe formato HH:MM - HH:MM
-    let startTime = "15:30";
-    let endTime = "17:30";
-    const timeMatch = rawSchedule.match(/(\d{1,2}:\d{2})\s*(?:-|a|to)\s*(\d{1,2}:\d{2})/);
-    if (timeMatch && timeMatch[1] && timeMatch[2]) {
-      startTime = timeMatch[1].padStart(5, "0");
-      endTime = timeMatch[2].padStart(5, "0");
-    }
-
-    daysToAssign.forEach((day) => {
+    targetDays.forEach((day) => {
       generated.push({
         plan_id: planId,
         journal_id: journalId,
         user_id: userId,
         day_of_week: day,
         session_name: strat.name,
-        start_time: startTime,
-        end_time: endTime,
+        start_time: defaults.startTime,
+        end_time: defaults.endTime,
         account_id: defaultAccount,
         strategy_id: strat.id,
-        risk_amount: strat.initialCapital ? Math.round(strat.initialCapital * (strat.riskPct || 0.01)) : 200,
+        risk_amount:
+          defaults.riskAmount ||
+          (strat.initialCapital ? Math.round(strat.initialCapital * (strat.riskPct || 0.01)) : 200),
         risk_pct: strat.riskPct || 0.01,
         max_trades: 2,
-        allowed_symbols: strat.mainSymbol || "MNQ, NQ",
-        setup_notes: strat.setup || strat.management || "Respetar ratio R:R y stop de pérdida",
+        allowed_symbols: defaults.symbols,
+        setup_notes: defaults.notes || strat.management || "Respetar ratio R:R y stop de pérdida",
         is_active: true,
         order_index: sIdx,
       });
