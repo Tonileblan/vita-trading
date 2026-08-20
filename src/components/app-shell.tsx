@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { type ReactNode } from "react";
 import { AiAuditorTrigger, HeaderAuditorButton, openAiAuditor } from "@/components/ai-auditor-trigger";
+import { HeaderAlertsButton } from "@/components/risk-alerts";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -119,6 +120,7 @@ export function AppShell({
             </div>
           </Link>
           <div className="flex shrink-0 items-center gap-2">
+            <HeaderAlertsButton />
             <HeaderAuditorButton />
             <UserMenu />
           </div>
