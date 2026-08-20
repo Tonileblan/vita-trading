@@ -1,12 +1,17 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   AlertTriangle,
+  ArrowDown,
   ArrowRight,
+  ArrowUp,
+  ArrowUpDown,
   Calendar as CalendarIcon,
   Check,
   CheckCircle2,
+  CheckSquare,
   Clock,
   Coins,
+  Copy,
   History,
   Layers,
   Lock,
@@ -18,6 +23,8 @@ import {
   ShieldAlert,
   ShieldCheck,
   Sparkles,
+  Square,
+  Table,
   Target,
   Trash2,
   TrendingDown,
@@ -29,22 +36,19 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useJournal } from "@/lib/journal-store";
 import { accountDrawdown, formatCurrency } from "@/lib/metrics";
 import { DrawdownProgress } from "@/components/drawdown-progress";
-import { tradeDayKey } from "@/lib/emotions";
 import {
   getCurrentOperatingDay,
   getTodayDateStr,
   OPERATING_DAYS,
   useDeletePlanSlot,
-  usePlanChecklist,
-  useSavePlanChecklist,
   useSavePlanSlot,
   useSaveTradingPlan,
   useTradingPlan,
@@ -55,6 +59,9 @@ import {
 import type { Account, AccountStrategyPeriod, Strategy } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
+export type AccountSortField = "name" | "type" | "balance" | "pnl" | "drawdown" | "strategy";
+export type SortDirection = "asc" | "desc";
+
 export function GoAccountPlanManager() {
   const {
     accounts,
@@ -62,7 +69,6 @@ export function GoAccountPlanManager() {
     trades,
     strategyPeriods,
     activeJournalId,
-    activeJournal,
     addStrategyPeriod,
     removeStrategyPeriod,
     updateAccount,
@@ -89,104 +95,156 @@ export function GoAccountPlanManager() {
 
   const { data: slots = [] } = useTradingPlanSlots(plan.id === "default-plan" ? undefined : plan.id);
   const saveSlotMutation = useSavePlanSlot(plan.id, activeJournalId);
-  const deleteSlotMutation = useDeletePlanSlot(plan.id);
   const savePlanMutation = useSaveTradingPlan(activeJournalId);
 
-  // Selección de cuenta activa para configurar
-  const [selectedAccountId, setSelectedAccountId] = useState<string>(accounts[0]?.id || "");
-
-  useEffect(() => {
-    if (accounts.length > 0 && (!selectedAccountId || !accounts.some((a) => a.id === selectedAccountId))) {
-      setSelectedAccountId(accounts[0]!.id);
-    }
-  }, [accounts, selectedAccountId]);
-
-  const selectedAccount = useMemo(
-    () => accounts.find((a) => a.id === selectedAccountId) || accounts[0] || null,
-    [accounts, selectedAccountId],
+  // SELECCIÓN MÚLTIPLE DE CUENTAS
+  const [selectedAccountIds, setSelectedAccountIds] = useState<string[]>(() =>
+    accounts.length > 0 ? [accounts[0]!.id] : [],
   );
 
-  // Mapeos rápidos
-  const strategyMap = useMemo(() => new Map(strategies.map((s) => [s.id, s])), [strategies]);
+  // Asegurar que si hay cuentas y ninguna seleccionada, se seleccione la primera
+  useEffect(() => {
+    if (accounts.length > 0 && selectedAccountIds.length === 0) {
+      setSelectedAccountIds([accounts[0]!.id]);
+    }
+  }, [accounts, selectedAccountIds.length]);
 
-  // Periodos de estrategia para la cuenta seleccionada
-  const accountPeriods = useMemo(() => {
-    if (!selectedAccount) return [];
-    return strategyPeriods
-      .filter((p) => p.accountId === selectedAccount.id)
-      .sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime());
-  }, [strategyPeriods, selectedAccount]);
+  // ORDENACIÓN DE LA HOJA DE CÁLCULO
+  const [sortField, setSortField] = useState<AccountSortField>("name");
+  const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
 
-  // Periodo activo actual (sin endDate o con endDate >= hoy)
+  const handleSort = (field: AccountSortField) => {
+    if (sortField === field) {
+      setSortDirection((prev) => (prev === "asc" ? "desc" : "asc"));
+    } else {
+      setSortField(field);
+      setSortDirection("asc");
+    }
+  };
+
   const todayStr = getTodayDateStr();
-  const currentActivePeriod = useMemo(() => {
-    if (!accountPeriods.length) return null;
-    return accountPeriods.find((p) => !p.endDate || p.endDate >= todayStr) || accountPeriods[0] || null;
-  }, [accountPeriods, todayStr]);
+  const currentDayOfWeek = getCurrentOperatingDay(); // 1..5
 
-  // Estrategia asignada efectiva
-  const effectiveStratId = currentActivePeriod?.strategyId || selectedAccount?.strategyId || strategies[0]?.id || "";
-  const effectiveStrategy = strategyMap.get(effectiveStratId) || strategies[0] || null;
+  // Mapeos
+  const strategyMap = useMemo(() => new Map(strategies.map((s) => [s.id, s])), [strategies]);
+  const accountMap = useMemo(() => new Map(accounts.map((a) => [a.id, a])), [accounts]);
 
-  // Estado del formulario de Asignación de Estrategia y Periodo (Paso 2)
-  const [assignStratId, setAssignStratId] = useState<string>(effectiveStratId);
+  // Cuentas seleccionadas actualmente
+  const selectedAccounts = useMemo(
+    () => accounts.filter((a) => selectedAccountIds.includes(a.id)),
+    [accounts, selectedAccountIds],
+  );
+
+  // Toggle cuenta individual
+  const toggleSelectAccount = (id: string) => {
+    setSelectedAccountIds((prev) =>
+      prev.includes(id) ? (prev.length > 1 ? prev.filter((x) => x !== id) : prev) : [...prev, id],
+    );
+  };
+
+  // Toggle seleccionar todas
+  const isAllSelected = accounts.length > 0 && selectedAccountIds.length === accounts.length;
+  const toggleSelectAll = () => {
+    if (isAllSelected) {
+      // Dejar al menos la primera seleccionada
+      setSelectedAccountIds(accounts.length > 0 ? [accounts[0]!.id] : []);
+    } else {
+      setSelectedAccountIds(accounts.map((a) => a.id));
+    }
+  };
+
+  // Calcular métricas y estado enriquecido para cada cuenta
+  const enrichedAccounts = useMemo(() => {
+    return accounts.map((acc) => {
+      const ddStatus = accountDrawdown(acc, trades);
+      const accTrades = trades.filter((t) => t.accountId === acc.id);
+      const netPnl = accTrades.reduce((s, t) => s + (t.pnl || 0), 0);
+      const pnlPct = acc.initialBalance > 0 ? (netPnl / acc.initialBalance) * 100 : 0;
+
+      const activePeriod = strategyPeriods.find(
+        (p) => p.accountId === acc.id && (!p.endDate || p.endDate >= todayStr),
+      );
+      const stratId = activePeriod?.strategyId || acc.strategyId || "";
+      const strat = stratId ? strategyMap.get(stratId) : null;
+
+      const accSlots = slots.filter((s) => !s.account_id || s.account_id === acc.id);
+      const daysCount = new Set(accSlots.map((s) => s.day_of_week)).size;
+
+      return {
+        ...acc,
+        ddStatus,
+        netPnl,
+        pnlPct,
+        activePeriod,
+        strategy: strat,
+        slotsCount: accSlots.length,
+        daysCount,
+        firstSlot: accSlots[0] || null,
+      };
+    });
+  }, [accounts, trades, strategyPeriods, slots, todayStr, strategyMap]);
+
+  // Cuentas ordenadas
+  const sortedAccounts = useMemo(() => {
+    return [...enrichedAccounts].sort((a, b) => {
+      let cmp = 0;
+      if (sortField === "name") {
+        cmp = a.name.localeCompare(b.name, "es", { sensitivity: "base" });
+      } else if (sortField === "type") {
+        const typeA = `${a.type}-${a.phase || ""}`;
+        const typeB = `${b.type}-${b.phase || ""}`;
+        cmp = typeA.localeCompare(typeB);
+      } else if (sortField === "balance") {
+        cmp = a.currentBalance - b.currentBalance;
+      } else if (sortField === "pnl") {
+        cmp = a.netPnl - b.netPnl;
+      } else if (sortField === "drawdown") {
+        const remA = a.ddStatus?.remaining ?? 999999;
+        const remB = b.ddStatus?.remaining ?? 999999;
+        cmp = remA - remB;
+      } else if (sortField === "strategy") {
+        const sA = a.strategy?.name || "";
+        const sB = b.strategy?.name || "";
+        cmp = sA.localeCompare(sB, "es", { sensitivity: "base" });
+      }
+      return sortDirection === "asc" ? cmp : -cmp;
+    });
+  }, [enrichedAccounts, sortField, sortDirection]);
+
+  // =========================================================================
+  // PASO 2: ASIGNACIÓN DE ESTRATEGIA (MULTI-CUENTA)
+  // =========================================================================
+  const [assignStratId, setAssignStratId] = useState<string>(strategies[0]?.id || "");
   const [periodType, setPeriodType] = useState<"ongoing" | "range">("ongoing");
-  const [startDate, setStartDate] = useState<string>(currentActivePeriod?.startDate || todayStr);
-  const [endDate, setEndDate] = useState<string>(currentActivePeriod?.endDate || "");
-  const [periodNote, setPeriodNote] = useState<string>(currentActivePeriod?.note || "");
+  const [startDate, setStartDate] = useState<string>(todayStr);
+  const [endDate, setEndDate] = useState<string>("");
+  const [periodNote, setPeriodNote] = useState<string>("");
   const [isSavingPeriod, setIsSavingPeriod] = useState(false);
 
-  // Sincronizar formulario si cambia la cuenta
+  // Sincronizar formulario con la primera cuenta seleccionada
   useEffect(() => {
-    if (selectedAccount) {
-      const activeP = strategyPeriods.find((p) => p.accountId === selectedAccount.id && (!p.endDate || p.endDate >= todayStr));
-      const sId = activeP?.strategyId || selectedAccount.strategyId || strategies[0]?.id || "";
+    if (selectedAccounts.length === 1 && selectedAccounts[0]) {
+      const single = selectedAccounts[0];
+      const activeP = strategyPeriods.find(
+        (p) => p.accountId === single.id && (!p.endDate || p.endDate >= todayStr),
+      );
+      const sId = activeP?.strategyId || single.strategyId || strategies[0]?.id || "";
       setAssignStratId(sId);
       setStartDate(activeP?.startDate || todayStr);
       setEndDate(activeP?.endDate || "");
       setPeriodType(activeP?.endDate ? "range" : "ongoing");
       setPeriodNote(activeP?.note || "");
     }
-  }, [selectedAccount?.id, strategyPeriods, strategies, todayStr]);
+  }, [selectedAccounts, strategyPeriods, strategies, todayStr]);
 
-  // Estado de Operativa y Riesgo para esta Cuenta/Estrategia (Paso 3)
-  const accountSlots = useMemo(() => {
-    if (!selectedAccount) return [];
-    return slots.filter((s) => !s.account_id || s.account_id === selectedAccount.id);
-  }, [slots, selectedAccount]);
+  const selectedStrategy = strategyMap.get(assignStratId) || strategies[0] || null;
 
-  // Días activos seleccionados (1..5)
-  const [activeDays, setActiveDays] = useState<number[]>([1, 2, 3, 4, 5]);
-  const [sessionStartTime, setSessionStartTime] = useState("15:30");
-  const [sessionEndTime, setSessionEndTime] = useState("17:30");
-  const [riskPerTrade, setRiskPerTrade] = useState("250");
-  const [maxTradesPerDay, setMaxTradesPerDay] = useState("2");
-  const [dailyLossLimit, setDailyLossLimit] = useState(String(plan.daily_risk_budget));
-  const [maxLossStreak, setMaxLossStreak] = useState(String(plan.max_loss_streak));
-  const [allowedSymbols, setAllowedSymbols] = useState(effectiveStrategy?.mainSymbol || "MNQ, NQ");
-  const [sessionNotes, setSessionNotes] = useState(effectiveStrategy?.setup || "");
-
-  // Cargar slots existentes en el formulario de la cuenta
-  useEffect(() => {
-    if (accountSlots.length > 0) {
-      const first = accountSlots[0]!;
-      const days = Array.from(new Set(accountSlots.map((s) => s.day_of_week))).sort();
-      setActiveDays(days.length > 0 ? days : [1, 2, 3, 4, 5]);
-      setSessionStartTime(first.start_time || "15:30");
-      setSessionEndTime(first.end_time || "17:30");
-      setRiskPerTrade(first.risk_amount ? String(first.risk_amount) : "250");
-      setMaxTradesPerDay(String(first.max_trades || 2));
-      setAllowedSymbols(first.allowed_symbols || effectiveStrategy?.mainSymbol || "MNQ, NQ");
-      setSessionNotes(first.setup_notes || effectiveStrategy?.setup || "");
-    } else if (effectiveStrategy) {
-      setAllowedSymbols(effectiveStrategy.mainSymbol || "MNQ, NQ");
-      setSessionNotes(effectiveStrategy.setup || effectiveStrategy.management || "");
+  // Guardar asignación en todas las cuentas seleccionadas
+  const handleSaveStrategyToSelectedAccounts = async () => {
+    if (selectedAccounts.length === 0) {
+      toast.error("Selecciona al menos una cuenta");
+      return;
     }
-  }, [selectedAccountId, accountSlots, effectiveStrategy]);
-
-  // Guardar asignación de Estrategia y Periodo
-  const handleSaveStrategyPeriod = async () => {
-    if (!selectedAccount) return;
     if (!assignStratId) {
       toast.error("Selecciona una estrategia");
       return;
@@ -194,62 +252,52 @@ export function GoAccountPlanManager() {
 
     setIsSavingPeriod(true);
     try {
-      // 1. Añadir periodo de estrategia a la cuenta
-      await addStrategyPeriod({
-        accountId: selectedAccount.id,
-        strategyId: assignStratId,
-        startDate: startDate || todayStr,
-        endDate: periodType === "range" && endDate ? endDate : undefined,
-        note: periodNote.trim() || undefined,
-      });
+      for (const acc of selectedAccounts) {
+        await addStrategyPeriod({
+          accountId: acc.id,
+          strategyId: assignStratId,
+          startDate: startDate || todayStr,
+          endDate: periodType === "range" && endDate ? endDate : undefined,
+          note: periodNote.trim() || undefined,
+        });
 
-      // 2. Actualizar estrategia por defecto en la cuenta
-      await updateAccount(selectedAccount.id, {
-        strategyId: assignStratId,
-      });
+        await updateAccount(acc.id, {
+          strategyId: assignStratId,
+        });
+      }
 
-      toast.success("Estrategia y periodo asignados con éxito a la cuenta");
+      toast.success(
+        `Estrategia y periodo asignados a ${selectedAccounts.length} cuenta(s) seleccionada(s)`,
+      );
     } catch (err: any) {
-      toast.error("Error al guardar periodo: " + (err.message || ""));
+      toast.error("Error al asignar estrategia: " + (err.message || ""));
     } finally {
       setIsSavingPeriod(false);
     }
   };
 
-  // Guardar Planing Operativo y Riesgo para los días seleccionados
-  const handleSaveOperationalPlan = async () => {
-    if (!selectedAccount) return;
+  // =========================================================================
+  // PASO 3: PLANING OPERATIVO (L-V) Y RIESGO (MULTI-CUENTA)
+  // =========================================================================
+  const [activeDays, setActiveDays] = useState<number[]>([1, 2, 3, 4, 5]);
+  const [sessionStartTime, setSessionStartTime] = useState("15:30");
+  const [sessionEndTime, setSessionEndTime] = useState("17:30");
+  const [riskPerTrade, setRiskPerTrade] = useState("250");
+  const [maxTradesPerDay, setMaxTradesPerDay] = useState("2");
+  const [dailyLossLimit, setDailyLossLimit] = useState(String(plan.daily_risk_budget));
+  const [maxLossStreak, setMaxLossStreak] = useState(String(plan.max_loss_streak));
+  const [allowedSymbols, setAllowedSymbols] = useState(selectedStrategy?.mainSymbol || "MNQ, NQ");
+  const [sessionNotes, setSessionNotes] = useState(selectedStrategy?.setup || "");
 
-    try {
-      // Guardar parámetros globales de riesgo si aplican
-      await savePlanMutation.mutateAsync({
-        daily_risk_budget: parseFloat(dailyLossLimit) || 400,
-        max_loss_streak: parseInt(maxLossStreak, 10) || 2,
-        max_daily_trades: parseInt(maxTradesPerDay, 10) || 3,
-      });
-
-      // Guardar o actualizar slots para cada día seleccionado (Lunes a Viernes)
-      for (const day of activeDays) {
-        await saveSlotMutation.mutateAsync({
-          day_of_week: day,
-          session_name: effectiveStrategy?.name || "Sesión Principal",
-          start_time: sessionStartTime,
-          end_time: sessionEndTime,
-          account_id: selectedAccount.id,
-          strategy_id: assignStratId || effectiveStrategy?.id || null,
-          max_trades: parseInt(maxTradesPerDay, 10) || 2,
-          risk_amount: parseFloat(riskPerTrade) || 250,
-          allowed_symbols: allowedSymbols.trim() || "MNQ, NQ",
-          setup_notes: sessionNotes.trim() || null,
-          is_active: true,
-        });
+  useEffect(() => {
+    if (selectedStrategy) {
+      if (selectedStrategy.mainSymbol) setAllowedSymbols(selectedStrategy.mainSymbol);
+      if (selectedStrategy.setup) setSessionNotes(selectedStrategy.setup);
+      if (selectedStrategy.initialCapital && selectedStrategy.riskPct) {
+        setRiskPerTrade(String(Math.round(selectedStrategy.initialCapital * selectedStrategy.riskPct)));
       }
-
-      toast.success(`Planing y gestión de riesgo guardados para ${activeDays.length} día(s) operativos`);
-    } catch (err: any) {
-      toast.error("Error al guardar planing operativo: " + (err.message || ""));
     }
-  };
+  }, [selectedStrategy]);
 
   const toggleDay = (dayNum: number) => {
     setActiveDays((prev) =>
@@ -257,140 +305,353 @@ export function GoAccountPlanManager() {
     );
   };
 
-  // Cálculos de la cuenta activa
-  const selectedAccountDrawdown = selectedAccount ? accountDrawdown(selectedAccount, trades) : null;
-  const currentDayOfWeek = getCurrentOperatingDay(); // 1..5
+  // Guardar Planing Operativo en todas las cuentas seleccionadas
+  const handleSaveOperationalPlanToSelectedAccounts = async () => {
+    if (selectedAccounts.length === 0) {
+      toast.error("Selecciona al menos una cuenta");
+      return;
+    }
+
+    try {
+      await savePlanMutation.mutateAsync({
+        daily_risk_budget: parseFloat(dailyLossLimit) || 400,
+        max_loss_streak: parseInt(maxLossStreak, 10) || 2,
+        max_daily_trades: parseInt(maxTradesPerDay, 10) || 3,
+      });
+
+      for (const acc of selectedAccounts) {
+        for (const day of activeDays) {
+          await saveSlotMutation.mutateAsync({
+            day_of_week: day,
+            session_name: selectedStrategy?.name || "Sesión Principal",
+            start_time: sessionStartTime,
+            end_time: sessionEndTime,
+            account_id: acc.id,
+            strategy_id: assignStratId || acc.strategyId || null,
+            max_trades: parseInt(maxTradesPerDay, 10) || 2,
+            risk_amount: parseFloat(riskPerTrade) || 250,
+            allowed_symbols: allowedSymbols.trim() || "MNQ, NQ",
+            setup_notes: sessionNotes.trim() || null,
+            is_active: true,
+          });
+        }
+      }
+
+      toast.success(
+        `Planing operativo y riesgo guardados para ${selectedAccounts.length} cuenta(s) en ${activeDays.length} días (L-V)`,
+      );
+    } catch (err: any) {
+      toast.error("Error al guardar operativa: " + (err.message || ""));
+    }
+  };
+
+  // Métricas agregadas de las cuentas seleccionadas
+  const selectedTotalBalance = selectedAccounts.reduce((acc, a) => acc + a.currentBalance, 0);
+  const selectedTotalDrawdownRemaining = selectedAccounts.reduce((acc, a) => {
+    const dd = accountDrawdown(a, trades);
+    return acc + (dd?.remaining || 0);
+  }, 0);
 
   return (
     <div className="space-y-8">
       {/* ========================================================================= */}
-      {/* 1. PASO 1: LISTA DE CUENTAS & ESTADO DE DRAWDOWN Y BALANCE                */}
+      {/* PASO 1: HOJA DE CÁLCULO DE CUENTAS (MAQUEADA & MULTI-SELECCIÓN)            */}
       {/* ========================================================================= */}
       <div className="space-y-4">
-        <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <div className="flex items-center gap-2">
               <span className="flex size-6 items-center justify-center rounded-full bg-brand/15 text-brand text-xs font-bold font-mono">
                 1
               </span>
               <h3 className="font-display text-lg font-bold tracking-tight text-foreground">
-                Tus Cuentas & Estado de Capital
+                Tus Cuentas (Hoja de Cálculo Operativa)
               </h3>
             </div>
             <p className="text-xs text-muted-foreground ml-8">
-              Selecciona la cuenta que deseas planificar para ver su balance, colchón de drawdown y fase operativa.
+              Selecciona una o varias cuentas para asignarles estrategias, periodos y reglas de riesgo en bloque.
             </p>
           </div>
-          <Badge variant="outline" className="font-mono text-xs w-fit">
-            {accounts.length} cuenta(s) en este diario
-          </Badge>
+
+          <div className="flex items-center gap-2 self-start sm:self-auto">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={toggleSelectAll}
+              className="h-8 text-xs gap-1.5 font-mono"
+            >
+              {isAllSelected ? <CheckSquare className="size-3.5 text-brand" /> : <Square className="size-3.5" />}
+              {isAllSelected ? "Deseleccionar todas" : "Seleccionar todas"}
+            </Button>
+            <Badge variant="secondary" className="font-mono text-xs">
+              {selectedAccountIds.length} / {accounts.length} seleccionada(s)
+            </Badge>
+          </div>
         </div>
 
-        {/* GRID / LISTA DE CUENTAS */}
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {accounts.map((acc) => {
-            const isSelected = acc.id === selectedAccountId;
-            const ddStatus = accountDrawdown(acc, trades);
-            const stratPeriod = strategyPeriods.find(
-              (p) => p.accountId === acc.id && (!p.endDate || p.endDate >= todayStr),
-            );
-            const strat = stratPeriod
-              ? strategyMap.get(stratPeriod.strategyId)
-              : acc.strategyId
-                ? strategyMap.get(acc.strategyId)
-                : null;
+        {/* TABLA ESTILO HOJA DE CÁLCULO MAQUEADA */}
+        <div className="rounded-xl border border-border/80 bg-card overflow-hidden shadow-xs">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[900px] text-xs">
+              <thead>
+                <tr className="border-b border-border bg-muted/50 text-left text-muted-foreground font-semibold">
+                  {/* Checkbox All */}
+                  <th className="w-10 px-3 py-3 text-center">
+                    <Checkbox
+                      checked={isAllSelected}
+                      onCheckedChange={toggleSelectAll}
+                      aria-label="Seleccionar todas las cuentas"
+                    />
+                  </th>
 
-            return (
-              <div
-                key={acc.id}
-                onClick={() => setSelectedAccountId(acc.id)}
-                className={cn(
-                  "cursor-pointer rounded-xl border p-4 transition-all relative overflow-hidden space-y-3",
-                  isSelected
-                    ? "border-brand bg-brand/[0.03] shadow-sm ring-2 ring-brand/20"
-                    : "border-border/80 bg-card hover:border-border hover:bg-muted/20",
-                )}
-              >
-                {/* Indicador de selección */}
-                {isSelected && (
-                  <div className="absolute top-0 right-0 rounded-bl-lg bg-brand px-2 py-0.5 text-[10px] font-bold text-brand-foreground font-mono">
-                    SELECCIONADA
-                  </div>
-                )}
-
-                {/* Cabecera de la cuenta */}
-                <div className="flex items-start justify-between gap-2 pr-14">
-                  <div className="space-y-1">
-                    <span className="font-display text-sm font-bold block truncate text-foreground">
-                      {acc.name}
-                    </span>
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      <Badge
-                        variant={acc.type === "funded" ? "default" : "secondary"}
-                        className="text-[10px] px-1.5 py-0 uppercase"
-                      >
-                        {acc.type === "funded"
-                          ? acc.phase === "live"
-                            ? "Live / Fondeada"
-                            : "Evaluación"
-                          : "Personal"}
-                      </Badge>
-                      {acc.firm && (
-                        <span className="text-[11px] text-muted-foreground font-medium">
-                          {acc.firm}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Balance y Capital */}
-                <div className="grid grid-cols-2 gap-2 rounded-lg bg-muted/40 p-2.5 text-xs font-mono">
-                  <div>
-                    <span className="text-[10px] text-muted-foreground block font-sans">Balance Actual</span>
-                    <span className="font-bold text-foreground">{formatCurrency(acc.currentBalance)}</span>
-                  </div>
-                  <div>
-                    <span className="text-[10px] text-muted-foreground block font-sans">Inicial / Base</span>
-                    <span className="text-muted-foreground">{formatCurrency(acc.initialBalance)}</span>
-                  </div>
-                </div>
-
-                {/* Drawdown y Colchón */}
-                {ddStatus && (
-                  <div className="pt-1">
-                    <DrawdownProgress status={ddStatus} variant="compact" />
-                  </div>
-                )}
-
-                {/* Estrategia vinculada actualmente */}
-                <div className="flex items-center justify-between pt-1 border-t border-border/50 text-[11px]">
-                  <span className="text-muted-foreground">Estrategia:</span>
-                  {strat ? (
-                    <span
-                      className="font-medium flex items-center gap-1"
-                      style={{ color: strat.color || "inherit" }}
+                  {/* Nombre Cuenta */}
+                  <th className="px-3 py-3 whitespace-nowrap">
+                    <button
+                      type="button"
+                      onClick={() => handleSort("name")}
+                      className="inline-flex items-center gap-1 hover:text-foreground font-semibold"
                     >
-                      <span
-                        className="size-2 rounded-full inline-block"
-                        style={{ backgroundColor: strat.color || "var(--brand)" }}
-                      />
-                      {strat.name}
-                    </span>
-                  ) : (
-                    <span className="text-muted-foreground italic">Sin asignar</span>
-                  )}
-                </div>
-              </div>
-            );
-          })}
+                      <span>Cuenta / Firma</span>
+                      {sortField === "name" && (
+                        sortDirection === "asc" ? <ArrowUp className="size-3 text-brand" /> : <ArrowDown className="size-3 text-brand" />
+                      )}
+                    </button>
+                  </th>
+
+                  {/* Tipo / Fase */}
+                  <th className="px-3 py-3 whitespace-nowrap">
+                    <button
+                      type="button"
+                      onClick={() => handleSort("type")}
+                      className="inline-flex items-center gap-1 hover:text-foreground font-semibold"
+                    >
+                      <span>Tipo / Fase</span>
+                      {sortField === "type" && (
+                        sortDirection === "asc" ? <ArrowUp className="size-3 text-brand" /> : <ArrowDown className="size-3 text-brand" />
+                      )}
+                    </button>
+                  </th>
+
+                  {/* Balance Actual */}
+                  <th className="px-3 py-3 whitespace-nowrap">
+                    <button
+                      type="button"
+                      onClick={() => handleSort("balance")}
+                      className="inline-flex items-center gap-1 hover:text-foreground font-semibold"
+                    >
+                      <span>Balance Actual</span>
+                      {sortField === "balance" && (
+                        sortDirection === "asc" ? <ArrowUp className="size-3 text-brand" /> : <ArrowDown className="size-3 text-brand" />
+                      )}
+                    </button>
+                  </th>
+
+                  {/* Inicial */}
+                  <th className="px-3 py-3 whitespace-nowrap font-semibold">Balance Inicial</th>
+
+                  {/* PnL Neto */}
+                  <th className="px-3 py-3 whitespace-nowrap">
+                    <button
+                      type="button"
+                      onClick={() => handleSort("pnl")}
+                      className="inline-flex items-center gap-1 hover:text-foreground font-semibold"
+                    >
+                      <span>PnL Neto</span>
+                      {sortField === "pnl" && (
+                        sortDirection === "asc" ? <ArrowUp className="size-3 text-brand" /> : <ArrowDown className="size-3 text-brand" />
+                      )}
+                    </button>
+                  </th>
+
+                  {/* Colchón Drawdown */}
+                  <th className="px-3 py-3 whitespace-nowrap min-w-[150px]">
+                    <button
+                      type="button"
+                      onClick={() => handleSort("drawdown")}
+                      className="inline-flex items-center gap-1 hover:text-foreground font-semibold"
+                    >
+                      <span>Colchón Drawdown</span>
+                      {sortField === "drawdown" && (
+                        sortDirection === "asc" ? <ArrowUp className="size-3 text-brand" /> : <ArrowDown className="size-3 text-brand" />
+                      )}
+                    </button>
+                  </th>
+
+                  {/* Estrategia Asignada */}
+                  <th className="px-3 py-3 whitespace-nowrap">
+                    <button
+                      type="button"
+                      onClick={() => handleSort("strategy")}
+                      className="inline-flex items-center gap-1 hover:text-foreground font-semibold"
+                    >
+                      <span>Estrategia Activa</span>
+                      {sortField === "strategy" && (
+                        sortDirection === "asc" ? <ArrowUp className="size-3 text-brand" /> : <ArrowDown className="size-3 text-brand" />
+                      )}
+                    </button>
+                  </th>
+
+                  {/* Horario / Planing */}
+                  <th className="px-3 py-3 whitespace-nowrap font-semibold">Planing Asignado</th>
+                </tr>
+              </thead>
+
+              <tbody className="divide-y divide-border/60 font-mono">
+                {sortedAccounts.map((acc) => {
+                  const isSelected = selectedAccountIds.includes(acc.id);
+
+                  return (
+                    <tr
+                      key={acc.id}
+                      onClick={() => toggleSelectAccount(acc.id)}
+                      className={cn(
+                        "cursor-pointer transition-colors select-none",
+                        isSelected
+                          ? "bg-brand/[0.06] hover:bg-brand/[0.09]"
+                          : "hover:bg-muted/40",
+                      )}
+                    >
+                      {/* Checkbox */}
+                      <td className="px-3 py-3 text-center" onClick={(e) => e.stopPropagation()}>
+                        <Checkbox
+                          checked={isSelected}
+                          onCheckedChange={() => toggleSelectAccount(acc.id)}
+                          aria-label={`Seleccionar cuenta ${acc.name}`}
+                        />
+                      </td>
+
+                      {/* Nombre y Firma */}
+                      <td className="px-3 py-3 font-sans font-medium">
+                        <div className="flex items-center gap-2">
+                          <Wallet className="size-3.5 text-muted-foreground shrink-0" />
+                          <div>
+                            <span className="font-bold block text-foreground leading-tight">
+                              {acc.name}
+                            </span>
+                            {acc.firm && (
+                              <span className="text-[10px] text-muted-foreground block font-mono">
+                                {acc.firm}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* Tipo / Fase */}
+                      <td className="px-3 py-3 font-sans">
+                        <Badge
+                          variant={acc.type === "funded" ? "default" : "secondary"}
+                          className="text-[10px] px-1.5 py-0 uppercase tracking-wide"
+                        >
+                          {acc.type === "funded"
+                            ? acc.phase === "live"
+                              ? "Live (Fondeada)"
+                              : "Evaluación"
+                            : "Personal"}
+                        </Badge>
+                      </td>
+
+                      {/* Balance Actual */}
+                      <td className="px-3 py-3 font-bold text-foreground">
+                        {formatCurrency(acc.currentBalance)}
+                      </td>
+
+                      {/* Balance Inicial */}
+                      <td className="px-3 py-3 text-muted-foreground">
+                        {formatCurrency(acc.initialBalance)}
+                      </td>
+
+                      {/* PnL Neto */}
+                      <td className="px-3 py-3 font-bold">
+                        <span
+                          className={cn(
+                            acc.netPnl > 0
+                              ? "text-emerald-600 dark:text-emerald-400"
+                              : acc.netPnl < 0
+                                ? "text-rose-600 dark:text-rose-400"
+                                : "text-muted-foreground",
+                          )}
+                        >
+                          {acc.netPnl > 0 ? "+" : ""}
+                          {formatCurrency(acc.netPnl)}
+                        </span>
+                        {acc.initialBalance > 0 && acc.netPnl !== 0 && (
+                          <span className="text-[10px] text-muted-foreground ml-1 font-sans">
+                            ({acc.pnlPct >= 0 ? "+" : ""}{acc.pnlPct.toFixed(1)}%)
+                          </span>
+                        )}
+                      </td>
+
+                      {/* Colchón Drawdown */}
+                      <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
+                        {acc.ddStatus ? (
+                          <DrawdownProgress status={acc.ddStatus} variant="compact" />
+                        ) : (
+                          <span className="text-muted-foreground italic font-sans">—</span>
+                        )}
+                      </td>
+
+                      {/* Estrategia Activa */}
+                      <td className="px-3 py-3 font-sans">
+                        {acc.strategy ? (
+                          <div className="flex items-center gap-1.5">
+                            <span
+                              className="size-2 rounded-full shrink-0"
+                              style={{ backgroundColor: acc.strategy.color || "var(--brand)" }}
+                            />
+                            <span className="font-semibold text-foreground truncate max-w-[130px]">
+                              {acc.strategy.name}
+                            </span>
+                            {acc.strategy.mainSymbol && (
+                              <span className="text-[10px] text-muted-foreground font-mono">
+                                ({acc.strategy.mainSymbol})
+                              </span>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground italic">Sin asignar</span>
+                        )}
+                      </td>
+
+                      {/* Planing (Días y Horario) */}
+                      <td className="px-3 py-3 font-sans text-muted-foreground">
+                        {acc.slotsCount > 0 ? (
+                          <span className="text-foreground font-medium text-[11px] font-mono">
+                            {acc.daysCount} días ({acc.firstSlot?.start_time || "15:30"} - {acc.firstSlot?.end_time || "17:30"})
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground italic text-[11px]">Por configurar</span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {/* BARRA INFERIOR DE RESUMEN DE SELECCIÓN */}
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between border-t border-border bg-muted/30 p-3 px-4 text-xs">
+            <div className="flex items-center gap-2">
+              <span className="font-bold text-foreground font-sans">
+                {selectedAccounts.length} cuenta(s) seleccionada(s):
+              </span>
+              <span className="text-muted-foreground truncate max-w-md font-sans">
+                {selectedAccounts.map((a) => a.name).join(", ")}
+              </span>
+            </div>
+            <div className="flex items-center gap-4 font-mono text-muted-foreground">
+              <span>Capital Total: <strong className="text-foreground">{formatCurrency(selectedTotalBalance)}</strong></span>
+              <span>Colchón Total: <strong className="text-emerald-600 dark:text-emerald-400">{formatCurrency(selectedTotalDrawdownRemaining)}</strong></span>
+            </div>
+          </div>
         </div>
       </div>
 
-      {selectedAccount && (
+      {selectedAccounts.length > 0 && (
         <>
           {/* ========================================================================= */}
-          {/* 2. PASO 2: ASIGNAR ESTRATEGIA & TIEMPO / VIGENCIA DE LA ESTRATEGIA         */}
+          {/* PASO 2: ASIGNACIÓN DE ESTRATEGIA & TIEMPO / VIGENCIA                        */}
           {/* ========================================================================= */}
           <div className="space-y-4 rounded-xl border border-border/80 bg-card p-5 shadow-xs">
             <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between border-b border-border/60 pb-3">
@@ -400,25 +661,25 @@ export function GoAccountPlanManager() {
                     2
                   </span>
                   <h3 className="font-display text-base font-bold tracking-tight text-foreground">
-                    Asignación de Estrategia & Periodo en <span className="text-brand">{selectedAccount.name}</span>
+                    Asignación de Estrategia & Vigencia ({selectedAccounts.length} Cuentas)
                   </h3>
                 </div>
                 <p className="text-xs text-muted-foreground ml-8">
-                  Elige qué estrategia operará esta cuenta y durante qué rango de tiempo o vigencia.
+                  Aplica la estrategia y su periodo de tiempo a todas las cuentas seleccionadas simultáneamente.
                 </p>
               </div>
 
-              {effectiveStrategy && (
+              {selectedStrategy && (
                 <Badge
                   variant="secondary"
                   className="font-mono text-xs gap-1.5 self-start sm:self-auto"
                   style={{
-                    borderColor: `${effectiveStrategy.color}40`,
-                    backgroundColor: `${effectiveStrategy.color}15`,
-                    color: effectiveStrategy.color,
+                    borderColor: `${selectedStrategy.color}40`,
+                    backgroundColor: `${selectedStrategy.color}15`,
+                    color: selectedStrategy.color,
                   }}
                 >
-                  <Layers className="size-3" /> {effectiveStrategy.name}
+                  <Layers className="size-3" /> {selectedStrategy.name}
                 </Badge>
               )}
             </div>
@@ -447,21 +708,20 @@ export function GoAccountPlanManager() {
                   </SelectContent>
                 </Select>
 
-                {/* Mini ficha de la estrategia seleccionada */}
-                {effectiveStrategy && (
+                {selectedStrategy && (
                   <div className="rounded-lg border border-border/70 bg-muted/20 p-3 space-y-1.5 text-xs">
                     <div className="flex items-center justify-between text-[11px] text-muted-foreground">
-                      <span>Símbolo: <strong className="text-foreground font-mono">{effectiveStrategy.mainSymbol || "MNQ"}</strong></span>
-                      <span>Riesgo Base: <strong className="text-foreground font-mono">{((effectiveStrategy.riskPct || 0.01) * 100).toFixed(1)}%</strong></span>
+                      <span>Símbolo: <strong className="text-foreground font-mono">{selectedStrategy.mainSymbol || "MNQ"}</strong></span>
+                      <span>Riesgo Base: <strong className="text-foreground font-mono">{((selectedStrategy.riskPct || 0.01) * 100).toFixed(1)}%</strong></span>
                     </div>
-                    {effectiveStrategy.chart && (
+                    {selectedStrategy.chart && (
                       <div className="text-[11px] text-muted-foreground">
-                        Timeframe: <strong className="text-foreground">{effectiveStrategy.chart}</strong>
+                        Timeframe: <strong className="text-foreground">{selectedStrategy.chart}</strong>
                       </div>
                     )}
-                    {effectiveStrategy.setup && (
+                    {selectedStrategy.setup && (
                       <p className="text-[11px] text-muted-foreground italic line-clamp-2 pt-1 border-t border-border/40">
-                        Setup: {effectiveStrategy.setup}
+                        Setup: {selectedStrategy.setup}
                       </p>
                     )}
                   </div>
@@ -531,72 +791,27 @@ export function GoAccountPlanManager() {
                   <Input
                     value={periodNote}
                     onChange={(e) => setPeriodNote(e.target.value)}
-                    placeholder="Ej: Fase 1 evaluación con micro contratos..."
+                    placeholder="Ej: Sprint mensual de evaluación con micro contratos..."
                     className="h-8 text-xs"
                   />
                   <span className="text-[10px] text-muted-foreground block">
-                    Registra el objetivo de mantener esta estrategia durante este tramo.
+                    Se guardará en el historial de periodos de cada cuenta seleccionada.
                   </span>
                 </div>
 
                 <Button
-                  onClick={handleSaveStrategyPeriod}
+                  onClick={handleSaveStrategyToSelectedAccounts}
                   disabled={isSavingPeriod || !assignStratId}
                   className="gap-1.5 text-xs shadow-xs h-9"
                 >
-                  <Save className="size-3.5" /> Guardar Asignación de Estrategia
+                  <Save className="size-3.5" /> Aplicar a {selectedAccounts.length} Cuenta(s)
                 </Button>
               </div>
             </div>
-
-            {/* Historial de periodos previos */}
-            {accountPeriods.length > 0 && (
-              <div className="pt-3 border-t border-border/50 space-y-2">
-                <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium">
-                  <History className="size-3.5" />
-                  <span>Historial de Estrategias en esta Cuenta ({accountPeriods.length})</span>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {accountPeriods.map((p) => {
-                    const st = strategyMap.get(p.strategyId);
-                    const isCurrent = !p.endDate || p.endDate >= todayStr;
-                    return (
-                      <div
-                        key={p.id}
-                        className={cn(
-                          "rounded-lg border px-2.5 py-1.5 text-xs flex items-center gap-2",
-                          isCurrent
-                            ? "border-emerald-500/30 bg-emerald-500/5 text-foreground"
-                            : "border-border/60 bg-muted/20 text-muted-foreground",
-                        )}
-                      >
-                        <span
-                          className="size-2 rounded-full"
-                          style={{ backgroundColor: st?.color || "var(--brand)" }}
-                        />
-                        <span className="font-semibold">{st?.name || "Estrategia"}</span>
-                        <span className="font-mono text-[10px] text-muted-foreground">
-                          {p.startDate} {p.endDate ? `a ${p.endDate}` : "(Activa)"}
-                        </span>
-                        {p.note && <span className="italic text-[10px]">· "{p.note}"</span>}
-                        <button
-                          type="button"
-                          onClick={() => removeStrategyPeriod(p.id)}
-                          className="text-muted-foreground hover:text-destructive text-[11px] ml-1"
-                          title="Eliminar este periodo del historial"
-                        >
-                          ✕
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
           </div>
 
           {/* ========================================================================= */}
-          {/* 3. PASO 3: PLANING OPERATIVO (DÍAS L-V) & GESTIÓN DE RIESGO               */}
+          {/* PASO 3: PLANING OPERATIVO (DÍAS L-V) & GESTIÓN DE RIESGO                   */}
           {/* ========================================================================= */}
           <div className="space-y-5 rounded-xl border border-border/80 bg-card p-5 shadow-xs">
             <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between border-b border-border/60 pb-3">
@@ -606,11 +821,11 @@ export function GoAccountPlanManager() {
                     3
                   </span>
                   <h3 className="font-display text-base font-bold tracking-tight text-foreground">
-                    Planing Operativo & Gestión de Riesgo
+                    Planing Operativo & Gestión de Riesgo ({selectedAccounts.length} Cuentas)
                   </h3>
                 </div>
                 <p className="text-xs text-muted-foreground ml-8">
-                  Configura los días operativos (L-V), horario de sesión y límites de riesgo para esta cuenta y estrategia.
+                  Configura los días operativos (L-V), horario de sesión y límites de riesgo para todas las cuentas elegidas.
                 </p>
               </div>
 
@@ -622,7 +837,7 @@ export function GoAccountPlanManager() {
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-3 pt-1">
               {/* DÍAS OPERATIVOS (LUNES A VIERNES) */}
               <div className="space-y-3">
-                <Label className="text-xs font-medium">1. Días Operativos en la Semana (Lunes a Viernes)</Label>
+                <Label className="text-xs font-medium">1. Días Operativos (Lunes a Viernes)</Label>
                 <div className="grid grid-cols-5 gap-1.5">
                   {OPERATING_DAYS.map((d) => {
                     const isSelected = activeDays.includes(d.day);
@@ -648,7 +863,7 @@ export function GoAccountPlanManager() {
                   })}
                 </div>
                 <span className="text-[10px] text-muted-foreground block">
-                  Pulsa en los días de la semana en los que está permitido operar esta estrategia.
+                  Pulsa en los días de la semana autorizados para operar.
                 </span>
 
                 {/* HORARIO DE SESIÓN */}
@@ -677,7 +892,7 @@ export function GoAccountPlanManager() {
                 </div>
               </div>
 
-              {/* GESTIÓN DE RIESGO POR OPERACIÓN Y DÍA */}
+              {/* GESTIÓN DE RIESGO */}
               <div className="space-y-3">
                 <Label className="text-xs font-medium">2. Reglas de Riesgo y Cupo de Trades</Label>
 
@@ -740,23 +955,23 @@ export function GoAccountPlanManager() {
                 </div>
               </div>
 
-              {/* NOTAS Y PROTOCOLO DE DISCIPLINA */}
+              {/* NOTAS Y GUARDADO */}
               <div className="space-y-3 flex flex-col justify-between">
                 <div className="space-y-1.5">
-                  <Label className="text-xs font-medium">3. Protocolo de Setup & Disciplina</Label>
+                  <Label className="text-xs font-medium">3. Protocolo de Setup & Resumen</Label>
                   <Input
                     value={sessionNotes}
                     onChange={(e) => setSessionNotes(e.target.value)}
-                    placeholder="Ej: Solo operar rupturas con confirmación, respetar Stop..."
+                    placeholder="Ej: Solo operar rupturas con confirmación..."
                     className="h-8 text-xs"
                   />
                   <div className="rounded-lg border border-border/60 bg-muted/20 p-2.5 text-[11px] text-muted-foreground space-y-1">
-                    <strong className="text-foreground block font-medium">Resumen del Plan Operativo:</strong>
+                    <strong className="text-foreground block font-medium">Configuración a aplicar:</strong>
                     <p>
                       • {activeDays.length} días activos ({sessionStartTime} - {sessionEndTime}).
                     </p>
                     <p>
-                      • Arriesgando {formatCurrency(parseFloat(riskPerTrade) || 250)} por operación en {selectedAccount.name}.
+                      • {formatCurrency(parseFloat(riskPerTrade) || 250)} por operación en {selectedAccounts.length} cuenta(s).
                     </p>
                     <p>
                       • Máx {maxTradesPerDay} trades/día y stop forzado tras {maxLossStreak} pérdidas seguidas.
@@ -765,11 +980,11 @@ export function GoAccountPlanManager() {
                 </div>
 
                 <Button
-                  onClick={handleSaveOperationalPlan}
+                  onClick={handleSaveOperationalPlanToSelectedAccounts}
                   disabled={saveSlotMutation.isPending || savePlanMutation.isPending || activeDays.length === 0}
                   className="gap-1.5 text-xs shadow-xs h-9 mt-2"
                 >
-                  <ShieldCheck className="size-3.5" /> Guardar Planing Operativo
+                  <ShieldCheck className="size-3.5" /> Guardar Planing en {selectedAccounts.length} Cuenta(s)
                 </Button>
               </div>
             </div>
