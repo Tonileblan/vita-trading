@@ -247,6 +247,11 @@ function Overview() {
     return filterByRange(scopedTrades, range);
   }, [scopedTrades, range, customRange, selectedCalendarDate]);
 
+  const selectedStrategy = useMemo(
+    () => (isStrategy ? strategies.find((s) => s.id === strategyFilter) : null),
+    [isStrategy, strategies, strategyFilter],
+  );
+
   // Accounts (capital + PnL) of the selected account/strategy.
   const strategyAccounts = useMemo(() => {
     if (!isStrategy) return [];
@@ -276,12 +281,8 @@ function Overview() {
     [fusionAccounts, visibleTrades, withdrawals],
   );
 
-  // Calendario: con una estrategia elegida suma todas las operaciones de las cuentas que la emplean.
-  const calendarTrades = useMemo(() => {
-    if (!isStrategy) return scopedTrades;
-    const ids = new Set(strategyAccounts.map((a) => a.id));
-    return visibleTrades.filter((t) => t.accountId && ids.has(t.accountId));
-  }, [isStrategy, scopedTrades, strategyAccounts, visibleTrades]);
+  // Calendario: muestra exclusivamente las operaciones de la estrategia o cuenta seleccionada
+  const calendarTrades = scopedTrades;
 
   // Cuenta de fondeo concreta seleccionada → progreso hacia objetivo (eval / retiro) y drawdown
   const selectedFundedAccount = useMemo(() => {
@@ -319,15 +320,17 @@ function Overview() {
   }, [selectedFundedAccount, visibleTrades, withdrawals]);
 
   const curveAccounts = isStrategy ? strategyAccounts : scopedAccounts;
-  const curve = useMemo(
-    () =>
-      buildEquityCurve(
-        trades,
-        accountsCurveStart(curveAccounts, trades, withdrawals),
-        selectedFundedAccount,
-      ),
-    [trades, curveAccounts, withdrawals, selectedFundedAccount],
-  );
+  const curve = useMemo(() => {
+    if (isStrategy) {
+      // Para una estrategia, la curva muestra la evolución del PnL acumulado de esa estrategia
+      return buildEquityCurve(trades, 0, null);
+    }
+    return buildEquityCurve(
+      trades,
+      accountsCurveStart(curveAccounts, trades, withdrawals),
+      selectedFundedAccount,
+    );
+  }, [isStrategy, trades, curveAccounts, withdrawals, selectedFundedAccount]);
 
   const fundedAccounts = selectedAccounts.filter((a) => a.type === "funded");
   const realAccounts = selectedAccounts.filter((a) => a.type !== "funded");
@@ -347,6 +350,20 @@ function Overview() {
     (s, a) => s + accountResult(a, visibleTrades, withdrawals),
     0,
   );
+
+  // PnL total histórico de la estrategia
+  const strategyTotalPnl = useMemo(
+    () => (isStrategy ? scopedTrades.reduce((s, t) => s + t.pnl, 0) : 0),
+    [isStrategy, scopedTrades],
+  );
+
+  // Profit Factor de la estrategia en el periodo
+  const strategyProfitFactor = useMemo(() => {
+    const grossProfit = trades.filter((t) => t.pnl > 0).reduce((s, t) => s + t.pnl, 0);
+    const grossLoss = Math.abs(trades.filter((t) => t.pnl < 0).reduce((s, t) => s + t.pnl, 0));
+    if (grossLoss === 0) return grossProfit > 0 ? Infinity : 0;
+    return grossProfit / grossLoss;
+  }, [trades]);
 
   // PnL del recuadro
   const fusionPnl =
@@ -382,9 +399,11 @@ function Overview() {
       subtitle={
         selectedCalendarDate
           ? `Filtrado por día ${selectedCalendarDate.split("-").reverse().join("/")} · ${trades.length} operación(es) · PnL ${fusionPnl >= 0 ? "+" : "−"}${formatCurrency(Math.abs(fusionPnl), false)}`
-          : isSupervisedView
-            ? `Supervisando a ${svProfiles.find((p) => p.id === supervisorUserFilter)?.display_name ?? "usuario"} · ${accounts.length} cuenta(s) · Fondeo ${formatCurrency(fundedEquity)} · Real ${formatCurrency(realEquity)}`
-            : `${selectedAccounts.length} cuenta(s) activas · Fondeo ${formatCurrency(fundedEquity)} · Real ${formatCurrency(realEquity)}`
+          : isStrategy
+            ? `Estrategia: ${selectedStrategy?.name ?? "Estrategia"}${selectedStrategy?.mainSymbol ? ` (${selectedStrategy.mainSymbol})` : ""} · ${trades.length} operación(es) en periodo · PnL ${fusionPnl >= 0 ? "+" : "−"}${formatCurrency(Math.abs(fusionPnl), false)}`
+            : isSupervisedView
+              ? `Supervisando a ${svProfiles.find((p) => p.id === supervisorUserFilter)?.display_name ?? "usuario"} · ${accounts.length} cuenta(s) · Fondeo ${formatCurrency(fundedEquity)} · Real ${formatCurrency(realEquity)}`
+              : `${selectedAccounts.length} cuenta(s) activas · Fondeo ${formatCurrency(fundedEquity)} · Real ${formatCurrency(realEquity)}`
       }
     >
       <div className="space-y-6">
@@ -678,34 +697,40 @@ function Overview() {
         ) : (
           <section className="panel p-4 bg-card shadow-xs">
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-3">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2.5">
                 {isStrategy ? (
                   <span
-                    className="size-3.5 rounded-full"
+                    className="size-4 rounded-full shadow-xs shrink-0"
                     style={{
                       backgroundColor:
-                        strategies.find((s) => s.id === strategyFilter)?.color ??
-                        "var(--color-brand)",
+                        selectedStrategy?.color ?? "var(--color-brand)",
                     }}
                   />
                 ) : (
-                  <Building2 className="size-4 text-brand" />
+                  <Building2 className="size-4 text-brand shrink-0" />
                 )}
                 <div>
-                  <h2 className="text-lg font-bold font-display tracking-wide uppercase leading-none">
-                    {isStrategy
-                      ? `Estrategia: ${strategies.find((s) => s.id === strategyFilter)?.name ?? "Estrategia"}`
-                      : (accounts.find((a) => a.id === accountFilter)?.name ?? "Cuenta")}
-                  </h2>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h2 className="text-lg font-bold font-display tracking-wide uppercase leading-none">
+                      {isStrategy
+                        ? `Estrategia: ${selectedStrategy?.name ?? "Estrategia"}`
+                        : (accounts.find((a) => a.id === accountFilter)?.name ?? "Cuenta")}
+                    </h2>
+                    {isStrategy && selectedStrategy?.mainSymbol && (
+                      <span className="rounded bg-brand/10 border border-brand/25 px-1.5 py-0.2 text-[10px] font-bold text-brand uppercase">
+                        {selectedStrategy.mainSymbol}
+                      </span>
+                    )}
+                  </div>
                   <p className="text-xs text-muted-foreground mt-0.5">
                     {isStrategy
-                      ? "Rendimiento agrupado por estrategia"
+                      ? selectedStrategy?.description || `Rendimiento exclusivo de la estrategia ${selectedStrategy?.name ?? ""}`
                       : "Supervisión detallada de cuenta"}
                   </p>
                 </div>
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 {fundedTarget && (
                   <span
                     className={cn(
@@ -720,7 +745,7 @@ function Overview() {
                 )}
                 <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs font-semibold text-muted-foreground">
                   {isStrategy
-                    ? "Estrategia"
+                    ? `${strategyAccounts.length} ${strategyAccounts.length === 1 ? "cuenta vinculada" : "cuentas vinculadas"}`
                     : accounts.find((a) => a.id === accountFilter)?.type === "funded"
                       ? "Fondeo"
                       : "Personal"}
@@ -728,18 +753,10 @@ function Overview() {
               </div>
             </div>
 
-            <div className="mt-3 grid gap-3 sm:grid-cols-2">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  Capital Actual
-                </p>
-                <p className="num text-3xl font-black text-foreground mt-1">
-                  {formatCurrency(fusionEquity)}
-                </p>
-              </div>
-
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            {/* Cuadrícula de Métricas de la Estrategia / Cuenta */}
+            <div className="mt-3.5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="rounded-lg bg-muted/20 border border-border/60 p-3">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
                   Resultado en Periodo
                 </p>
                 <p
@@ -748,10 +765,84 @@ function Overview() {
                     fusionPnl >= 0 ? "text-profit" : "text-loss",
                   )}
                 >
-                  {fusionPnl >= 0 ? "+" : "−"} {formatCurrency(Math.abs(fusionPnl), false)}
+                  {fusionPnl >= 0 ? "+" : "−"}{formatCurrency(Math.abs(fusionPnl), false)}
+                </p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">
+                  {range === "all" ? "Periodo completo" : `En rango seleccionado (${trades.length} ops)`}
+                </p>
+              </div>
+
+              <div className="rounded-lg bg-muted/20 border border-border/60 p-3">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                  {isStrategy ? "PnL Total Histórico" : "Capital Actual"}
+                </p>
+                <p
+                  className={cn(
+                    "num text-2xl font-black tracking-tight mt-1",
+                    isStrategy
+                      ? strategyTotalPnl >= 0
+                        ? "text-profit"
+                        : "text-loss"
+                      : "text-foreground",
+                  )}
+                >
+                  {isStrategy
+                    ? `${strategyTotalPnl >= 0 ? "+" : "−"}${formatCurrency(Math.abs(strategyTotalPnl), false)}`
+                    : formatCurrency(fusionEquity)}
+                </p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">
+                  {isStrategy ? `${scopedTrades.length} ops registradas en total` : `${fusionAccounts.length} cuenta(s)`}
+                </p>
+              </div>
+
+              <div className="rounded-lg bg-muted/20 border border-border/60 p-3">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                  Tasa de Acierto (Win Rate)
+                </p>
+                <p className="num text-2xl font-black text-foreground mt-1">
+                  {trades.length > 0
+                    ? `${((trades.filter((t) => t.pnl > 0).length / trades.length) * 100).toFixed(0)}%`
+                    : "—"}
+                </p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">
+                  {trades.length > 0
+                    ? `${trades.filter((t) => t.pnl > 0).length}W / ${trades.filter((t) => t.pnl < 0).length}L`
+                    : "Sin operaciones"}
+                </p>
+              </div>
+
+              <div className="rounded-lg bg-muted/20 border border-border/60 p-3">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                  Profit Factor
+                </p>
+                <p className="num text-2xl font-black text-foreground mt-1">
+                  {strategyProfitFactor === Infinity
+                    ? "∞"
+                    : strategyProfitFactor > 0
+                      ? strategyProfitFactor.toFixed(2)
+                      : "—"}
+                </p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">
+                  Ratio Ganancias / Pérdidas
                 </p>
               </div>
             </div>
+
+            {/* Cuentas donde se ejecuta esta estrategia */}
+            {isStrategy && strategyAccounts.length > 0 && (
+              <div className="mt-3 pt-3 border-t border-border/50 flex items-center gap-2 flex-wrap">
+                <span className="text-[11px] text-muted-foreground font-semibold">Cuentas con esta estrategia:</span>
+                {strategyAccounts.map((acc) => (
+                  <span
+                    key={acc.id}
+                    className="inline-flex items-center gap-1 rounded bg-muted/70 border border-border px-2 py-0.5 text-[11px] font-medium text-foreground"
+                  >
+                    <Wallet className="size-3 text-brand" />
+                    {acc.name} {acc.firm ? `(${acc.firm})` : ""}
+                  </span>
+                ))}
+              </div>
+            )}
 
             {fundedTarget && (
               <div className="mt-4 border-t border-border pt-3">
@@ -820,22 +911,26 @@ function Overview() {
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-border/50 pb-3">
               <div>
                 <h2 className="text-xl font-display uppercase tracking-wide leading-none">
-                  Curva de capital{" "}
+                  Curva de {isStrategy ? "rentabilidad" : "capital"}{" "}
                   <span className="text-sm font-medium text-muted-foreground font-sans lowercase">
                     ·{" "}
                     {selectedCalendarDate
                       ? `día ${selectedCalendarDate.split("-").reverse().join("/")}`
-                      : scope === "funded"
-                        ? "fondeo"
-                        : scope === "real"
-                          ? "personal"
-                          : "consolidado"}
+                      : isStrategy
+                        ? `estrategia ${selectedStrategy?.name ?? ""}`
+                        : scope === "funded"
+                          ? "fondeo"
+                          : scope === "real"
+                            ? "personal"
+                            : "consolidado"}
                   </span>
                 </h2>
                 <p className="text-xs text-muted-foreground mt-0.5">
                   {selectedCalendarDate
                     ? `Evolución intradía del día ${selectedCalendarDate.split("-").reverse().join("/")}`
-                    : "Evolución cronológica del balance de cuentas"}
+                    : isStrategy
+                      ? `Evolución acumulada de la estrategia ${selectedStrategy?.name ?? ""}`
+                      : "Evolución cronológica del balance de cuentas"}
                 </p>
               </div>
 
@@ -848,18 +943,31 @@ function Overview() {
                         className="size-2 rounded-full"
                         style={{
                           backgroundColor:
-                            strategies.find((s) => s.id === strategyFilter)?.color ??
-                            "var(--color-brand)",
+                            selectedStrategy?.color ?? "var(--color-brand)",
                         }}
                       />
                       <span>
-                        {strategies.find((s) => s.id === strategyFilter)?.name ?? "Estrategia"}
+                        {selectedStrategy?.name ?? "Estrategia"}
+                      </span>
+                      <span className="text-muted-foreground">·</span>
+                      <span
+                        className={cn(
+                          "num font-black",
+                          fusionPnl >= 0 ? "text-profit" : "text-loss",
+                        )}
+                      >
+                        {fusionPnl >= 0 ? "+" : "−"}
+                        {formatCurrency(Math.abs(fusionPnl), false)}
                       </span>
                     </>
                   ) : accountFilter !== "all" ? (
                     <>
                       <Building2 className="size-3.5 text-muted-foreground" />
                       <span>{accounts.find((a) => a.id === accountFilter)?.name ?? "Cuenta"}</span>
+                      <span className="text-muted-foreground">·</span>
+                      <span className="num font-black text-foreground">
+                        {formatCurrency(fusionEquity)}
+                      </span>
                     </>
                   ) : (
                     <>
@@ -867,12 +975,12 @@ function Overview() {
                       <span>
                         {scope === "funded" ? "Fondeo" : scope === "real" ? "Personal" : "Total"}
                       </span>
+                      <span className="text-muted-foreground">·</span>
+                      <span className="num font-black text-foreground">
+                        {formatCurrency(fusionEquity)}
+                      </span>
                     </>
                   )}
-                  <span className="text-muted-foreground">·</span>
-                  <span className="num font-black text-foreground">
-                    {formatCurrency(fusionEquity)}
-                  </span>
                 </span>
               </div>
             </div>

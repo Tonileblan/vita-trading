@@ -38,9 +38,13 @@ export function EquityChart({
             tick={{ fontSize: 11, fill: "var(--color-muted-foreground)" }}
             tickLine={false}
             axisLine={false}
-            width={75}
-            tickFormatter={(v: number) => `$${(v / 1000).toFixed(0)}k`}
-            domain={["auto", "auto"]}
+            tickFormatter={(v: number) => {
+              if (Math.abs(v) >= 1000) {
+                const k = v / 1000;
+                return `$${k % 1 === 0 ? k.toFixed(0) : k.toFixed(1)}k`;
+              }
+              return `$${Math.round(v)}`;
+            }}
           />
           <Tooltip
             contentStyle={{
