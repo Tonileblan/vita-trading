@@ -27,7 +27,6 @@ import { BreathingExercise } from "@/components/breathing-exercise";
 import { EmotionStats } from "@/components/emotion-stats";
 import { MoodCalendar } from "@/components/mood-calendar";
 import { MoodCheckinCard } from "@/components/mood-checkin-card";
-import { RiskAlerts } from "@/components/risk-alerts";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -415,8 +414,7 @@ function MentePage() {
       showAccountPanel={false}
     >
       <div className="space-y-6">
-        {/* Risk Alerts Banner if triggered */}
-        <RiskAlerts />
+
 
         {/* ========================================================================= */}
         {/* HERO KPI CARDS                                                            */}

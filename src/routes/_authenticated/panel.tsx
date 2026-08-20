@@ -16,7 +16,6 @@ import {
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { EquityChart } from "@/components/equity-chart";
-import { RiskAlerts } from "@/components/risk-alerts";
 import { PnlCalendar } from "@/components/pnl-calendar";
 import { PerformanceAnalysis } from "@/components/performance-analysis";
 import { Calendar } from "@/components/ui/calendar";
@@ -613,8 +612,7 @@ function Overview() {
           </div>
         )}
 
-        {/* Alertas de Disciplina y Riesgo */}
-        <RiskAlerts />
+
 
         {/* ========================================================================= */}
         {/* BLOQUE 1: RESUMEN DE CAPITAL Y ESTADO DE CUENTAS                          */}

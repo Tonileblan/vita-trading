@@ -4,9 +4,7 @@ import {
   AlertTriangle,
   Bell,
   Brain,
-  ChevronDown,
   ChevronRight,
-  ChevronUp,
   ShieldAlert,
   Trophy,
   X,
@@ -352,67 +350,3 @@ export function HeaderAlertsButton() {
   );
 }
 
-/**
- * Componente in-page:
- * Si hay alertas, las alertas NO se muestran de golpe.
- * En su lugar, aparece un BOTÓN PARPADEANTE "Alertas" que, al ser pulsado,
- * despliega las alertas una detrás de otra (con el botón X para descartar cada una).
- */
-export function RiskAlerts() {
-  const { activeAlerts, dismissAlert, highestTone } = useActiveRiskAlerts();
-  const [open, setOpen] = useState(false);
-
-  if (activeAlerts.length === 0) return null;
-
-  const buttonStyle = {
-    danger: "border-loss/70 bg-loss/15 text-loss hover:bg-loss/25 shadow-loss/25 animate-pulse",
-    warn: "border-amber-500/70 bg-amber-500/15 text-amber-600 dark:text-amber-400 hover:bg-amber-500/25 shadow-amber-500/25 animate-pulse",
-    success: "border-emerald-500/70 bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/25 shadow-emerald-500/25 animate-pulse",
-    info: "border-brand/70 bg-brand/15 text-brand hover:bg-brand/25 shadow-brand/25 animate-pulse",
-    none: "border-border text-muted-foreground",
-  }[highestTone];
-
-  return (
-    <div className="space-y-3">
-      {/* Botón Parpadeante de Alertas */}
-      <div className="flex items-center gap-2">
-        <button
-          type="button"
-          onClick={() => setOpen(!open)}
-          className={cn(
-            "inline-flex items-center gap-2 rounded-xl border-2 px-3.5 py-1.5 text-xs font-black uppercase tracking-wider transition-all cursor-pointer select-none shadow-md",
-            buttonStyle,
-          )}
-          aria-expanded={open}
-        >
-          {highestTone === "danger" ? (
-            <ShieldAlert className="size-4 shrink-0 animate-bounce" />
-          ) : (
-            <AlertTriangle className="size-4 shrink-0" />
-          )}
-
-          <span>Alertas</span>
-
-          <span className="flex size-4.5 items-center justify-center rounded-full bg-foreground text-[10px] font-black text-background">
-            {activeAlerts.length}
-          </span>
-
-          {open ? <ChevronUp className="size-3.5" /> : <ChevronDown className="size-3.5" />}
-        </button>
-
-        <span className="text-[11px] text-muted-foreground font-medium">
-          {open ? "Pulsa para ocultar las alertas" : "Pulsa para ver los avisos"}
-        </span>
-      </div>
-
-      {/* Lista de alertas desplegadas UNA DETRÁS DE OTRA */}
-      {open && (
-        <div className="flex flex-col gap-2.5 animate-in fade-in slide-in-from-top-2 duration-200">
-          {activeAlerts.map((a) => (
-            <AlertCard key={a.key} alert={a} onDismiss={dismissAlert} />
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
