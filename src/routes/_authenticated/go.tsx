@@ -20,6 +20,7 @@ import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { GoAccountPlanManager } from "@/components/go/go-account-plan-manager";
 import { GoCockpit } from "@/components/go/go-cockpit";
 import { GoWeeklyMatrix } from "@/components/go/go-weekly-matrix";
 import { GoRiskBudget } from "@/components/go/go-risk-budget";
@@ -68,8 +69,8 @@ function GoPage() {
 
   const { data: slots = [] } = useTradingPlanSlots(plan.id === "default-plan" ? undefined : plan.id);
 
-  // Pestaña activa dentro de GO
-  const [activeTab, setActiveTab] = useState<string>("cockpit");
+  // Pestaña activa dentro de GO (por defecto: 'planing' para el flujo secuencial de cuentas y estrategias)
+  const [activeTab, setActiveTab] = useState<string>("planing");
 
   // Estado para abrir modal de nuevo trade precargado
   const [tradeFormOpen, setTradeFormOpen] = useState(false);
@@ -113,13 +114,13 @@ function GoPage() {
           <span className="flex size-7 items-center justify-center rounded-md bg-foreground text-background font-bold text-xs tracking-wider">
             GO
           </span>
-          <span>Planing & Cockpit Operativo</span>
+          <span>Planing & Gestor Operativo</span>
           <Badge variant="secondary" className="text-[10px] font-mono tracking-widest uppercase">
             Admin Lab
           </Badge>
         </div>
       }
-      subtitle="Orquesta tus cuentas, estrategias, horarios semanales (L-V) y gestión de riesgo en un solo centro de mando"
+      subtitle="Diseñador de cuentas, asignación de estrategias, periodos de vigencia, operativa (L-V) y gestión de riesgo"
       showAccountPanel={false}
       actions={
         <div className="flex items-center gap-2">
@@ -138,23 +139,23 @@ function GoPage() {
       <div className="space-y-6">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsList className="grid w-full grid-cols-2 md:grid-cols-5 h-auto p-1 bg-muted/60">
+            <TabsTrigger value="planing" className="gap-1.5 py-2 text-xs">
+              <Layers className="size-3.5 text-brand" />
+              <span>Planing por Cuentas</span>
+            </TabsTrigger>
+
             <TabsTrigger value="cockpit" className="gap-1.5 py-2 text-xs">
               <Zap className="size-3.5 text-amber-500" />
               <span>Cockpit Hoy</span>
             </TabsTrigger>
 
             <TabsTrigger value="matrix" className="gap-1.5 py-2 text-xs">
-              <CalendarDays className="size-3.5 text-brand" />
+              <CalendarDays className="size-3.5 text-indigo-500" />
               <span>Matriz Semanal (L-V)</span>
             </TabsTrigger>
 
-            <TabsTrigger value="risk" className="gap-1.5 py-2 text-xs">
-              <ShieldCheck className="size-3.5 text-emerald-500" />
-              <span>Presupuesto & Riesgo</span>
-            </TabsTrigger>
-
             <TabsTrigger value="compliance" className="gap-1.5 py-2 text-xs">
-              <LineChart className="size-3.5 text-indigo-500" />
+              <LineChart className="size-3.5 text-emerald-500" />
               <span>Cumplimiento</span>
             </TabsTrigger>
 
@@ -164,7 +165,12 @@ function GoPage() {
             </TabsTrigger>
           </TabsList>
 
-          {/* 1. COCKPIT HOY */}
+          {/* 1. PLANING Y ASIGNACIÓN POR CUENTAS (FLUJO PRINCIPAL DE 3 PASOS) */}
+          <TabsContent value="planing" className="space-y-6 m-0">
+            <GoAccountPlanManager />
+          </TabsContent>
+
+          {/* 2. COCKPIT HOY */}
           <TabsContent value="cockpit" className="space-y-6 m-0">
             <GoCockpit
               plan={plan}
@@ -174,14 +180,9 @@ function GoPage() {
             />
           </TabsContent>
 
-          {/* 2. MATRIZ SEMANAL L-V */}
+          {/* 3. MATRIZ SEMANAL L-V */}
           <TabsContent value="matrix" className="space-y-6 m-0">
             <GoWeeklyMatrix plan={plan} slots={slots} />
-          </TabsContent>
-
-          {/* 3. GESTIÓN DE RIESGO & CIRCUIT BREAKERS */}
-          <TabsContent value="risk" className="space-y-6 m-0">
-            <GoRiskBudget plan={plan} />
           </TabsContent>
 
           {/* 4. CUMPLIMIENTO & AUDITORÍA */}
