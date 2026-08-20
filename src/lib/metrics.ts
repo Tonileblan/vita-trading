@@ -279,8 +279,8 @@ export function filterByRange(
 /** PnL acumulado de las operaciones de una cuenta. */
 /**
  * Estrategia efectiva de una operación:
- * 1) el tramo de fechas asignado a su cuenta (si lo hay),
- * 2) la estrategia de la propia operación,
+ * 1) la estrategia propia de la operación (si la tiene asignada directamente),
+ * 2) el tramo de fechas asignado a su cuenta (si lo hay),
  * 3) la estrategia por defecto de la cuenta.
  */
 export function effectiveStrategyId(
@@ -288,6 +288,7 @@ export function effectiveStrategyId(
   accounts: Account[],
   periods: AccountStrategyPeriod[] = [],
 ) {
+  if (trade.strategyId) return trade.strategyId;
   const day = tradeDayKey(trade) || (trade.openedAt || trade.closedAt || "").slice(0, 10);
   if (day) {
     const period = periods.find(
@@ -298,7 +299,6 @@ export function effectiveStrategyId(
     );
     if (period) return period.strategyId;
   }
-  if (trade.strategyId) return trade.strategyId;
   return accounts.find((a) => a.id === trade.accountId)?.strategyId ?? "";
 }
 

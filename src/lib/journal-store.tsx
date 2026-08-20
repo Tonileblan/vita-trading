@@ -1033,70 +1033,111 @@ export function JournalProvider({ children }: { children: ReactNode }) {
       },
       addStrategyPeriod: async (period) => {
         const base = await ownerFields();
-        const { error } = await supabase.from("account_strategy_periods").insert({
-          account_id: period.accountId,
-          strategy_id: period.strategyId,
-          start_date: period.startDate,
-          end_date: period.endDate || null,
-          note: period.note ?? null,
-          ...base,
-        } as never);
-        if (error) throw error;
-
-        // Actualizar directamente todas las operaciones de esta cuenta dentro del tramo de fechas
         const start = period.startDate;
         const end = period.endDate;
-        const matchingTradeIds = data.trades
-          .filter((t) => {
-            if (t.accountId !== period.accountId) return false;
+        const tempId =
+          typeof crypto !== "undefined" && "randomUUID" in crypto
+            ? crypto.randomUUID()
+            : `temp-period-${Date.now()}`;
+
+        // 1. Actualización optimista inmediata
+        updateCache((old) => ({
+          ...old,
+          strategyPeriods: [...old.strategyPeriods, { id: tempId, ...period }],
+          trades: old.trades.map((t) => {
+            if (t.accountId !== period.accountId) return t;
             const day = tradeDayKey(t);
-            if (!day) return false;
-            return day >= start && (!end || day <= end);
-          })
-          .map((t) => t.id);
+            if (!day || day < start || (end && day > end)) return t;
+            return { ...t, strategyId: period.strategyId };
+          }),
+        }));
 
-        if (matchingTradeIds.length > 0) {
-          await supabase
-            .from("trades")
-            .update({ strategy_id: period.strategyId })
-            .in("id", matchingTradeIds);
-        }
+        try {
+          const { error } = await supabase.from("account_strategy_periods").insert({
+            account_id: period.accountId,
+            strategy_id: period.strategyId,
+            start_date: period.startDate,
+            end_date: period.endDate || null,
+            note: period.note ?? null,
+            ...base,
+          } as never);
+          if (error) throw error;
 
-        await refresh();
-      },
-      removeStrategyPeriod: async (id) => {
-        const targetPeriod = data.strategyPeriods.find((p) => p.id === id);
-        const { error } = await supabase.from("account_strategy_periods").delete().eq("id", id);
-        if (error) throw error;
-
-        if (targetPeriod) {
-          const start = targetPeriod.startDate;
-          const end = targetPeriod.endDate;
-          const defaultStratId =
-            data.accounts.find((a) => a.id === targetPeriod.accountId)?.strategyId ?? null;
-
+          // Actualizar directamente todas las operaciones de esta cuenta dentro del tramo de fechas
           const matchingTradeIds = data.trades
             .filter((t) => {
-              if (t.accountId !== targetPeriod.accountId) return false;
+              if (t.accountId !== period.accountId) return false;
               const day = tradeDayKey(t);
               if (!day) return false;
-              return (
-                day >= start &&
-                (!end || day <= end) &&
-                t.strategyId === targetPeriod.strategyId
-              );
+              return day >= start && (!end || day <= end);
             })
             .map((t) => t.id);
 
           if (matchingTradeIds.length > 0) {
             await supabase
               .from("trades")
-              .update({ strategy_id: defaultStratId })
+              .update({ strategy_id: period.strategyId })
               .in("id", matchingTradeIds);
           }
+        } finally {
+          await refresh();
         }
+      },
+      removeStrategyPeriod: async (id) => {
+        const targetPeriod = data.strategyPeriods.find((p) => p.id === id);
 
-        await refresh();
+        if (targetPeriod) {
+          const start = targetPeriod.startDate;
+          const end = targetPeriod.endDate;
+          const defaultStratId =
+            data.accounts.find((a) => a.id === targetPeriod.accountId)?.strategyId ?? "";
+
+          // Actualización optimista inmediata
+          updateCache((old) => ({
+            ...old,
+            strategyPeriods: old.strategyPeriods.filter((p) => p.id !== id),
+            trades: old.trades.map((t) => {
+              if (t.accountId !== targetPeriod.accountId) return t;
+              const day = tradeDayKey(t);
+              if (!day || day < start || (end && day > end)) return t;
+              if (t.strategyId === targetPeriod.strategyId) {
+                return { ...t, strategyId: defaultStratId };
+              }
+              return t;
+            }),
+          }));
+
+          try {
+            const { error } = await supabase.from("account_strategy_periods").delete().eq("id", id);
+            if (error) throw error;
+
+            const matchingTradeIds = data.trades
+              .filter((t) => {
+                if (t.accountId !== targetPeriod.accountId) return false;
+                const day = tradeDayKey(t);
+                if (!day) return false;
+                return (
+                  day >= start &&
+                  (!end || day <= end) &&
+                  t.strategyId === targetPeriod.strategyId
+                );
+              })
+              .map((t) => t.id);
+
+            if (matchingTradeIds.length > 0) {
+              await supabase
+                .from("trades")
+                .update({ strategy_id: defaultStratId || null })
+                .in("id", matchingTradeIds);
+            }
+          } finally {
+            await refresh();
+          }
+        } else {
+          const { error } = await supabase.from("account_strategy_periods").delete().eq("id", id);
+          if (error) throw error;
+          await refresh();
+        }
       },
       restoreDefaultStrategies: async () => {
         const base = await ownerFields();

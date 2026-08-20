@@ -22,6 +22,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useJournal, fetchTradeScreenshots } from "@/lib/journal-store";
+import { effectiveStrategyId } from "@/lib/metrics";
 import { type Direction, type Trade } from "@/lib/types";
 import {
   EMOTIONS_AFTER,
@@ -72,7 +73,7 @@ export function TradeFormDialog({
   onOpenChange?: (open: boolean) => void;
   onSuccess?: () => void;
 } = {}) {
-  const { accounts, strategies, addTrade, updateTrade } = useJournal();
+  const { accounts, strategies, strategyPeriods, addTrade, updateTrade } = useJournal();
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
   const isControlled = controlledOpen !== undefined;
   const open = isControlled ? controlledOpen : uncontrolledOpen;
@@ -84,7 +85,13 @@ export function TradeFormDialog({
   const isEditing = Boolean(trade);
 
   const [accountId, setAccountId] = useState(trade?.accountId ?? accounts[0]?.id ?? "");
-  const [strategyId, setStrategyId] = useState(trade?.strategyId ?? strategies[0]?.id ?? "");
+  const [strategyId, setStrategyId] = useState(() => {
+    if (!trade) {
+      const defaultAcc = accounts[0];
+      return defaultAcc?.strategyId || strategies[0]?.id || "";
+    }
+    return trade.strategyId || effectiveStrategyId(trade, accounts, strategyPeriods) || "";
+  });
   const [symbol, setSymbol] = useState(trade?.symbol ?? "NQ1!");
   const [direction, setDirection] = useState<Direction>(trade?.direction ?? "long");
   const [openedAt, setOpenedAt] = useState(() => toDatetimeLocal(trade?.openedAt));
@@ -119,7 +126,11 @@ export function TradeFormDialog({
     if (!open) return;
     if (trade) {
       setAccountId(trade.accountId || accounts[0]?.id || "");
-      setStrategyId(trade.strategyId || strategies[0]?.id || "");
+      const resolvedStratId =
+        trade.strategyId ||
+        effectiveStrategyId(trade, accounts, strategyPeriods) ||
+        "";
+      setStrategyId(resolvedStratId);
       setSymbol(trade.symbol || "");
       setDirection(trade.direction || "long");
       setOpenedAt(toDatetimeLocal(trade.openedAt));
@@ -156,8 +167,9 @@ export function TradeFormDialog({
       setMistakes(trade.mistakes ?? []);
       setEmotionNote(trade.emotionNote ?? "");
     } else {
-      setAccountId(accounts[0]?.id ?? "");
-      setStrategyId(strategies[0]?.id ?? "");
+      const defaultAcc = accounts[0];
+      setAccountId(defaultAcc?.id ?? "");
+      setStrategyId(defaultAcc?.strategyId || strategies[0]?.id || "");
       setSymbol("NQ1!");
       setDirection("long");
       setOpenedAt(toDatetimeLocal());
@@ -176,7 +188,7 @@ export function TradeFormDialog({
       setMistakes([]);
       setEmotionNote("");
     }
-  }, [open, trade, accounts, strategies]);
+  }, [open, trade, accounts, strategies, strategyPeriods]);
 
   // Al elegir cuenta en modo creación, usa la estrategia asignada a esa cuenta.
   useEffect(() => {
