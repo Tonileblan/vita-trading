@@ -45,7 +45,9 @@ import { useJournal } from "@/lib/journal-store";
 import { accountDrawdown, formatCurrency } from "@/lib/metrics";
 import { DrawdownProgress } from "@/components/drawdown-progress";
 import {
+  DEFAULT_SESSIONS,
   getCurrentOperatingDay,
+  getStrategyPresetDefaults,
   getTodayDateStr,
   OPERATING_DAYS,
   useDeletePlanSlot,
@@ -258,15 +260,22 @@ export function GoAccountPlanManager({
   const [allowedSymbols, setAllowedSymbols] = useState(selectedStrategy?.mainSymbol || "MNQ, NQ");
   const [sessionNotes, setSessionNotes] = useState(selectedStrategy?.setup || "");
 
+  // Auto-selección inteligente de horario, símbolos, notas y riesgo según la estrategia
   useEffect(() => {
     if (selectedStrategy) {
-      if (selectedStrategy.mainSymbol) setAllowedSymbols(selectedStrategy.mainSymbol);
-      if (selectedStrategy.setup) setSessionNotes(selectedStrategy.setup);
-      if (selectedStrategy.initialCapital && selectedStrategy.riskPct) {
-        setRiskPerTrade(String(Math.round(selectedStrategy.initialCapital * selectedStrategy.riskPct)));
+      const defaults = getStrategyPresetDefaults(selectedStrategy);
+      setAllowedSymbols(defaults.symbols);
+      setSessionStartTime(defaults.startTime);
+      setSessionEndTime(defaults.endTime);
+      setSessionNotes(defaults.notes);
+      if (defaults.riskAmount) {
+        setRiskPerTrade(String(defaults.riskAmount));
+      }
+      if (defaults.activeDays && defaults.activeDays.length > 0) {
+        setActiveDays(defaults.activeDays);
       }
     }
-  }, [selectedStrategy]);
+  }, [assignStratId, selectedStrategy]);
 
   const toggleDay = (dayNum: number) => {
     setActiveDays((prev) =>
@@ -702,24 +711,30 @@ export function GoAccountPlanManager({
                   </SelectContent>
                 </Select>
 
-                {selectedStrategy && (
-                  <div className="rounded-lg border border-border/70 bg-muted/20 p-3 space-y-1.5 text-xs">
-                    <div className="flex items-center justify-between text-[11px] text-muted-foreground">
-                      <span>Símbolo: <strong className="text-foreground font-mono">{selectedStrategy.mainSymbol || "MNQ"}</strong></span>
-                      <span>Riesgo Base: <strong className="text-foreground font-mono">{((selectedStrategy.riskPct || 0.01) * 100).toFixed(1)}%</strong></span>
-                    </div>
-                    {selectedStrategy.chart && (
-                      <div className="text-[11px] text-muted-foreground">
-                        Timeframe: <strong className="text-foreground">{selectedStrategy.chart}</strong>
+                {selectedStrategy && (() => {
+                  const defaults = getStrategyPresetDefaults(selectedStrategy);
+                  return (
+                    <div className="rounded-lg border border-border/70 bg-muted/20 p-3 space-y-2 text-xs">
+                      <div className="flex items-center justify-between text-[11px]">
+                        <span className="text-muted-foreground">
+                          Activo: <strong className="text-foreground font-mono">{defaults.symbols}</strong>
+                        </span>
+                        <span className="text-muted-foreground">
+                          Horario: <strong className="text-emerald-600 dark:text-emerald-400 font-mono">{defaults.startTime} - {defaults.endTime}</strong>
+                        </span>
                       </div>
-                    )}
-                    {selectedStrategy.setup && (
-                      <p className="text-[11px] text-muted-foreground italic line-clamp-2 pt-1 border-t border-border/40">
-                        Setup: {selectedStrategy.setup}
-                      </p>
-                    )}
-                  </div>
-                )}
+                      <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+                        <span>Sesión: <strong className="text-foreground">{defaults.sessionName}</strong></span>
+                        <span>Riesgo Base: <strong className="text-foreground font-mono">{((selectedStrategy.riskPct || 0.01) * 100).toFixed(1)}%</strong></span>
+                      </div>
+                      {selectedStrategy.setup && (
+                        <p className="text-[11px] text-muted-foreground italic line-clamp-2 pt-1 border-t border-border/40">
+                          Setup: {selectedStrategy.setup}
+                        </p>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
 
               {/* Tiempo / Periodo de Vigencia */}
@@ -851,8 +866,14 @@ export function GoAccountPlanManager({
                 </span>
 
                 {/* HORARIO DE SESIÓN */}
-                <div className="pt-2 space-y-1.5">
-                  <Label className="text-xs font-medium">Horario de Sesión (Mercado)</Label>
+                <div className="pt-2 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs font-medium">Horario de Sesión (Mercado)</Label>
+                    <span className="text-[10px] text-muted-foreground font-mono">
+                      {sessionStartTime} - {sessionEndTime}
+                    </span>
+                  </div>
+
                   <div className="grid grid-cols-2 gap-2">
                     <div>
                       <span className="text-[10px] text-muted-foreground block">Hora Inicio</span>
@@ -872,6 +893,33 @@ export function GoAccountPlanManager({
                         className="h-8 text-xs font-mono"
                       />
                     </div>
+                  </div>
+
+                  {/* Presets Rápidos */}
+                  <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                    {DEFAULT_SESSIONS.map((preset) => {
+                      const isSelected =
+                        sessionStartTime === preset.start && sessionEndTime === preset.end;
+                      return (
+                        <button
+                          key={preset.name}
+                          type="button"
+                          onClick={() => {
+                            setSessionStartTime(preset.start);
+                            setSessionEndTime(preset.end);
+                            setAllowedSymbols(preset.defaultSymbols);
+                          }}
+                          className={cn(
+                            "rounded px-2 py-0.5 text-[10px] font-mono transition-colors border",
+                            isSelected
+                              ? "bg-brand/15 text-brand border-brand/40 font-bold shadow-2xs"
+                              : "bg-muted/40 text-muted-foreground hover:text-foreground border-border/60",
+                          )}
+                        >
+                          {preset.name} ({preset.start}-{preset.end})
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               </div>

@@ -38,6 +38,7 @@ import { useJournal } from "@/lib/journal-store";
 import {
   DEFAULT_SESSIONS,
   generateDefaultSlotsFromJournal,
+  getStrategyPresetDefaults,
   OPERATING_DAYS,
   useDeletePlanSlot,
   useSavePlanSlot,
@@ -83,16 +84,19 @@ export function GoWeeklyMatrix({ plan, slots }: GoWeeklyMatrixProps) {
   const openNewSlotDialog = (dayOfWeek: number = 1) => {
     setEditingSlot(null);
     setFormDay(dayOfWeek);
-    setFormSessionName("NY Apertura");
-    setFormStartTime("15:30");
-    setFormEndTime("17:30");
+    const defaultStrat = strategies[0];
+    const defaults = getStrategyPresetDefaults(defaultStrat);
+
+    setFormSessionName(defaults.sessionName || "Sesión Principal");
+    setFormStartTime(defaults.startTime || "15:30");
+    setFormEndTime(defaults.endTime || "17:30");
     setFormAccountId(accounts[0]?.id || "none");
-    setFormStrategyId(strategies[0]?.id || "none");
+    setFormStrategyId(defaultStrat?.id || "none");
     setFormMaxTrades("2");
-    setFormRiskAmount("250");
-    setFormRiskPct("1.0");
-    setFormSymbols(strategies[0]?.mainSymbol || "MNQ, NQ");
-    setFormSetupNotes(strategies[0]?.setup || "");
+    setFormRiskAmount(defaults.riskAmount ? String(defaults.riskAmount) : "250");
+    setFormRiskPct(defaultStrat?.riskPct ? String((defaultStrat.riskPct * 100).toFixed(1)) : "1.0");
+    setFormSymbols(defaults.symbols || "MNQ, NQ");
+    setFormSetupNotes(defaults.notes || "");
     setDialogOpen(true);
   };
 
@@ -117,9 +121,14 @@ export function GoWeeklyMatrix({ plan, slots }: GoWeeklyMatrixProps) {
     if (stratId !== "none") {
       const s = strategyMap.get(stratId);
       if (s) {
-        if (s.mainSymbol) setFormSymbols(s.mainSymbol);
-        if (s.setup) setFormSetupNotes(s.setup);
+        const defaults = getStrategyPresetDefaults(s);
+        setFormSessionName(defaults.sessionName);
+        setFormStartTime(defaults.startTime);
+        setFormEndTime(defaults.endTime);
+        setFormSymbols(defaults.symbols);
+        if (defaults.notes) setFormSetupNotes(defaults.notes);
         if (s.riskPct) setFormRiskPct(String((s.riskPct * 100).toFixed(1)));
+        if (defaults.riskAmount) setFormRiskAmount(String(defaults.riskAmount));
       }
     }
   };

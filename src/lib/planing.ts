@@ -68,11 +68,139 @@ export const OPERATING_DAYS = [
 ] as const;
 
 export const DEFAULT_SESSIONS = [
+  { name: "Asia (Tokio / Oro)", start: "01:00", end: "05:00", defaultSymbols: "MGC, GC" },
   { name: "NY Apertura", start: "15:30", end: "17:30", defaultSymbols: "MNQ, NQ, ES" },
   { name: "Londres", start: "08:30", end: "11:00", defaultSymbols: "EURUSD, GBPUSD, FDAX" },
   { name: "NY Tarde / Cierre", start: "19:00", end: "21:00", defaultSymbols: "MNQ, NQ, BTC" },
   { name: "Sesión Completa", start: "09:00", end: "18:00", defaultSymbols: "Acciones, Swing" },
 ] as const;
+
+/**
+ * Deduce y devuelve la configuración por defecto de horario, símbolos, días y setup
+ * asociada a una estrategia.
+ * - Para la estrategia "Oro" / mercados de Oro o Asia: Horario Asia (01:00 - 05:00) y símbolos "MGC, GC".
+ * - Si la estrategia contiene un horario específico en su ficha (ej: 01:00 - 05:00, 15:30 - 17:30), lo extrae automáticamente.
+ */
+export function getStrategyPresetDefaults(strategy: Strategy | null | undefined): {
+  startTime: string;
+  endTime: string;
+  symbols: string;
+  sessionName: string;
+  notes: string;
+  riskAmount?: number;
+  activeDays: number[];
+} {
+  if (!strategy) {
+    return {
+      startTime: "15:30",
+      endTime: "17:30",
+      symbols: "MNQ, NQ",
+      sessionName: "NY Apertura",
+      notes: "",
+      activeDays: [1, 2, 3, 4, 5],
+    };
+  }
+
+  const nameLower = (strategy.name || "").toLowerCase();
+  const marketLower = (strategy.market || "").toLowerCase();
+  const scheduleLower = (strategy.schedule || "").toLowerCase();
+  const daysLower = (strategy.days || "").toLowerCase();
+
+  // 1. Detección de horario
+  let startTime = "15:30";
+  let endTime = "17:30";
+  let sessionName = strategy.name ? strategy.name : "Sesión Principal";
+
+  const isGoldOrAsia =
+    nameLower.includes("oro") ||
+    nameLower.includes("gold") ||
+    marketLower.includes("oro") ||
+    marketLower.includes("asia") ||
+    scheduleLower.includes("asia") ||
+    scheduleLower.includes("tokio") ||
+    scheduleLower.includes("tokyo");
+
+  if (isGoldOrAsia) {
+    startTime = "01:00";
+    endTime = "05:00";
+    sessionName = strategy.name ? `Asia · ${strategy.name}` : "Sesión Asia (Oro)";
+  } else if (
+    marketLower.includes("londres") ||
+    marketLower.includes("london") ||
+    scheduleLower.includes("londres") ||
+    scheduleLower.includes("london") ||
+    scheduleLower.includes("europa")
+  ) {
+    startTime = "08:30";
+    endTime = "11:30";
+    sessionName = strategy.name ? `Londres · ${strategy.name}` : "Sesión Londres";
+  } else if (
+    marketLower.includes("ny") ||
+    marketLower.includes("nueva york") ||
+    marketLower.includes("nasdaq") ||
+    scheduleLower.includes("ny") ||
+    scheduleLower.includes("apertura")
+  ) {
+    startTime = "15:30";
+    endTime = "17:30";
+    sessionName = strategy.name ? `NY · ${strategy.name}` : "NY Apertura";
+  }
+
+  // Si schedule tiene un rango de horas explícito en formato HH:MM - HH:MM
+  const timeMatch = (strategy.schedule || "").match(/(\d{1,2}:\d{2})\s*(?:-|a|to|–)\s*(\d{1,2}:\d{2})/);
+  if (timeMatch && timeMatch[1] && timeMatch[2]) {
+    // Si no es un formato ambiguo como NY con texto Asia, priorizamos el match
+    if (!isGoldOrAsia || scheduleLower.includes("asia") || scheduleLower.includes("tokio")) {
+      startTime = timeMatch[1].padStart(5, "0");
+      endTime = timeMatch[2].padStart(5, "0");
+    }
+  }
+
+  // Si es Oro siempre fijar horario de sesión Asia
+  if (nameLower.includes("oro") || nameLower.includes("gold") || marketLower.includes("oro")) {
+    startTime = "01:00";
+    endTime = "05:00";
+    sessionName = strategy.name ? `Asia · ${strategy.name}` : "Sesión Asia · Oro";
+  }
+
+  // 2. Detección de símbolos
+  let symbols = strategy.mainSymbol?.trim() || "";
+  if (nameLower.includes("oro") || nameLower.includes("gold") || marketLower.includes("oro")) {
+    symbols = strategy.mainSymbol ? (strategy.mainSymbol.includes("GC") ? strategy.mainSymbol : `${strategy.mainSymbol}, GC`) : "MGC, GC";
+  } else if (!symbols) {
+    if (nameLower.includes("nasdaq") || marketLower.includes("nasdaq")) {
+      symbols = "MNQ, NQ";
+    } else if (nameLower.includes("sp500") || nameLower.includes("s&p") || marketLower.includes("s&p")) {
+      symbols = "MES, ES";
+    } else {
+      symbols = "MNQ, NQ";
+    }
+  }
+
+  // 3. Detección de días operativos
+  let activeDays = [1, 2, 3, 4, 5];
+  if (daysLower.includes("jueves") && !daysLower.includes("viernes")) {
+    activeDays = [1, 2, 3, 4];
+  } else if (daysLower.includes("mar") && daysLower.includes("jue") && !daysLower.includes("lun")) {
+    activeDays = [2, 4];
+  }
+
+  // 4. Riesgo monetario
+  const riskAmount =
+    strategy.initialCapital && strategy.riskPct
+      ? Math.round(strategy.initialCapital * strategy.riskPct)
+      : undefined;
+
+  return {
+    startTime,
+    endTime,
+    symbols,
+    sessionName,
+    notes: strategy.setup || "",
+    riskAmount,
+    activeDays,
+  };
+}
 
 export const DEFAULT_PLAN_SETTINGS: Omit<TradingPlan, "id" | "journal_id" | "user_id"> = {
   name: "Plan Operativo GO Principal",
