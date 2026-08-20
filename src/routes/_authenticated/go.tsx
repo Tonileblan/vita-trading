@@ -3,17 +3,9 @@ import { useMemo, useState } from "react";
 import {
   CalendarDays,
   CheckSquare,
-  Clock,
   Layers,
   LineChart,
   Lock,
-  Plus,
-  Rocket,
-  Shield,
-  ShieldAlert,
-  ShieldCheck,
-  Sparkles,
-  Target,
   Zap,
 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
@@ -23,10 +15,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { GoAccountPlanManager } from "@/components/go/go-account-plan-manager";
 import { GoCockpit } from "@/components/go/go-cockpit";
 import { GoWeeklyMatrix } from "@/components/go/go-weekly-matrix";
-import { GoRiskBudget } from "@/components/go/go-risk-budget";
 import { GoCompliance } from "@/components/go/go-compliance";
 import { GoCheatSheet } from "@/components/go/go-cheat-sheet";
-import { TradeFormDialog } from "@/components/trade-form-dialog";
 import { useAuth } from "@/lib/auth-context";
 import { useJournal } from "@/lib/journal-store";
 import {
@@ -72,17 +62,6 @@ function GoPage() {
   // Pestaña activa dentro de GO (por defecto: 'planing' para el flujo secuencial de cuentas y estrategias)
   const [activeTab, setActiveTab] = useState<string>("planing");
 
-  // Estado para abrir modal de nuevo trade precargado
-  const [tradeFormOpen, setTradeFormOpen] = useState(false);
-  const [initialAccountId, setInitialAccountId] = useState<string | undefined>(undefined);
-  const [initialStrategyId, setInitialStrategyId] = useState<string | undefined>(undefined);
-
-  const handleOpenTradeForSlot = (accId?: string, stratId?: string) => {
-    setInitialAccountId(accId);
-    setInitialStrategyId(stratId);
-    setTradeFormOpen(true);
-  };
-
   // Si no es admin, pantalla de aviso / restricción
   if (!isAdmin) {
     return (
@@ -122,19 +101,6 @@ function GoPage() {
       }
       subtitle="Diseñador de cuentas, asignación de estrategias, periodos de vigencia, operativa (L-V) y gestión de riesgo"
       showAccountPanel={false}
-      actions={
-        <div className="flex items-center gap-2">
-          <TradeFormDialog
-            open={tradeFormOpen}
-            onOpenChange={setTradeFormOpen}
-            trigger={
-              <Button size="sm" className="gap-1.5 shadow-xs">
-                <Plus className="size-3.5" /> Nueva Operación
-              </Button>
-            }
-          />
-        </div>
-      }
     >
       <div className="space-y-6">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
@@ -175,7 +141,6 @@ function GoPage() {
             <GoCockpit
               plan={plan}
               slots={slots}
-              onOpenTradeForm={handleOpenTradeForSlot}
               onNavigateToMatrix={() => setActiveTab("matrix")}
             />
           </TabsContent>

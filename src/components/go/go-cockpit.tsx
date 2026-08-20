@@ -50,14 +50,12 @@ import { cn } from "@/lib/utils";
 interface GoCockpitProps {
   plan: TradingPlan;
   slots: TradingPlanSlot[];
-  onOpenTradeForm?: (accountId?: string, strategyId?: string) => void;
   onNavigateToMatrix?: () => void;
 }
 
 export function GoCockpit({
   plan,
   slots,
-  onOpenTradeForm,
   onNavigateToMatrix,
 }: GoCockpitProps) {
   const { accounts, strategies, trades, activeJournalId } = useJournal();
@@ -413,17 +411,6 @@ export function GoCockpit({
                             <span className="text-muted-foreground">Sesión de {currentDayInfo.label}</span>
                           )}
                         </div>
-
-                        {onOpenTradeForm && (
-                          <Button
-                            size="sm"
-                            disabled={liveStatus.isBlocked}
-                            onClick={() => onOpenTradeForm(slot.account_id || undefined, slot.strategy_id || undefined)}
-                            className="gap-1.5 text-xs shadow-xs"
-                          >
-                            <Plus className="size-3.5" /> Registrar Trade en Slot
-                          </Button>
-                        )}
                       </div>
                     </CardContent>
                   </Card>
