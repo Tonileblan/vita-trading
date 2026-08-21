@@ -535,10 +535,10 @@ function AccountsPage() {
           isLowDrawdown && "border-loss/40",
         )}
       >
-        {/* FRANJA DIAGONAL DE ALERTA DD DE FONDO EN LA ESQUINA SUPERIOR IZQUIERDA */}
+        {/* FRANJA DIAGONAL DE ALERTA DD DE FONDO EN LA ESQUINA SUPERIOR IZQUIERDA (DOBLE DE ANCHA) */}
         {isLowDrawdown && (
-          <div className="absolute top-0 left-0 size-28 overflow-hidden pointer-events-none z-0">
-            <div className="absolute top-[20px] -left-[34px] w-[130px] -rotate-45 bg-loss/12 text-loss/50 text-[9px] font-black uppercase tracking-wider text-center py-1 border-y border-loss/15 select-none">
+          <div className="absolute top-0 left-0 size-36 overflow-hidden pointer-events-none z-0">
+            <div className="absolute top-[26px] -left-[42px] w-[180px] -rotate-45 bg-loss/12 text-loss/50 text-[10px] font-black uppercase tracking-wider text-center py-2.5 border-y border-loss/15 select-none">
               DD
             </div>
           </div>
@@ -549,10 +549,10 @@ function AccountsPage() {
           <div className="flex items-center gap-3 min-w-0">
             <div
               className={cn(
-                "flex size-10 shrink-0 items-center justify-center rounded-xl font-bold text-sm shadow-xs",
+                "flex size-10 shrink-0 items-center justify-center rounded-xl font-bold text-sm shadow-xs bg-card",
                 acc.type === "funded"
-                  ? "bg-brand/10 text-brand border border-brand/25"
-                  : "bg-purple-500/10 text-purple-500 border border-purple-500/25",
+                  ? "text-brand border border-brand/35"
+                  : "text-purple-500 border border-purple-500/35",
               )}
             >
               {acc.type === "funded" ? <Building2 className="size-5" /> : <Wallet className="size-5" />}
@@ -614,10 +614,10 @@ function AccountsPage() {
           </div>
         </div>
 
-        {/* CUERPO: GRID ESPACIOSO DE MÉTRICAS Y CONTROLES (6 MÓDULOS) */}
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2.5 sm:gap-3">
+        {/* CUERPO: GRID ESPACIOSO DE MÉTRICAS Y CONTROLES (6 MÓDULOS OPACOS) */}
+        <div className="relative z-10 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2.5 sm:gap-3">
           {/* 1. BALANCE ACTUAL */}
-          <div className="rounded-xl bg-muted/30 border border-border/70 p-3 flex flex-col justify-between min-h-[84px]">
+          <div className="rounded-xl bg-card border border-border/70 p-3 flex flex-col justify-between min-h-[84px] shadow-xs">
             <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">
               Balance Actual
             </span>
@@ -632,7 +632,7 @@ function AccountsPage() {
           </div>
 
           {/* 2. RESULTADO PNL */}
-          <div className="rounded-xl bg-muted/30 border border-border/70 p-3 flex flex-col justify-between min-h-[84px]">
+          <div className="rounded-xl bg-card border border-border/70 p-3 flex flex-col justify-between min-h-[84px] shadow-xs">
             <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">
               Resultado PnL
             </span>
@@ -657,7 +657,7 @@ function AccountsPage() {
           </div>
 
           {/* 3. WIN RATE */}
-          <div className="rounded-xl bg-muted/30 border border-border/70 p-3 flex flex-col justify-between min-h-[84px]">
+          <div className="rounded-xl bg-card border border-border/70 p-3 flex flex-col justify-between min-h-[84px] shadow-xs">
             <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">
               Win Rate
             </span>
@@ -672,7 +672,7 @@ function AccountsPage() {
           </div>
 
           {/* 4. PROFIT FACTOR */}
-          <div className="rounded-xl bg-muted/30 border border-border/70 p-3 flex flex-col justify-between min-h-[84px]">
+          <div className="rounded-xl bg-card border border-border/70 p-3 flex flex-col justify-between min-h-[84px] shadow-xs">
             <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">
               Profit Factor
             </span>
@@ -739,7 +739,7 @@ function AccountsPage() {
               </div>
             </div>
           ) : (
-            <div className="col-span-2 md:col-span-2 lg:col-span-1 rounded-xl bg-muted/20 border border-border/60 p-3 flex flex-col justify-between min-h-[84px]">
+            <div className="col-span-2 md:col-span-2 lg:col-span-1 rounded-xl bg-card border border-border/60 p-3 flex flex-col justify-between min-h-[84px] shadow-xs">
               <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
                 Estado
               </span>
@@ -750,7 +750,7 @@ function AccountsPage() {
 
           {/* 6. TARGET GAUGE */}
           {target ? (
-            <div className="col-span-2 md:col-span-2 lg:col-span-1 rounded-xl bg-muted/30 border border-border/70 p-3 flex flex-col justify-between min-h-[84px] space-y-1.5">
+            <div className="col-span-2 md:col-span-2 lg:col-span-1 rounded-xl bg-card border border-border/70 p-3 flex flex-col justify-between min-h-[84px] space-y-1.5 shadow-xs">
               <div className="flex items-center justify-between text-xs">
                 <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1">
                   <TrendingUp className="size-3.5 text-sky-500" /> {acc.phase === "live" ? "Retiro" : "Target"}
@@ -817,10 +817,10 @@ function AccountsPage() {
           isLowDrawdown && "border-loss/40",
         )}
       >
-        {/* FRANJA DIAGONAL DE ALERTA DD DE FONDO EN LA ESQUINA SUPERIOR IZQUIERDA */}
+        {/* FRANJA DIAGONAL DE ALERTA DD DE FONDO EN LA ESQUINA SUPERIOR IZQUIERDA (DOBLE DE ANCHA) */}
         {isLowDrawdown && (
-          <div className="absolute top-0 left-0 size-24 overflow-hidden pointer-events-none z-0">
-            <div className="absolute top-[16px] -left-[28px] w-[110px] -rotate-45 bg-loss/12 text-loss/50 text-[8px] font-black uppercase tracking-wider text-center py-0.5 border-y border-loss/15 select-none">
+          <div className="absolute top-0 left-0 size-32 overflow-hidden pointer-events-none z-0">
+            <div className="absolute top-[22px] -left-[38px] w-[160px] -rotate-45 bg-loss/12 text-loss/50 text-[9px] font-black uppercase tracking-wider text-center py-2 border-y border-loss/15 select-none">
               DD
             </div>
           </div>
@@ -870,10 +870,10 @@ function AccountsPage() {
               />
               <span
                 className={cn(
-                  "num rounded-lg px-2.5 py-0.5 text-xs font-bold font-mono whitespace-nowrap",
+                  "num rounded-lg px-2.5 py-0.5 text-xs font-bold font-mono whitespace-nowrap bg-card",
                   result >= 0
-                    ? "bg-profit/15 text-profit border border-profit/20"
-                    : "bg-loss/15 text-loss border border-loss/20",
+                    ? "text-profit border border-profit/20"
+                    : "text-loss border border-loss/20",
                 )}
               >
                 {formatCurrency(result, true)}
@@ -882,7 +882,7 @@ function AccountsPage() {
           </div>
 
           {/* 3 Metric Grid */}
-          <div className="grid grid-cols-3 gap-2 rounded-xl border border-border/80 bg-muted/30 p-2.5 text-center">
+          <div className="grid grid-cols-3 gap-2 rounded-xl border border-border/80 bg-card p-2.5 text-center shadow-xs">
             <div>
               <p className="text-[11px] text-muted-foreground font-medium">Inicial</p>
               <p className="num text-xs font-bold font-mono text-foreground">
