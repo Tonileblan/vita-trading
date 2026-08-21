@@ -21,6 +21,7 @@ import { EquityChart } from "@/components/equity-chart";
 import { PnlCalendar } from "@/components/pnl-calendar";
 import { PerformanceAnalysis } from "@/components/performance-analysis";
 import { PhaseChip, TargetProgress } from "@/components/target-progress";
+import { DrawdownProgress } from "@/components/drawdown-progress";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { TradesTable } from "@/components/trades-table";
@@ -36,6 +37,7 @@ import {
 } from "@/lib/journal-store";
 import {
   accountBalance,
+  accountDrawdown,
   accountTarget,
   accountResult,
   accountsCurveStart,
@@ -321,6 +323,11 @@ function Overview() {
   const fundedTarget = useMemo(() => {
     if (!selectedFundedAccount) return null;
     return accountTarget(selectedFundedAccount, visibleTrades, withdrawals);
+  }, [selectedFundedAccount, visibleTrades, withdrawals]);
+
+  const fundedDrawdown = useMemo(() => {
+    if (!selectedFundedAccount) return null;
+    return accountDrawdown(selectedFundedAccount, visibleTrades, withdrawals);
   }, [selectedFundedAccount, visibleTrades, withdrawals]);
 
   const curveAccounts = isStrategy ? strategyAccounts : scopedAccounts;
@@ -867,8 +874,11 @@ function Overview() {
               </div>
             )}
 
-            {fundedTarget && (
-              <TargetProgress status={fundedTarget} className="mt-4" />
+            {(fundedTarget || fundedDrawdown) && (
+              <div className="mt-4 grid gap-4 grid-cols-1 md:grid-cols-2">
+                {fundedTarget && <TargetProgress status={fundedTarget} />}
+                {fundedDrawdown && <DrawdownProgress status={fundedDrawdown} threshold={600} />}
+              </div>
             )}
           </section>
         )}
