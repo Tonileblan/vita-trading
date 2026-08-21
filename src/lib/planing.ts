@@ -68,7 +68,7 @@ export const OPERATING_DAYS = [
 ] as const;
 
 export const DEFAULT_SESSIONS = [
-  { name: "Asia (Tokio / Oro)", start: "01:00", end: "05:00", defaultSymbols: "MGC, GC" },
+  { name: "Asia (Tokio / Oro)", start: "01:00", end: "06:30", defaultSymbols: "MGC, GC" },
   { name: "NY Apertura", start: "15:30", end: "17:30", defaultSymbols: "MNQ, NQ, ES" },
   { name: "Londres", start: "08:30", end: "11:00", defaultSymbols: "EURUSD, GBPUSD, FDAX" },
   { name: "NY Tarde / Cierre", start: "19:00", end: "21:00", defaultSymbols: "MNQ, NQ, BTC" },
@@ -78,8 +78,8 @@ export const DEFAULT_SESSIONS = [
 /**
  * Deduce y devuelve la configuración por defecto de horario, símbolos, días y setup
  * asociada a una estrategia.
- * - Para la estrategia "Oro" / mercados de Oro o Asia: Horario Asia (01:00 - 05:00) y símbolos "MGC, GC".
- * - Si la estrategia contiene un horario específico en su ficha (ej: 01:00 - 05:00, 15:30 - 17:30), lo extrae automáticamente.
+ * - Para la estrategia "Oro" / mercados de Oro o Asia: Horario Asia (01:00 - 06:30) y símbolos "MGC, GC".
+ * - Si la estrategia contiene un horario específico en su ficha (ej: 01:00 - 06:30, 15:30 - 17:30), lo extrae automáticamente.
  */
 export function getStrategyPresetDefaults(strategy: Strategy | null | undefined): {
   startTime: string;
@@ -122,7 +122,7 @@ export function getStrategyPresetDefaults(strategy: Strategy | null | undefined)
 
   if (isGoldOrAsia) {
     startTime = "01:00";
-    endTime = "05:00";
+    endTime = "06:30";
     sessionName = strategy.name ? `Asia · ${strategy.name}` : "Sesión Asia (Oro)";
   } else if (
     marketLower.includes("londres") ||
@@ -156,10 +156,10 @@ export function getStrategyPresetDefaults(strategy: Strategy | null | undefined)
     }
   }
 
-  // Si es Oro siempre fijar horario de sesión Asia
+  // Si es Oro siempre fijar horario de sesión Asia (01:00 - 06:30)
   if (nameLower.includes("oro") || nameLower.includes("gold") || marketLower.includes("oro")) {
     startTime = "01:00";
-    endTime = "05:00";
+    endTime = "06:30";
     sessionName = strategy.name ? `Asia · ${strategy.name}` : "Sesión Asia · Oro";
   }
 
@@ -204,8 +204,10 @@ export function getStrategyPresetDefaults(strategy: Strategy | null | undefined)
 
 /**
  * Determina el horario operativo y símbolos efectivos de un slot.
- * Si el slot está vinculado a la estrategia "Oro" (o tiene nombre "ORO" / mercado de Oro o Asia) y conserva
- * el horario genérico inicial "15:30 - 17:30", lo adapta automáticamente al horario de Asia ("01:00 - 05:00").
+ * - Si el slot está vinculado a la estrategia "Oro" y conserva el horario genérico inicial "15:30 - 17:30"
+ *   o el anterior "01:00 - 05:00", lo adapta retroactivamente a la franja de Asia "01:00 - 06:30".
+ * - Si el usuario configuró un horario personalizado (ej: traders de Sudamérica o de otras zonas horarias),
+ *   respeta íntegramente su configuración sin sobreescribirla.
  */
 export function getEffectiveSlotSchedule(
   slot: TradingPlanSlot | Omit<TradingPlanSlot, "id">,
@@ -230,11 +232,15 @@ export function getEffectiveSlotSchedule(
   let allowedSymbols = slot.allowed_symbols || "MNQ, NQ";
   let sessionName = strategy?.name || slot.session_name || "Sesión Principal";
 
-  // Si la estrategia es Oro y el slot tiene el horario default de NY (15:30 - 17:30), forzar horario de Asia (01:00 - 05:00)
+  // Si la estrategia es Oro y el slot conserva los horarios por defecto del sistema
+  // (15:30 - 17:30 o 01:00 - 05:00), actualizarlo retroactivamente a 01:00 - 06:30
   if (isGold) {
-    if (startTime === "15:30" && endTime === "17:30") {
+    if (
+      (startTime === "15:30" && endTime === "17:30") ||
+      (startTime === "01:00" && endTime === "05:00")
+    ) {
       startTime = "01:00";
-      endTime = "05:00";
+      endTime = "06:30";
     }
     if (!allowedSymbols || allowedSymbols === "MNQ, NQ") {
       allowedSymbols = stratDefaults.symbols || "MGC, GC";

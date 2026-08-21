@@ -64,7 +64,7 @@ export const mockStrategies: Strategy[] = [
     market: "Asia · Oro (GC)",
     chart: "150 ticks",
     days: "Lunes a jueves",
-    schedule: "19:00 - 23:30 (NY)",
+    schedule: "01:00 - 06:30 (Asia / Oro)",
     execution: "Manual o bot",
     setup: "SL fijo: 160 USD de riesgo por contrato",
     management: "RR 1:1.5 · Break-even automático",

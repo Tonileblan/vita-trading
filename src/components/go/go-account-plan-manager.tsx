@@ -328,7 +328,8 @@ export function GoAccountPlanManager({
         (selectedStrategy?.market || "").toLowerCase().includes("asia");
 
       const finalStartTime = isGold && sessionStartTime === "15:30" ? "01:00" : sessionStartTime;
-      const finalEndTime = isGold && sessionEndTime === "17:30" ? "05:00" : sessionEndTime;
+      const finalEndTime =
+        isGold && (sessionEndTime === "17:30" || sessionEndTime === "05:00") ? "06:30" : sessionEndTime;
       const finalSymbols =
         isGold && (!allowedSymbols || allowedSymbols === "MNQ, NQ") ? "MGC, GC" : allowedSymbols;
 
