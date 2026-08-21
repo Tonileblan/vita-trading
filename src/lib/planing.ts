@@ -903,7 +903,7 @@ export function useTradingPlans(journalId?: string) {
         }
       }
 
-      // 3. Normalizar nombre si estaba como Oro-UVI a Oro-UCI
+      // 3. Normalizar nombres
       mergedMap.forEach((p) => {
         if (p.name === "Oro-UVI" || p.name?.toLowerCase().includes("uvi")) {
           p.name = "Oro-UCI";
@@ -931,21 +931,61 @@ export function useTradingPlans(journalId?: string) {
           max_loss_streak: legacyOro?.max_loss_streak ?? 2,
           profit_lock_target: legacyOro?.profit_lock_target ?? 600,
           notes: legacyOro?.notes || "Plan operativo Oro (Asia 01:00 - 06:30 MGC) y cuentas UCI",
-          created_at: legacyOro?.created_at || new Date().toISOString(),
+          created_at: legacyOro?.created_at || "2026-08-20T10:00:00.000Z",
           updated_at: new Date().toISOString(),
         };
         mergedMap.set(oroPlanId, oroPlan);
         if (uid) {
-          supabase.from("trading_plans" as any).upsert(oroPlan).then();
+          await supabase.from("trading_plans" as any).upsert(oroPlan);
         }
       }
 
-      const mergedList = Array.from(mergedMap.values()).sort((a, b) => {
+      // 5. Desduplicar planes por nombre para conservar SIEMPRE el plan original del 20 ago
+      const dedupedMap = new Map<string, TradingPlan>();
+      for (const plan of Array.from(mergedMap.values())) {
+        const normName = (plan.name || "").trim().toLowerCase();
+        const existing = dedupedMap.get(normName);
+        if (!existing) {
+          dedupedMap.set(normName, plan);
+        } else {
+          const existingDate = new Date(existing.created_at || 0).getTime();
+          const currentDate = new Date(plan.created_at || 0).getTime();
+          // Preferir el plan original más antiguo (20 ago)
+          if (currentDate < existingDate) {
+            dedupedMap.set(normName, plan);
+            if (uid && isValidUUID(existing.id) && existing.id !== plan.id) {
+              supabase.from("trading_plans" as any).delete().eq("id", existing.id).then();
+            }
+          } else {
+            if (uid && isValidUUID(plan.id) && plan.id !== existing.id) {
+              supabase.from("trading_plans" as any).delete().eq("id", plan.id).then();
+            }
+          }
+        }
+      }
+
+      // 6. Subir de forma síncrona a Supabase todos los planes desduplicados
+      const finalPlans = Array.from(dedupedMap.values());
+      if (uid && journalId) {
+        for (const p of finalPlans) {
+          if (isValidUUID(p.id)) {
+            try {
+              await supabase.from("trading_plans" as any).upsert({
+                ...p,
+                journal_id: journalId,
+                user_id: uid,
+              });
+            } catch {}
+          }
+        }
+      }
+
+      const mergedList = finalPlans.sort((a, b) => {
         const aIsOro = (a.name || "").toLowerCase().includes("oro") || (a.name || "").toLowerCase().includes("uci");
         const bIsOro = (b.name || "").toLowerCase().includes("oro") || (b.name || "").toLowerCase().includes("uci");
         if (aIsOro && !bIsOro) return -1;
         if (!aIsOro && bIsOro) return 1;
-        return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
+        return new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime();
       });
 
       if (journalId) {
