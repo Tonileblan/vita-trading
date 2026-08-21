@@ -529,7 +529,12 @@ function AccountsPage() {
       : acc.initialBalance - (acc.drawdownLimit || 0);
 
     return (
-      <article className="group relative rounded-2xl border border-border/80 bg-card p-4 sm:p-5 transition-all duration-200 hover:border-brand/40 hover:shadow-md space-y-3.5">
+      <article
+        className={cn(
+          "group relative rounded-2xl border border-border/80 bg-card p-4 sm:p-5 transition-all duration-300 hover:border-brand/40 hover:shadow-md space-y-3.5",
+          isLowDrawdown && "border-loss/35 animate-drawdown-card",
+        )}
+      >
         {/* CABECERA: IDENTIDAD DE CUENTA + ACCIONES */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-border/60">
           <div className="flex items-center gap-3 min-w-0">
@@ -797,7 +802,12 @@ function AccountsPage() {
       (dd.remaining < 600 || dd.breached);
 
     return (
-      <article className="panel flex flex-col justify-between p-5 transition-all hover:border-foreground/20 rounded-2xl">
+      <article
+        className={cn(
+          "panel flex flex-col justify-between p-5 transition-all hover:border-foreground/20 rounded-2xl",
+          isLowDrawdown && "border-loss/35 animate-drawdown-card",
+        )}
+      >
         <div className="space-y-4">
           <div className="flex items-start justify-between gap-3">
             <Link

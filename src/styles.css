@@ -191,23 +191,39 @@
   font-weight: 500;
 }
 
-/* Alerta de drawdown: parpadeo suave exclusivo de borde */
+/* Alerta de drawdown: parpadeo pausado exclusivo de borde */
 @keyframes drawdown-border-pulse {
   0%, 100% {
     border-color: var(--loss);
-    box-shadow: 0 0 0 1px var(--loss), 0 0 6px oklch(0.55 0.22 25 / 0.4);
+    box-shadow: 0 0 0 1px var(--loss), 0 0 8px oklch(0.55 0.22 25 / 0.35);
   }
   50% {
-    border-color: oklch(0.55 0.22 25 / 0.25);
+    border-color: oklch(0.55 0.22 25 / 0.2);
     box-shadow: 0 0 0 0px transparent, 0 0 0px transparent;
   }
 }
 
+/* Toque suave y pausado para el recuadro general de la cuenta */
+@keyframes drawdown-card-border-pulse {
+  0%, 100% {
+    border-color: oklch(0.55 0.22 25 / 0.4);
+    box-shadow: 0 0 14px oklch(0.55 0.22 25 / 0.07);
+  }
+  50% {
+    border-color: oklch(0.55 0.22 25 / 0.15);
+    box-shadow: 0 0 0px transparent;
+  }
+}
+
 @utility animate-drawdown-border {
-  animation: drawdown-border-pulse 1.8s ease-in-out infinite;
+  animation: drawdown-border-pulse 3.2s ease-in-out infinite;
 }
 
 @utility animate-drawdown-corner {
-  animation: drawdown-border-pulse 1.8s ease-in-out infinite;
+  animation: drawdown-border-pulse 3.2s ease-in-out infinite;
+}
+
+@utility animate-drawdown-card {
+  animation: drawdown-card-border-pulse 3.2s ease-in-out infinite;
 }
 
