@@ -13,7 +13,7 @@ import {
   Zap,
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
-import { effectiveStrategyId, formatCurrency, formatDateTime } from "@/lib/metrics";
+import { effectiveStrategyId, formatCurrency, formatDateTime, formatTradeDate } from "@/lib/metrics";
 import type { Account, AccountStrategyPeriod, Strategy, Trade } from "@/lib/types";
 import { useJournal } from "@/lib/journal-store";
 import { TradeFormDialog } from "@/components/trade-form-dialog";
@@ -202,6 +202,31 @@ export function TradesTable({
                 </button>
               </th>
 
+              {/* Columna PnL (Antes de la estrategia) */}
+              <th className="whitespace-nowrap px-2 py-2 text-right font-semibold md:px-4 md:py-3">
+                <button
+                  type="button"
+                  onClick={() => handleSort("pnl")}
+                  className={cn(
+                    "inline-flex items-center justify-end gap-1.5 hover:text-foreground transition-colors cursor-pointer select-none group/th w-full",
+                    currentSortField === "pnl" ? "text-foreground font-bold" : "text-muted-foreground",
+                  )}
+                  title="Clic para ordenar por PnL"
+                  aria-label="Ordenar por PnL"
+                >
+                  <span>PnL</span>
+                  {currentSortField === "pnl" ? (
+                    currentSortDir === "asc" ? (
+                      <ArrowUp className="size-3.5 text-brand" />
+                    ) : (
+                      <ArrowDown className="size-3.5 text-brand" />
+                    )
+                  ) : (
+                    <ArrowUpDown className="size-3.5 opacity-30 group-hover/th:opacity-100 transition-opacity" />
+                  )}
+                </button>
+              </th>
+
               {/* Columna Estrategia */}
               <th className="whitespace-nowrap px-2 py-2 font-semibold md:px-4 md:py-3">
                 <button
@@ -229,31 +254,6 @@ export function TradesTable({
 
               <th className="whitespace-nowrap px-2 py-2 font-semibold md:px-4 md:py-3">Dir.</th>
               <th className="whitespace-nowrap px-2 py-2 text-right font-semibold md:px-4 md:py-3">Tamaño</th>
-
-              {/* Columna PnL */}
-              <th className="whitespace-nowrap px-2 py-2 text-right font-semibold md:px-4 md:py-3">
-                <button
-                  type="button"
-                  onClick={() => handleSort("pnl")}
-                  className={cn(
-                    "inline-flex items-center justify-end gap-1.5 hover:text-foreground transition-colors cursor-pointer select-none group/th w-full",
-                    currentSortField === "pnl" ? "text-foreground font-bold" : "text-muted-foreground",
-                  )}
-                  title="Clic para ordenar por PnL"
-                  aria-label="Ordenar por PnL"
-                >
-                  <span>PnL</span>
-                  {currentSortField === "pnl" ? (
-                    currentSortDir === "asc" ? (
-                      <ArrowUp className="size-3.5 text-brand" />
-                    ) : (
-                      <ArrowDown className="size-3.5 text-brand" />
-                    )
-                  ) : (
-                    <ArrowUpDown className="size-3.5 opacity-30 group-hover/th:opacity-100 transition-opacity" />
-                  )}
-                </button>
-              </th>
 
               {/* Columna Activo */}
               <th className="whitespace-nowrap px-2 py-2 font-semibold md:px-4 md:py-3">
@@ -337,9 +337,12 @@ export function TradesTable({
                     </div>
                   </td>
 
-                  {/* 3. Fecha */}
-                  <td className="whitespace-nowrap px-2 py-2 font-mono text-xs text-muted-foreground md:px-4 md:py-3">
-                    {formatDateTime(t.openedAt || t.closedAt)}
+                  {/* 3. Fecha (Solo día y mes) */}
+                  <td
+                    className="whitespace-nowrap px-2 py-2 font-mono text-xs text-muted-foreground md:px-4 md:py-3"
+                    title={formatDateTime(t.openedAt || t.closedAt)}
+                  >
+                    {formatTradeDate(t.openedAt || t.closedAt)}
                   </td>
 
                   {/* 4. Cuenta */}
@@ -347,12 +350,22 @@ export function TradesTable({
                     {nameOf(t.accountId)}
                   </td>
 
-                  {/* 5. Estrategia */}
+                  {/* 5. PnL (Antes de la estrategia) */}
+                  <td
+                    className={cn(
+                      "num whitespace-nowrap px-2 py-2 text-right font-bold md:px-4 md:py-3",
+                      t.pnl >= 0 ? "text-profit" : "text-loss",
+                    )}
+                  >
+                    {formatCurrency(t.pnl, true)}
+                  </td>
+
+                  {/* 6. Estrategia */}
                   <td className="whitespace-nowrap px-2 py-2 font-medium text-foreground md:px-4 md:py-3">
                     {strat ? strat.name : "—"}
                   </td>
 
-                  {/* 6. Dirección */}
+                  {/* 7. Dirección */}
                   <td className="whitespace-nowrap px-2 py-2 md:px-4 md:py-3">
                     <span
                       className={cn(
@@ -366,19 +379,9 @@ export function TradesTable({
                     </span>
                   </td>
 
-                  {/* 7. Tamaño */}
+                  {/* 8. Tamaño */}
                   <td className="num whitespace-nowrap px-2 py-2 text-right md:px-4 md:py-3">
                     {t.size}
-                  </td>
-
-                  {/* 8. PnL */}
-                  <td
-                    className={cn(
-                      "num whitespace-nowrap px-2 py-2 text-right font-semibold md:px-4 md:py-3",
-                      t.pnl >= 0 ? "text-profit" : "text-loss",
-                    )}
-                  >
-                    {formatCurrency(t.pnl, true)}
                   </td>
 
                   {/* 9. Activo + Badges */}

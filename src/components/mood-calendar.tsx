@@ -180,14 +180,14 @@ export function MoodCalendar({ checkins, trades }: MoodCalendarProps) {
 
       {/* Días de la semana */}
       <div
-        className="grid gap-1 text-center text-[10px] font-bold uppercase tracking-wider text-muted-foreground"
-        style={{ gridTemplateColumns: "1.35fr 1.35fr 1.35fr 1.35fr 1.35fr 0.65fr 0.65fr" }}
+        className="grid gap-1 text-center text-[10px] font-bold uppercase tracking-wider text-muted-foreground pl-2.5 sm:pl-5 pr-0.5"
+        style={{ gridTemplateColumns: "1.45fr 1.45fr 1.45fr 1.45fr 1.45fr 0.325fr 0.325fr" }}
       >
         {WEEKDAYS.map((d, idx) => (
           <span
             key={d}
             className={cn(
-              idx >= 5 ? "text-[9px] text-muted-foreground/40 font-normal" : "text-foreground/75",
+              idx >= 5 ? "text-[8px] text-muted-foreground/40 font-normal overflow-hidden" : "text-foreground/75",
             )}
           >
             {d}
@@ -197,8 +197,8 @@ export function MoodCalendar({ checkins, trades }: MoodCalendarProps) {
 
       {/* Cuadrícula de Días */}
       <div
-        className="grid gap-1"
-        style={{ gridTemplateColumns: "1.35fr 1.35fr 1.35fr 1.35fr 1.35fr 0.65fr 0.65fr" }}
+        className="grid gap-1 pl-2.5 sm:pl-5 pr-0.5"
+        style={{ gridTemplateColumns: "1.45fr 1.45fr 1.45fr 1.45fr 1.45fr 0.325fr 0.325fr" }}
       >
         {cells.map((day, i) => {
           const isWeekend = i % 7 >= 5;
@@ -234,22 +234,22 @@ export function MoodCalendar({ checkins, trades }: MoodCalendarProps) {
               }
               className={cn(
                 "flex min-h-14 flex-col justify-between rounded-lg border p-1 text-left transition-all relative cursor-pointer group",
-                isWeekend && !c && !pnl && "bg-muted/15 border-dashed border-border/35 opacity-40 hover:opacity-85",
+                isWeekend && !c && !pnl && "bg-muted/15 border-dashed border-border/35 opacity-35 hover:opacity-85 px-0.5",
                 isToday && "ring-2 ring-brand border-brand bg-brand/[0.04]",
                 c
                   ? c.mood >= 4
                     ? "border-emerald-500/40 bg-emerald-500/[0.04] hover:bg-emerald-500/10"
                     : c.mood <= 2 || c.stress >= 4
                       ? "border-amber-500/40 bg-amber-500/[0.04] hover:bg-amber-500/10"
-                      : "border-blue-500/30 bg-blue-500/[0.04] hover:bg-blue-500/10"
+                      : "border-sky-500/40 bg-sky-500/[0.06] hover:bg-sky-500/15"
                   : "border-border/70 hover:border-foreground/40 hover:bg-accent/25",
               )}
             >
               <div className="flex w-full items-center justify-between">
                 <span
                   className={cn(
-                    "font-mono text-[10px]",
-                    isWeekend ? "text-muted-foreground/60" : "text-muted-foreground",
+                    "font-mono",
+                    isWeekend ? "text-[8px] text-muted-foreground/60" : "text-[10px] text-muted-foreground",
                     isToday && "font-bold text-brand",
                   )}
                 >

@@ -22,6 +22,15 @@ export function formatDateTime(iso: string) {
   });
 }
 
+export function formatTradeDate(iso: string) {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "—";
+  const day = d.getDate();
+  const month = d.toLocaleString("es-ES", { month: "short" }).replace(".", "");
+  return `${day} ${month}`;
+}
+
 export interface Metrics {
   totalPnl: number;
   winRate: number;

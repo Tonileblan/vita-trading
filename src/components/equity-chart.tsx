@@ -123,10 +123,16 @@ export function EquityChart({
                   )}
 
                   {ddVal !== null && (
-                    <div className="flex items-center justify-between gap-3">
-                      <span className="flex items-center gap-1.5 text-loss font-medium">
+                    <div className="flex items-center justify-between gap-3 pt-0.5">
+                      <span className="flex items-center gap-1.5 text-loss font-semibold">
                         <span className="size-2 rounded-full bg-loss inline-block shrink-0" />
-                        Límite Drawdown {remaining !== null ? `(${formatMoney(remaining)})` : ""}:
+                        Límite Drawdown{" "}
+                        {remaining !== null && (
+                          <span className="inline-flex items-center rounded-md bg-loss/20 text-loss font-black px-1.5 py-0.5 font-mono text-[11px] ring-1 ring-loss/40 shadow-xs">
+                            ({formatMoney(remaining)})
+                          </span>
+                        )}
+                        :
                       </span>
                       <span className="font-mono font-bold text-loss">
                         {formatMoney(ddVal)}

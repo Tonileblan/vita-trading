@@ -430,14 +430,14 @@ export function AccountStrategyCalendar({
 
         {/* Días de la semana */}
         <div
-          className="grid gap-1 text-center text-[10px] font-bold uppercase tracking-wider text-muted-foreground"
-          style={{ gridTemplateColumns: "1.35fr 1.35fr 1.35fr 1.35fr 1.35fr 0.65fr 0.65fr" }}
+          className="grid gap-1 text-center text-[10px] font-bold uppercase tracking-wider text-muted-foreground pl-2.5 sm:pl-5 pr-0.5"
+          style={{ gridTemplateColumns: "1.45fr 1.45fr 1.45fr 1.45fr 1.45fr 0.325fr 0.325fr" }}
         >
           {WEEKDAYS.map((d, idx) => (
             <span
               key={d}
               className={cn(
-                idx >= 5 ? "text-[9px] text-muted-foreground/40 font-normal" : "text-foreground/75",
+                idx >= 5 ? "text-[8px] text-muted-foreground/40 font-normal overflow-hidden" : "text-foreground/75",
               )}
             >
               {d}
@@ -447,8 +447,8 @@ export function AccountStrategyCalendar({
 
         {/* Celdas de Días */}
         <div
-          className="grid gap-1 select-none"
-          style={{ gridTemplateColumns: "1.35fr 1.35fr 1.35fr 1.35fr 1.35fr 0.65fr 0.65fr" }}
+          className="grid gap-1 select-none pl-2.5 sm:pl-5 pr-0.5"
+          style={{ gridTemplateColumns: "1.45fr 1.45fr 1.45fr 1.45fr 1.45fr 0.325fr 0.325fr" }}
         >
           {cells.map((day, i) => {
             const isWeekend = i % 7 >= 5;
@@ -488,7 +488,7 @@ export function AccountStrategyCalendar({
                   isWeekend &&
                     !entry &&
                     !isInRange &&
-                    "bg-muted/15 border-dashed border-border/35 opacity-45 hover:opacity-85",
+                    "bg-muted/15 border-dashed border-border/35 opacity-35 hover:opacity-85 px-0.5",
                   isInRange
                     ? isRangeStart || isRangeEnd
                       ? "border-brand ring-2 ring-brand bg-brand/20 shadow-xs z-10 opacity-100 font-bold"
@@ -504,8 +504,8 @@ export function AccountStrategyCalendar({
                   <div className="flex items-center gap-1">
                     <span
                       className={cn(
-                        "font-mono text-[10px]",
-                        isWeekend ? "text-muted-foreground/60" : "text-muted-foreground",
+                        "font-mono",
+                        isWeekend ? "text-[8px] text-muted-foreground/60" : "text-[10px] text-muted-foreground",
                         isInRange && "font-bold text-foreground",
                       )}
                     >

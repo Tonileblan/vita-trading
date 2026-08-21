@@ -324,8 +324,8 @@ function TradesPage() {
             <TradeFormDialog />
           </div>
         ) : (
-          <div className="flex items-center gap-1.5 rounded-full border border-sky-500/30 bg-sky-500/10 px-3 py-1.5 text-xs font-semibold text-sky-300">
-            <ShieldCheck className="size-3.5" />
+          <div className="flex items-center gap-1.5 rounded-full border-2 border-sky-600/40 bg-sky-500/15 px-3 py-1 text-xs font-bold text-sky-900 dark:text-sky-100 shadow-xs">
+            <ShieldCheck className="size-4 text-sky-600 dark:text-sky-400" />
             <span>Modo Supervisión: Solo Lectura</span>
           </div>
         )
@@ -434,19 +434,19 @@ function TradesPage() {
             {isSupervisedView && (
               <div
                 className={cn(
-                  "flex flex-wrap items-center justify-between gap-3 rounded-xl border px-4 py-2.5 text-xs",
+                  "flex flex-wrap items-center justify-between gap-3 rounded-xl border-2 px-4 py-2.5 text-xs font-medium shadow-xs",
                   canEdit
-                    ? "border-amber-500/40 bg-amber-500/10 text-amber-200"
-                    : "border-sky-500/30 bg-sky-500/10 text-sky-200",
+                    ? "border-amber-500/50 bg-amber-500/15 text-amber-950 dark:text-amber-100"
+                    : "border-sky-600/50 bg-sky-500/15 text-sky-950 dark:text-sky-100",
                 )}
               >
                 <div className="flex items-center gap-2">
                   {canEdit ? (
-                    <ShieldAlert className="size-4 shrink-0 text-amber-400" />
+                    <ShieldAlert className="size-4 shrink-0 text-amber-600 dark:text-amber-400" />
                   ) : (
-                    <ShieldCheck className="size-4 shrink-0 text-sky-400" />
+                    <ShieldCheck className="size-4 shrink-0 text-sky-600 dark:text-sky-400" />
                   )}
-                  <span>
+                  <span className="font-semibold">
                     {canEdit
                       ? "Modo edición de supervisión activo: Las modificaciones y eliminaciones afectarán directamente a los datos de este usuario."
                       : "Modo supervisión (Solo lectura): No se pueden editar ni eliminar datos de otros usuarios."}

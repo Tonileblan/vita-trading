@@ -123,14 +123,14 @@ export function PnlCalendar({
 
       {/* Días de la semana */}
       <div
-        className="grid gap-1 text-center text-[10px] font-bold uppercase tracking-wider text-muted-foreground"
-        style={{ gridTemplateColumns: "1.35fr 1.35fr 1.35fr 1.35fr 1.35fr 0.65fr 0.65fr" }}
+        className="grid gap-1 text-center text-[10px] font-bold uppercase tracking-wider text-muted-foreground pl-2.5 sm:pl-5 pr-0.5"
+        style={{ gridTemplateColumns: "1.45fr 1.45fr 1.45fr 1.45fr 1.45fr 0.325fr 0.325fr" }}
       >
         {WEEKDAYS.map((d, idx) => (
           <span
             key={d}
             className={cn(
-              idx >= 5 ? "text-[9px] text-muted-foreground/40 font-normal" : "text-foreground/75",
+              idx >= 5 ? "text-[8px] text-muted-foreground/40 font-normal overflow-hidden" : "text-foreground/75",
             )}
           >
             {d}
@@ -140,8 +140,8 @@ export function PnlCalendar({
 
       {/* Cuadrícula de Días */}
       <div
-        className="grid gap-1"
-        style={{ gridTemplateColumns: "1.35fr 1.35fr 1.35fr 1.35fr 1.35fr 0.65fr 0.65fr" }}
+        className="grid gap-1 pl-2.5 sm:pl-5 pr-0.5"
+        style={{ gridTemplateColumns: "1.45fr 1.45fr 1.45fr 1.45fr 1.45fr 0.325fr 0.325fr" }}
       >
         {cells.map((day, i) => {
           const isWeekend = i % 7 >= 5;
@@ -184,7 +184,7 @@ export function PnlCalendar({
                 isWeekend &&
                   !entry &&
                   !isSelected &&
-                  "bg-muted/15 border-dashed border-border/35 opacity-40 hover:opacity-85",
+                  "bg-muted/15 border-dashed border-border/35 opacity-35 hover:opacity-85 px-0.5",
                 isSelected
                   ? "border-brand ring-2 ring-brand bg-brand/15 shadow-sm scale-[1.02] z-10 font-bold opacity-100"
                   : isToday
@@ -197,8 +197,8 @@ export function PnlCalendar({
               <div className="flex w-full items-center justify-between px-0.5">
                 <span
                   className={cn(
-                    "font-mono text-[10px]",
-                    isWeekend ? "text-muted-foreground/60" : "text-muted-foreground",
+                    "font-mono",
+                    isWeekend ? "text-[8px] text-muted-foreground/60" : "text-[10px] text-muted-foreground",
                     isSelected && "font-bold text-foreground",
                   )}
                 >
@@ -211,22 +211,24 @@ export function PnlCalendar({
                   <span
                     className={cn(
                       "num font-black leading-none mt-0.5",
-                      isWeekend ? "text-xs" : "text-sm",
+                      isWeekend ? "text-[10px]" : "text-sm",
                       pnl > 0 ? "text-profit" : pnl < 0 ? "text-loss" : "text-muted-foreground",
                     )}
                   >
                     {pnl > 0 ? "+" : ""}
                     {Math.round(pnl)}
                   </span>
-                  <span className="text-muted-foreground text-[8px] md:text-[9px] mt-0.5 font-medium">
-                    {entry.trades} op.
-                  </span>
+                  {!isWeekend && (
+                    <span className="text-muted-foreground text-[8px] md:text-[9px] mt-0.5 font-medium">
+                      {entry.trades} op.
+                    </span>
+                  )}
                 </>
               ) : (
                 <span
                   className={cn(
                     "text-muted-foreground",
-                    isWeekend ? "text-[8px] opacity-30" : "mt-0.5",
+                    isWeekend ? "text-[7px] opacity-25" : "mt-0.5",
                   )}
                 >
                   {isWeekend ? "—" : "·"}
