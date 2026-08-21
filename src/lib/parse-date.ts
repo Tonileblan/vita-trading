@@ -1,3 +1,42 @@
+export type CaptureTimezoneMode = "bogota" | "local" | "ny" | "madrid" | "utc";
+
+export const CAPTURE_TIMEZONE_CONFIGS: {
+  id: CaptureTimezoneMode;
+  label: string;
+  shortLabel: string;
+  offset: string | null;
+  description: string;
+}[] = [
+  {
+    id: "bogota",
+    label: "Bogotá / Colombia (UTC-5)",
+    shortLabel: "Bogotá (UTC-5)",
+    offset: "-05:00",
+    description: "Para plataformas y VPS en hora de Colombia (ej. Tradovate / NinjaTrader)",
+  },
+  {
+    id: "local",
+    label: "Hora local de mi dispositivo (Sin conversión)",
+    shortLabel: "Hora local",
+    offset: null,
+    description: "Mantiene la hora exacta tal como se ve en la captura",
+  },
+  {
+    id: "ny",
+    label: "Nueva York / EST (UTC-4 / UTC-5)",
+    shortLabel: "Nueva York (ET)",
+    offset: "-04:00",
+    description: "Para plataformas configuradas en horario de mercado NY",
+  },
+  {
+    id: "madrid",
+    label: "Madrid / Europa (UTC+1 / UTC+2)",
+    shortLabel: "Madrid (CET/CEST)",
+    offset: "+02:00",
+    description: "Para capturas tomadas en hora española/europea",
+  },
+];
+
 const MONTHS: Record<string, number> = {
   ene: 1, jan: 1, feb: 2, mar: 3, abr: 4, apr: 4, may: 5, jun: 6, jul: 7,
   ago: 8, aug: 8, sep: 9, sept: 9, oct: 10, nov: 11, dic: 12, dec: 12,
@@ -5,14 +44,9 @@ const MONTHS: Record<string, number> = {
 
 const pad = (n: number) => String(n).padStart(2, "0");
 
-const BOGOTA_OFFSET = "-05:00";
-
 /**
- * Convierte una fecha y hora leída de una captura (en hora de Bogotá UTC-5)
- * a una cadena ISO local (YYYY-MM-DDTHH:mm:ss) adaptada a la zona horaria del navegador del usuario.
- * Si el usuario está en España (+6/+7h), las 19:30 de Bogotá se convierten en las 01:30 o 02:30.
- * Si el usuario está en Colombia (UTC-5), se mantiene en 19:30.
- * Si el usuario está en Argentina (UTC-3), se convierte en 21:30.
+ * Convierte una fecha y hora leída de una captura a una cadena ISO local (YYYY-MM-DDTHH:mm:ss)
+ * adaptada a la zona horaria del navegador del usuario según el modo seleccionado (por defecto Bogotá UTC-5).
  */
 const build = (
   y: number,
@@ -21,14 +55,18 @@ const build = (
   hh = 0,
   mm = 0,
   ss = 0,
-  interpretAsBogota = true,
+  hasExplicitTime = true,
+  tzMode: CaptureTimezoneMode = "bogota",
 ) => {
   if (m < 1 || m > 12 || d < 1 || d > 31) return null;
   const year = y < 100 ? 2000 + y : y;
 
-  if (interpretAsBogota) {
-    const isoBogota = `${year}-${pad(m)}-${pad(d)}T${pad(hh)}:${pad(mm)}:${pad(ss)}${BOGOTA_OFFSET}`;
-    const dateObj = new Date(isoBogota);
+  const targetConfig = CAPTURE_TIMEZONE_CONFIGS.find((c) => c.id === tzMode) ?? CAPTURE_TIMEZONE_CONFIGS[0];
+  const offset = targetConfig?.offset;
+
+  if (hasExplicitTime && offset) {
+    const isoString = `${year}-${pad(m)}-${pad(d)}T${pad(hh)}:${pad(mm)}:${pad(ss)}${offset}`;
+    const dateObj = new Date(isoString);
     if (!Number.isNaN(dateObj.getTime())) {
       const ly = dateObj.getFullYear();
       const lm = dateObj.getMonth() + 1;
@@ -47,10 +85,13 @@ const build = (
 
 /**
  * Interpreta fechas detectadas en capturas de trading.
- * Las marcas de tiempo de las capturas corresponden a la zona horaria de Bogotá (UTC-5).
- * Se convierten automáticamente a la hora local del usuario para su diario.
+ * Convierte de la zona horaria de origen de la captura (por defecto Bogotá UTC-5)
+ * a la hora local del usuario para su diario y slots operativos.
  */
-export function parseDetectedDate(raw?: string | null): string | null {
+export function parseDetectedDate(
+  raw?: string | null,
+  tzMode: CaptureTimezoneMode = "bogota",
+): string | null {
   if (!raw) return null;
   const value = String(raw).trim().replace(/\s+/g, " ");
   if (!value) return null;
@@ -91,7 +132,7 @@ export function parseDetectedDate(raw?: string | null): string | null {
 
   // ISO: 2026-05-14 (opcionalmente con hora ya capturada)
   const iso = value.match(/(\d{4})-(\d{1,2})-(\d{1,2})/);
-  if (iso) return build(Number(iso[1]), Number(iso[2]), Number(iso[3]), hh, mm, ss, hasExplicitTime);
+  if (iso) return build(Number(iso[1]), Number(iso[2]), Number(iso[3]), hh, mm, ss, hasExplicitTime, tzMode);
 
   // Numérica con / . o -
   const num = value.match(/(\d{1,2})[/.\-](\d{1,2})(?:[/.\-](\d{2,4}))?/);
@@ -100,10 +141,10 @@ export function parseDetectedDate(raw?: string | null): string | null {
     const b = Number(num[2]);
     const year = num[3] ? Number(num[3]) : currentYear;
     // Si el primero supera 12 es día (formato europeo); si el segundo supera 12 es día → formato US.
-    if (a > 12 && b <= 12) return build(year, b, a, hh, mm, ss, hasExplicitTime);
-    if (b > 12 && a <= 12) return build(year, a, b, hh, mm, ss, hasExplicitTime);
+    if (a > 12 && b <= 12) return build(year, b, a, hh, mm, ss, hasExplicitTime, tzMode);
+    if (b > 12 && a <= 12) return build(year, a, b, hh, mm, ss, hasExplicitTime, tzMode);
     // Ambiguo: asumimos día/mes (formato usado en ES y la mayoría de plataformas EU/Latam).
-    return build(year, b, a, hh, mm, ss, hasExplicitTime);
+    return build(year, b, a, hh, mm, ss, hasExplicitTime, tzMode);
   }
 
   // Textual: "14 may 2026" o "May 14, 2026"
@@ -112,7 +153,7 @@ export function parseDetectedDate(raw?: string | null): string | null {
     const key = textual[2]!.toLowerCase().slice(0, 4);
     const month = MONTHS[key] ?? MONTHS[key.slice(0, 3)];
     if (month) {
-      return build(textual[3] ? Number(textual[3]) : currentYear, month, Number(textual[1]), hh, mm, ss, hasExplicitTime);
+      return build(textual[3] ? Number(textual[3]) : currentYear, month, Number(textual[1]), hh, mm, ss, hasExplicitTime, tzMode);
     }
   }
   const textualUs = value.match(/([a-záéíóú]{3,10})\.?\s+(\d{1,2})(?:,)?\s*(\d{2,4})?/i);
@@ -128,6 +169,7 @@ export function parseDetectedDate(raw?: string | null): string | null {
         mm,
         ss,
         hasExplicitTime,
+        tzMode,
       );
     }
   }
@@ -142,6 +184,7 @@ export function parseDetectedDate(raw?: string | null): string | null {
       fallback.getMinutes(),
       fallback.getSeconds(),
       false,
+      tzMode,
     );
   }
   return null;

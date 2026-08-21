@@ -51,7 +51,7 @@ import {
   DEFAULT_GEMINI_MODEL,
 } from "@/lib/google-ai";
 import { formatCurrency } from "@/lib/metrics";
-import { parseDetectedDate } from "@/lib/parse-date";
+import { parseDetectedDate, type CaptureTimezoneMode, CAPTURE_TIMEZONE_CONFIGS } from "@/lib/parse-date";
 import { todayKey } from "@/lib/emotions";
 import { parseCsv } from "@/lib/journal-csv";
 import { CsvRepairDialog } from "@/components/csv-repair-dialog";
@@ -348,11 +348,27 @@ export function TradeImportDialog() {
   const [failedFileName, setFailedFileName] = useState("");
   const [failedErrorDetails, setFailedErrorDetails] = useState("");
 
+  // Zona horaria de las capturas (por defecto Bogotá UTC-5 para brokers/plataformas con ese huso)
+  const [captureTimezone, setCaptureTimezone] = useState<CaptureTimezoneMode>(() => {
+    if (typeof window !== "undefined") {
+      return (window.localStorage.getItem("vita-trading:capture-timezone") as CaptureTimezoneMode) || "bogota";
+    }
+    return "bogota";
+  });
+  const rawExtractedTradesRef = useRef<ExtractedTrade[] | null>(null);
+
   const googleAiKey = typeof window !== "undefined" ? getLocalGoogleAiKey() : "";
   const googleAiModel = typeof window !== "undefined" ? getLocalGoogleAiModel() : DEFAULT_GEMINI_MODEL;
 
   /** Procesa un listado de operaciones extraídas (de imagen o de CSV) y genera las filas interactivas */
-  const processExtractedTrades = (rawTrades: ExtractedTrade[], customSuccessMsg?: string) => {
+  const processExtractedTrades = (
+    rawTrades: ExtractedTrade[],
+    customSuccessMsg?: string,
+    overrideTz?: CaptureTimezoneMode,
+  ) => {
+    rawExtractedTradesRef.current = rawTrades;
+    const activeTz = overrideTz ?? captureTimezone;
+
     // Omitir cualquier operación que tenga "sim" en cualquier parte del nombre de cuenta o prop firm
     const isSim = (t: ExtractedTrade) => {
       const name = (t.accountName || "").toLowerCase();
@@ -382,7 +398,7 @@ export function TradeImportDialog() {
     // Detectar fecha principal
     let detectedDay: string | null = null;
     for (const t of validFound) {
-      const parsed = parseDetectedDate(t.closedAt ?? t.openedAt);
+      const parsed = parseDetectedDate(t.closedAt ?? t.openedAt, activeTz);
       if (parsed && parsed.includes("T")) {
         const day = parsed.split("T")[0];
         if (day && day.length === 10) {
@@ -432,7 +448,7 @@ export function TradeImportDialog() {
       const used = usedCounts.get(key) ?? 0;
       usedCounts.set(key, used + 1);
       const duplicate = used < (existingCounts.get(key) ?? 0);
-      const detectedAt = parseDetectedDate(t.closedAt ?? t.openedAt);
+      const detectedAt = parseDetectedDate(t.closedAt ?? t.openedAt, activeTz);
 
       let rowDate = initialDate;
       let rowTime = "15:30";
@@ -734,6 +750,19 @@ export function TradeImportDialog() {
       })),
     );
     toast.info(`Fecha de operaciones actualizada a: ${formatDisplayDate(newDate)}`);
+  };
+
+  // Cambiar zona horaria de origen de las capturas
+  const handleCaptureTimezoneChange = (tz: CaptureTimezoneMode) => {
+    setCaptureTimezone(tz);
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem("vita-trading:capture-timezone", tz);
+    }
+    if (rawExtractedTradesRef.current && rawExtractedTradesRef.current.length > 0) {
+      processExtractedTrades(rawExtractedTradesRef.current, undefined, tz);
+      const conf = CAPTURE_TIMEZONE_CONFIGS.find((c) => c.id === tz);
+      toast.info(`Zona horaria de capturas ajustada a: ${conf?.label || tz}`);
+    }
   };
 
   // Actualizar fecha de una fila individual
@@ -1193,6 +1222,41 @@ export function TradeImportDialog() {
                       </Button>
                     )}
                   </div>
+                </div>
+              </div>
+
+              {/* Selector de Zona Horaria de las Capturas / Broker */}
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 bg-card/70 border border-border/80 rounded-lg p-3 shadow-xs">
+                <div className="space-y-0.5">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                    <Clock className="size-3 text-brand" />
+                    Zona horaria de las capturas / broker
+                  </span>
+                  <p className="text-[11px] text-muted-foreground">
+                    {CAPTURE_TIMEZONE_CONFIGS.find((c) => c.id === captureTimezone)?.description ||
+                      "Ajusta el huso horario en el que tu broker o app muestra las horas"}
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Select
+                    value={captureTimezone}
+                    onValueChange={(val: CaptureTimezoneMode) => handleCaptureTimezoneChange(val)}
+                  >
+                    <SelectTrigger className="h-8 w-60 text-xs font-semibold bg-background border-border">
+                      <SelectValue placeholder="Zona horaria" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {CAPTURE_TIMEZONE_CONFIGS.map((tz) => (
+                        <SelectItem key={tz.id} value={tz.id} className="text-xs cursor-pointer">
+                          <div className="flex flex-col py-0.5 text-left">
+                            <span className="font-semibold text-foreground">{tz.label}</span>
+                            <span className="text-[10px] text-muted-foreground">{tz.description}</span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
             </div>
