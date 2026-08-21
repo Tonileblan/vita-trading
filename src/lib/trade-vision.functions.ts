@@ -57,7 +57,8 @@ Reglas:
 - "accountName": el nombre, código o identificador de cuenta o prop firm que aparece en la fila/operación (ej: "Apex-101", "PA-50K-1", "Topstep #2", "123456", "MFF-PA", "Tradovate LIVE", etc.). Si no aparece, null.
 - "accountFirm": la empresa de fondeo o broker si es visible (ej: "Apex", "Topstep", "FundingPips", "MyFundedFutures", "NinjaTrader", etc.). Si no aparece, null.
 - Fechas: SIEMPRE que aparezca una fecha o marca de tiempo (columna, cabecera, tarjeta, fila o pie),
-  devuélvela en ISO 8601 con hora si está disponible (ej. 2026-05-14T15:32:00). Convierte 12h (am/pm) a 24h.
+  devuélvela en ISO 8601 con hora si está disponible y añade el offset de Bogotá (-05:00), ej. 2026-05-14T19:32:00-05:00. Convierte 12h (am/pm) a 24h.
+  (Las capturas y plataformas operativas se capturan en zona horaria de Bogotá, Colombia UTC-5 / America/Bogota).
   Si el año no se ve, usa el año actual. Si la fecha aparece una sola vez para un bloque,
   aplícala a todas las filas de ese bloque. "openedAt" y "closedAt" pueden coincidir.
 - Nunca inventes precios, tamaños ni fechas: lo que no se lee va como null.
@@ -67,7 +68,7 @@ Reglas:
   (misma fecha o fechas distintas), devuélvelas TODAS por separado, una entrada por fila visible.
   El número de entradas del JSON debe coincidir exactamente con el número de filas/operaciones
   visibles en las imágenes.
-Responde SOLO con JSON válido: {"trades":[{"symbol":"GCM","direction":"long","openedAt":"2026-05-14T15:30:00","closedAt":"2026-05-14T15:32:00","entryPrice":2350.5,"exitPrice":2355.0,"size":1,"pnl":450.0,"accountName":"Apex-50K-1","accountFirm":"Apex"}]}`;
+Responde SOLO con JSON válido: {"trades":[{"symbol":"GCM","direction":"long","openedAt":"2026-05-14T19:30:00-05:00","closedAt":"2026-05-14T19:32:00-05:00","entryPrice":2350.5,"exitPrice":2355.0,"size":1,"pnl":450.0,"accountName":"Apex-50K-1","accountFirm":"Apex"}]}`;
 
 function parseDataUrl(dataUrl: string): { mime_type: string; data: string } {
   const match = dataUrl.match(/^data:([^;]+);base64,(.+)$/);
