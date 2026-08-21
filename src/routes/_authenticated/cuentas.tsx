@@ -568,9 +568,13 @@ function AccountsPage() {
                   />
                 )}
               </div>
-              <p className="text-xs text-muted-foreground font-medium mt-0.5">
+              <p className="text-xs text-muted-foreground font-medium flex items-center gap-1.5 mt-0.5">
                 <span className="font-semibold text-foreground/90">
                   {acc.type === "funded" ? acc.firm || "Prop Firm" : acc.broker || "Broker"}
+                </span>
+                <span>•</span>
+                <span className="font-mono">
+                  {acc.initialBalance.toLocaleString("en-US")}
                 </span>
               </p>
             </div>
