@@ -103,6 +103,7 @@ function GoPage() {
   // Cargar slots del plan activo
   const { data: slots = [] } = useTradingPlanSlots(
     activePlan.id === "default-plan" ? undefined : activePlan.id,
+    activeJournalId,
   );
 
   // Pestaña activa dentro de GO (por defecto Cockpit Hoy)

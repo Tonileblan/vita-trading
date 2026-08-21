@@ -664,7 +664,7 @@ const LOCAL_PLAN_KEY = (jid: string) => `vita_trading_plan_${jid}`;
 const LOCAL_SLOTS_KEY = (planId: string) => `vita_trading_slots_${planId}`;
 const LOCAL_CHECKLIST_KEY = (jid: string, date: string) => `vita_trading_chk_${jid}_${date}`;
 
-/** Busca en todas las claves de localStorage cualquier plan guardado previamente (incluido Oro-UVI) */
+/** Busca en todas las claves de localStorage cualquier plan guardado previamente (incluido Oro-UVI y su config exacta) */
 export function getAllLocalPlansAcrossKeys(journalId?: string): TradingPlan[] {
   if (typeof window === "undefined") return [];
   const foundPlans = new Map<string, TradingPlan>();
@@ -700,6 +700,58 @@ export function getAllLocalPlansAcrossKeys(journalId?: string): TradingPlan[] {
   } catch {}
 
   return Array.from(foundPlans.values());
+}
+
+/** Recupera todas las franjas/slots guardados en cualquier clave de localStorage para no perder configuraciones previas */
+export function getAllLegacySlotsAcrossLocalStorage(): TradingPlanSlot[] {
+  if (typeof window === "undefined") return [];
+  const foundSlots: TradingPlanSlot[] = [];
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (!k) continue;
+      if (k.startsWith("vita_trading_slots_")) {
+        try {
+          const raw = localStorage.getItem(k);
+          if (!raw) continue;
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            parsed.forEach((s: TradingPlanSlot) => {
+              if (s && (s.session_name || s.start_time || s.strategy_id || s.account_id)) {
+                foundSlots.push(s);
+              }
+            });
+          }
+        } catch {}
+      }
+    }
+  } catch {}
+  return foundSlots;
+}
+
+/** Busca la configuración original de un plan específico en el almacenamiento del navegador */
+export function findOriginalLocalPlanConfig(nameQuery: string = "oro"): TradingPlan | null {
+  if (typeof window === "undefined") return null;
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (!k) continue;
+      if (k.startsWith("vita_trading_plans_list_") || k.startsWith("vita_trading_plan_")) {
+        try {
+          const raw = localStorage.getItem(k);
+          if (!raw) continue;
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed)) {
+            const match = parsed.find((p: any) => p?.name?.toLowerCase().includes(nameQuery.toLowerCase()));
+            if (match) return match;
+          } else if (parsed?.name?.toLowerCase().includes(nameQuery.toLowerCase())) {
+            return parsed;
+          }
+        } catch {}
+      }
+    }
+  } catch {}
+  return null;
 }
 
 export function getLocalPlans(journalId: string): TradingPlan[] {
@@ -806,33 +858,38 @@ export function useTradingPlans(journalId?: string) {
 
       const { data: sessionData } = await supabase.auth.getSession();
       const uid = sessionData?.session?.user?.id || "";
-      const email = sessionData?.session?.user?.email || "";
-      const isOwner = email.toLowerCase().includes("tonirivera") || email.toLowerCase().includes("toni");
 
       const mergedMap = new Map<string, TradingPlan>();
       // 1. Añadir remotos
       remotePlans.forEach((p) => mergedMap.set(p.id, p));
 
-      // 2. Añadir y migrar locales si existen
+      // 2. Añadir y migrar locales si existen, preservando toda su configuración
       for (const lp of allLocal) {
         let planToSync = lp;
         if (!isValidUUID(lp.id)) {
           const oldId = lp.id;
           const newId = generateUUID();
-          planToSync = { ...lp, id: newId, user_id: uid || lp.user_id, journal_id: journalId || lp.journal_id };
+          planToSync = {
+            ...lp,
+            id: newId,
+            user_id: uid || lp.user_id,
+            journal_id: journalId || lp.journal_id,
+          };
           const oldSlots = getLocalSlots(oldId);
           if (oldSlots.length > 0) {
             const updatedSlots = oldSlots.map((s) => ({
               ...s,
               id: isValidUUID(s.id) ? s.id : generateUUID(),
               plan_id: newId,
+              journal_id: journalId || s.journal_id,
+              user_id: uid || s.user_id,
             }));
             setLocalSlots(newId, updatedSlots);
           }
         }
         mergedMap.set(planToSync.id, planToSync);
 
-        // Si hay usuario y diario, sincronizar a Supabase en background
+        // Sincronizar en Supabase
         if (uid && journalId && isValidUUID(planToSync.id)) {
           supabase
             .from("trading_plans" as any)
@@ -841,27 +898,28 @@ export function useTradingPlans(journalId?: string) {
         }
       }
 
-      // 3. Garantizar siempre la existencia del plan "Oro-UVI"
+      // 3. Garantizar siempre la existencia del plan "Oro-UVI" con su configuración previa si existe
       const hasOroUvi = Array.from(mergedMap.values()).some((p) => {
         const n = (p.name || "").toLowerCase();
         return n.includes("oro") || n.includes("uvi");
       });
 
       if (!hasOroUvi && journalId) {
-        const oroPlanId = generateUUID();
+        const legacyOro = findOriginalLocalPlanConfig("oro") || findOriginalLocalPlanConfig("uvi");
+        const oroPlanId = legacyOro && isValidUUID(legacyOro.id) ? legacyOro.id : generateUUID();
         const oroPlan: TradingPlan = {
           id: oroPlanId,
           journal_id: journalId,
           user_id: uid,
-          name: "Oro-UVI",
-          is_active: true,
-          weekly_risk_budget: 1500,
-          daily_risk_budget: 400,
-          max_daily_trades: 3,
-          max_loss_streak: 2,
-          profit_lock_target: 600,
-          notes: "Plan operativo Oro (Asia 01:00 - 06:30 MGC) y cuentas UVI",
-          created_at: new Date().toISOString(),
+          name: legacyOro?.name || "Oro-UVI",
+          is_active: legacyOro?.is_active ?? true,
+          weekly_risk_budget: legacyOro?.weekly_risk_budget ?? 1500,
+          daily_risk_budget: legacyOro?.daily_risk_budget ?? 400,
+          max_daily_trades: legacyOro?.max_daily_trades ?? 3,
+          max_loss_streak: legacyOro?.max_loss_streak ?? 2,
+          profit_lock_target: legacyOro?.profit_lock_target ?? 600,
+          notes: legacyOro?.notes || "Plan operativo Oro (Asia 01:00 - 06:30 MGC) y cuentas UVI",
+          created_at: legacyOro?.created_at || new Date().toISOString(),
           updated_at: new Date().toISOString(),
         };
         mergedMap.set(oroPlanId, oroPlan);
@@ -1029,7 +1087,7 @@ export function useDeleteTradingPlan(journalId?: string) {
   });
 }
 
-export function useTradingPlanSlots(planId?: string) {
+export function useTradingPlanSlots(planId?: string, journalId?: string) {
   return useQuery({
     queryKey: ["trading-plan-slots", planId],
     enabled: !!planId,
@@ -1055,7 +1113,40 @@ export function useTradingPlanSlots(planId?: string) {
         }
       }
 
-      return getLocalSlots(planId);
+      const localSlots = getLocalSlots(planId);
+      if (localSlots.length > 0) {
+        return localSlots;
+      }
+
+      // Si no tiene slots todavía, recuperar todas las franjas legacy configuradas previamente en este navegador
+      const legacySlots = getAllLegacySlotsAcrossLocalStorage();
+      if (legacySlots.length > 0) {
+        const { data: sessionData } = await supabase.auth.getSession();
+        const uid = sessionData?.session?.user?.id || "";
+
+        const migratedSlots: TradingPlanSlot[] = legacySlots.map((s, idx) => ({
+          ...s,
+          id: isValidUUID(s.id) ? s.id : generateUUID(),
+          plan_id: planId,
+          journal_id: journalId || s.journal_id || "",
+          user_id: uid || s.user_id || "",
+          order_index: s.order_index ?? idx,
+        }));
+
+        setLocalSlots(planId, migratedSlots);
+
+        if (isValidUUID(planId) && uid) {
+          try {
+            await supabase.from("trading_plan_slots" as any).upsert(migratedSlots);
+          } catch (e) {
+            console.warn("Error uploading migrated legacy slots to Supabase:", e);
+          }
+        }
+
+        return migratedSlots;
+      }
+
+      return [];
     },
   });
 }
