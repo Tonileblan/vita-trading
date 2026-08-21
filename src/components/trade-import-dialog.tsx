@@ -71,7 +71,7 @@ function normalizeSymbol(sym?: string | null): string {
     s.includes("XAU") ||
     s.includes("ORO")
   ) {
-    return "GCM";
+    return "MGC";
   }
   if (s.startsWith("MNQ") || s.includes("MICRO NASDAQ")) {
     return "MNQ";
@@ -1278,7 +1278,7 @@ export function TradeImportDialog() {
               </div>
 
               <p className="text-xs text-muted-foreground leading-relaxed">
-                Se han relacionado automáticamente los nombres de cuentas leídos en tu captura con tus cuentas de Vita-Trading. Las operaciones se preseleccionaron con la estrategia correspondiente (ej: <strong>GCM ➔ Oro</strong>, <strong>MNQ ➔ IFT / Asia / Fondeo</strong>).
+                Se han relacionado automáticamente los nombres de cuentas leídos en tu captura con tus cuentas de Vita-Trading. Las operaciones se preseleccionaron con la estrategia correspondiente (ej: <strong>MGC ➔ Oro</strong>, <strong>MNQ ➔ IFT / Asia / Fondeo</strong>).
               </p>
 
               {/* Lista de Mapeo por Grupo */}
@@ -1423,7 +1423,7 @@ export function TradeImportDialog() {
                               <span
                                 className={cn(
                                   "font-bold uppercase px-1.5 py-0.5 rounded text-[11px]",
-                                  r.symbol === "GCM"
+                                  r.symbol === "MGC" || r.symbol === "GCM"
                                     ? "bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30"
                                     : "bg-muted font-bold text-foreground border border-border",
                                 )}
@@ -1458,7 +1458,7 @@ export function TradeImportDialog() {
                                 onChange={(e) => handleUpdateRowStrategy(i, e.target.value)}
                                 className={cn(
                                   "h-6 rounded border px-1.5 text-[10px] font-bold focus:outline-none focus:ring-1 focus:ring-brand cursor-pointer",
-                                  r.symbol === "GCM"
+                                  r.symbol === "MGC" || r.symbol === "GCM"
                                     ? "border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300"
                                     : "border-border bg-background text-foreground",
                                 )}

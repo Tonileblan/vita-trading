@@ -102,11 +102,23 @@ function fromStrategy(s: Partial<Strategy>): Row {
 }
 
 export function toTrade(r: Row): Trade {
+  const rawSym = String(r["symbol"] ?? "");
+  const symUpper = rawSym.toUpperCase().trim();
+  const normalizedSymbol =
+    symUpper === "GCM" ||
+    symUpper.startsWith("GCM") ||
+    symUpper === "GC" ||
+    symUpper === "XAUUSD" ||
+    symUpper.includes("GOLD") ||
+    symUpper.includes("ORO")
+      ? "MGC"
+      : rawSym;
+
   return {
     id: String(r["id"]),
     accountId: String(r["account_id"] ?? ""),
     strategyId: String(r["strategy_id"] ?? ""),
-    symbol: String(r["symbol"] ?? ""),
+    symbol: normalizedSymbol,
     direction: (r["direction"] === "short" ? "short" : "long") as Trade["direction"],
     openedAt: String(r["opened_at"] ?? r["closed_at"] ?? new Date().toISOString()),
     closedAt: String(r["closed_at"] ?? r["opened_at"] ?? new Date().toISOString()),
@@ -132,7 +144,10 @@ function fromTrade(t: Partial<Omit<Trade, "id">>): Row {
   const out: Row = {};
   if (t.accountId !== undefined) out["account_id"] = t.accountId || null;
   if (t.strategyId !== undefined) out["strategy_id"] = t.strategyId || null;
-  if (t.symbol !== undefined) out["symbol"] = t.symbol;
+  if (t.symbol !== undefined) {
+    const s = t.symbol.toUpperCase().trim();
+    out["symbol"] = s === "GCM" || s.startsWith("GCM") || s === "GC" ? "MGC" : t.symbol;
+  }
   if (t.direction !== undefined) out["direction"] = t.direction;
   if (t.openedAt !== undefined) out["opened_at"] = t.openedAt;
   if (t.closedAt !== undefined) out["closed_at"] = t.closedAt;
@@ -405,6 +420,18 @@ export async function fetchJournalData(journalId: string): Promise<JournalData> 
       withdrawals: (withdrawals.data ?? []).map((r) => toWithdrawal(r as Row)),
       strategyPeriods: (periods.data ?? []).map((r) => toPeriod(r as Row)),
     };
+
+    // Auto-migrar en la base de datos cualquier operación que tuviera el símbolo GCM
+    const legacyGcmTrades = tradeRows.filter((r) => {
+      const s = String(r.symbol || "").toUpperCase().trim();
+      return s === "GCM" || s.startsWith("GCM") || s === "GC" || s === "XAUUSD";
+    });
+    if (legacyGcmTrades.length > 0) {
+      const gcmIds = legacyGcmTrades.map((t) => t.id).filter(Boolean);
+      if (gcmIds.length > 0) {
+        supabase.from("trades").update({ symbol: "MGC" } as never).in("id", gcmIds).then();
+      }
+    }
 
     // Si no hay estrategias creadas en este diario, sembrarlas automáticamente con las 6 del admin
     if (parsed.strategies.length === 0 && journalId) {

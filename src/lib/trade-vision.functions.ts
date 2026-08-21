@@ -48,7 +48,7 @@ Reglas:
 - "pnl" (obligatorio) es el resultado NETO en dólares como número; negativo si es pérdida.
   Quita símbolos de moneda, separadores de miles y espacios. "(120,50)" → -120.5.
 - "symbol": el activo o ticker negociado.
-  * Si ves Oro / Gold ("GCM", "GC", "MGC", "GCM6", "GCZ", "GCJ", "XAUUSD"), devuelve "GCM".
+  * Si ves Oro / Gold ("MGC", "GC", "GCM", "GCM6", "GCZ", "GCJ", "XAUUSD"), devuelve "MGC".
   * Si ves Micro Nasdaq ("MNQ", "MNQM6", "MNQU6"), devuelve "MNQ".
   * Si ves Nasdaq ("NQ", "NQM6", "NQU6"), devuelve "NQ".
   * Si ves S&P 500 ("ES", "MES"), devuelve "ES" o "MES".
@@ -68,7 +68,7 @@ Reglas:
   (misma fecha o fechas distintas), devuélvelas TODAS por separado, una entrada por fila visible.
   El número de entradas del JSON debe coincidir exactamente con el número de filas/operaciones
   visibles en las imágenes.
-Responde SOLO con JSON válido: {"trades":[{"symbol":"GCM","direction":"long","openedAt":"2026-05-14T19:30:00-05:00","closedAt":"2026-05-14T19:32:00-05:00","entryPrice":2350.5,"exitPrice":2355.0,"size":1,"pnl":450.0,"accountName":"Apex-50K-1","accountFirm":"Apex"}]}`;
+Responde SOLO con JSON válido: {"trades":[{"symbol":"MGC","direction":"long","openedAt":"2026-05-14T19:30:00-05:00","closedAt":"2026-05-14T19:32:00-05:00","entryPrice":2350.5,"exitPrice":2355.0,"size":1,"pnl":450.0,"accountName":"Apex-50K-1","accountFirm":"Apex"}]}`;
 
 function parseDataUrl(dataUrl: string): { mime_type: string; data: string } {
   const match = dataUrl.match(/^data:([^;]+);base64,(.+)$/);
@@ -89,8 +89,8 @@ export const extractTradesFromImages = createServerFn({ method: "POST" })
     const lovableKey = process.env["LOVABLE_API_KEY"];
 
     const symbolHint = data.symbols?.length
-      ? `Activos habituales del usuario: ${data.symbols.join(", ")}, GCM (Oro), MNQ (Nasdaq), NQ, ES, MES.`
-      : "Activos habituales: GCM (Oro), MNQ, NQ, ES, MES.";
+      ? `Activos habituales del usuario: ${data.symbols.join(", ")}, MGC (Oro), MNQ (Nasdaq), NQ, ES, MES.`
+      : "Activos habituales: MGC (Oro), MNQ, NQ, ES, MES.";
 
     const accountHint = data.accountHints?.length
       ? `Cuentas registradas del usuario en el sistema: ${data.accountHints.join(", ")}. Recuerda omitir cuentas que contengan "SIM".`
