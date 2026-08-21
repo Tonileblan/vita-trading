@@ -524,51 +524,37 @@ function AccountsPage() {
       dd !== null &&
       (dd.remaining < 600 || dd.breached);
 
+    const drawdownFloor = dd && Number.isFinite(dd.floor)
+      ? dd.floor
+      : acc.initialBalance - (acc.drawdownLimit || 0);
+
     return (
       <article
         className={cn(
-          "group relative rounded-2xl border border-border/80 bg-card p-5 sm:p-6 transition-all duration-200 hover:border-brand/50 hover:shadow-md",
+          "group relative rounded-2xl border border-border/80 bg-card p-4 sm:p-5 transition-all duration-200 hover:border-brand/40 hover:shadow-md space-y-3.5",
           isLowDrawdown && "border-loss/40 bg-loss/5 hover:border-loss/60 shadow-xs",
         )}
       >
-        {/* BOTÓN EDITAR (SOLO LÁPIZ ARRIBA A LA DERECHA) */}
-        <div className="absolute top-3.5 right-3.5 sm:top-4 sm:right-4 z-10">
-          <AccountDialog
-            account={acc}
-            trigger={
-              <Button
-                variant="ghost"
-                size="icon"
-                className="size-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/70"
-                aria-label={`Editar ${acc.name}`}
-              >
-                <Pencil className="size-4" />
-              </Button>
-            }
-          />
-        </div>
-
-        {/* CONTENIDO PRINCIPAL EN 3 COLUMNAS AMPLIAS */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 lg:gap-6 items-center pr-8 sm:pr-10 lg:pr-6">
-          {/* 1. IDENTIDAD Y DETALLES DE CUENTA (lg:col-span-4) */}
-          <div className="lg:col-span-4 min-w-0 flex items-center gap-3.5">
+        {/* CABECERA: IDENTIDAD DE CUENTA + ACCIONES */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-border/60">
+          <div className="flex items-center gap-3 min-w-0">
             <div
               className={cn(
-                "flex size-12 shrink-0 items-center justify-center rounded-2xl font-bold text-sm shadow-xs",
+                "flex size-10 shrink-0 items-center justify-center rounded-xl font-bold text-sm shadow-xs",
                 acc.type === "funded"
                   ? "bg-brand/10 text-brand border border-brand/25"
                   : "bg-purple-500/10 text-purple-500 border border-purple-500/25",
               )}
             >
-              {acc.type === "funded" ? <Building2 className="size-6" /> : <Wallet className="size-6" />}
+              {acc.type === "funded" ? <Building2 className="size-5" /> : <Wallet className="size-5" />}
             </div>
 
-            <div className="min-w-0 flex-1 space-y-1">
+            <div className="min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
                 <Link
                   to="/cuenta/$accountId"
                   params={{ accountId: acc.id }}
-                  className="font-extrabold text-base sm:text-lg text-foreground hover:text-brand transition-colors truncate block"
+                  className="font-extrabold text-base sm:text-lg text-foreground hover:text-brand transition-colors truncate"
                 >
                   {acc.name}
                 </Link>
@@ -582,159 +568,197 @@ function AccountsPage() {
                   />
                 )}
               </div>
-              <p className="text-xs text-muted-foreground font-medium flex items-center gap-1.5">
-                <span className="font-semibold text-foreground/80">
+              <p className="text-xs text-muted-foreground font-medium flex items-center gap-1.5 mt-0.5">
+                <span className="font-semibold text-foreground/90">
                   {acc.type === "funded" ? acc.firm || "Prop Firm" : acc.broker || "Broker"}
                 </span>
                 <span>•</span>
-                <span className="font-mono">Inicial {formatCurrency(acc.initialBalance)}</span>
+                <span className="font-mono">Capital inicial: {formatCurrency(acc.initialBalance)}</span>
               </p>
             </div>
           </div>
 
-          {/* 2. MÉTRICAS FINANCIERAS PRINCIPALES (lg:col-span-4) */}
-          <div className="lg:col-span-4 min-w-0 rounded-2xl bg-muted/40 border border-border/70 p-3.5">
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-left sm:text-center items-center">
-              <div>
-                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">
-                  Balance Actual
-                </span>
-                <span className="num text-base font-black font-mono text-foreground block mt-0.5">
-                  {formatCurrency(balance)}
-                </span>
-              </div>
-
-              <div>
-                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">
-                  Resultado PnL
-                </span>
-                <span
-                  className={cn(
-                    "num text-xs sm:text-sm font-bold font-mono px-2 py-0.5 rounded-lg inline-block mt-0.5",
-                    result >= 0
-                      ? "bg-profit/15 text-profit border border-profit/20"
-                      : "bg-loss/15 text-loss border border-loss/20",
-                  )}
+          <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
+            <AccountDialog
+              account={acc}
+              trigger={
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 px-2.5 text-xs text-muted-foreground hover:text-foreground gap-1.5 rounded-lg"
+                  aria-label={`Editar ${acc.name}`}
                 >
-                  {formatCurrency(result, true)}
-                </span>
-              </div>
+                  <Pencil className="size-3.5" />
+                  <span>Editar</span>
+                </Button>
+              }
+            />
 
-              <div>
-                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">
-                  Win Rate
-                </span>
-                <span className="num text-base font-bold font-mono text-foreground block mt-0.5">
-                  {m.winRate.toFixed(1)}%
-                </span>
-              </div>
-
-              <div>
-                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">
-                  Trades · PF
-                </span>
-                <span className="text-xs font-semibold text-muted-foreground block mt-1">
-                  {m.total} ops · <span className="font-mono font-bold text-foreground">PF {Number.isFinite(m.profitFactor) ? m.profitFactor.toFixed(2) : "—"}</span>
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* 3. BARRAS DE PROGRESO Y CONTROL VISUAL (lg:col-span-4) */}
-          <div className="lg:col-span-4 min-w-0 space-y-2.5">
-            {/* Drawdown Gauge */}
-            {dd ? (
-              <div className="rounded-xl border border-border/70 bg-muted/30 p-2.5 space-y-1.5">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-[11px] font-bold text-muted-foreground flex items-center gap-1.5">
-                    <ShieldAlert className="size-3.5 text-muted-foreground" /> Drawdown
-                  </span>
-                  <span
-                    className={cn(
-                      "num font-mono font-bold text-xs",
-                      dd.remaining <= 600 || dd.breached ? "text-loss" : "text-profit",
-                    )}
-                  >
-                    {formatCurrency(dd.remaining)}
-                  </span>
-                </div>
-                <div className="h-2 w-full overflow-hidden rounded-full bg-muted/80">
-                  <div
-                    className={cn(
-                      "h-full rounded-full transition-all",
-                      dd.breached || dd.remaining <= 600 ? "bg-loss" : "bg-profit",
-                    )}
-                    style={{
-                      width: `${Math.min(100, Math.max(0, (dd.remaining / (dd.limit || 1)) * 100))}%`,
-                    }}
-                  />
-                </div>
-                <div className="flex justify-between text-[10px] text-muted-foreground font-mono">
-                  <span>Suelo {formatCurrency(dd.threshold)}</span>
-                  <span>Límite {formatCurrency(dd.limit)}</span>
-                </div>
-              </div>
-            ) : null}
-
-            {/* Target Gauge */}
-            {target ? (
-              <div className="rounded-xl border border-border/70 bg-muted/30 p-2.5 space-y-1.5">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-[11px] font-bold text-muted-foreground flex items-center gap-1.5">
-                    <TrendingUp className="size-3.5 text-sky-500" /> {acc.phase === "live" ? "Retiro" : "Target"}
-                  </span>
-                  <span className="num font-mono font-bold text-xs text-sky-600 dark:text-sky-400">
-                    {Math.min(100, Math.max(0, target.pct)).toFixed(0)}%
-                  </span>
-                </div>
-                <div className="h-2 w-full overflow-hidden rounded-full bg-muted/80">
-                  <div
-                    className={cn(
-                      "h-full rounded-full transition-all",
-                      target.reached ? "bg-emerald-500" : "bg-sky-500",
-                    )}
-                    style={{
-                      width: `${Math.min(100, Math.max(0, target.pct))}%`,
-                    }}
-                  />
-                </div>
-                <div className="flex justify-between text-[10px] text-muted-foreground font-mono">
-                  <span>Meta {formatCurrency(target.target)}</span>
-                  <span className={target.reached ? "text-emerald-500 font-bold" : ""}>
-                    {target.reached ? "¡Listo!" : `Falta ${formatCurrency(Math.max(0, target.target - target.balance))}`}
-                  </span>
-                </div>
-              </div>
-            ) : null}
-
-            {/* Si es cuenta personal sin target ni drawdown */}
-            {!dd && !target && (
-              <div className="rounded-xl border border-border/70 bg-muted/20 p-3 text-center">
-                <p className="text-xs font-medium text-muted-foreground">Cuenta Personal Activa</p>
-                <p className="text-[11px] text-muted-foreground mt-0.5">
-                  Rendimiento: <span className="font-bold text-foreground">{pnlPct >= 0 ? "+" : ""}{pnlPct.toFixed(2)}%</span>
-                </p>
-              </div>
-            )}
+            <Link to="/cuenta/$accountId" params={{ accountId: acc.id }}>
+              <Button size="sm" variant="outline" className="h-8 px-3 text-xs font-bold gap-1 rounded-lg border-brand/40 text-brand hover:bg-brand/10">
+                <span>Ver cuenta</span>
+                <span className="text-xs">→</span>
+              </Button>
+            </Link>
           </div>
         </div>
 
-        {/* ENLACE VER CUENTA (SOLO TEXTO ABAJO A LA DERECHA) */}
-        <div className="flex items-center justify-between pt-3 mt-3 border-t border-border/50 text-xs text-muted-foreground">
-          <span>
-            {m.total} trades registrados · Factor de beneficio:{" "}
-            <strong className="num text-foreground font-mono">
-              {Number.isFinite(m.profitFactor) ? m.profitFactor.toFixed(2) : "—"}
-            </strong>
-          </span>
-          <Link
-            to="/cuenta/$accountId"
-            params={{ accountId: acc.id }}
-            className="font-bold text-brand hover:underline inline-flex items-center gap-1 transition-colors"
-          >
-            <span>Ver cuenta</span>
-            <span className="text-sm">→</span>
-          </Link>
+        {/* CUERPO: GRID ESPACIOSO DE MÉTRICAS Y CONTROLES (6 MÓDULOS) */}
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2.5 sm:gap-3">
+          {/* 1. BALANCE ACTUAL */}
+          <div className="rounded-xl bg-muted/30 border border-border/70 p-3 flex flex-col justify-between min-h-[84px]">
+            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">
+              Balance Actual
+            </span>
+            <div className="my-0.5">
+              <span className="num text-base sm:text-lg font-black font-mono text-foreground block">
+                {formatCurrency(balance)}
+              </span>
+            </div>
+            <span className="text-[10px] text-muted-foreground font-mono">
+              Base: {formatCurrency(acc.initialBalance)}
+            </span>
+          </div>
+
+          {/* 2. RESULTADO PNL */}
+          <div className="rounded-xl bg-muted/30 border border-border/70 p-3 flex flex-col justify-between min-h-[84px]">
+            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">
+              Resultado PnL
+            </span>
+            <div className="my-0.5">
+              <span
+                className={cn(
+                  "num text-base sm:text-lg font-black font-mono block",
+                  result >= 0 ? "text-profit" : "text-loss",
+                )}
+              >
+                {formatCurrency(result, true)}
+              </span>
+            </div>
+            <span
+              className={cn(
+                "text-[10px] font-bold font-mono",
+                pnlPct >= 0 ? "text-profit" : "text-loss",
+              )}
+            >
+              {pnlPct >= 0 ? "+" : ""}{pnlPct.toFixed(2)}% ROI
+            </span>
+          </div>
+
+          {/* 3. WIN RATE */}
+          <div className="rounded-xl bg-muted/30 border border-border/70 p-3 flex flex-col justify-between min-h-[84px]">
+            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">
+              Win Rate
+            </span>
+            <div className="my-0.5">
+              <span className="num text-base sm:text-lg font-black font-mono text-foreground block">
+                {m.winRate.toFixed(1)}%
+              </span>
+            </div>
+            <span className="text-[10px] text-muted-foreground font-mono">
+              {m.wins}W · {m.losses}L ({m.total} ops)
+            </span>
+          </div>
+
+          {/* 4. PROFIT FACTOR */}
+          <div className="rounded-xl bg-muted/30 border border-border/70 p-3 flex flex-col justify-between min-h-[84px]">
+            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">
+              Profit Factor
+            </span>
+            <div className="my-0.5">
+              <span className="num text-base sm:text-lg font-black font-mono text-foreground block">
+                {Number.isFinite(m.profitFactor) ? m.profitFactor.toFixed(2) : "—"}
+              </span>
+            </div>
+            <span className="text-[10px] text-muted-foreground">
+              {m.total > 0 ? "Rendimiento operativo" : "Sin trades aún"}
+            </span>
+          </div>
+
+          {/* 5. DRAWDOWN GAUGE */}
+          {dd ? (
+            <div className="col-span-2 md:col-span-2 lg:col-span-1 rounded-xl bg-muted/30 border border-border/70 p-3 flex flex-col justify-between min-h-[84px] space-y-1.5">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1">
+                  <ShieldAlert className="size-3.5 text-muted-foreground" /> Drawdown
+                </span>
+                <span
+                  className={cn(
+                    "num font-mono font-bold text-xs sm:text-sm",
+                    dd.remaining <= 600 || dd.breached ? "text-loss" : "text-profit",
+                  )}
+                >
+                  {formatCurrency(dd.remaining)}
+                </span>
+              </div>
+
+              <div className="h-2 w-full overflow-hidden rounded-full bg-muted/80 my-0.5">
+                <div
+                  className={cn(
+                    "h-full rounded-full transition-all duration-300",
+                    dd.breached || dd.remaining <= 600 ? "bg-loss" : "bg-profit",
+                  )}
+                  style={{
+                    width: `${Math.min(100, Math.max(0, (dd.remaining / (dd.limit || 1)) * 100))}%`,
+                  }}
+                />
+              </div>
+
+              <div className="flex justify-between text-[10px] text-muted-foreground font-mono">
+                <span>Suelo: {formatCurrency(drawdownFloor)}</span>
+                <span>Límite: {formatCurrency(dd.limit)}</span>
+              </div>
+            </div>
+          ) : (
+            <div className="col-span-2 md:col-span-2 lg:col-span-1 rounded-xl bg-muted/20 border border-border/60 p-3 flex flex-col justify-between min-h-[84px]">
+              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                Estado
+              </span>
+              <p className="text-sm font-bold text-foreground my-0.5">Personal</p>
+              <span className="text-[10px] text-muted-foreground">Sin límite forzado</span>
+            </div>
+          )}
+
+          {/* 6. TARGET GAUGE */}
+          {target ? (
+            <div className="col-span-2 md:col-span-2 lg:col-span-1 rounded-xl bg-muted/30 border border-border/70 p-3 flex flex-col justify-between min-h-[84px] space-y-1.5">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1">
+                  <TrendingUp className="size-3.5 text-sky-500" /> {acc.phase === "live" ? "Retiro" : "Target"}
+                </span>
+                <span className="num font-mono font-bold text-xs sm:text-sm text-sky-600 dark:text-sky-400">
+                  {Math.min(100, Math.max(0, target.pct)).toFixed(0)}%
+                </span>
+              </div>
+
+              <div className="h-2 w-full overflow-hidden rounded-full bg-muted/80 my-0.5">
+                <div
+                  className={cn(
+                    "h-full rounded-full transition-all duration-300",
+                    target.reached ? "bg-emerald-500" : "bg-sky-500",
+                  )}
+                  style={{
+                    width: `${Math.min(100, Math.max(0, target.pct))}%`,
+                  }}
+                />
+              </div>
+
+              <div className="flex justify-between text-[10px] text-muted-foreground font-mono">
+                <span>Meta: {formatCurrency(target.target)}</span>
+                <span className={target.reached ? "text-emerald-500 font-bold" : ""}>
+                  {target.reached ? "¡Superado!" : `Falta ${formatCurrency(Math.max(0, target.target - target.balance))}`}
+                </span>
+              </div>
+            </div>
+          ) : (
+            <div className="col-span-2 md:col-span-2 lg:col-span-1 rounded-xl bg-muted/20 border border-border/60 p-3 flex flex-col justify-between min-h-[84px]">
+              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                Objetivo
+              </span>
+              <p className="text-sm font-bold text-foreground my-0.5">Operativa libre</p>
+              <span className="text-[10px] text-muted-foreground">Sin meta fijada</span>
+            </div>
+          )}
         </div>
       </article>
     );
