@@ -17,6 +17,7 @@ import {
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/app-shell";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -234,19 +235,21 @@ function JournalsPage() {
 
       let importedCount = 0;
       for (const t of result.trades) {
-        const matchingAcc = accList.find((a) => a.name.toLowerCase() === t.accountName?.toLowerCase());
+        const matchingAcc = accList.find((a: { id: string; name: string }) => a.name.toLowerCase() === t.accountName?.toLowerCase());
         const accId = matchingAcc?.id || defaultAccId;
         if (!accId) continue;
 
+        if (!user?.id) continue;
         await supabase.from("trades").insert({
+          user_id: user.id,
           journal_id: targetId,
           account_id: accId,
           symbol: t.symbol || "MNQ",
           direction: t.direction || "long",
           opened_at: t.openedAt || new Date().toISOString(),
           closed_at: t.closedAt || new Date().toISOString(),
-          entry_price: t.entryPrice ?? null,
-          exit_price: t.exitPrice ?? null,
+          ...(t.entryPrice != null ? { entry_price: t.entryPrice } : {}),
+          ...(t.exitPrice != null ? { exit_price: t.exitPrice } : {}),
           size: t.size ?? 1,
           pnl: t.pnl,
           notes: t.notes ?? null,

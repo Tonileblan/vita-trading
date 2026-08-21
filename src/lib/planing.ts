@@ -197,7 +197,7 @@ export function getStrategyPresetDefaults(strategy: Strategy | null | undefined)
     symbols,
     sessionName,
     notes: strategy.setup || "",
-    riskAmount,
+    ...(riskAmount !== undefined ? { riskAmount } : {}),
     activeDays,
   };
 }
