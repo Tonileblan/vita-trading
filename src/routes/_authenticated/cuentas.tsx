@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import {
   Building2,
   DollarSign,
+  ExternalLink,
   Pencil,
   Percent,
   Plus,
@@ -55,7 +56,7 @@ import {
   type AccountType,
   type DrawdownType,
 } from "@/lib/types";
-import { usePropFirms } from "@/lib/prop-firms";
+import { getFirmWebsite, usePropFirms } from "@/lib/prop-firms";
 import { useBrokers } from "@/lib/brokers";
 import { cn } from "@/lib/utils";
 
@@ -578,9 +579,26 @@ function AccountsPage() {
                 )}
               </div>
               <p className="text-xs text-muted-foreground font-medium flex items-center gap-1.5 mt-0.5">
-                <span className="font-semibold text-foreground/90">
-                  {acc.type === "funded" ? acc.firm || "Prop Firm" : acc.broker || "Broker"}
-                </span>
+                {(() => {
+                  const firmName = acc.type === "funded" ? acc.firm || "Prop Firm" : acc.broker || "Broker";
+                  const firmUrl = getFirmWebsite(firmName);
+                  if (firmUrl) {
+                    return (
+                      <a
+                        href={firmUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="font-semibold text-foreground/90 hover:text-brand hover:underline inline-flex items-center gap-0.5 transition-colors cursor-pointer"
+                        title={`Visitar web oficial de ${firmName}`}
+                      >
+                        <span>{firmName}</span>
+                        <ExternalLink className="size-2.5 opacity-60 ml-0.5" />
+                      </a>
+                    );
+                  }
+                  return <span className="font-semibold text-foreground/90">{firmName}</span>;
+                })()}
                 <span>•</span>
                 <span className="font-mono">
                   {acc.initialBalance.toLocaleString("en-US")}
@@ -828,31 +846,51 @@ function AccountsPage() {
 
         <div className="relative z-10 space-y-4">
           <div className="flex items-start justify-between gap-3">
-            <Link
-              to="/cuenta/$accountId"
-              params={{ accountId: acc.id }}
-              className="min-w-0 flex-1 group"
-            >
-              <div className="flex items-center gap-2 flex-wrap">
-                <h3 className="text-base font-bold group-hover:text-brand transition-colors break-words">
-                  {acc.name}
-                </h3>
-                {acc.type === "funded" && <PhaseChip phase={acc.phase ?? "eval"} />}
-                {isLowDrawdown && (
-                  <DrawdownAlertButton
-                    remaining={dd?.remaining ?? 0}
-                    isFunded={acc.type === "funded" && Boolean(acc.drawdownLimit)}
-                    breached={dd?.breached ?? false}
-                    threshold={600}
-                  />
-                )}
-              </div>
-              <p className="text-xs text-muted-foreground mt-1 font-medium">
-                {acc.type === "funded"
-                  ? `${acc.firm ?? "Prop firm"} — ${formatCurrency(acc.initialBalance)}`
-                  : `${acc.broker ?? "Cuenta personal"} — ${formatCurrency(acc.initialBalance)}`}
+            <div className="min-w-0 flex-1">
+              <Link
+                to="/cuenta/$accountId"
+                params={{ accountId: acc.id }}
+                className="group/title block"
+              >
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h3 className="text-base font-bold group-hover/title:text-brand transition-colors break-words">
+                    {acc.name}
+                  </h3>
+                  {acc.type === "funded" && <PhaseChip phase={acc.phase ?? "eval"} />}
+                  {isLowDrawdown && (
+                    <DrawdownAlertButton
+                      remaining={dd?.remaining ?? 0}
+                      isFunded={acc.type === "funded" && Boolean(acc.drawdownLimit)}
+                      breached={dd?.breached ?? false}
+                      threshold={600}
+                    />
+                  )}
+                </div>
+              </Link>
+              <p className="text-xs text-muted-foreground mt-1 font-medium flex items-center gap-1 flex-wrap">
+                {(() => {
+                  const firmName = acc.type === "funded" ? acc.firm || "Prop firm" : acc.broker || "Cuenta personal";
+                  const firmUrl = getFirmWebsite(firmName);
+                  if (firmUrl) {
+                    return (
+                      <a
+                        href={firmUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="hover:text-brand hover:underline inline-flex items-center gap-0.5 transition-colors cursor-pointer text-foreground/80 font-medium"
+                        title={`Visitar web oficial de ${firmName}`}
+                      >
+                        <span>{firmName}</span>
+                        <ExternalLink className="size-2.5 opacity-60 ml-0.5" />
+                      </a>
+                    );
+                  }
+                  return <span>{firmName}</span>;
+                })()}
+                <span>—</span>
+                <span>{formatCurrency(acc.initialBalance)}</span>
               </p>
-            </Link>
+            </div>
 
             <div className="flex flex-col items-end gap-1 shrink-0">
               <AccountDialog

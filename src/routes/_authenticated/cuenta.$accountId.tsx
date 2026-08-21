@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { AlertTriangle, ArrowLeft, Building2, Trash2, User } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Building2, ExternalLink, Trash2, User } from "lucide-react";
 import { toast } from "sonner";
 import { AccountCostCard } from "@/components/account-cost-card";
 import { AppShell } from "@/components/app-shell";
@@ -19,6 +19,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useJournal } from "@/lib/journal-store";
+import { getFirmWebsite } from "@/lib/prop-firms";
 import {
   accountBalance,
   accountCurveStart,
@@ -147,9 +148,55 @@ function AccountDetail() {
         </div>
       }
       subtitle={
-        account.type === "funded"
-          ? `${account.firm ?? "Prop firm"} — ${formatCurrency(account.initialBalance)}`
-          : `${account.broker ?? "Cuenta personal"} — ${account.currency}`
+        account.type === "funded" ? (
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {(() => {
+              const firmName = account.firm || "Prop firm";
+              const firmUrl = getFirmWebsite(firmName);
+              if (firmUrl) {
+                return (
+                  <a
+                    href={firmUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="hover:text-brand hover:underline inline-flex items-center gap-0.5 transition-colors font-medium text-foreground/85 cursor-pointer"
+                    title={`Visitar web oficial de ${firmName}`}
+                  >
+                    <span>{firmName}</span>
+                    <ExternalLink className="size-3 opacity-60 ml-0.5" />
+                  </a>
+                );
+              }
+              return <span>{firmName}</span>;
+            })()}
+            <span>—</span>
+            <span className="font-mono">{formatCurrency(account.initialBalance)}</span>
+          </div>
+        ) : (
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {(() => {
+              const brokerName = account.broker || "Cuenta personal";
+              const brokerUrl = getFirmWebsite(brokerName);
+              if (brokerUrl) {
+                return (
+                  <a
+                    href={brokerUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="hover:text-brand hover:underline inline-flex items-center gap-0.5 transition-colors font-medium text-foreground/85 cursor-pointer"
+                    title={`Visitar web oficial de ${brokerName}`}
+                  >
+                    <span>{brokerName}</span>
+                    <ExternalLink className="size-3 opacity-60 ml-0.5" />
+                  </a>
+                );
+              }
+              return <span>{brokerName}</span>;
+            })()}
+            <span>—</span>
+            <span>{account.currency}</span>
+          </div>
+        )
       }
       actions={
         <Link
