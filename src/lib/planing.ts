@@ -801,141 +801,88 @@ export function useTradingPlans(journalId?: string) {
         console.warn("trading_plans query fallback to local storage:", err);
       }
 
-      // Obtener todos los planes locales (incluido Oro-UVI y cualquier plan creado previamente en desktop)
+      // Obtener todos los planes locales guardados
       const allLocal = getAllLocalPlansAcrossKeys(journalId);
 
-      if (allLocal.length > 0) {
-        const { data: sessionData } = await supabase.auth.getSession();
-        const uid = sessionData?.session?.user?.id;
+      const { data: sessionData } = await supabase.auth.getSession();
+      const uid = sessionData?.session?.user?.id || "";
+      const email = sessionData?.session?.user?.email || "";
+      const isOwner = email.toLowerCase().includes("tonirivera") || email.toLowerCase().includes("toni");
 
-        const mergedMap = new Map<string, TradingPlan>();
-        // Añadir primero los remotos
-        remotePlans.forEach((p) => mergedMap.set(p.id, p));
+      const mergedMap = new Map<string, TradingPlan>();
+      // 1. Añadir remotos
+      remotePlans.forEach((p) => mergedMap.set(p.id, p));
 
-        // Revisar planes locales
-        for (const lp of allLocal) {
-          let planToSync = lp;
-          const isRemoteMatch = remotePlans.some(
-            (rp) => rp.id === lp.id || (rp.name && rp.name.trim().toLowerCase() === lp.name.trim().toLowerCase()),
-          );
-
-          // Si el ID no es UUID válido, generar uno nuevo
-          if (!isValidUUID(lp.id)) {
-            const oldId = lp.id;
-            const newId = generateUUID();
-            planToSync = { ...lp, id: newId, user_id: uid || lp.user_id, journal_id: journalId || lp.journal_id };
-            
-            // Reasignar slots locales si existen
-            const oldSlots = getLocalSlots(oldId);
-            if (oldSlots.length > 0) {
-              const updatedSlots = oldSlots.map((s) => ({
-                ...s,
-                id: isValidUUID(s.id) ? s.id : generateUUID(),
-                plan_id: newId,
-              }));
-              setLocalSlots(newId, updatedSlots);
-            }
-          }
-
-          // Si no está en remoto y tenemos usuario, sincronizarlo a Supabase
-          if (uid && !isRemoteMatch && isValidUUID(planToSync.id) && journalId) {
-            try {
-              const { data: inserted, error: insErr } = await supabase
-                .from("trading_plans" as any)
-                .upsert({
-                  ...planToSync,
-                  journal_id: journalId,
-                  user_id: uid,
-                })
-                .select()
-                .maybeSingle();
-
-              if (!insErr && inserted) {
-                const insertedPlan = inserted as unknown as TradingPlan;
-                mergedMap.set(insertedPlan.id, insertedPlan);
-
-                // Sincronizar sus slots a Supabase
-                const slotsToSync = getLocalSlots(planToSync.id);
-                if (slotsToSync.length > 0) {
-                  for (const s of slotsToSync) {
-                    const validSlotId = isValidUUID(s.id) ? s.id : generateUUID();
-                    await supabase.from("trading_plan_slots" as any).upsert({
-                      ...s,
-                      id: validSlotId,
-                      plan_id: insertedPlan.id,
-                      journal_id: journalId,
-                      user_id: uid,
-                    });
-                  }
-                }
-              } else {
-                mergedMap.set(planToSync.id, planToSync);
-              }
-            } catch (syncErr) {
-              console.warn("Auto-syncing plan to Supabase:", syncErr);
-              mergedMap.set(planToSync.id, planToSync);
-            }
-          } else {
-            mergedMap.set(planToSync.id, planToSync);
+      // 2. Añadir y migrar locales si existen
+      for (const lp of allLocal) {
+        let planToSync = lp;
+        if (!isValidUUID(lp.id)) {
+          const oldId = lp.id;
+          const newId = generateUUID();
+          planToSync = { ...lp, id: newId, user_id: uid || lp.user_id, journal_id: journalId || lp.journal_id };
+          const oldSlots = getLocalSlots(oldId);
+          if (oldSlots.length > 0) {
+            const updatedSlots = oldSlots.map((s) => ({
+              ...s,
+              id: isValidUUID(s.id) ? s.id : generateUUID(),
+              plan_id: newId,
+            }));
+            setLocalSlots(newId, updatedSlots);
           }
         }
+        mergedMap.set(planToSync.id, planToSync);
 
-        const mergedList = Array.from(mergedMap.values()).sort((a, b) => {
-          return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
-        });
-
-        if (journalId) {
-          setLocalPlans(journalId, mergedList);
+        // Si hay usuario y diario, sincronizar a Supabase en background
+        if (uid && journalId && isValidUUID(planToSync.id)) {
+          supabase
+            .from("trading_plans" as any)
+            .upsert({ ...planToSync, journal_id: journalId, user_id: uid })
+            .then();
         }
-        return mergedList;
       }
 
-      if (remotePlans.length > 0) {
-        if (journalId) setLocalPlans(journalId, remotePlans);
-        return remotePlans;
-      }
+      // 3. Garantizar siempre la existencia del plan "Oro-UVI"
+      const hasOroUvi = Array.from(mergedMap.values()).some((p) => {
+        const n = (p.name || "").toLowerCase();
+        return n.includes("oro") || n.includes("uvi");
+      });
 
-      // Si no existe ningún plan aún, inicializar por defecto para este usuario/diario
-      if (journalId) {
-        const { data: sessionData } = await supabase.auth.getSession();
-        const uid = sessionData?.session?.user?.id || "";
-        const email = sessionData?.session?.user?.email || "";
-        const isOwner = email.toLowerCase().includes("tonirivera") || email.toLowerCase().includes("toni");
-        const defaultPlanName = isOwner ? "Oro-UVI" : generateRecommendedPlanName();
-
-        const defaultPlanId = generateUUID();
-        const defaultPlan: TradingPlan = {
-          id: defaultPlanId,
+      if (!hasOroUvi && journalId) {
+        const oroPlanId = generateUUID();
+        const oroPlan: TradingPlan = {
+          id: oroPlanId,
           journal_id: journalId,
           user_id: uid,
-          name: defaultPlanName,
+          name: "Oro-UVI",
           is_active: true,
           weekly_risk_budget: 1500,
           daily_risk_budget: 400,
           max_daily_trades: 3,
           max_loss_streak: 2,
           profit_lock_target: 600,
-          notes: isOwner
-            ? "Plan operativo Oro (Asia 01:00 - 06:30 MGC) y cuentas UVI"
-            : "Plan operativo y gestión de riesgo",
+          notes: "Plan operativo Oro (Asia 01:00 - 06:30 MGC) y cuentas UVI",
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         };
-
+        mergedMap.set(oroPlanId, oroPlan);
         if (uid) {
-          try {
-            await supabase.from("trading_plans" as any).upsert(defaultPlan);
-          } catch (e) {
-            console.warn("Error seeding default plan in Supabase:", e);
-          }
+          supabase.from("trading_plans" as any).upsert(oroPlan).then();
         }
-
-        setLocalPlans(journalId, [defaultPlan]);
-        setLocalPlan(journalId, defaultPlan);
-        return [defaultPlan];
       }
 
-      return [];
+      const mergedList = Array.from(mergedMap.values()).sort((a, b) => {
+        const aIsOro = (a.name || "").toLowerCase().includes("oro");
+        const bIsOro = (b.name || "").toLowerCase().includes("oro");
+        if (aIsOro && !bIsOro) return -1;
+        if (!aIsOro && bIsOro) return 1;
+        return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
+      });
+
+      if (journalId) {
+        setLocalPlans(journalId, mergedList);
+        if (mergedList[0]) setLocalPlan(journalId, mergedList[0]);
+      }
+      return mergedList;
     },
   });
 }
