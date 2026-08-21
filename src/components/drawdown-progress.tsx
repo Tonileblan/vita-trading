@@ -33,14 +33,14 @@ export function DrawdownProgress({
   const typeLabel = TYPE_SHORT_LABELS[status.type] ?? status.label;
   const healthPct = Math.min(100, Math.max(0, (status.remaining / (status.limit || 1)) * 100));
 
-  // Color de texto y barra
+  // Color de texto y barra usando el tono exacto de loss del tema
   const colorClass = isBreached || isLowHealth
-    ? "text-rose-600 dark:text-rose-400"
-    : "text-emerald-600 dark:text-emerald-400";
+    ? "text-loss"
+    : "text-profit";
 
   const barBgClass = isBreached || isLowHealth
-    ? "bg-rose-500"
-    : "bg-emerald-500";
+    ? "bg-loss"
+    : "bg-profit";
 
   // VARIANTE COMPACTA (para tablas y listas)
   if (variant === "compact") {
@@ -70,11 +70,9 @@ export function DrawdownProgress({
       <div
         className={cn(
           "rounded-xl border p-4.5 space-y-4 transition-all shadow-xs bg-card",
-          isBreached
-            ? "border-rose-500/40 bg-rose-500/5 ring-1 ring-rose-500/20"
-            : isLowHealth
-              ? "border-rose-500/40 bg-rose-500/10 ring-1 ring-rose-500/20 shadow-rose-500/5"
-              : "border-border/80",
+          isBreached || isLowHealth
+            ? "border-loss/50 bg-loss/10 ring-1 ring-loss/20 shadow-loss/5"
+            : "border-border/80",
           className,
         )}
       >
@@ -82,11 +80,11 @@ export function DrawdownProgress({
         <div className="flex items-center justify-between gap-2 border-b border-border/60 pb-3">
           <div className="flex items-center gap-2 min-w-0">
             {isBreached ? (
-              <ShieldAlert className="size-4 text-rose-500 shrink-0" />
+              <ShieldAlert className="size-4 text-loss shrink-0" />
             ) : isLowHealth ? (
-              <AlertTriangle className="size-4 text-rose-500 shrink-0 animate-pulse" />
+              <AlertTriangle className="size-4 text-loss shrink-0 animate-pulse" />
             ) : (
-              <ShieldCheck className="size-4 text-emerald-500 shrink-0" />
+              <ShieldCheck className="size-4 text-profit shrink-0" />
             )}
             <span className="text-sm font-bold text-foreground">Colchón de Drawdown</span>
             <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider font-mono">
@@ -100,15 +98,15 @@ export function DrawdownProgress({
           </div>
 
           {isBreached ? (
-            <span className="inline-flex items-center gap-1 rounded-md bg-rose-500/15 px-2 py-0.5 text-xs font-bold text-rose-600 dark:text-rose-400 border border-rose-500/30 animate-pulse">
+            <span className="inline-flex items-center gap-1 rounded-md bg-loss/15 px-2 py-0.5 text-xs font-bold text-loss border border-loss/50 animate-pulse">
               <AlertTriangle className="size-3.5" /> Cuenta rota
             </span>
           ) : isLowHealth ? (
-            <span className="inline-flex items-center gap-1 rounded-md bg-rose-500/15 px-2 py-0.5 text-xs font-bold text-rose-600 dark:text-rose-400 border border-rose-500/40 animate-drawdown-corner">
+            <span className="inline-flex items-center gap-1 rounded-md bg-loss/15 px-2 py-0.5 text-xs font-bold text-loss border border-loss/50 animate-drawdown-corner">
               <AlertTriangle className="size-3.5 animate-pulse" /> DD Crítico (&lt; {formatCurrency(threshold)})
             </span>
           ) : (
-            <span className="inline-flex items-center gap-1 rounded-md bg-emerald-500/10 px-2 py-0.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+            <span className="inline-flex items-center gap-1 rounded-md bg-profit/10 px-2 py-0.5 text-xs font-semibold text-profit border border-profit/20">
               <ShieldCheck className="size-3.5" /> Saludable ({healthPct.toFixed(0)}%)
             </span>
           )}
@@ -182,11 +180,9 @@ export function DrawdownProgress({
     <div
       className={cn(
         "rounded-xl border p-3.5 space-y-2.5 transition-all shadow-xs bg-muted/20",
-        isBreached
-          ? "border-rose-500/40 bg-rose-500/5 ring-1 ring-rose-500/20"
-          : isLowHealth
-            ? "border-rose-500/40 bg-rose-500/10 ring-1 ring-rose-500/20 shadow-rose-500/5"
-            : "border-border/80",
+        isBreached || isLowHealth
+          ? "border-loss/50 bg-loss/10 ring-1 ring-loss/20 shadow-loss/5"
+          : "border-border/80",
         className,
       )}
     >
@@ -207,11 +203,11 @@ export function DrawdownProgress({
         </div>
 
         {isBreached ? (
-          <span className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-bold bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30 animate-pulse">
+          <span className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-bold bg-loss/15 text-loss border border-loss/50 animate-pulse">
             <AlertTriangle className="size-3" /> Rota
           </span>
         ) : isLowHealth ? (
-          <span className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-bold bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/40 animate-drawdown-corner">
+          <span className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-bold bg-loss/15 text-loss border border-loss/50 animate-drawdown-corner">
             <AlertTriangle className="size-3 animate-pulse" /> DD Crítico
           </span>
         ) : (

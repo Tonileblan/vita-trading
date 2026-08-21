@@ -124,11 +124,11 @@ export function EquityChart({
 
                   {ddVal !== null && (
                     <div className="flex items-center justify-between gap-3">
-                      <span className="flex items-center gap-1.5 text-rose-600 dark:text-rose-400 font-medium">
-                        <span className="size-2 rounded-full bg-rose-500 inline-block shrink-0" />
+                      <span className="flex items-center gap-1.5 text-loss font-medium">
+                        <span className="size-2 rounded-full bg-loss inline-block shrink-0" />
                         Límite Drawdown {remaining !== null ? `(${formatMoney(remaining)})` : ""}:
                       </span>
-                      <span className="font-mono font-bold text-rose-600 dark:text-rose-400">
+                      <span className="font-mono font-bold text-loss">
                         {formatMoney(ddVal)}
                       </span>
                     </div>
@@ -151,7 +151,7 @@ export function EquityChart({
               type="monotone"
               name="drawdownFloor"
               dataKey="drawdownFloor"
-              stroke="#ef4444"
+              stroke="var(--color-loss)"
               strokeDasharray="5 5"
               strokeWidth={2}
               dot={false}
