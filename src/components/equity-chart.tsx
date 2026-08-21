@@ -87,24 +87,54 @@ export function EquityChart({
             }}
           />
           <Tooltip
-            contentStyle={{
-              background: "var(--color-popover)",
-              border: "1px solid var(--color-border)",
-              borderRadius: 8,
-              fontSize: 12,
-              boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
-            }}
-            labelStyle={{
-              color: "var(--color-muted-foreground)",
-              fontWeight: 600,
-              marginBottom: 4,
-            }}
-            formatter={(v: number, name: string) => {
-              const formatted = `$${Number(v).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-              if (name === "drawdownFloor" || name === "Límite Drawdown") {
-                return [formatted, "Límite Drawdown (Suelo)"];
-              }
-              return [formatted, "Capital (Equity)"];
+            content={({ active, payload, label }) => {
+              if (!active || !payload || !payload.length) return null;
+              const equityEntry = payload.find((p: any) => p.dataKey === "equity");
+              const ddEntry = payload.find((p: any) => p.dataKey === "drawdownFloor");
+
+              const equityVal =
+                equityEntry?.value !== undefined ? Number(equityEntry.value) : null;
+              const ddVal = ddEntry?.value !== undefined ? Number(ddEntry.value) : null;
+
+              const remaining =
+                equityVal !== null && ddVal !== null && !isNaN(equityVal) && !isNaN(ddVal)
+                  ? equityVal - ddVal
+                  : null;
+
+              const formatMoney = (n: number) =>
+                `$${n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+              return (
+                <div className="rounded-xl border border-border/80 bg-popover/95 backdrop-blur-sm p-3 shadow-xl text-xs space-y-1.5 min-w-[210px]">
+                  <p className="font-semibold text-muted-foreground pb-1 border-b border-border/50 font-mono">
+                    {label}
+                  </p>
+
+                  {equityVal !== null && (
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="flex items-center gap-1.5 text-foreground font-medium">
+                        <span className="size-2 rounded-full bg-brand inline-block shrink-0" />
+                        Capital (Equity):
+                      </span>
+                      <span className="font-mono font-bold text-foreground">
+                        {formatMoney(equityVal)}
+                      </span>
+                    </div>
+                  )}
+
+                  {ddVal !== null && (
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="flex items-center gap-1.5 text-rose-600 dark:text-rose-400 font-medium">
+                        <span className="size-2 rounded-full bg-rose-500 inline-block shrink-0" />
+                        Límite Drawdown {remaining !== null ? `(${formatMoney(remaining)})` : ""}:
+                      </span>
+                      <span className="font-mono font-bold text-rose-600 dark:text-rose-400">
+                        {formatMoney(ddVal)}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              );
             }}
           />
           {/* Area de curva de capital */}
