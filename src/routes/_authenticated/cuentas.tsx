@@ -464,6 +464,8 @@ function AccountDialog({
 function AccountsPage() {
   const { accounts = [], trades = [], withdrawals = [] } = useJournal();
   const [filterType, setFilterType] = useState<"all" | "funded" | "personal">("all");
+  const [viewMode, setViewMode] = useState<"horizontal" | "grid">("horizontal");
+  const [searchQuery, setSearchQuery] = useState("");
 
   const safeAccounts = accounts || [];
   const safeTrades = trades || [];
@@ -473,10 +475,21 @@ function AccountsPage() {
   const personal = useMemo(() => safeAccounts.filter((a) => a.type === "personal"), [safeAccounts]);
 
   const displayedAccounts = useMemo(() => {
-    if (filterType === "funded") return funded;
-    if (filterType === "personal") return personal;
-    return safeAccounts;
-  }, [safeAccounts, funded, personal, filterType]);
+    let list = safeAccounts;
+    if (filterType === "funded") list = funded;
+    if (filterType === "personal") list = personal;
+
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      list = list.filter(
+        (a) =>
+          a.name.toLowerCase().includes(q) ||
+          (a.firm && a.firm.toLowerCase().includes(q)) ||
+          (a.broker && a.broker.toLowerCase().includes(q)),
+      );
+    }
+    return list;
+  }, [safeAccounts, funded, personal, filterType, searchQuery]);
 
   const sumTotals = (list: typeof safeAccounts) => {
     const initial = list.reduce((s, a) => s + (a.initialBalance || 0), 0);
@@ -493,6 +506,216 @@ function AccountsPage() {
   const liveFundedCount = funded.filter((a) => a.phase === "live").length;
   const evalFundedCount = funded.filter((a) => a.phase === "eval").length;
 
+  // ==========================================
+  // FILA HORIZONTAL PANORÁMICA DE CUENTA
+  // ==========================================
+  const AccountHorizontalRow = ({ acc }: { acc: Account }) => {
+    const accTrades = safeTrades.filter((t) => t.accountId === acc.id);
+    const m = computeMetrics(accTrades);
+    const result = accountResult(acc, safeTrades, safeWithdrawals);
+    const balance = accountBalance(acc, safeTrades, safeWithdrawals);
+    const dd = accountDrawdown(acc, safeTrades, safeWithdrawals);
+    const target = accountTarget(acc, safeTrades, safeWithdrawals);
+    const pnlPct = acc.initialBalance > 0 ? (result / acc.initialBalance) * 100 : 0;
+
+    const isLowDrawdown =
+      acc.type === "funded" &&
+      Boolean(acc.drawdownLimit) &&
+      dd !== null &&
+      (dd.remaining < 600 || dd.breached);
+
+    return (
+      <article
+        className={cn(
+          "group relative overflow-hidden rounded-2xl border border-border/80 bg-card p-4 sm:p-5 transition-all duration-200 hover:border-brand/40 hover:shadow-md",
+          isLowDrawdown && "border-loss/40 bg-loss/5 hover:border-loss/60 shadow-xs",
+        )}
+      >
+        <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-5">
+          {/* 1. IDENTIDAD Y DETALLES DE CUENTA */}
+          <div className="flex items-start sm:items-center gap-3.5 min-w-0 xl:w-[280px] shrink-0">
+            <div
+              className={cn(
+                "flex size-11 shrink-0 items-center justify-center rounded-xl font-bold text-sm shadow-xs",
+                acc.type === "funded"
+                  ? "bg-brand/10 text-brand border border-brand/20"
+                  : "bg-purple-500/10 text-purple-500 border border-purple-500/20",
+              )}
+            >
+              {acc.type === "funded" ? <Building2 className="size-5" /> : <Wallet className="size-5" />}
+            </div>
+
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2 flex-wrap">
+                <Link
+                  to="/cuenta/$accountId"
+                  params={{ accountId: acc.id }}
+                  className="font-bold text-base text-foreground hover:text-brand transition-colors truncate"
+                >
+                  {acc.name}
+                </Link>
+                {acc.type === "funded" && <PhaseChip phase={acc.phase ?? "eval"} />}
+                {isLowDrawdown && (
+                  <DrawdownAlertButton
+                    remaining={dd?.remaining ?? 0}
+                    isFunded={acc.type === "funded" && Boolean(acc.drawdownLimit)}
+                    breached={dd?.breached ?? false}
+                    threshold={600}
+                  />
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1.5 font-medium">
+                <span>{acc.type === "funded" ? acc.firm || "Prop Firm" : acc.broker || "Broker"}</span>
+                <span>•</span>
+                <span className="font-mono">Inicial {formatCurrency(acc.initialBalance)}</span>
+              </p>
+            </div>
+          </div>
+
+          {/* 2. MÉTRICAS FINANCIERAS PRINCIPALES */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 xl:w-[380px] shrink-0 rounded-xl bg-muted/30 border border-border/70 p-3 text-left sm:text-center">
+            <div>
+              <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider block">
+                Balance Actual
+              </span>
+              <span className="num text-sm sm:text-base font-bold font-mono text-foreground block mt-0.5">
+                {formatCurrency(balance)}
+              </span>
+            </div>
+
+            <div>
+              <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider block">
+                Resultado PnL
+              </span>
+              <span
+                className={cn(
+                  "num text-sm sm:text-base font-bold font-mono block mt-0.5",
+                  result >= 0 ? "text-profit" : "text-loss",
+                )}
+              >
+                {formatCurrency(result, true)}
+              </span>
+            </div>
+
+            <div>
+              <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider block">
+                Win Rate
+              </span>
+              <span className="num text-sm sm:text-base font-bold font-mono text-foreground block mt-0.5">
+                {m.winRate.toFixed(1)}%
+              </span>
+            </div>
+
+            <div>
+              <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider block">
+                Operaciones
+              </span>
+              <span className="text-xs font-semibold text-muted-foreground block mt-1">
+                {m.total} trades · <span className="font-mono font-bold text-foreground">PF {Number.isFinite(m.profitFactor) ? m.profitFactor.toFixed(2) : "—"}</span>
+              </span>
+            </div>
+          </div>
+
+          {/* 3. BARRAS DE PROGRESO (TARGET Y DRAWDOWN) */}
+          <div className="flex-1 flex flex-col sm:flex-row gap-3 min-w-0 xl:max-w-[420px]">
+            {/* Drawdown */}
+            {dd && (
+              <div className="flex-1 rounded-xl border border-border/60 bg-muted/20 p-2.5 space-y-1.5">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-[11px] font-bold text-muted-foreground flex items-center gap-1">
+                    <ShieldAlert className="size-3 text-muted-foreground" /> Colchón DD
+                  </span>
+                  <span
+                    className={cn(
+                      "num font-mono font-bold text-xs",
+                      dd.remaining <= 600 || dd.breached ? "text-loss" : "text-profit",
+                    )}
+                  >
+                    {formatCurrency(dd.remaining)}
+                  </span>
+                </div>
+                <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted/70">
+                  <div
+                    className={cn(
+                      "h-full rounded-full transition-all",
+                      dd.breached || dd.remaining <= 600 ? "bg-loss" : "bg-profit",
+                    )}
+                    style={{
+                      width: `${Math.min(100, Math.max(0, (dd.remaining / (dd.limit || 1)) * 100))}%`,
+                    }}
+                  />
+                </div>
+                <div className="flex justify-between text-[10px] text-muted-foreground font-mono">
+                  <span>Suelo {formatCurrency(dd.threshold)}</span>
+                  <span>Límite {formatCurrency(dd.limit)}</span>
+                </div>
+              </div>
+            )}
+
+            {/* Target */}
+            {target && (
+              <div className="flex-1 rounded-xl border border-border/60 bg-muted/20 p-2.5 space-y-1.5">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-[11px] font-bold text-muted-foreground flex items-center gap-1">
+                    <TrendingUp className="size-3 text-sky-500" /> {acc.phase === "live" ? "Retiro" : "Target"}
+                  </span>
+                  <span className="num font-mono font-bold text-xs text-sky-600 dark:text-sky-400">
+                    {Math.min(100, Math.max(0, target.pct)).toFixed(0)}%
+                  </span>
+                </div>
+                <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted/70">
+                  <div
+                    className={cn(
+                      "h-full rounded-full transition-all",
+                      target.reached ? "bg-emerald-500" : "bg-sky-500",
+                    )}
+                    style={{
+                      width: `${Math.min(100, Math.max(0, target.pct))}%`,
+                    }}
+                  />
+                </div>
+                <div className="flex justify-between text-[10px] text-muted-foreground font-mono">
+                  <span>Meta {formatCurrency(target.target)}</span>
+                  <span className={target.reached ? "text-emerald-500 font-bold" : ""}>
+                    {target.reached ? "¡Listo!" : `Falta ${formatCurrency(Math.max(0, target.target - target.balance))}`}
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* 4. ACCIONES */}
+          <div className="flex items-center justify-end gap-2 shrink-0 pt-2 xl:pt-0 border-t xl:border-t-0 border-border/50">
+            <AccountDialog
+              account={acc}
+              trigger={
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 px-2.5 text-xs text-muted-foreground hover:text-foreground gap-1.5"
+                  aria-label={`Editar ${acc.name}`}
+                >
+                  <Pencil className="size-3.5" />
+                  <span className="hidden sm:inline">Editar</span>
+                </Button>
+              }
+            />
+
+            <Link to="/cuenta/$accountId" params={{ accountId: acc.id }}>
+              <Button size="sm" className="h-8 px-3 text-xs gap-1.5 font-semibold">
+                <span>Ver cuenta</span>
+                <span className="text-xs">→</span>
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </article>
+    );
+  };
+
+  // ==========================================
+  // TARJETA VERTICAL CLÁSICA (OPCIÓN GRID)
+  // ==========================================
   const AccountCard = ({ acc }: { acc: Account }) => {
     const accTrades = safeTrades.filter((t) => t.accountId === acc.id);
     const m = computeMetrics(accTrades);
@@ -510,7 +733,7 @@ function AccountsPage() {
     return (
       <article
         className={cn(
-          "panel flex flex-col justify-between p-5 transition-all hover:border-foreground/20",
+          "panel flex flex-col justify-between p-5 transition-all hover:border-foreground/20 rounded-2xl",
           isLowDrawdown && "border-loss/40 hover:border-loss/60 shadow-xs",
         )}
       >
@@ -621,7 +844,7 @@ function AccountsPage() {
       actions={
         <AccountDialog
           trigger={
-            <Button className="gap-1.5">
+            <Button className="gap-1.5 shadow-xs">
               <Plus className="size-4" /> Nueva cuenta
             </Button>
           }
@@ -631,7 +854,7 @@ function AccountsPage() {
       <div className="space-y-6">
         {/* KPI Hero Counters */}
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="panel flex items-center gap-3 p-4">
+          <div className="panel flex items-center gap-3 p-4 rounded-2xl">
             <div className="flex size-10 items-center justify-center rounded-xl bg-brand/10 text-brand">
               <Wallet className="size-5" />
             </div>
@@ -644,7 +867,7 @@ function AccountsPage() {
             </div>
           </div>
 
-          <div className="panel flex items-center gap-3 p-4">
+          <div className="panel flex items-center gap-3 p-4 rounded-2xl">
             <div className="flex size-10 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-500">
               <TrendingUp className="size-5" />
             </div>
@@ -665,7 +888,7 @@ function AccountsPage() {
             </div>
           </div>
 
-          <div className="panel flex items-center gap-3 p-4">
+          <div className="panel flex items-center gap-3 p-4 rounded-2xl">
             <div className="flex size-10 items-center justify-center rounded-xl bg-blue-500/10 text-blue-500">
               <Building2 className="size-5" />
             </div>
@@ -683,7 +906,7 @@ function AccountsPage() {
             </div>
           </div>
 
-          <div className="panel flex items-center gap-3 p-4">
+          <div className="panel flex items-center gap-3 p-4 rounded-2xl">
             <div className="flex size-10 items-center justify-center rounded-xl bg-purple-500/10 text-purple-500">
               <User className="size-5" />
             </div>
@@ -697,8 +920,8 @@ function AccountsPage() {
           </div>
         </div>
 
-        {/* Filter Pills Toolbar */}
-        <div className="flex flex-wrap items-center justify-between gap-3">
+        {/* Filter Pills & View Mode Toolbar */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
           <div className="flex flex-wrap items-center gap-1.5">
             <button
               type="button"
@@ -737,30 +960,78 @@ function AccountsPage() {
               Personales ({personal.length})
             </button>
           </div>
+
+          <div className="flex items-center gap-2">
+            <div className="relative">
+              <Input
+                type="text"
+                placeholder="Buscar cuenta o firma..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="h-8 text-xs w-48 sm:w-56 rounded-xl"
+              />
+            </div>
+
+            <div className="flex items-center rounded-xl border border-border/80 bg-muted/40 p-0.5">
+              <button
+                type="button"
+                onClick={() => setViewMode("horizontal")}
+                title="Vista Horizontal Panorámica"
+                className={cn(
+                  "rounded-lg px-2.5 py-1 text-xs font-medium transition-all flex items-center gap-1.5",
+                  viewMode === "horizontal"
+                    ? "bg-background text-foreground shadow-xs font-bold"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                <span>Horizontal</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode("grid")}
+                title="Vista Cuadrícula"
+                className={cn(
+                  "rounded-lg px-2.5 py-1 text-xs font-medium transition-all flex items-center gap-1.5",
+                  viewMode === "grid"
+                    ? "bg-background text-foreground shadow-xs font-bold"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                <span>Cuadrícula</span>
+              </button>
+            </div>
+          </div>
         </div>
 
-        {/* Account Cards Grid */}
+        {/* Account Cards Presentation */}
         {displayedAccounts.length === 0 ? (
-          <div className="panel p-10 text-center space-y-4">
+          <div className="panel p-10 text-center space-y-4 rounded-2xl">
             <div className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-brand/10 text-brand">
               <Wallet className="size-6" />
             </div>
             <div className="space-y-1">
               <h3 className="text-lg font-bold">No hay cuentas para mostrar</h3>
               <p className="text-sm text-muted-foreground">
-                Crea una cuenta de fondeo o personal para comenzar a registrar tus operaciones y
-                controlar el drawdown.
+                {searchQuery
+                  ? "No se encontraron cuentas que coincidan con tu búsqueda."
+                  : "Crea una cuenta de fondeo o personal para comenzar a registrar tus operaciones y controlar el drawdown."}
               </p>
             </div>
             <div className="pt-2">
               <AccountDialog
                 trigger={
-                  <Button className="gap-1.5">
+                  <Button className="gap-1.5 shadow-xs">
                     <Plus className="size-4" /> Crear mi primera cuenta
                   </Button>
                 }
               />
             </div>
+          </div>
+        ) : viewMode === "horizontal" ? (
+          <div className="space-y-3">
+            {displayedAccounts.map((a) => (
+              <AccountHorizontalRow key={a.id} acc={a} />
+            ))}
           </div>
         ) : (
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
