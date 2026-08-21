@@ -1,11 +1,23 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMemo } from "react";
-import { AlertTriangle, ArrowLeft, Building2, User } from "lucide-react";
+import { useMemo, useState } from "react";
+import { AlertTriangle, ArrowLeft, Building2, Trash2, User } from "lucide-react";
+import { toast } from "sonner";
 import { AccountCostCard } from "@/components/account-cost-card";
 import { AppShell } from "@/components/app-shell";
 import { EquityChart } from "@/components/equity-chart";
 import { KpiCards } from "@/components/kpi-cards";
 import { TradesTable } from "@/components/trades-table";
+import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useJournal } from "@/lib/journal-store";
 import {
   accountBalance,
@@ -45,8 +57,12 @@ export const Route = createFileRoute("/_authenticated/cuenta/$accountId")({
 
 function AccountDetail() {
   const { accountId } = Route.useParams();
-  const { accounts, trades, strategies, withdrawals, strategyPeriods, loading } = useJournal();
+  const { accounts, trades, strategies, withdrawals, strategyPeriods, removeTrades, loading } = useJournal();
   const account = accounts.find((a) => a.id === accountId);
+
+  const [selected, setSelected] = useState<string[]>([]);
+  const [pending, setPending] = useState<{ ids: string[]; label: string } | null>(null);
+  const [working, setWorking] = useState(false);
 
   const accTrades = useMemo(
     () => trades.filter((t) => t.accountId === accountId),
@@ -62,6 +78,26 @@ function AccountDetail() {
       ),
     [accTrades, account, withdrawals],
   );
+
+  const handleConfirmDelete = async () => {
+    if (!pending) return;
+    setWorking(true);
+    try {
+      await removeTrades(pending.ids);
+      setSelected((prev) => prev.filter((id) => !pending.ids.includes(id)));
+      toast.success(
+        pending.ids.length === 1
+          ? "Operación eliminada correctamente"
+          : `${pending.ids.length} operaciones eliminadas correctamente`,
+      );
+      setPending(null);
+    } catch (err) {
+      console.error("Error al eliminar operaciones:", err);
+      toast.error("No se pudieron eliminar las operaciones seleccionadas");
+    } finally {
+      setWorking(false);
+    }
+  };
 
   if (!account) {
     return (
@@ -204,7 +240,43 @@ function AccountDetail() {
         )}
 
         <section className="space-y-3">
-          <h2 className="text-base font-semibold">Operaciones de la cuenta</h2>
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <h2 className="text-base font-semibold">Operaciones de la cuenta</h2>
+            <span className="text-xs text-muted-foreground font-mono">
+              {accTrades.length} {accTrades.length === 1 ? "operación" : "operaciones"}
+            </span>
+          </div>
+
+          {/* Barra de acciones masivas */}
+          {selected.length > 0 && (
+            <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-accent/60 p-2.5 px-4 text-xs font-semibold text-foreground">
+              <span>{selected.length} operación(es) seleccionada(s)</span>
+              <div className="flex items-center gap-2">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-7 text-xs"
+                  onClick={() => setSelected([])}
+                >
+                  Deseleccionar
+                </Button>
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  className="h-7 gap-1 text-xs"
+                  onClick={() =>
+                    setPending({
+                      ids: selected,
+                      label: `Se eliminarán permanentemente las ${selected.length} operaciones seleccionadas de esta cuenta y se recalcularán todos los balances.`,
+                    })
+                  }
+                >
+                  <Trash2 className="size-3.5" /> Eliminar seleccionadas
+                </Button>
+              </div>
+            </div>
+          )}
+
           {loading && accTrades.length === 0 ? (
             <p className="text-sm text-muted-foreground">Cargando…</p>
           ) : accTrades.length === 0 ? (
@@ -215,10 +287,45 @@ function AccountDetail() {
               accounts={accounts}
               strategies={strategies}
               strategyPeriods={strategyPeriods}
+              selectedIds={selected}
+              onToggleSelect={(id) =>
+                setSelected((prev) =>
+                  prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+                )
+              }
+              onDelete={(t) =>
+                setPending({
+                  ids: [t.id],
+                  label: `Se eliminará la operación de ${t.symbol} (${formatCurrency(t.pnl, true)}) de esta cuenta y se recalcularán los balances.`,
+                })
+              }
             />
           )}
         </section>
       </div>
+
+      {/* Diálogo de confirmación de eliminación */}
+      <AlertDialog open={!!pending} onOpenChange={(o) => !o && setPending(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Confirmas la eliminación?</AlertDialogTitle>
+            <AlertDialogDescription>{pending?.label}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={working}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={working}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={(e) => {
+                e.preventDefault();
+                handleConfirmDelete();
+              }}
+            >
+              {working ? "Eliminando…" : "Eliminar definitivamente"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AppShell>
   );
 }
