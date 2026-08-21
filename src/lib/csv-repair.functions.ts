@@ -88,7 +88,7 @@ Devuelve EXCLUSIVAMENTE un objeto JSON válido con este esquema:
 export const repairCsvWithAi = createServerFn({ method: "POST" })
   .validator((data: unknown) => inputSchema.parse(data))
   .handler(async ({ data }) => {
-    const rawKey = data.apiKey?.trim() || process.env.GOOGLE_AI_API_KEY || "";
+    const rawKey = data.apiKey?.trim() || process.env['GOOGLE_AI_API_KEY'] || "";
     if (!rawKey) {
       throw new Error(
         "Falta la clave API de Google AI. Configúrala en Usuarios > Ajustes de IA o como variable de entorno.",
