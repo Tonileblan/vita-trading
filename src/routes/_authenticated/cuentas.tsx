@@ -613,7 +613,9 @@ function AccountsPage() {
                 {formatCurrency(balance)}
               </span>
             </div>
-            <span />
+            <span className="text-[10px] text-muted-foreground font-mono">
+              {formatCurrency(acc.initialBalance)}
+            </span>
           </div>
 
           {/* 2. RESULTADO PNL */}
