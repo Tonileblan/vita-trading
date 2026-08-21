@@ -489,8 +489,35 @@ function AccountsPage() {
           (a.broker && a.broker.toLowerCase().includes(q)),
       );
     }
-    return list;
-  }, [safeAccounts, funded, personal, filterType, searchQuery]);
+
+    // Priorizar arriba las cuentas con alertas activas de Drawdown
+    return [...list].sort((a, b) => {
+      const ddA =
+        a.type === "funded" && Boolean(a.drawdownLimit)
+          ? accountDrawdown(a, safeTrades, safeWithdrawals)
+          : null;
+      const ddB =
+        b.type === "funded" && Boolean(b.drawdownLimit)
+          ? accountDrawdown(b, safeTrades, safeWithdrawals)
+          : null;
+
+      const isAlertA = Boolean(ddA && (ddA.remaining < 600 || ddA.breached));
+      const isAlertB = Boolean(ddB && (ddB.remaining < 600 || ddB.breached));
+
+      // Cuentas con alerta primero
+      if (isAlertA && !isAlertB) return -1;
+      if (!isAlertA && isAlertB) return 1;
+
+      // Si ambas tienen alerta: primero las rotas, luego las que tengan menor margen restante
+      if (isAlertA && isAlertB && ddA && ddB) {
+        if (ddA.breached && !ddB.breached) return -1;
+        if (!ddA.breached && ddB.breached) return 1;
+        return ddA.remaining - ddB.remaining;
+      }
+
+      return 0;
+    });
+  }, [safeAccounts, funded, personal, filterType, searchQuery, safeTrades, safeWithdrawals]);
 
   const sumTotals = (list: typeof safeAccounts) => {
     const initial = list.reduce((s, a) => s + (a.initialBalance || 0), 0);

@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { Link } from "@tanstack/react-router";
 import { Building2, User } from "lucide-react";
 import { useJournal } from "@/lib/journal-store";
@@ -17,6 +18,33 @@ export function AccountSidePanel() {
   const { accounts, trades, withdrawals, selectedAccountIds, toggleAccount, selectAll } =
     useJournal();
 
+  const sortedAccounts = useMemo(() => {
+    return [...accounts].sort((a, b) => {
+      const ddA =
+        a.type === "funded" && Boolean(a.drawdownLimit)
+          ? accountDrawdown(a, trades, withdrawals)
+          : null;
+      const ddB =
+        b.type === "funded" && Boolean(b.drawdownLimit)
+          ? accountDrawdown(b, trades, withdrawals)
+          : null;
+
+      const isAlertA = Boolean(ddA && (ddA.remaining < 600 || ddA.breached));
+      const isAlertB = Boolean(ddB && (ddB.remaining < 600 || ddB.breached));
+
+      if (isAlertA && !isAlertB) return -1;
+      if (!isAlertA && isAlertB) return 1;
+
+      if (isAlertA && isAlertB && ddA && ddB) {
+        if (ddA.breached && !ddB.breached) return -1;
+        if (!ddA.breached && ddB.breached) return 1;
+        return ddA.remaining - ddB.remaining;
+      }
+
+      return 0;
+    });
+  }, [accounts, trades, withdrawals]);
+
   return (
     <div className="mt-6 flex min-h-0 flex-1 flex-col border-t border-sidebar-border pt-4">
       <div className="flex items-center justify-between px-5 pb-2">
@@ -28,7 +56,7 @@ export function AccountSidePanel() {
         </button>
       </div>
       <div className="flex-1 space-y-1.5 overflow-y-auto px-3 pb-4">
-        {accounts.map((acc) => {
+        {sortedAccounts.map((acc) => {
           const active = selectedAccountIds.includes(acc.id);
           const result = accountResult(acc, trades, withdrawals);
           const balance = accountBalance(acc, trades, withdrawals);
