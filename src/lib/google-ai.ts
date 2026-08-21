@@ -12,10 +12,15 @@ export const AVAILABLE_GEMINI_MODELS = [
   { id: "gemini-1.5-pro", name: "Gemini 1.5 Pro (Máximo Razonamiento)" },
 ];
 
+import { supabase } from "@/integrations/supabase/client";
+
 export function getLocalGoogleAiKey(): string {
   if (typeof window === "undefined") return "";
   try {
-    return window.localStorage.getItem(GOOGLE_AI_KEY_STORAGE) || "";
+    const key = window.localStorage.getItem(GOOGLE_AI_KEY_STORAGE) || "";
+    if (key) return key;
+    const legacy = window.localStorage.getItem("vita-trading:google-ai-api-key") || "";
+    return legacy;
   } catch {
     return "";
   }
@@ -24,10 +29,24 @@ export function getLocalGoogleAiKey(): string {
 export function setLocalGoogleAiKey(key: string) {
   if (typeof window === "undefined") return;
   try {
-    if (key.trim()) {
-      window.localStorage.setItem(GOOGLE_AI_KEY_STORAGE, key.trim());
+    const clean = key.trim();
+    if (clean) {
+      window.localStorage.setItem(GOOGLE_AI_KEY_STORAGE, clean);
+      window.localStorage.setItem("vita-trading:google-ai-api-key", clean);
+      // Sincronizar con Supabase user_metadata para acceso multi-dispositivo (móvil y PC)
+      try {
+        void supabase.auth.updateUser({
+          data: { google_ai_key: clean },
+        });
+      } catch {}
     } else {
       window.localStorage.removeItem(GOOGLE_AI_KEY_STORAGE);
+      window.localStorage.removeItem("vita-trading:google-ai-api-key");
+      try {
+        void supabase.auth.updateUser({
+          data: { google_ai_key: null },
+        });
+      } catch {}
     }
   } catch {
     // Ignore storage errors

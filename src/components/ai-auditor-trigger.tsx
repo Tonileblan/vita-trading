@@ -33,7 +33,7 @@ export function AiAuditorTrigger() {
  * Botón para la cabecera (Header)
  */
 export function HeaderAuditorButton() {
-  const { isAdmin, isSupervisor } = useAuth();
+  const { user } = useAuth();
   const { strategies, accounts, trades, activeJournalId } = useJournal();
   const { data: rules = DEFAULT_RULES } = useJournalRules(activeJournalId);
   const { data: checkins = [] } = useCheckins(activeJournalId);
@@ -54,7 +54,7 @@ export function HeaderAuditorButton() {
 
   const statusSummary = useMemo(() => computeAuditorStatus(ctxData), [ctxData]);
 
-  if (!isAdmin && !isSupervisor) return null;
+  if (!user) return null;
 
   return (
     <Button
@@ -62,18 +62,19 @@ export function HeaderAuditorButton() {
       size="sm"
       onClick={() => openAiAuditor()}
       className={cn(
-        "gap-1.5 font-display text-sm tracking-wide transition-all",
+        "gap-1.5 font-display text-sm tracking-wide transition-all px-2 sm:px-2.5",
         statusSummary.status === "danger"
           ? "border-loss/60 text-loss hover:bg-loss/10"
           : statusSummary.status === "warning"
             ? "border-amber-500/60 text-amber-500 hover:bg-amber-500/10"
             : "hover:border-brand hover:text-brand",
       )}
-      title="Abrir Auditor IA"
+      title="Abrir Auditor IA & Coach"
+      aria-label="Abrir Auditor IA & Coach"
     >
       <span
         className={cn(
-          "size-2 rounded-full",
+          "size-2 rounded-full shrink-0",
           statusSummary.status === "danger"
             ? "bg-loss"
             : statusSummary.status === "warning"
@@ -81,8 +82,8 @@ export function HeaderAuditorButton() {
               : "bg-profit",
         )}
       />
-      <Bot className="size-3.5" />
-      <span>Auditor IA</span>
+      <Bot className="size-4 shrink-0" />
+      <span className="hidden sm:inline">Auditor IA</span>
       {statusSummary.activeAlerts.length > 0 && (
         <span className="ml-0.5 rounded-full bg-loss px-1.5 py-0.2 text-[10px] font-bold text-white">
           {statusSummary.activeAlerts.length}

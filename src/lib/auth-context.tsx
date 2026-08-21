@@ -36,12 +36,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
 
   useEffect(() => {
+    const hydrateAiKeys = (sess: Session | null) => {
+      if (typeof window === "undefined" || !sess?.user) return;
+      const meta = sess.user.user_metadata;
+      if (meta?.google_ai_key) {
+        const current = window.localStorage.getItem("vita-trading:google-ai-key");
+        if (!current) {
+          window.localStorage.setItem("vita-trading:google-ai-key", meta.google_ai_key);
+          window.localStorage.setItem("vita-trading:google-ai-api-key", meta.google_ai_key);
+        }
+      }
+      if (meta?.google_ai_model) {
+        const currentModel = window.localStorage.getItem("vita-trading:google-ai-model");
+        if (!currentModel) {
+          window.localStorage.setItem("vita-trading:google-ai-model", meta.google_ai_model);
+        }
+      }
+    };
+
     const { data: sub } = supabase.auth.onAuthStateChange((_event, next) => {
       setSession(next);
+      hydrateAiKeys(next);
       setLoading(false);
     });
     supabase.auth.getSession().then(({ data }) => {
       setSession(data.session);
+      hydrateAiKeys(data.session);
       setLoading(false);
     });
     return () => sub.subscription.unsubscribe();

@@ -223,6 +223,8 @@ export function getAiApiKey(provider?: AiProviderId): string {
   return localStorage.getItem(STORAGE_KEYS.keys[target]) || "";
 }
 
+import { supabase } from "@/integrations/supabase/client";
+
 export function setAiApiKey(key: string, provider?: AiProviderId): void {
   if (typeof window === "undefined") return;
   const target = provider || getActiveAiProvider();
@@ -234,7 +236,19 @@ export function setAiApiKey(key: string, provider?: AiProviderId): void {
   }
   
   if (target === "google") {
-    localStorage.setItem("vita-trading:google-ai-api-key", trimmed);
+    if (trimmed) {
+      localStorage.setItem("vita-trading:google-ai-api-key", trimmed);
+      localStorage.setItem("vita-trading:google-ai-key", trimmed);
+      try {
+        void supabase.auth.updateUser({ data: { google_ai_key: trimmed } });
+      } catch {}
+    } else {
+      localStorage.removeItem("vita-trading:google-ai-api-key");
+      localStorage.removeItem("vita-trading:google-ai-key");
+      try {
+        void supabase.auth.updateUser({ data: { google_ai_key: null } });
+      } catch {}
+    }
   }
 }
 

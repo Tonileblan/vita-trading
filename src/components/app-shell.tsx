@@ -48,12 +48,16 @@ function UserMenu() {
           {user?.email}
           {isAdmin && " · admin"}
         </DropdownMenuLabel>
-        <DropdownMenuSeparator />
-        {(isAdmin || isSupervisor) && (
-          <DropdownMenuItem onSelect={() => openAiAuditor()}>
-            <Bot className="size-4 text-brand" /> Auditor IA & Coach
-          </DropdownMenuItem>
-        )}
+        <DropdownMenuItem
+          onSelect={(e) => {
+            e.preventDefault();
+            setTimeout(() => {
+              openAiAuditor();
+            }, 120);
+          }}
+        >
+          <Bot className="size-4 text-brand" /> Auditor IA & Coach
+        </DropdownMenuItem>
         <DropdownMenuItem onSelect={() => navigate({ to: "/usuarios" })}>
           <Users className="size-4" /> Mi perfil
         </DropdownMenuItem>

@@ -57,9 +57,11 @@ import { runAiAuditorServerFn } from "@/lib/ai-auditor.functions";
 import {
   getActiveAiProvider,
   getAiApiKey,
+  setAiApiKey,
   getAiModel,
   AI_PROVIDERS,
 } from "@/lib/ai-providers";
+import { setLocalGoogleAiKey } from "@/lib/google-ai";
 import { cn } from "@/lib/utils";
 
 interface Message {
@@ -239,8 +241,27 @@ export function AiAuditorPanel({
   // Obtener proveedor de IA activo del usuario
   const providerId = getActiveAiProvider();
   const providerConfig = AI_PROVIDERS[providerId];
-  const userApiKey = getAiApiKey(providerId);
+  const [userApiKey, setUserApiKey] = useState(() => getAiApiKey(providerId));
   const userModel = getAiModel(providerId);
+
+  const [showInlineKeySetup, setShowInlineKeySetup] = useState(false);
+  const [inlineKeyInput, setInlineKeyInput] = useState("");
+
+  useEffect(() => {
+    setUserApiKey(getAiApiKey(providerId));
+  }, [providerId, open]);
+
+  const handleSaveInlineKey = () => {
+    if (!inlineKeyInput.trim()) {
+      toast.error("Introduce una clave API válida");
+      return;
+    }
+    setLocalGoogleAiKey(inlineKeyInput.trim());
+    setAiApiKey(inlineKeyInput.trim(), "google");
+    setUserApiKey(inlineKeyInput.trim());
+    setShowInlineKeySetup(false);
+    toast.success("Clave de Google Gemini guardada y sincronizada en todos tus dispositivos");
+  };
 
   // Ejecutar Auditoría
   const handleRunAudit = async () => {
@@ -371,10 +392,10 @@ export function AiAuditorPanel({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="right"
-        className="flex w-full flex-col border-l border-border bg-card p-0 sm:max-w-xl md:max-w-2xl"
+        className="flex h-[100dvh] max-h-[100dvh] w-full flex-col border-l border-border bg-card p-0 sm:max-w-xl md:max-w-2xl overscroll-contain"
       >
         {/* CABECERA */}
-        <SheetHeader className="border-b border-border px-5 py-4">
+        <SheetHeader className="border-b border-border px-4 py-3 sm:px-5 sm:py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <div
@@ -396,7 +417,7 @@ export function AiAuditorPanel({
                 )}
               </div>
               <div>
-                <SheetTitle className="font-display text-xl tracking-wide">
+                <SheetTitle className="font-display text-lg sm:text-xl tracking-wide">
                   Auditor IA & Trading Coach
                 </SheetTitle>
                 <SheetDescription className="text-xs">
@@ -410,6 +431,42 @@ export function AiAuditorPanel({
             </Badge>
           </div>
         </SheetHeader>
+
+        {/* Banner de Clave no detectada en móvil */}
+        {!userApiKey && (
+          <div className="mx-4 mt-3 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-xs space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="font-semibold text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
+                <Sparkles className="size-3.5" /> Clave Gemini no detectada
+              </span>
+              <button
+                type="button"
+                onClick={() => setShowInlineKeySetup(!showInlineKeySetup)}
+                className="text-[11px] font-bold text-brand hover:underline"
+              >
+                {showInlineKeySetup ? "Cerrar" : "Pegar Clave Aquí"}
+              </button>
+            </div>
+            {showInlineKeySetup ? (
+              <div className="flex items-center gap-2 pt-1">
+                <Input
+                  type="password"
+                  placeholder="Pega tu clave AIzaSy..."
+                  value={inlineKeyInput}
+                  onChange={(e) => setInlineKeyInput(e.target.value)}
+                  className="h-8 text-xs font-mono"
+                />
+                <Button size="sm" onClick={handleSaveInlineKey} className="h-8 text-xs shrink-0">
+                  Guardar
+                </Button>
+              </div>
+            ) : (
+              <p className="text-[11px] text-muted-foreground">
+                Si ya tienes tu clave de Google AI Studio, puedes pegarla aquí para activarla en este móvil al instante.
+              </p>
+            )}
+          </div>
+        )}
 
         {/* CONTENIDO PRINCIPAL CON PESTAÑAS */}
         <Tabs
