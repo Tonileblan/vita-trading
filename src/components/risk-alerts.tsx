@@ -109,7 +109,7 @@ export function useActiveRiskAlerts() {
             title: `Cuenta ${x.account.name}`,
             detail: isBreached
               ? "Límite máximo de drawdown superado."
-              : `Solo quedan ${formatCurrency(x.dd!.remaining)} de colchón operativo.`,
+              : `Solo quedan ${formatCurrency(x.dd!.remaining)} de drawdown disponible.`,
             message: isBreached
               ? `Cuenta ${x.account.name}: Cuenta rota.`
               : `Cuenta ${x.account.name}: Drawdown crítico (${formatCurrency(x.dd!.remaining)} restantes).`,

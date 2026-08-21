@@ -629,7 +629,7 @@ function AccountsPage() {
               <div className="rounded-xl border border-border/70 bg-muted/30 p-2.5 space-y-1.5">
                 <div className="flex items-center justify-between text-xs">
                   <span className="text-[11px] font-bold text-muted-foreground flex items-center gap-1.5">
-                    <ShieldAlert className="size-3.5 text-muted-foreground" /> Colchón Drawdown
+                    <ShieldAlert className="size-3.5 text-muted-foreground" /> Drawdown
                   </span>
                   <span
                     className={cn(

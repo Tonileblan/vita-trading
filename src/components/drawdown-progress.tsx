@@ -86,7 +86,7 @@ export function DrawdownProgress({
             ) : (
               <ShieldCheck className="size-4 text-profit shrink-0" />
             )}
-            <span className="text-sm font-bold text-foreground">Colchón de Drawdown</span>
+            <span className="text-sm font-bold text-foreground">Drawdown</span>
             <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider font-mono">
               {typeLabel}
             </span>
