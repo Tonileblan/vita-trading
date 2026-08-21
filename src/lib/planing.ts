@@ -293,7 +293,11 @@ export function isCurrentTimeInSlot(startTime: string, endTime: string): boolean
   const startMinutes = startH * 60 + startM;
   const endMinutes = endH * 60 + endM;
 
-  return currentMinutes >= startMinutes && currentMinutes <= endMinutes;
+  if (startMinutes <= endMinutes) {
+    return currentMinutes >= startMinutes && currentMinutes <= endMinutes;
+  }
+  // Soporte para franjas que cruzan la medianoche (ej: 23:00 a 04:00)
+  return currentMinutes >= startMinutes || currentMinutes <= endMinutes;
 }
 
 /**
