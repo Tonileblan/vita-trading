@@ -288,22 +288,36 @@ export function getTodayDateStr(): string {
 export function isCurrentTimeInSlot(startTime: string, endTime: string): boolean {
   const now = new Date();
   const currentMinutes = now.getHours() * 60 + now.getMinutes();
+  return isTradeTimeInSlot(currentMinutes, startTime, endTime, 0);
+}
 
-  const [startH, startM] = startTime.split(":").map(Number);
-  const [endH, endM] = endTime.split(":").map(Number);
+/** Comprueba si una hora (en minutos del día 0..1439) está dentro de una franja HH:MM con margen de cortesía */
+export function isTradeTimeInSlot(
+  tradeTimeMinutes: number,
+  startTime: string,
+  endTime: string,
+  marginMinutes = 15,
+): boolean {
+  const [startH, startM] = (startTime || "").split(":").map(Number);
+  const [endH, endM] = (endTime || "").split(":").map(Number);
 
-  if (startH === undefined || startM === undefined || endH === undefined || endM === undefined) {
-    return false;
+  if (startH === undefined || startM === undefined || endH === undefined || endM === undefined || isNaN(startH) || isNaN(endH)) {
+    return true;
   }
 
-  const startMinutes = startH * 60 + startM;
-  const endMinutes = endH * 60 + endM;
+  const rawStart = startH * 60 + startM;
+  const rawEnd = endH * 60 + endM;
 
-  if (startMinutes <= endMinutes) {
-    return currentMinutes >= startMinutes && currentMinutes <= endMinutes;
+  if (rawStart <= rawEnd) {
+    const startMin = Math.max(0, rawStart - marginMinutes);
+    const endMin = Math.min(1439, rawEnd + marginMinutes);
+    return tradeTimeMinutes >= startMin && tradeTimeMinutes <= endMin;
   }
-  // Soporte para franjas que cruzan la medianoche (ej: 23:00 a 04:00)
-  return currentMinutes >= startMinutes || currentMinutes <= endMinutes;
+
+  // Franja que cruza la medianoche (ej: 23:00 a 06:30 o 01:00 a 06:30)
+  const startMin = (rawStart - marginMinutes + 1440) % 1440;
+  const endMin = (rawEnd + marginMinutes) % 1440;
+  return tradeTimeMinutes >= startMin || tradeTimeMinutes <= endMin;
 }
 
 /**
@@ -515,25 +529,26 @@ export function computePlanCompliance(
         reasons.push(`No hay sesiones planificadas en este plan para los ${OPERATING_DAYS[dayOfWeek - 1]?.label || "este día"}`);
       } else {
         // Buscar si encaja con algún slot de ese día para esta cuenta
-        const matchingSlot = daySlots.find((s) => {
-          const matchAcc = !s.account_id || s.account_id === trade.accountId;
-          const matchStrat = !s.strategy_id || s.strategy_id === trade.strategyId;
-          return matchAcc && matchStrat;
-        });
+        const matchingSlot =
+          daySlots.find((s) => {
+            const matchAcc = !s.account_id || s.account_id === trade.accountId;
+            const matchStrat = !s.strategy_id || s.strategy_id === trade.strategyId;
+            return matchAcc && matchStrat;
+          }) ||
+          daySlots.find((s) => !s.account_id || s.account_id === trade.accountId) ||
+          daySlots[0];
 
         if (!matchingSlot) {
           reasons.push("La estrategia usada no coincide con la asignada en el plan para este día");
         } else {
-          // Comprobar horario si está definido
-          const [startH, startM] = matchingSlot.start_time.split(":").map(Number);
-          const [endH, endM] = matchingSlot.end_time.split(":").map(Number);
-          if (startH !== undefined && startM !== undefined && endH !== undefined && endM !== undefined) {
-            const startMin = startH * 60 + startM;
-            const endMin = endH * 60 + endM;
-            // Damos 15 minutos de margen de cortesía
-            if (tradeTimeMinutes < startMin - 15 || tradeTimeMinutes > endMin + 15) {
-              reasons.push(`Operado fuera de horario (${matchingSlot.start_time} - ${matchingSlot.end_time})`);
-            }
+          // Obtener estrategia vinculada para resolver horario efectivo (ej. Oro -> 01:00 - 06:30)
+          const targetStrat = strategies.find(
+            (s) => s.id === (trade.strategyId || matchingSlot.strategy_id),
+          );
+          const effective = getEffectiveSlotSchedule(matchingSlot, targetStrat);
+
+          if (!isTradeTimeInSlot(tradeTimeMinutes, effective.startTime, effective.endTime, 15)) {
+            reasons.push(`Operado fuera de horario (${effective.startTime} - ${effective.endTime})`);
           }
         }
       }

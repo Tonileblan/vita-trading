@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { useJournal } from "@/lib/journal-store";
 import { useJournals } from "@/lib/journals";
-import { OPERATING_DAYS, type TradingPlan, type TradingPlanSlot } from "@/lib/planing";
+import { OPERATING_DAYS, getEffectiveSlotSchedule, type TradingPlan, type TradingPlanSlot } from "@/lib/planing";
 import { formatCurrency } from "@/lib/metrics";
 
 interface GoCheatSheetProps {
@@ -48,10 +48,12 @@ export function GoCheatSheet({ plan, slots }: GoCheatSheetProps) {
         text += `  - Sin sesiones programadas (Día de descanso)\n`;
       } else {
         daySlots.forEach((s) => {
-          const strat = s.strategy_id ? strategyMap.get(s.strategy_id)?.name : "Sin estrategia";
+          const stratObj = s.strategy_id ? strategyMap.get(s.strategy_id) : null;
+          const eff = getEffectiveSlotSchedule(s, stratObj);
+          const strat = stratObj?.name || "Sin estrategia";
           const acc = s.account_id ? accountMap.get(s.account_id)?.name : "Cualquier cuenta";
           const riskStr = s.risk_amount ? formatCurrency(s.risk_amount) : s.risk_pct ? `${(s.risk_pct * 100).toFixed(1)}%` : "0.5%";
-          text += `  • ${s.start_time} - ${s.end_time} | ${s.session_name} (${strat}) | Cta: ${acc} | Máx: ${s.max_trades} trades | Riesgo: ${riskStr}\n`;
+          text += `  • ${eff.startTime} - ${eff.endTime} | ${eff.sessionName} (${strat}) | Cta: ${acc} | Máx: ${s.max_trades} trades | Riesgo: ${riskStr}\n`;
           if (s.setup_notes) text += `    Setup: ${s.setup_notes}\n`;
         });
       }
@@ -156,6 +158,8 @@ export function GoCheatSheet({ plan, slots }: GoCheatSheetProps) {
                       const strategy = slot.strategy_id ? strategyMap.get(slot.strategy_id) : null;
                       const account = slot.account_id ? accountMap.get(slot.account_id) : null;
 
+                      const eff = getEffectiveSlotSchedule(slot, strategy);
+
                       return (
                         <tr key={slot.id} className="hover:bg-muted/30">
                           {sIdx === 0 ? (
@@ -166,15 +170,15 @@ export function GoCheatSheet({ plan, slots }: GoCheatSheetProps) {
                               {day.label}
                             </td>
                           ) : null}
-                          <td className="p-2.5 whitespace-nowrap">
-                            {slot.start_time} - {slot.end_time}
+                          <td className="p-2.5 whitespace-nowrap font-mono font-medium">
+                            {eff.startTime} - {eff.endTime}
                           </td>
                           <td className="p-2.5 font-sans font-medium">
                             <span
                               className="inline-block size-2 rounded-full mr-1.5 align-middle"
                               style={{ backgroundColor: strategy?.color || "var(--brand)" }}
                             />
-                            {strategy?.name || slot.session_name}
+                            {eff.sessionName}
                           </td>
                           <td className="p-2.5 font-sans">{account?.name || "Cualquiera"}</td>
                           <td className="p-2.5">Máx {slot.max_trades}</td>
