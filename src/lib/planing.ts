@@ -895,23 +895,29 @@ export function useTradingPlans(journalId?: string) {
         return remotePlans;
       }
 
-      // Si no existe ningún plan aún, inicializar por defecto "Oro-UVI"
+      // Si no existe ningún plan aún, inicializar por defecto para este usuario/diario
       if (journalId) {
         const { data: sessionData } = await supabase.auth.getSession();
         const uid = sessionData?.session?.user?.id || "";
+        const email = sessionData?.session?.user?.email || "";
+        const isOwner = email.toLowerCase().includes("tonirivera") || email.toLowerCase().includes("toni");
+        const defaultPlanName = isOwner ? "Oro-UVI" : generateRecommendedPlanName();
+
         const defaultPlanId = generateUUID();
         const defaultPlan: TradingPlan = {
           id: defaultPlanId,
           journal_id: journalId,
           user_id: uid,
-          name: "Oro-UVI",
+          name: defaultPlanName,
           is_active: true,
           weekly_risk_budget: 1500,
           daily_risk_budget: 400,
           max_daily_trades: 3,
           max_loss_streak: 2,
           profit_lock_target: 600,
-          notes: "Plan operativo Oro (Asia 01:00 - 06:30 MGC) y cuentas UVI",
+          notes: isOwner
+            ? "Plan operativo Oro (Asia 01:00 - 06:30 MGC) y cuentas UVI"
+            : "Plan operativo y gestión de riesgo",
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         };
@@ -920,7 +926,7 @@ export function useTradingPlans(journalId?: string) {
           try {
             await supabase.from("trading_plans" as any).upsert(defaultPlan);
           } catch (e) {
-            console.warn("Error seeding default Oro-UVI plan in Supabase:", e);
+            console.warn("Error seeding default plan in Supabase:", e);
           }
         }
 
