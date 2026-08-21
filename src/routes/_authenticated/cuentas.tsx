@@ -527,13 +527,31 @@ function AccountsPage() {
     return (
       <article
         className={cn(
-          "group relative overflow-hidden rounded-2xl border border-border/80 bg-card p-5 sm:p-6 transition-all duration-200 hover:border-brand/50 hover:shadow-md",
+          "group relative rounded-2xl border border-border/80 bg-card p-5 sm:p-6 transition-all duration-200 hover:border-brand/50 hover:shadow-md",
           isLowDrawdown && "border-loss/40 bg-loss/5 hover:border-loss/60 shadow-xs",
         )}
       >
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 lg:gap-6 items-center">
-          {/* 1. IDENTIDAD Y DETALLES DE CUENTA (lg:col-span-3) */}
-          <div className="lg:col-span-3 min-w-0 flex items-center gap-3.5">
+        {/* BOTÓN EDITAR (SOLO LÁPIZ ARRIBA A LA DERECHA) */}
+        <div className="absolute top-3.5 right-3.5 sm:top-4 sm:right-4 z-10">
+          <AccountDialog
+            account={acc}
+            trigger={
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/70"
+                aria-label={`Editar ${acc.name}`}
+              >
+                <Pencil className="size-4" />
+              </Button>
+            }
+          />
+        </div>
+
+        {/* CONTENIDO PRINCIPAL EN 3 COLUMNAS AMPLIAS */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 lg:gap-6 items-center pr-8 sm:pr-10 lg:pr-6">
+          {/* 1. IDENTIDAD Y DETALLES DE CUENTA (lg:col-span-4) */}
+          <div className="lg:col-span-4 min-w-0 flex items-center gap-3.5">
             <div
               className={cn(
                 "flex size-12 shrink-0 items-center justify-center rounded-2xl font-bold text-sm shadow-xs",
@@ -622,8 +640,8 @@ function AccountsPage() {
             </div>
           </div>
 
-          {/* 3. BARRAS DE PROGRESO Y CONTROL VISUAL (lg:col-span-3) */}
-          <div className="lg:col-span-3 min-w-0 space-y-2.5">
+          {/* 3. BARRAS DE PROGRESO Y CONTROL VISUAL (lg:col-span-4) */}
+          <div className="lg:col-span-4 min-w-0 space-y-2.5">
             {/* Drawdown Gauge */}
             {dd ? (
               <div className="rounded-xl border border-border/70 bg-muted/30 p-2.5 space-y-1.5">
@@ -699,31 +717,24 @@ function AccountsPage() {
               </div>
             )}
           </div>
+        </div>
 
-          {/* 4. ACCIONES (lg:col-span-2) */}
-          <div className="lg:col-span-2 min-w-0 flex items-center justify-start lg:justify-end gap-2.5 pt-3 lg:pt-0 border-t lg:border-t-0 border-border/60">
-            <AccountDialog
-              account={acc}
-              trigger={
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-9 px-3 rounded-xl text-xs font-semibold text-muted-foreground hover:text-foreground gap-1.5"
-                  aria-label={`Editar ${acc.name}`}
-                >
-                  <Pencil className="size-3.5" />
-                  <span>Editar</span>
-                </Button>
-              }
-            />
-
-            <Link to="/cuenta/$accountId" params={{ accountId: acc.id }}>
-              <Button size="sm" className="h-9 px-4 rounded-xl text-xs font-bold gap-1.5 shadow-xs">
-                <span>Ver cuenta</span>
-                <span className="text-sm">→</span>
-              </Button>
-            </Link>
-          </div>
+        {/* ENLACE VER CUENTA (SOLO TEXTO ABAJO A LA DERECHA) */}
+        <div className="flex items-center justify-between pt-3 mt-3 border-t border-border/50 text-xs text-muted-foreground">
+          <span>
+            {m.total} trades registrados · Factor de beneficio:{" "}
+            <strong className="num text-foreground font-mono">
+              {Number.isFinite(m.profitFactor) ? m.profitFactor.toFixed(2) : "—"}
+            </strong>
+          </span>
+          <Link
+            to="/cuenta/$accountId"
+            params={{ accountId: acc.id }}
+            className="font-bold text-brand hover:underline inline-flex items-center gap-1 transition-colors"
+          >
+            <span>Ver cuenta</span>
+            <span className="text-sm">→</span>
+          </Link>
         </div>
       </article>
     );
