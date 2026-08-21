@@ -868,9 +868,12 @@ export function useTradingPlans(journalId?: string) {
                     });
                   }
                 }
+              } else {
+                mergedMap.set(planToSync.id, planToSync);
               }
             } catch (syncErr) {
               console.warn("Auto-syncing plan to Supabase:", syncErr);
+              mergedMap.set(planToSync.id, planToSync);
             }
           } else {
             mergedMap.set(planToSync.id, planToSync);
@@ -892,7 +895,41 @@ export function useTradingPlans(journalId?: string) {
         return remotePlans;
       }
 
-      return journalId ? getLocalPlans(journalId) : [];
+      // Si no existe ningún plan aún, inicializar por defecto "Oro-UVI"
+      if (journalId) {
+        const { data: sessionData } = await supabase.auth.getSession();
+        const uid = sessionData?.session?.user?.id || "";
+        const defaultPlanId = generateUUID();
+        const defaultPlan: TradingPlan = {
+          id: defaultPlanId,
+          journal_id: journalId,
+          user_id: uid,
+          name: "Oro-UVI",
+          is_active: true,
+          weekly_risk_budget: 1500,
+          daily_risk_budget: 400,
+          max_daily_trades: 3,
+          max_loss_streak: 2,
+          profit_lock_target: 600,
+          notes: "Plan operativo Oro (Asia 01:00 - 06:30 MGC) y cuentas UVI",
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        };
+
+        if (uid) {
+          try {
+            await supabase.from("trading_plans" as any).upsert(defaultPlan);
+          } catch (e) {
+            console.warn("Error seeding default Oro-UVI plan in Supabase:", e);
+          }
+        }
+
+        setLocalPlans(journalId, [defaultPlan]);
+        setLocalPlan(journalId, defaultPlan);
+        return [defaultPlan];
+      }
+
+      return [];
     },
   });
 }

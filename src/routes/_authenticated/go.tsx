@@ -80,7 +80,8 @@ function GoPage() {
   useEffect(() => {
     if (plans.length > 0) {
       if (!selectedPlanId || !plans.some((p) => p.id === selectedPlanId)) {
-        setSelectedPlanId(plans[0]!.id);
+        const preferred = plans.find((p) => p.name?.toLowerCase().includes("oro") || p.name?.toLowerCase().includes("uvi"));
+        setSelectedPlanId(preferred ? preferred.id : plans[0]!.id);
       }
     }
   }, [plans, selectedPlanId]);
