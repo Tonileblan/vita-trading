@@ -106,7 +106,7 @@ export function AppShell({
     { to: "/estrategias", label: "Estrategias", icon: Layers },
     { to: "/conta", label: "Conta", icon: Receipt },
     { to: "/mente", label: "Mente", icon: Brain },
-    ...(isAdmin ? [{ to: "/go", label: "GO", icon: Zap, isGo: true }] : []),
+    { to: "/go", label: "GO", icon: Zap, isGo: true },
     { to: "/usuarios", label: userFirstWord, icon: Users },
   ];
 

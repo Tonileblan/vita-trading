@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import {
   CalendarDays,
@@ -8,7 +8,6 @@ import {
   FolderKanban,
   Layers,
   LineChart,
-  Lock,
   Plus,
   Sparkles,
   Trash2,
@@ -41,7 +40,6 @@ import { GoCockpit } from "@/components/go/go-cockpit";
 import { GoWeeklyMatrix } from "@/components/go/go-weekly-matrix";
 import { GoCompliance } from "@/components/go/go-compliance";
 import { GoCheatSheet } from "@/components/go/go-cheat-sheet";
-import { useAuth } from "@/lib/auth-context";
 import { useJournal } from "@/lib/journal-store";
 import {
   DEFAULT_PLAN_SETTINGS,
@@ -68,8 +66,6 @@ export const Route = createFileRoute("/_authenticated/go")({
 });
 
 function GoPage() {
-  const { isAdmin } = useAuth();
-  const navigate = useNavigate();
   const { activeJournalId } = useJournal();
 
   // 1. Cargar lista de planes del Journal
@@ -185,30 +181,6 @@ function GoPage() {
     }
   };
 
-  // Si no es admin, pantalla de aviso / restricción
-  if (!isAdmin) {
-    return (
-      <AppShell
-        title="GO — Módulo Operativo"
-        subtitle="Acceso restringido"
-        showAccountPanel={false}
-      >
-        <div className="mx-auto max-w-md py-16 text-center space-y-4">
-          <div className="mx-auto flex size-14 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-600">
-            <Lock className="size-7" />
-          </div>
-          <h2 className="font-display text-xl font-semibold">Acceso Exclusivo para Administrador</h2>
-          <p className="text-xs text-muted-foreground">
-            El módulo GO (Diseñador y Gestor de Planing) se encuentra actualmente en fase de calibración para la cuenta de administración.
-          </p>
-          <Button onClick={() => navigate({ to: "/panel" })} className="gap-1.5 text-xs">
-            Volver al Resumen
-          </Button>
-        </div>
-      </AppShell>
-    );
-  }
-
   return (
     <AppShell
       title={
@@ -218,7 +190,7 @@ function GoPage() {
           </span>
           <span>Planing & Gestor Operativo</span>
           <Badge variant="secondary" className="text-[10px] font-mono tracking-widest uppercase">
-            Admin Lab
+            Módulo Operativo
           </Badge>
         </div>
       }
@@ -228,7 +200,7 @@ function GoPage() {
       <div className="space-y-6">
         {/* BARRA SUPERIOR: SELECTOR Y GESTOR DE PLANES */}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between rounded-xl border border-border/80 bg-card p-4 shadow-xs">
-          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3 w-full sm:w-auto">
             <div className="flex items-center gap-2">
               <FolderKanban className="size-4 text-brand shrink-0" />
               <span className="text-xs font-semibold text-foreground whitespace-nowrap">
@@ -237,7 +209,7 @@ function GoPage() {
             </div>
 
             {plans.length > 0 ? (
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 w-full sm:w-auto">
                 <Select
                   value={activePlan.id}
                   onValueChange={(val) => {
@@ -245,7 +217,7 @@ function GoPage() {
                     setIsConfiguringAccounts(false);
                   }}
                 >
-                  <SelectTrigger className="h-9 text-xs font-bold w-[260px] bg-background border-2 border-border/80 text-foreground shadow-xs hover:border-foreground/40">
+                  <SelectTrigger className="h-9 text-xs font-bold w-full sm:w-[260px] bg-background border-2 border-border/80 text-foreground shadow-xs hover:border-foreground/40">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
