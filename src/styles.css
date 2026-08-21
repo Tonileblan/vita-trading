@@ -191,26 +191,14 @@
   font-weight: 500;
 }
 
-/* Alerta de drawdown: parpadeo pausado exclusivo de borde */
+/* Alerta de drawdown: parpadeo pausado exclusivo de borde (fino, 1px) */
 @keyframes drawdown-border-pulse {
   0%, 100% {
     border-color: var(--loss);
-    box-shadow: 0 0 0 1px var(--loss), 0 0 8px oklch(0.55 0.22 25 / 0.35);
+    box-shadow: 0 0 5px oklch(0.55 0.22 25 / 0.25);
   }
   50% {
     border-color: oklch(0.55 0.22 25 / 0.2);
-    box-shadow: 0 0 0 0px transparent, 0 0 0px transparent;
-  }
-}
-
-/* Toque suave y pausado para el recuadro general de la cuenta */
-@keyframes drawdown-card-border-pulse {
-  0%, 100% {
-    border-color: oklch(0.55 0.22 25 / 0.4);
-    box-shadow: 0 0 14px oklch(0.55 0.22 25 / 0.07);
-  }
-  50% {
-    border-color: oklch(0.55 0.22 25 / 0.15);
     box-shadow: 0 0 0px transparent;
   }
 }

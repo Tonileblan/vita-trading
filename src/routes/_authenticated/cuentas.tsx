@@ -531,10 +531,19 @@ function AccountsPage() {
     return (
       <article
         className={cn(
-          "group relative rounded-2xl border border-border/80 bg-card p-4 sm:p-5 transition-all duration-300 hover:border-brand/40 hover:shadow-md space-y-3.5",
-          isLowDrawdown && "border-loss/35 animate-drawdown-card",
+          "group relative overflow-hidden rounded-2xl border border-border/80 bg-card p-4 sm:p-5 transition-all duration-200 hover:border-brand/40 hover:shadow-md space-y-3.5",
+          isLowDrawdown && "border-loss/40",
         )}
       >
+        {/* FRANJA DIAGONAL DE ALERTA DD EN LA ESQUINA SUPERIOR DERECHA */}
+        {isLowDrawdown && (
+          <div className="absolute top-0 right-0 size-28 overflow-hidden pointer-events-none z-20">
+            <div className="absolute top-[20px] -right-[32px] w-[130px] rotate-45 bg-loss text-loss-foreground text-[9px] font-black uppercase tracking-wider text-center py-1 shadow-md shadow-loss/20 select-none">
+              DD
+            </div>
+          </div>
+        )}
+
         {/* CABECERA: IDENTIDAD DE CUENTA + ACCIONES */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-border/60">
           <div className="flex items-center gap-3 min-w-0">
@@ -580,7 +589,7 @@ function AccountsPage() {
             </div>
           </div>
 
-          <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
+          <div className={cn("flex items-center gap-2 shrink-0 self-end sm:self-auto", isLowDrawdown && "pr-8 sm:pr-10")}>
             <AccountDialog
               account={acc}
               trigger={
@@ -804,10 +813,19 @@ function AccountsPage() {
     return (
       <article
         className={cn(
-          "panel flex flex-col justify-between p-5 transition-all hover:border-foreground/20 rounded-2xl",
-          isLowDrawdown && "border-loss/35 animate-drawdown-card",
+          "panel flex flex-col justify-between p-5 transition-all hover:border-foreground/20 rounded-2xl relative overflow-hidden",
+          isLowDrawdown && "border-loss/40",
         )}
       >
+        {/* FRANJA DIAGONAL DE ALERTA DD EN LA ESQUINA SUPERIOR DERECHA */}
+        {isLowDrawdown && (
+          <div className="absolute top-0 right-0 size-24 overflow-hidden pointer-events-none z-20">
+            <div className="absolute top-[16px] -right-[28px] w-[110px] rotate-45 bg-loss text-loss-foreground text-[8px] font-black uppercase tracking-wider text-center py-0.5 shadow-md shadow-loss/20 select-none">
+              DD
+            </div>
+          </div>
+        )}
+
         <div className="space-y-4">
           <div className="flex items-start justify-between gap-3">
             <Link
