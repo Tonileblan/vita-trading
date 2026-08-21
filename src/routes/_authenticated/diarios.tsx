@@ -239,7 +239,9 @@ function JournalsPage() {
         const accId = matchingAcc?.id || defaultAccId;
         if (!accId) continue;
 
+        if (!user?.id) continue;
         await supabase.from("trades").insert({
+          user_id: user.id,
           journal_id: targetId,
           account_id: accId,
           symbol: t.symbol || "MNQ",
