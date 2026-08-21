@@ -66,9 +66,9 @@ export const mockStrategies: Strategy[] = [
     days: "Lunes a jueves",
     schedule: "19:00 - 23:30 (NY)",
     execution: "Manual o bot",
-    setup: "SL fijo: 150 ticks · 150 USD de riesgo por contrato",
-    management: "RR 1:1.5 · Break-even automático a +75 ticks",
-    contracts: "Según el plan de gestión de riesgo",
+    setup: "SL fijo: 160 USD de riesgo por contrato",
+    management: "RR 1:1.5 · Break-even automático",
+    contracts: "1 contrato = 160 $ de riesgo",
   },
   {
     id: "str-lite",

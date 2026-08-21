@@ -185,11 +185,11 @@ export function getStrategyPresetDefaults(strategy: Strategy | null | undefined)
     activeDays = [2, 4];
   }
 
-  // 4. Riesgo monetario
+  // 4. Riesgo monetario (1 contrato = 160$ de riesgo)
   const riskAmount =
     strategy.initialCapital && strategy.riskPct
       ? Math.round(strategy.initialCapital * strategy.riskPct)
-      : undefined;
+      : 160;
 
   return {
     startTime,
@@ -197,7 +197,7 @@ export function getStrategyPresetDefaults(strategy: Strategy | null | undefined)
     symbols,
     sessionName,
     notes: strategy.setup || "",
-    ...(riskAmount !== undefined ? { riskAmount } : {}),
+    riskAmount,
     activeDays,
   };
 }
@@ -252,12 +252,12 @@ export function getEffectiveSlotSchedule(
 export const DEFAULT_PLAN_SETTINGS: Omit<TradingPlan, "id" | "journal_id" | "user_id"> = {
   name: "Plan Operativo GO Principal",
   is_active: true,
-  weekly_risk_budget: 1500,
-  daily_risk_budget: 400,
+  weekly_risk_budget: 800, // 5 días x 160$ (1 contrato)
+  daily_risk_budget: 160,  // 1 contrato = 160$
   max_daily_trades: 1,
   max_loss_streak: 2,
-  profit_lock_target: 600,
-  notes: "Operar únicamente en los slots configurados respetando el límite de riesgo diario y racha de pérdidas.",
+  profit_lock_target: 320, // 2R (2 x 160$)
+  notes: "Operar únicamente en los slots configurados respetando el límite de riesgo de 160$ por contrato/operación.",
 };
 
 // ==========================================
@@ -596,7 +596,7 @@ export function generateDefaultSlotsFromJournal(
         strategy_id: strat.id,
         risk_amount:
           defaults.riskAmount ||
-          (strat.initialCapital ? Math.round(strat.initialCapital * (strat.riskPct || 0.01)) : 200),
+          (strat.initialCapital ? Math.round(strat.initialCapital * (strat.riskPct || 0.01)) : 160),
         risk_pct: strat.riskPct || 0.01,
         max_trades: 1,
         allowed_symbols: defaults.symbols,

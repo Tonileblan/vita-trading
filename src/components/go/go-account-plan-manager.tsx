@@ -97,11 +97,11 @@ export function GoAccountPlanManager({
       user_id: "",
       name: "Plan Operativo Principal",
       is_active: true,
-      weekly_risk_budget: 1500,
-      daily_risk_budget: 400,
+      weekly_risk_budget: 800,
+      daily_risk_budget: 160,
       max_daily_trades: 1,
       max_loss_streak: 2,
-      profit_lock_target: 600,
+      profit_lock_target: 320,
       notes: "Operar respetando los slots, límites de pérdida diaria y pausas de disciplina.",
     };
   }, [propPlan, planData, activeJournalId]);
@@ -254,9 +254,9 @@ export function GoAccountPlanManager({
   const [activeDays, setActiveDays] = useState<number[]>(initialStratDefaults.activeDays || [1, 2, 3, 4, 5]);
   const [sessionStartTime, setSessionStartTime] = useState(initialStratDefaults.startTime || "15:30");
   const [sessionEndTime, setSessionEndTime] = useState(initialStratDefaults.endTime || "17:30");
-  const [riskPerTrade, setRiskPerTrade] = useState(String(initialStratDefaults.riskAmount || 250));
+  const [riskPerTrade, setRiskPerTrade] = useState(String(initialStratDefaults.riskAmount || 160));
   const [maxTradesPerDay, setMaxTradesPerDay] = useState("1");
-  const [dailyLossLimit, setDailyLossLimit] = useState(String(plan.daily_risk_budget));
+  const [dailyLossLimit, setDailyLossLimit] = useState(String(plan.daily_risk_budget || 160));
   const [maxLossStreak, setMaxLossStreak] = useState(String(plan.max_loss_streak));
   const [allowedSymbols, setAllowedSymbols] = useState(initialStratDefaults.symbols || "MNQ, NQ");
   const [sessionNotes, setSessionNotes] = useState(initialStratDefaults.notes || "");
@@ -269,9 +269,7 @@ export function GoAccountPlanManager({
       setSessionStartTime(defaults.startTime);
       setSessionEndTime(defaults.endTime);
       setSessionNotes(defaults.notes);
-      if (defaults.riskAmount) {
-        setRiskPerTrade(String(defaults.riskAmount));
-      }
+      setRiskPerTrade(String(defaults.riskAmount || 160));
       if (defaults.activeDays && defaults.activeDays.length > 0) {
         setActiveDays(defaults.activeDays);
       }
@@ -317,7 +315,7 @@ export function GoAccountPlanManager({
       // 2. Guardar parámetros de riesgo del plan
       await savePlanMutation.mutateAsync({
         ...plan,
-        daily_risk_budget: parseFloat(dailyLossLimit) || 400,
+        daily_risk_budget: parseFloat(dailyLossLimit) || 160,
         max_loss_streak: parseInt(maxLossStreak, 10) || 2,
         max_daily_trades: parseInt(maxTradesPerDay, 10) || 1,
       });
@@ -344,7 +342,7 @@ export function GoAccountPlanManager({
             account_id: acc.id,
             strategy_id: assignStratId || acc.strategyId || null,
             max_trades: parseInt(maxTradesPerDay, 10) || 1,
-            risk_amount: parseFloat(riskPerTrade) || 250,
+            risk_amount: parseFloat(riskPerTrade) || 160,
             allowed_symbols: finalSymbols.trim() || "MNQ, NQ",
             setup_notes: sessionNotes.trim() || null,
             is_active: true,

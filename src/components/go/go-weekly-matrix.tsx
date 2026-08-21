@@ -74,7 +74,7 @@ export function GoWeeklyMatrix({ plan, slots }: GoWeeklyMatrixProps) {
   const [formAccountId, setFormAccountId] = useState<string>("none");
   const [formStrategyId, setFormStrategyId] = useState<string>("none");
   const [formMaxTrades, setFormMaxTrades] = useState<string>("1");
-  const [formRiskAmount, setFormRiskAmount] = useState<string>("250");
+  const [formRiskAmount, setFormRiskAmount] = useState<string>("160");
   const [formRiskPct, setFormRiskPct] = useState<string>("1.0");
   const [formSymbols, setFormSymbols] = useState<string>("MNQ, NQ");
   const [formSetupNotes, setFormSetupNotes] = useState<string>("");
@@ -94,7 +94,7 @@ export function GoWeeklyMatrix({ plan, slots }: GoWeeklyMatrixProps) {
     setFormAccountId(accounts[0]?.id || "none");
     setFormStrategyId(defaultStrat?.id || "none");
     setFormMaxTrades("1");
-    setFormRiskAmount(defaults.riskAmount ? String(defaults.riskAmount) : "250");
+    setFormRiskAmount(defaults.riskAmount ? String(defaults.riskAmount) : "160");
     setFormRiskPct(defaultStrat?.riskPct ? String((defaultStrat.riskPct * 100).toFixed(1)) : "1.0");
     setFormSymbols(defaults.symbols || "MNQ, NQ");
     setFormSetupNotes(defaults.notes || "");
@@ -113,7 +113,7 @@ export function GoWeeklyMatrix({ plan, slots }: GoWeeklyMatrixProps) {
     setFormAccountId(slot.account_id || "none");
     setFormStrategyId(slot.strategy_id || "none");
     setFormMaxTrades(String(slot.max_trades || 1));
-    setFormRiskAmount(slot.risk_amount ? String(slot.risk_amount) : "250");
+    setFormRiskAmount(slot.risk_amount ? String(slot.risk_amount) : "160");
     setFormRiskPct(slot.risk_pct ? String(slot.risk_pct * 100) : "1.0");
     setFormSymbols(sched.allowedSymbols || "MNQ, NQ");
     setFormSetupNotes(slot.setup_notes || "");
@@ -132,7 +132,7 @@ export function GoWeeklyMatrix({ plan, slots }: GoWeeklyMatrixProps) {
         setFormSymbols(defaults.symbols);
         if (defaults.notes) setFormSetupNotes(defaults.notes);
         if (s.riskPct) setFormRiskPct(String((s.riskPct * 100).toFixed(1)));
-        if (defaults.riskAmount) setFormRiskAmount(String(defaults.riskAmount));
+        setFormRiskAmount(String(defaults.riskAmount || 160));
       }
     }
   };

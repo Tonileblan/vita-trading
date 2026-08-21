@@ -39,7 +39,7 @@ export function GoRiskBudget({ plan }: GoRiskBudgetProps) {
   const [dailyBudget, setDailyBudget] = useState(String(plan.daily_risk_budget));
   const [maxTrades, setMaxTrades] = useState(String(plan.max_daily_trades));
   const [maxLossStreak, setMaxLossStreak] = useState(String(plan.max_loss_streak));
-  const [profitLock, setProfitLock] = useState(plan.profit_lock_target ? String(plan.profit_lock_target) : "600");
+  const [profitLock, setProfitLock] = useState(plan.profit_lock_target ? String(plan.profit_lock_target) : "320");
   const [notes, setNotes] = useState(plan.notes || "");
 
   // Cálculos de capacidad de cuentas
@@ -48,8 +48,8 @@ export function GoRiskBudget({ plan }: GoRiskBudgetProps) {
 
   const handleSave = () => {
     const payload: Partial<TradingPlan> = {
-      weekly_risk_budget: Math.max(10, parseFloat(weeklyBudget) || 1500),
-      daily_risk_budget: Math.max(10, parseFloat(dailyBudget) || 400),
+      weekly_risk_budget: Math.max(10, parseFloat(weeklyBudget) || 800),
+      daily_risk_budget: Math.max(10, parseFloat(dailyBudget) || 160),
       max_daily_trades: Math.max(1, parseInt(maxTrades, 10) || 1),
       max_loss_streak: Math.max(1, parseInt(maxLossStreak, 10) || 2),
       profit_lock_target: profitLock ? parseFloat(profitLock) : null,
@@ -62,8 +62,8 @@ export function GoRiskBudget({ plan }: GoRiskBudgetProps) {
     });
   };
 
-  const dailyNum = parseFloat(dailyBudget) || 400;
-  const weeklyNum = parseFloat(weeklyBudget) || 1500;
+  const dailyNum = parseFloat(dailyBudget) || 160;
+  const weeklyNum = parseFloat(weeklyBudget) || 800;
   const daysOfSafety = dailyNum > 0 ? (weeklyNum / dailyNum).toFixed(1) : "0";
 
   return (
