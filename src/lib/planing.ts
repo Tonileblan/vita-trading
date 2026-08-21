@@ -730,8 +730,9 @@ export function getAllLegacySlotsAcrossLocalStorage(): TradingPlanSlot[] {
 }
 
 /** Busca la configuración original de un plan específico en el almacenamiento del navegador */
-export function findOriginalLocalPlanConfig(nameQuery: string = "oro"): TradingPlan | null {
+export function findOriginalLocalPlanConfig(): TradingPlan | null {
   if (typeof window === "undefined") return null;
+  const searchQueries = ["oro-uci", "uci", "oro", "uvi"];
   try {
     for (let i = 0; i < localStorage.length; i++) {
       const k = localStorage.key(i);
@@ -742,10 +743,14 @@ export function findOriginalLocalPlanConfig(nameQuery: string = "oro"): TradingP
           if (!raw) continue;
           const parsed = JSON.parse(raw);
           if (Array.isArray(parsed)) {
-            const match = parsed.find((p: any) => p?.name?.toLowerCase().includes(nameQuery.toLowerCase()));
-            if (match) return match;
-          } else if (parsed?.name?.toLowerCase().includes(nameQuery.toLowerCase())) {
-            return parsed;
+            for (const q of searchQueries) {
+              const match = parsed.find((p: any) => p?.name?.toLowerCase().includes(q));
+              if (match) return match;
+            }
+          } else if (parsed && parsed.name) {
+            for (const q of searchQueries) {
+              if (parsed.name.toLowerCase().includes(q)) return parsed;
+            }
           }
         } catch {}
       }
@@ -898,27 +903,34 @@ export function useTradingPlans(journalId?: string) {
         }
       }
 
-      // 3. Garantizar siempre la existencia del plan "Oro-UVI" con su configuración previa si existe
-      const hasOroUvi = Array.from(mergedMap.values()).some((p) => {
-        const n = (p.name || "").toLowerCase();
-        return n.includes("oro") || n.includes("uvi");
+      // 3. Normalizar nombre si estaba como Oro-UVI a Oro-UCI
+      mergedMap.forEach((p) => {
+        if (p.name === "Oro-UVI" || p.name?.toLowerCase().includes("uvi")) {
+          p.name = "Oro-UCI";
+        }
       });
 
-      if (!hasOroUvi && journalId) {
-        const legacyOro = findOriginalLocalPlanConfig("oro") || findOriginalLocalPlanConfig("uvi");
+      // 4. Garantizar siempre la existencia del plan "Oro-UCI" con su configuración previa
+      const hasOroUci = Array.from(mergedMap.values()).some((p) => {
+        const n = (p.name || "").toLowerCase();
+        return n.includes("oro") || n.includes("uci");
+      });
+
+      if (!hasOroUci && journalId) {
+        const legacyOro = findOriginalLocalPlanConfig();
         const oroPlanId = legacyOro && isValidUUID(legacyOro.id) ? legacyOro.id : generateUUID();
         const oroPlan: TradingPlan = {
           id: oroPlanId,
           journal_id: journalId,
           user_id: uid,
-          name: legacyOro?.name || "Oro-UVI",
+          name: "Oro-UCI",
           is_active: legacyOro?.is_active ?? true,
           weekly_risk_budget: legacyOro?.weekly_risk_budget ?? 1500,
           daily_risk_budget: legacyOro?.daily_risk_budget ?? 400,
           max_daily_trades: legacyOro?.max_daily_trades ?? 3,
           max_loss_streak: legacyOro?.max_loss_streak ?? 2,
           profit_lock_target: legacyOro?.profit_lock_target ?? 600,
-          notes: legacyOro?.notes || "Plan operativo Oro (Asia 01:00 - 06:30 MGC) y cuentas UVI",
+          notes: legacyOro?.notes || "Plan operativo Oro (Asia 01:00 - 06:30 MGC) y cuentas UCI",
           created_at: legacyOro?.created_at || new Date().toISOString(),
           updated_at: new Date().toISOString(),
         };
@@ -929,8 +941,8 @@ export function useTradingPlans(journalId?: string) {
       }
 
       const mergedList = Array.from(mergedMap.values()).sort((a, b) => {
-        const aIsOro = (a.name || "").toLowerCase().includes("oro");
-        const bIsOro = (b.name || "").toLowerCase().includes("oro");
+        const aIsOro = (a.name || "").toLowerCase().includes("oro") || (a.name || "").toLowerCase().includes("uci");
+        const bIsOro = (b.name || "").toLowerCase().includes("oro") || (b.name || "").toLowerCase().includes("uci");
         if (aIsOro && !bIsOro) return -1;
         if (!aIsOro && bIsOro) return 1;
         return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
