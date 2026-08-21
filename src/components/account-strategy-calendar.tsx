@@ -694,11 +694,11 @@ export function AccountStrategyCalendar({
 
           {/* Estrategia */}
           <label className="flex flex-col gap-1 text-xs">
-            <span className="font-bold text-muted-foreground">Estrategia a Asignar</span>
+            <span className="font-bold text-foreground">Estrategia a Asignar</span>
             <select
               value={selectedStrategyToAssign}
               onChange={(e) => setSelectedStrategyToAssign(e.target.value)}
-              className="h-9 rounded-md border border-border bg-card px-2.5 text-xs focus:ring-1 focus:ring-brand"
+              className="h-9 rounded-lg border-2 border-border/80 bg-background px-2.5 text-xs font-bold text-foreground focus:border-brand focus:ring-1 focus:ring-brand cursor-pointer [&>option]:bg-popover [&>option]:text-popover-foreground"
             >
               <option value="">Seleccionar estrategia…</option>
               {strategies.map((s) => (
@@ -711,11 +711,11 @@ export function AccountStrategyCalendar({
 
           {/* Cuentas */}
           <label className="flex flex-col gap-1 text-xs">
-            <span className="font-bold text-muted-foreground">Cuenta Objetivo</span>
+            <span className="font-bold text-foreground">Cuenta Objetivo</span>
             <select
               value={selectedAccountToAssign}
               onChange={(e) => setSelectedAccountToAssign(e.target.value)}
-              className="h-9 rounded-md border border-border bg-card px-2.5 text-xs focus:ring-1 focus:ring-brand"
+              className="h-9 rounded-lg border-2 border-border/80 bg-background px-2.5 text-xs font-bold text-foreground focus:border-brand focus:ring-1 focus:ring-brand cursor-pointer [&>option]:bg-popover [&>option]:text-popover-foreground"
             >
               <option value="all">Todas las cuentas ({accounts.length})</option>
               {accounts.map((a) => (

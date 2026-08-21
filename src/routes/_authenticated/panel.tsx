@@ -472,8 +472,8 @@ function Overview() {
             {/* Izquierda: Selectores de Entidad y Supervisor */}
             <div className="flex flex-wrap items-center gap-2">
               {(isSupervisor || isAdmin) && svProfiles.length > 0 && (
-                <div className="flex items-center gap-1.5 rounded-md border border-brand/50 bg-brand/5 px-2 py-1">
-                  <User className="size-3.5 text-brand" />
+                <div className="flex items-center gap-2 rounded-lg border-2 border-brand/70 bg-brand/10 px-2.5 py-1.5 shadow-xs transition-colors hover:border-brand">
+                  <User className="size-4 text-brand shrink-0" />
                   <select
                     value={supervisorUserFilter}
                     onChange={(e) => {
@@ -481,10 +481,10 @@ function Overview() {
                       setFilter("all");
                       setSelectedCalendarDate(null);
                     }}
-                    className="bg-transparent text-xs font-bold text-brand focus:outline-none cursor-pointer"
+                    className="bg-transparent text-xs font-bold text-foreground focus:outline-none cursor-pointer [&>option]:bg-popover [&>option]:text-popover-foreground [&>optgroup]:bg-popover [&>optgroup]:text-muted-foreground"
                     aria-label="Ver resumen de usuario"
                   >
-                    <option value="mine">Mi diario personal</option>
+                    <option value="mine">📖 Mi diario personal</option>
                     <optgroup label="Usuarios registrados">
                       {svProfiles.map((p) => (
                         <option key={p.id} value={p.id}>
@@ -496,18 +496,18 @@ function Overview() {
                 </div>
               )}
 
-              <div className="flex items-center gap-1.5 rounded-md border border-border bg-card px-2 py-1">
-                <Filter className="size-3.5 text-muted-foreground" />
+              <div className="flex items-center gap-2 rounded-lg border-2 border-border/90 bg-muted/60 dark:bg-muted/30 px-2.5 py-1.5 shadow-xs transition-colors hover:border-foreground/40">
+                <Filter className="size-4 text-brand shrink-0" />
                 <select
                   value={filter}
                   onChange={(e) => {
                     setFilter(e.target.value);
                     setSelectedCalendarDate(null);
                   }}
-                  className="bg-transparent text-xs font-semibold text-foreground focus:outline-none cursor-pointer"
+                  className="bg-transparent text-xs font-bold text-foreground focus:outline-none cursor-pointer [&>option]:bg-popover [&>option]:text-popover-foreground [&>optgroup]:bg-popover [&>optgroup]:text-muted-foreground"
                   aria-label="Cuenta o estrategia"
                 >
-                  <option value="all">🌐 TODO</option>
+                  <option value="all">🌐 Todas las cuentas y estrategias</option>
                   {accounts.filter((a) => a.type === "funded").length > 0 && (
                     <optgroup label="🏢 Cuentas de Fondeo">
                       {accounts

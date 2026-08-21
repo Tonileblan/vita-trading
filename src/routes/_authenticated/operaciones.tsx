@@ -487,77 +487,77 @@ function TradesPage() {
             <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
               {/* Izquierda: Selectores de Diario y Entidad (TODO / Cuentas / Estrategias) */}
               <div className="flex flex-wrap items-center gap-2">
-                {(isSupervisor || isAdmin) && svProfiles.length > 0 && (
-                  <div className="flex items-center gap-1.5 rounded-md border border-brand/50 bg-brand/5 px-2 py-1">
-                    <User className="size-3.5 text-brand" />
-                    <select
-                      value={supervisorUserFilter}
-                      onChange={(e) => {
-                        setSupervisorUserFilter(e.target.value);
-                        setFilter("all");
-                        setPage(1);
-                      }}
-                      className="bg-transparent text-xs font-bold text-brand focus:outline-none cursor-pointer"
-                      aria-label="Ver operaciones de usuario"
-                    >
-                      <option value="mine">Mi diario personal</option>
-                      <optgroup label="Usuarios registrados">
-                        {svProfiles.map((p) => (
-                          <option key={p.id} value={p.id}>
-                            {p.display_name ?? `Usuario ${p.id.slice(0, 6)}`}
-                          </option>
-                        ))}
-                      </optgroup>
-                    </select>
-                  </div>
-                )}
-
-                <div className="flex items-center gap-1.5 rounded-md border border-border bg-card px-2 py-1">
-                  <Filter className="size-3.5 text-muted-foreground" />
+              {(isSupervisor || isAdmin) && svProfiles.length > 0 && (
+                <div className="flex items-center gap-2 rounded-lg border-2 border-brand/70 bg-brand/10 px-2.5 py-1.5 shadow-xs transition-colors hover:border-brand">
+                  <User className="size-4 text-brand shrink-0" />
                   <select
-                    value={filter}
+                    value={supervisorUserFilter}
                     onChange={(e) => {
-                      setFilter(e.target.value);
+                      setSupervisorUserFilter(e.target.value);
+                      setFilter("all");
                       setPage(1);
                     }}
-                    className="bg-transparent text-xs font-semibold text-foreground focus:outline-none cursor-pointer"
-                    aria-label="Cuenta o estrategia"
+                    className="bg-transparent text-xs font-bold text-foreground focus:outline-none cursor-pointer [&>option]:bg-popover [&>option]:text-popover-foreground [&>optgroup]:bg-popover [&>optgroup]:text-muted-foreground"
+                    aria-label="Ver operaciones de usuario"
                   >
-                    <option value="all">🌐 TODO</option>
-                    {accounts.filter((a) => a.type === "funded").length > 0 && (
-                      <optgroup label="🏢 Cuentas de Fondeo">
-                        {accounts
-                          .filter((a) => a.type === "funded")
-                          .map((a) => (
-                            <option key={a.id} value={a.id}>
-                              {a.name}
-                            </option>
-                          ))}
-                      </optgroup>
-                    )}
-                    {accounts.filter((a) => a.type !== "funded").length > 0 && (
-                      <optgroup label="👤 Cuentas Personales">
-                        {accounts
-                          .filter((a) => a.type !== "funded")
-                          .map((a) => (
-                            <option key={a.id} value={a.id}>
-                              {a.name}
-                            </option>
-                          ))}
-                      </optgroup>
-                    )}
-                    {accountStrategies.length > 0 && (
-                      <optgroup label="⚡ Estrategias">
-                        {accountStrategies.map((s) => (
-                          <option key={s.id} value={`strategy:${s.id}`}>
-                            Estrategia: {s.name}
-                          </option>
-                        ))}
-                      </optgroup>
-                    )}
+                    <option value="mine">📖 Mi diario personal</option>
+                    <optgroup label="Usuarios registrados">
+                      {svProfiles.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.display_name ?? `Usuario ${p.id.slice(0, 6)}`}
+                        </option>
+                      ))}
+                    </optgroup>
                   </select>
                 </div>
+              )}
+
+              <div className="flex items-center gap-2 rounded-lg border-2 border-border/90 bg-muted/60 dark:bg-muted/30 px-2.5 py-1.5 shadow-xs transition-colors hover:border-foreground/40">
+                <Filter className="size-4 text-brand shrink-0" />
+                <select
+                  value={filter}
+                  onChange={(e) => {
+                    setFilter(e.target.value);
+                    setPage(1);
+                  }}
+                  className="bg-transparent text-xs font-bold text-foreground focus:outline-none cursor-pointer [&>option]:bg-popover [&>option]:text-popover-foreground [&>optgroup]:bg-popover [&>optgroup]:text-muted-foreground"
+                  aria-label="Cuenta o estrategia"
+                >
+                  <option value="all">🌐 Todas las cuentas y estrategias</option>
+                  {accounts.filter((a) => a.type === "funded").length > 0 && (
+                    <optgroup label="🏢 Cuentas de Fondeo">
+                      {accounts
+                        .filter((a) => a.type === "funded")
+                        .map((a) => (
+                          <option key={a.id} value={a.id}>
+                            {a.name}
+                          </option>
+                        ))}
+                    </optgroup>
+                  )}
+                  {accounts.filter((a) => a.type !== "funded").length > 0 && (
+                    <optgroup label="👤 Cuentas Personales">
+                      {accounts
+                        .filter((a) => a.type !== "funded")
+                        .map((a) => (
+                          <option key={a.id} value={a.id}>
+                            {a.name}
+                          </option>
+                        ))}
+                    </optgroup>
+                  )}
+                  {accountStrategies.length > 0 && (
+                    <optgroup label="⚡ Estrategias">
+                      {accountStrategies.map((s) => (
+                        <option key={s.id} value={`strategy:${s.id}`}>
+                          Estrategia: {s.name}
+                        </option>
+                      ))}
+                    </optgroup>
+                  )}
+                </select>
               </div>
+            </div>
 
               {/* Derecha: Buscador y Botón de Ordenación */}
               <div className="flex flex-wrap items-center gap-2.5 flex-1 min-w-[280px] md:justify-end">

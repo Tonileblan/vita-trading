@@ -245,7 +245,7 @@ function GoPage() {
                     setIsConfiguringAccounts(false);
                   }}
                 >
-                  <SelectTrigger className="h-8 text-xs font-semibold w-[260px] bg-muted/40">
+                  <SelectTrigger className="h-9 text-xs font-bold w-[260px] bg-background border-2 border-border/80 text-foreground shadow-xs hover:border-foreground/40">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
