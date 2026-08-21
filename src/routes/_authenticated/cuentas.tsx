@@ -535,17 +535,17 @@ function AccountsPage() {
           isLowDrawdown && "border-loss/40",
         )}
       >
-        {/* FRANJA DIAGONAL DE ALERTA DD EN LA ESQUINA SUPERIOR DERECHA */}
+        {/* FRANJA DIAGONAL DE ALERTA DD DE FONDO EN LA ESQUINA SUPERIOR IZQUIERDA */}
         {isLowDrawdown && (
-          <div className="absolute top-0 right-0 size-28 overflow-hidden pointer-events-none z-20">
-            <div className="absolute top-[20px] -right-[32px] w-[130px] rotate-45 bg-loss text-loss-foreground text-[9px] font-black uppercase tracking-wider text-center py-1 shadow-md shadow-loss/20 select-none">
+          <div className="absolute top-0 left-0 size-28 overflow-hidden pointer-events-none z-0">
+            <div className="absolute top-[20px] -left-[34px] w-[130px] -rotate-45 bg-loss/12 text-loss/50 text-[9px] font-black uppercase tracking-wider text-center py-1 border-y border-loss/15 select-none">
               DD
             </div>
           </div>
         )}
 
         {/* CABECERA: IDENTIDAD DE CUENTA + ACCIONES */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-border/60">
+        <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-border/60">
           <div className="flex items-center gap-3 min-w-0">
             <div
               className={cn(
@@ -589,7 +589,7 @@ function AccountsPage() {
             </div>
           </div>
 
-          <div className={cn("flex items-center gap-2 shrink-0 self-end sm:self-auto", isLowDrawdown && "pr-8 sm:pr-10")}>
+          <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
             <AccountDialog
               account={acc}
               trigger={
@@ -817,16 +817,16 @@ function AccountsPage() {
           isLowDrawdown && "border-loss/40",
         )}
       >
-        {/* FRANJA DIAGONAL DE ALERTA DD EN LA ESQUINA SUPERIOR DERECHA */}
+        {/* FRANJA DIAGONAL DE ALERTA DD DE FONDO EN LA ESQUINA SUPERIOR IZQUIERDA */}
         {isLowDrawdown && (
-          <div className="absolute top-0 right-0 size-24 overflow-hidden pointer-events-none z-20">
-            <div className="absolute top-[16px] -right-[28px] w-[110px] rotate-45 bg-loss text-loss-foreground text-[8px] font-black uppercase tracking-wider text-center py-0.5 shadow-md shadow-loss/20 select-none">
+          <div className="absolute top-0 left-0 size-24 overflow-hidden pointer-events-none z-0">
+            <div className="absolute top-[16px] -left-[28px] w-[110px] -rotate-45 bg-loss/12 text-loss/50 text-[8px] font-black uppercase tracking-wider text-center py-0.5 border-y border-loss/15 select-none">
               DD
             </div>
           </div>
         )}
 
-        <div className="space-y-4">
+        <div className="relative z-10 space-y-4">
           <div className="flex items-start justify-between gap-3">
             <Link
               to="/cuenta/$accountId"
