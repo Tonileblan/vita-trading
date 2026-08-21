@@ -48,8 +48,8 @@ export function DrawdownAlertButton({
       }}
       className={cn(
         "inline-flex items-center gap-1 font-bold border select-none transition-colors",
-        "border-loss/50 bg-loss/15 text-loss hover:bg-loss/25 hover:border-loss/70",
-        "animate-drawdown-corner shadow-xs cursor-help",
+        "border-loss/50 bg-loss/8 text-loss hover:bg-loss/15",
+        "animate-drawdown-border shadow-xs cursor-help",
         size === "sm" ? "rounded px-1.5 py-0.5 text-[10px]" : "rounded-md px-2 py-0.5 text-xs",
         className,
       )}
@@ -57,7 +57,7 @@ export function DrawdownAlertButton({
       aria-label={tooltipText}
     >
       <AlertTriangle
-        className={cn("shrink-0 animate-pulse", size === "sm" ? "size-3" : "size-3.5")}
+        className={cn("shrink-0", size === "sm" ? "size-3" : "size-3.5")}
       />
       <span>{label}</span>
     </button>

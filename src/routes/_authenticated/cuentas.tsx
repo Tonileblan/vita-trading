@@ -678,7 +678,7 @@ function AccountsPage() {
               className={cn(
                 "col-span-2 md:col-span-2 lg:col-span-1 rounded-xl p-3 flex flex-col justify-between min-h-[84px] space-y-1.5 transition-all duration-300",
                 isLowDrawdown
-                  ? "border border-loss/60 bg-loss/15 ring-1 ring-loss/30 animate-drawdown-corner shadow-xs"
+                  ? "border border-loss/50 bg-loss/8 animate-drawdown-border shadow-xs"
                   : "bg-muted/30 border border-border/70",
               )}
             >
@@ -692,7 +692,7 @@ function AccountsPage() {
                   <ShieldAlert
                     className={cn(
                       "size-3.5",
-                      isLowDrawdown ? "text-loss animate-pulse" : "text-muted-foreground",
+                      isLowDrawdown ? "text-loss" : "text-muted-foreground",
                     )}
                   />{" "}
                   DD
@@ -711,7 +711,7 @@ function AccountsPage() {
                 <div
                   className={cn(
                     "h-full rounded-full transition-all duration-300",
-                    isLowDrawdown ? "bg-loss animate-pulse" : "bg-profit",
+                    isLowDrawdown ? "bg-loss" : "bg-profit",
                   )}
                   style={{
                     width: `${Math.min(100, Math.max(0, (dd.remaining / (dd.limit || 1)) * 100))}%`,

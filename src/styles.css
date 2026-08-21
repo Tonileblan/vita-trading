@@ -191,36 +191,23 @@
   font-weight: 500;
 }
 
-/* Alerta de drawdown parpadeante suave */
-@keyframes drawdown-corner-pulse {
+/* Alerta de drawdown: parpadeo suave exclusivo de borde */
+@keyframes drawdown-border-pulse {
   0%, 100% {
-    opacity: 0.95;
-    filter: drop-shadow(0 0 6px oklch(0.55 0.22 25 / 0.8));
-    transform: scale(1);
+    border-color: var(--loss);
+    box-shadow: 0 0 0 1px var(--loss), 0 0 6px oklch(0.55 0.22 25 / 0.4);
   }
   50% {
-    opacity: 0.35;
-    filter: drop-shadow(0 0 1px oklch(0.55 0.22 25 / 0.15));
-    transform: scale(0.96);
+    border-color: oklch(0.55 0.22 25 / 0.25);
+    box-shadow: 0 0 0 0px transparent, 0 0 0px transparent;
   }
 }
 
-@keyframes drawdown-glow-pulse {
-  0%, 100% {
-    opacity: 0.75;
-    transform: scale(1);
-  }
-  50% {
-    opacity: 0.15;
-    transform: scale(0.85);
-  }
+@utility animate-drawdown-border {
+  animation: drawdown-border-pulse 1.8s ease-in-out infinite;
 }
 
 @utility animate-drawdown-corner {
-  animation: drawdown-corner-pulse 1.8s ease-in-out infinite;
-}
-
-@utility animate-drawdown-glow {
-  animation: drawdown-glow-pulse 1.8s ease-in-out infinite;
+  animation: drawdown-border-pulse 1.8s ease-in-out infinite;
 }
 
