@@ -527,30 +527,30 @@ function AccountsPage() {
     return (
       <article
         className={cn(
-          "group relative overflow-hidden rounded-2xl border border-border/80 bg-card p-4 sm:p-5 transition-all duration-200 hover:border-brand/40 hover:shadow-md",
+          "group relative overflow-hidden rounded-2xl border border-border/80 bg-card p-5 sm:p-6 transition-all duration-200 hover:border-brand/50 hover:shadow-md",
           isLowDrawdown && "border-loss/40 bg-loss/5 hover:border-loss/60 shadow-xs",
         )}
       >
-        <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-5">
-          {/* 1. IDENTIDAD Y DETALLES DE CUENTA */}
-          <div className="flex items-start sm:items-center gap-3.5 min-w-0 xl:w-[280px] shrink-0">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 lg:gap-6 items-center">
+          {/* 1. IDENTIDAD Y DETALLES DE CUENTA (lg:col-span-3) */}
+          <div className="lg:col-span-3 min-w-0 flex items-center gap-3.5">
             <div
               className={cn(
-                "flex size-11 shrink-0 items-center justify-center rounded-xl font-bold text-sm shadow-xs",
+                "flex size-12 shrink-0 items-center justify-center rounded-2xl font-bold text-sm shadow-xs",
                 acc.type === "funded"
-                  ? "bg-brand/10 text-brand border border-brand/20"
-                  : "bg-purple-500/10 text-purple-500 border border-purple-500/20",
+                  ? "bg-brand/10 text-brand border border-brand/25"
+                  : "bg-purple-500/10 text-purple-500 border border-purple-500/25",
               )}
             >
-              {acc.type === "funded" ? <Building2 className="size-5" /> : <Wallet className="size-5" />}
+              {acc.type === "funded" ? <Building2 className="size-6" /> : <Wallet className="size-6" />}
             </div>
 
-            <div className="min-w-0 flex-1">
+            <div className="min-w-0 flex-1 space-y-1">
               <div className="flex items-center gap-2 flex-wrap">
                 <Link
                   to="/cuenta/$accountId"
                   params={{ accountId: acc.id }}
-                  className="font-bold text-base text-foreground hover:text-brand transition-colors truncate"
+                  className="font-extrabold text-base sm:text-lg text-foreground hover:text-brand transition-colors truncate block"
                 >
                   {acc.name}
                 </Link>
@@ -564,66 +564,72 @@ function AccountsPage() {
                   />
                 )}
               </div>
-              <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1.5 font-medium">
-                <span>{acc.type === "funded" ? acc.firm || "Prop Firm" : acc.broker || "Broker"}</span>
+              <p className="text-xs text-muted-foreground font-medium flex items-center gap-1.5">
+                <span className="font-semibold text-foreground/80">
+                  {acc.type === "funded" ? acc.firm || "Prop Firm" : acc.broker || "Broker"}
+                </span>
                 <span>•</span>
                 <span className="font-mono">Inicial {formatCurrency(acc.initialBalance)}</span>
               </p>
             </div>
           </div>
 
-          {/* 2. MÉTRICAS FINANCIERAS PRINCIPALES */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 xl:w-[380px] shrink-0 rounded-xl bg-muted/30 border border-border/70 p-3 text-left sm:text-center">
-            <div>
-              <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider block">
-                Balance Actual
-              </span>
-              <span className="num text-sm sm:text-base font-bold font-mono text-foreground block mt-0.5">
-                {formatCurrency(balance)}
-              </span>
-            </div>
+          {/* 2. MÉTRICAS FINANCIERAS PRINCIPALES (lg:col-span-4) */}
+          <div className="lg:col-span-4 min-w-0 rounded-2xl bg-muted/40 border border-border/70 p-3.5">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-left sm:text-center items-center">
+              <div>
+                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">
+                  Balance Actual
+                </span>
+                <span className="num text-base font-black font-mono text-foreground block mt-0.5">
+                  {formatCurrency(balance)}
+                </span>
+              </div>
 
-            <div>
-              <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider block">
-                Resultado PnL
-              </span>
-              <span
-                className={cn(
-                  "num text-sm sm:text-base font-bold font-mono block mt-0.5",
-                  result >= 0 ? "text-profit" : "text-loss",
-                )}
-              >
-                {formatCurrency(result, true)}
-              </span>
-            </div>
+              <div>
+                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">
+                  Resultado PnL
+                </span>
+                <span
+                  className={cn(
+                    "num text-xs sm:text-sm font-bold font-mono px-2 py-0.5 rounded-lg inline-block mt-0.5",
+                    result >= 0
+                      ? "bg-profit/15 text-profit border border-profit/20"
+                      : "bg-loss/15 text-loss border border-loss/20",
+                  )}
+                >
+                  {formatCurrency(result, true)}
+                </span>
+              </div>
 
-            <div>
-              <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider block">
-                Win Rate
-              </span>
-              <span className="num text-sm sm:text-base font-bold font-mono text-foreground block mt-0.5">
-                {m.winRate.toFixed(1)}%
-              </span>
-            </div>
+              <div>
+                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">
+                  Win Rate
+                </span>
+                <span className="num text-base font-bold font-mono text-foreground block mt-0.5">
+                  {m.winRate.toFixed(1)}%
+                </span>
+              </div>
 
-            <div>
-              <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider block">
-                Operaciones
-              </span>
-              <span className="text-xs font-semibold text-muted-foreground block mt-1">
-                {m.total} trades · <span className="font-mono font-bold text-foreground">PF {Number.isFinite(m.profitFactor) ? m.profitFactor.toFixed(2) : "—"}</span>
-              </span>
+              <div>
+                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">
+                  Trades · PF
+                </span>
+                <span className="text-xs font-semibold text-muted-foreground block mt-1">
+                  {m.total} ops · <span className="font-mono font-bold text-foreground">PF {Number.isFinite(m.profitFactor) ? m.profitFactor.toFixed(2) : "—"}</span>
+                </span>
+              </div>
             </div>
           </div>
 
-          {/* 3. BARRAS DE PROGRESO (TARGET Y DRAWDOWN) */}
-          <div className="flex-1 flex flex-col sm:flex-row gap-3 min-w-0 xl:max-w-[420px]">
-            {/* Drawdown */}
-            {dd && (
-              <div className="flex-1 rounded-xl border border-border/60 bg-muted/20 p-2.5 space-y-1.5">
+          {/* 3. BARRAS DE PROGRESO Y CONTROL VISUAL (lg:col-span-3) */}
+          <div className="lg:col-span-3 min-w-0 space-y-2.5">
+            {/* Drawdown Gauge */}
+            {dd ? (
+              <div className="rounded-xl border border-border/70 bg-muted/30 p-2.5 space-y-1.5">
                 <div className="flex items-center justify-between text-xs">
-                  <span className="text-[11px] font-bold text-muted-foreground flex items-center gap-1">
-                    <ShieldAlert className="size-3 text-muted-foreground" /> Colchón DD
+                  <span className="text-[11px] font-bold text-muted-foreground flex items-center gap-1.5">
+                    <ShieldAlert className="size-3.5 text-muted-foreground" /> Colchón Drawdown
                   </span>
                   <span
                     className={cn(
@@ -634,7 +640,7 @@ function AccountsPage() {
                     {formatCurrency(dd.remaining)}
                   </span>
                 </div>
-                <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted/70">
+                <div className="h-2 w-full overflow-hidden rounded-full bg-muted/80">
                   <div
                     className={cn(
                       "h-full rounded-full transition-all",
@@ -650,20 +656,20 @@ function AccountsPage() {
                   <span>Límite {formatCurrency(dd.limit)}</span>
                 </div>
               </div>
-            )}
+            ) : null}
 
-            {/* Target */}
-            {target && (
-              <div className="flex-1 rounded-xl border border-border/60 bg-muted/20 p-2.5 space-y-1.5">
+            {/* Target Gauge */}
+            {target ? (
+              <div className="rounded-xl border border-border/70 bg-muted/30 p-2.5 space-y-1.5">
                 <div className="flex items-center justify-between text-xs">
-                  <span className="text-[11px] font-bold text-muted-foreground flex items-center gap-1">
-                    <TrendingUp className="size-3 text-sky-500" /> {acc.phase === "live" ? "Retiro" : "Target"}
+                  <span className="text-[11px] font-bold text-muted-foreground flex items-center gap-1.5">
+                    <TrendingUp className="size-3.5 text-sky-500" /> {acc.phase === "live" ? "Retiro" : "Target"}
                   </span>
                   <span className="num font-mono font-bold text-xs text-sky-600 dark:text-sky-400">
                     {Math.min(100, Math.max(0, target.pct)).toFixed(0)}%
                   </span>
                 </div>
-                <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted/70">
+                <div className="h-2 w-full overflow-hidden rounded-full bg-muted/80">
                   <div
                     className={cn(
                       "h-full rounded-full transition-all",
@@ -681,30 +687,40 @@ function AccountsPage() {
                   </span>
                 </div>
               </div>
+            ) : null}
+
+            {/* Si es cuenta personal sin target ni drawdown */}
+            {!dd && !target && (
+              <div className="rounded-xl border border-border/70 bg-muted/20 p-3 text-center">
+                <p className="text-xs font-medium text-muted-foreground">Cuenta Personal Activa</p>
+                <p className="text-[11px] text-muted-foreground mt-0.5">
+                  Rendimiento: <span className="font-bold text-foreground">{pnlPct >= 0 ? "+" : ""}{pnlPct.toFixed(2)}%</span>
+                </p>
+              </div>
             )}
           </div>
 
-          {/* 4. ACCIONES */}
-          <div className="flex items-center justify-end gap-2 shrink-0 pt-2 xl:pt-0 border-t xl:border-t-0 border-border/50">
+          {/* 4. ACCIONES (lg:col-span-2) */}
+          <div className="lg:col-span-2 min-w-0 flex items-center justify-start lg:justify-end gap-2.5 pt-3 lg:pt-0 border-t lg:border-t-0 border-border/60">
             <AccountDialog
               account={acc}
               trigger={
                 <Button
                   variant="outline"
                   size="sm"
-                  className="h-8 px-2.5 text-xs text-muted-foreground hover:text-foreground gap-1.5"
+                  className="h-9 px-3 rounded-xl text-xs font-semibold text-muted-foreground hover:text-foreground gap-1.5"
                   aria-label={`Editar ${acc.name}`}
                 >
                   <Pencil className="size-3.5" />
-                  <span className="hidden sm:inline">Editar</span>
+                  <span>Editar</span>
                 </Button>
               }
             />
 
             <Link to="/cuenta/$accountId" params={{ accountId: acc.id }}>
-              <Button size="sm" className="h-8 px-3 text-xs gap-1.5 font-semibold">
+              <Button size="sm" className="h-9 px-4 rounded-xl text-xs font-bold gap-1.5 shadow-xs">
                 <span>Ver cuenta</span>
-                <span className="text-xs">→</span>
+                <span className="text-sm">→</span>
               </Button>
             </Link>
           </div>
