@@ -152,24 +152,27 @@ function TradesPage() {
   const canEdit = !isSupervisedView || canEditOtherUsers;
 
   const accounts = useMemo(
-    () => (isSupervisedView ? (svData?.accounts ?? []) : journalStore.accounts),
+    () => (isSupervisedView ? (svData?.accounts ?? []) : (journalStore.accounts ?? [])),
     [isSupervisedView, svData?.accounts, journalStore.accounts],
   );
   const strategies = useMemo(
-    () => (isSupervisedView ? (svData?.strategies ?? []) : journalStore.strategies),
+    () => (isSupervisedView ? (svData?.strategies ?? []) : (journalStore.strategies ?? [])),
     [isSupervisedView, svData?.strategies, journalStore.strategies],
   );
   const allTrades = useMemo(
-    () => (isSupervisedView ? (svData?.trades ?? []) : journalStore.trades),
+    () => (isSupervisedView ? (svData?.trades ?? []) : (journalStore.trades ?? [])),
     [isSupervisedView, svData?.trades, journalStore.trades],
   );
-  const visibleTrades = isSupervisedView ? allTrades : journalStore.visibleTrades;
+  const visibleTrades = useMemo(
+    () => (isSupervisedView ? allTrades : (journalStore.visibleTrades ?? allTrades)),
+    [isSupervisedView, allTrades, journalStore.visibleTrades],
+  );
   const strategyPeriods = useMemo(
-    () => (isSupervisedView ? (svData?.strategyPeriods ?? []) : journalStore.strategyPeriods),
+    () => (isSupervisedView ? (svData?.strategyPeriods ?? []) : (journalStore.strategyPeriods ?? [])),
     [isSupervisedView, svData?.strategyPeriods, journalStore.strategyPeriods],
   );
   const selectedAccountIds = useMemo(
-    () => (isSupervisedView ? accounts.map((a) => a.id) : journalStore.selectedAccountIds),
+    () => (isSupervisedView ? accounts.map((a) => a.id) : (journalStore.selectedAccountIds ?? [])),
     [isSupervisedView, accounts, journalStore.selectedAccountIds],
   );
 

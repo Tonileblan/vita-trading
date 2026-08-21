@@ -462,40 +462,44 @@ function AccountDialog({
 }
 
 function AccountsPage() {
-  const { accounts, trades, withdrawals } = useJournal();
+  const { accounts = [], trades = [], withdrawals = [] } = useJournal();
   const [filterType, setFilterType] = useState<"all" | "funded" | "personal">("all");
 
-  const funded = useMemo(() => accounts.filter((a) => a.type === "funded"), [accounts]);
-  const personal = useMemo(() => accounts.filter((a) => a.type === "personal"), [accounts]);
+  const safeAccounts = accounts || [];
+  const safeTrades = trades || [];
+  const safeWithdrawals = withdrawals || [];
+
+  const funded = useMemo(() => safeAccounts.filter((a) => a.type === "funded"), [safeAccounts]);
+  const personal = useMemo(() => safeAccounts.filter((a) => a.type === "personal"), [safeAccounts]);
 
   const displayedAccounts = useMemo(() => {
     if (filterType === "funded") return funded;
     if (filterType === "personal") return personal;
-    return accounts;
-  }, [accounts, funded, personal, filterType]);
+    return safeAccounts;
+  }, [safeAccounts, funded, personal, filterType]);
 
-  const sumTotals = (list: typeof accounts) => {
-    const initial = list.reduce((s, a) => s + a.initialBalance, 0);
-    const current = list.reduce((s, a) => s + accountBalance(a, trades, withdrawals), 0);
+  const sumTotals = (list: typeof safeAccounts) => {
+    const initial = list.reduce((s, a) => s + (a.initialBalance || 0), 0);
+    const current = list.reduce((s, a) => s + accountBalance(a, safeTrades, safeWithdrawals), 0);
     const result = current - initial;
     const pnlPct = initial > 0 ? (result / initial) * 100 : 0;
     return { initial, current, result, pnlPct };
   };
 
-  const grandTotals = useMemo(() => sumTotals(accounts), [accounts, trades, withdrawals]);
-  const fundedTotals = useMemo(() => sumTotals(funded), [funded, trades, withdrawals]);
-  const personalTotals = useMemo(() => sumTotals(personal), [personal, trades, withdrawals]);
+  const grandTotals = useMemo(() => sumTotals(safeAccounts), [safeAccounts, safeTrades, safeWithdrawals]);
+  const fundedTotals = useMemo(() => sumTotals(funded), [funded, safeTrades, safeWithdrawals]);
+  const personalTotals = useMemo(() => sumTotals(personal), [personal, safeTrades, safeWithdrawals]);
 
   const liveFundedCount = funded.filter((a) => a.phase === "live").length;
   const evalFundedCount = funded.filter((a) => a.phase === "eval").length;
 
   const AccountCard = ({ acc }: { acc: Account }) => {
-    const accTrades = trades.filter((t) => t.accountId === acc.id);
+    const accTrades = safeTrades.filter((t) => t.accountId === acc.id);
     const m = computeMetrics(accTrades);
-    const result = accountResult(acc, trades, withdrawals);
-    const balance = accountBalance(acc, trades, withdrawals);
-    const dd = accountDrawdown(acc, trades, withdrawals);
-    const target = accountTarget(acc, trades, withdrawals);
+    const result = accountResult(acc, safeTrades, safeWithdrawals);
+    const balance = accountBalance(acc, safeTrades, safeWithdrawals);
+    const dd = accountDrawdown(acc, safeTrades, safeWithdrawals);
+    const target = accountTarget(acc, safeTrades, safeWithdrawals);
 
     const isLowDrawdown =
       acc.type === "funded" &&

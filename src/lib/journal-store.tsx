@@ -252,14 +252,24 @@ const EMPTY: JournalData = {
 
 const JOURNAL_DATA_CACHE_PREFIX = "vita-trading:cache:journal-data:";
 
+export function sanitizeJournalData(d?: Partial<JournalData> | null): JournalData {
+  return {
+    accounts: Array.isArray(d?.accounts) ? d.accounts : [],
+    strategies: Array.isArray(d?.strategies) ? d.strategies : [],
+    trades: Array.isArray(d?.trades) ? d.trades : [],
+    withdrawals: Array.isArray(d?.withdrawals) ? d.withdrawals : [],
+    strategyPeriods: Array.isArray(d?.strategyPeriods) ? d.strategyPeriods : [],
+  };
+}
+
 export function getLocalJournalDataCache(journalId: string): JournalData | null {
   if (typeof window === "undefined" || !journalId) return null;
   try {
     const raw = window.localStorage.getItem(JOURNAL_DATA_CACHE_PREFIX + journalId);
     if (!raw) return null;
     const parsed = JSON.parse(raw);
-    if (parsed && typeof parsed === "object" && Array.isArray(parsed.accounts)) {
-      return parsed as JournalData;
+    if (parsed && typeof parsed === "object") {
+      return sanitizeJournalData(parsed);
     }
     return null;
   } catch {
@@ -270,7 +280,7 @@ export function getLocalJournalDataCache(journalId: string): JournalData | null 
 export function setLocalJournalDataCache(journalId: string, data: JournalData) {
   if (typeof window === "undefined" || !journalId) return;
   try {
-    window.localStorage.setItem(JOURNAL_DATA_CACHE_PREFIX + journalId, JSON.stringify(data));
+    window.localStorage.setItem(JOURNAL_DATA_CACHE_PREFIX + journalId, JSON.stringify(sanitizeJournalData(data)));
   } catch {
     // Ignore storage quota
   }
@@ -607,49 +617,58 @@ export function JournalProvider({ children }: { children: ReactNode }) {
     return { journal_id: activeJournalId, user_id: userData.user?.id };
   }, [activeJournalId]);
 
-  const validAccountIds = useMemo(() => new Set(data.accounts.map((a) => a.id)), [data.accounts]);
+  const rawData = data ?? getLocalJournalDataCache(activeJournalId) ?? EMPTY;
+  const safeData = useMemo(() => sanitizeJournalData(rawData), [rawData]);
+
+  const validAccountIds = useMemo(
+    () => new Set(safeData.accounts.map((a) => a.id)),
+    [safeData.accounts],
+  );
 
   const selectedAccountIds = useMemo(() => {
-    if (!manualSelection) return data.accounts.map((a) => a.id);
+    if (!manualSelection) return safeData.accounts.map((a) => a.id);
     const valid = manualSelection.filter((id) => validAccountIds.has(id));
-    return valid.length > 0 ? valid : data.accounts.map((a) => a.id);
-  }, [manualSelection, data.accounts, validAccountIds]);
+    return valid.length > 0 ? valid : safeData.accounts.map((a) => a.id);
+  }, [manualSelection, safeData.accounts, validAccountIds]);
 
   const value = useMemo<JournalState>(() => {
     const selected = new Set(selectedAccountIds);
     const visibleTrades =
-      data.accounts.length === 0 ||
+      safeData.accounts.length === 0 ||
       selectedAccountIds.length === 0 ||
-      selectedAccountIds.length === data.accounts.length
-        ? data.trades
-        : data.trades.filter((t) => !t.accountId || selected.has(t.accountId));
-    const importBatches = groupImportBatches(data.trades);
+      selectedAccountIds.length === safeData.accounts.length
+        ? safeData.trades
+        : safeData.trades.filter((t) => !t.accountId || selected.has(t.accountId));
+    const importBatches = groupImportBatches(safeData.trades);
 
     /** Borra operaciones de inmediato en caché y persiste en Supabase. */
     const deleteTradeIds = async (ids: string[]) => {
       if (ids.length === 0) return;
       const idSet = new Set(ids);
       const deltas = new Map<string, number>();
-      for (const t of data.trades) {
+      for (const t of safeData.trades) {
         if (!idSet.has(t.id) || !t.accountId) continue;
         deltas.set(t.accountId, (deltas.get(t.accountId) ?? 0) - t.pnl);
       }
 
       // 1. Actualización optimista inmediata (0ms)
-      updateCache((old) => ({
-        ...old,
-        trades: old.trades.filter((t) => !idSet.has(t.id)),
-        accounts: old.accounts.map((a) => {
-          const delta = deltas.get(a.id);
-          return delta ? { ...a, currentBalance: a.currentBalance + delta } : a;
-        }),
-      }));
+      updateCache((old) => {
+        const safeOld = sanitizeJournalData(old);
+        return {
+          ...safeOld,
+          trades: safeOld.trades.filter((t) => !idSet.has(t.id)),
+          accounts: safeOld.accounts.map((a) => {
+            const delta = deltas.get(a.id);
+            return delta ? { ...a, currentBalance: a.currentBalance + delta } : a;
+          }),
+        };
+      });
 
       // 2. Persistencia en base de datos
       try {
         const deletePromise = supabase.from("trades").delete().in("id", ids);
         const balancePromise =
-          deltas.size > 0 ? applyBalanceDeltas(data.accounts, deltas) : Promise.resolve();
+          deltas.size > 0 ? applyBalanceDeltas(safeData.accounts, deltas) : Promise.resolve();
 
         const [{ error }] = await Promise.all([deletePromise, balancePromise]);
         if (error) throw error;
@@ -660,10 +679,10 @@ export function JournalProvider({ children }: { children: ReactNode }) {
     };
 
     return {
-      ...data,
+      ...safeData,
       // Solo los retiros aprobados afectan al capital y a las métricas.
-      withdrawals: data.withdrawals.filter((w) => w.status === "approved"),
-      allWithdrawals: data.withdrawals,
+      withdrawals: (safeData.withdrawals || []).filter((w) => w && w.status === "approved"),
+      allWithdrawals: safeData.withdrawals || [],
       loading: isLoading,
       visibleTrades,
       selectedAccountIds,
@@ -671,7 +690,7 @@ export function JournalProvider({ children }: { children: ReactNode }) {
       setActiveJournalId,
       toggleAccount: (id) =>
         setManualSelection((prev) => {
-          const current = prev ?? data.accounts.map((a) => a.id);
+          const current = prev ?? safeData.accounts.map((a) => a.id);
           return current.includes(id) ? current.filter((x) => x !== id) : [...current, id];
         }),
       selectAll: () => setManualSelection(null),
@@ -1064,7 +1083,7 @@ export function JournalProvider({ children }: { children: ReactNode }) {
           if (error) throw error;
 
           // Actualizar directamente todas las operaciones de esta cuenta dentro del tramo de fechas
-          const matchingTradeIds = data.trades
+          const matchingTradeIds = safeData.trades
             .filter((t) => {
               if (t.accountId !== period.accountId) return false;
               const day = tradeDayKey(t);
@@ -1084,19 +1103,19 @@ export function JournalProvider({ children }: { children: ReactNode }) {
         }
       },
       removeStrategyPeriod: async (id) => {
-        const targetPeriod = data.strategyPeriods.find((p) => p.id === id);
+        const targetPeriod = safeData.strategyPeriods.find((p) => p.id === id);
 
         if (targetPeriod) {
           const start = targetPeriod.startDate;
           const end = targetPeriod.endDate;
           const defaultStratId =
-            data.accounts.find((a) => a.id === targetPeriod.accountId)?.strategyId ?? "";
+            safeData.accounts.find((a) => a.id === targetPeriod.accountId)?.strategyId ?? "";
 
           // Actualización optimista inmediata
           updateCache((old) => ({
             ...old,
-            strategyPeriods: old.strategyPeriods.filter((p) => p.id !== id),
-            trades: old.trades.map((t) => {
+            strategyPeriods: (old.strategyPeriods || []).filter((p) => p.id !== id),
+            trades: (old.trades || []).map((t) => {
               if (t.accountId !== targetPeriod.accountId) return t;
               const day = tradeDayKey(t);
               if (!day || day < start || (end && day > end)) return t;
@@ -1111,7 +1130,7 @@ export function JournalProvider({ children }: { children: ReactNode }) {
             const { error } = await supabase.from("account_strategy_periods").delete().eq("id", id);
             if (error) throw error;
 
-            const matchingTradeIds = data.trades
+            const matchingTradeIds = safeData.trades
               .filter((t) => {
                 if (t.accountId !== targetPeriod.accountId) return false;
                 const day = tradeDayKey(t);
@@ -1158,7 +1177,7 @@ export function JournalProvider({ children }: { children: ReactNode }) {
         }
 
         // 2. Fallback manual: buscar estrategias del admin o compartidas
-        const existing = new Set(data.strategies.map((s) => s.name));
+        const existing = new Set(safeData.strategies.map((s) => s.name));
         let sourceStrategies: Strategy[] = [];
 
         try {
