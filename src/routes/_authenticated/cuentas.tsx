@@ -529,12 +529,7 @@ function AccountsPage() {
       : acc.initialBalance - (acc.drawdownLimit || 0);
 
     return (
-      <article
-        className={cn(
-          "group relative rounded-2xl border border-border/80 bg-card p-4 sm:p-5 transition-all duration-200 hover:border-brand/40 hover:shadow-md space-y-3.5",
-          isLowDrawdown && "border-loss/40 bg-loss/5 hover:border-loss/60 shadow-xs",
-        )}
-      >
+      <article className="group relative rounded-2xl border border-border/80 bg-card p-4 sm:p-5 transition-all duration-200 hover:border-brand/40 hover:shadow-md space-y-3.5">
         {/* CABECERA: IDENTIDAD DE CUENTA + ACCIONES */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-border/60">
           <div className="flex items-center gap-3 min-w-0">
@@ -679,15 +674,33 @@ function AccountsPage() {
 
           {/* 5. DRAWDOWN GAUGE */}
           {dd ? (
-            <div className="col-span-2 md:col-span-2 lg:col-span-1 rounded-xl bg-muted/30 border border-border/70 p-3 flex flex-col justify-between min-h-[84px] space-y-1.5">
+            <div
+              className={cn(
+                "col-span-2 md:col-span-2 lg:col-span-1 rounded-xl p-3 flex flex-col justify-between min-h-[84px] space-y-1.5 transition-all duration-300",
+                isLowDrawdown
+                  ? "border border-loss/60 bg-loss/15 ring-1 ring-loss/30 animate-drawdown-corner shadow-xs"
+                  : "bg-muted/30 border border-border/70",
+              )}
+            >
               <div className="flex items-center justify-between text-xs">
-                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1">
-                  <ShieldAlert className="size-3.5 text-muted-foreground" /> DD
+                <span
+                  className={cn(
+                    "text-[10px] font-bold uppercase tracking-wider flex items-center gap-1",
+                    isLowDrawdown ? "text-loss" : "text-muted-foreground",
+                  )}
+                >
+                  <ShieldAlert
+                    className={cn(
+                      "size-3.5",
+                      isLowDrawdown ? "text-loss animate-pulse" : "text-muted-foreground",
+                    )}
+                  />{" "}
+                  DD
                 </span>
                 <span
                   className={cn(
                     "num font-mono font-bold text-xs sm:text-sm",
-                    dd.remaining <= 600 || dd.breached ? "text-loss" : "text-profit",
+                    isLowDrawdown ? "text-loss font-black" : "text-profit",
                   )}
                 >
                   {formatCurrency(dd.remaining)}
@@ -698,7 +711,7 @@ function AccountsPage() {
                 <div
                   className={cn(
                     "h-full rounded-full transition-all duration-300",
-                    dd.breached || dd.remaining <= 600 ? "bg-loss" : "bg-profit",
+                    isLowDrawdown ? "bg-loss animate-pulse" : "bg-profit",
                   )}
                   style={{
                     width: `${Math.min(100, Math.max(0, (dd.remaining / (dd.limit || 1)) * 100))}%`,
@@ -784,12 +797,7 @@ function AccountsPage() {
       (dd.remaining < 600 || dd.breached);
 
     return (
-      <article
-        className={cn(
-          "panel flex flex-col justify-between p-5 transition-all hover:border-foreground/20 rounded-2xl",
-          isLowDrawdown && "border-loss/40 hover:border-loss/60 shadow-xs",
-        )}
-      >
+      <article className="panel flex flex-col justify-between p-5 transition-all hover:border-foreground/20 rounded-2xl">
         <div className="space-y-4">
           <div className="flex items-start justify-between gap-3">
             <Link
