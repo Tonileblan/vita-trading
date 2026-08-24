@@ -23,6 +23,10 @@ import {
   Sliders,
   Maximize2,
   Minimize2,
+  KeyRound,
+  ExternalLink,
+  CheckCircle2,
+  Settings2,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -32,6 +36,14 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -54,6 +66,7 @@ import {
   type AuditorContextData,
 } from "@/lib/ai-auditor-context";
 import { runAiAuditorServerFn } from "@/lib/ai-auditor.functions";
+import { testAiConnectionServerFn } from "@/lib/ai-test.functions";
 import {
   getActiveAiProvider,
   getAiApiKey,
@@ -244,27 +257,63 @@ export function AiAuditorPanel({
   const [userApiKey, setUserApiKey] = useState(() => getAiApiKey(providerId));
   const userModel = getAiModel(providerId);
 
-  const [showInlineKeySetup, setShowInlineKeySetup] = useState(false);
-  const [inlineKeyInput, setInlineKeyInput] = useState("");
+  const [configModalOpen, setConfigModalOpen] = useState(false);
+  const [keyInput, setKeyInput] = useState("");
+  const [testingKey, setTestingKey] = useState(false);
+  const testAiConnectionFn = useServerFn(testAiConnectionServerFn);
 
   useEffect(() => {
     setUserApiKey(getAiApiKey(providerId));
   }, [providerId, open]);
 
-  const handleSaveInlineKey = () => {
-    if (!inlineKeyInput.trim()) {
-      toast.error("Introduce una clave API válida");
+  const handleOpenConfigModal = () => {
+    setKeyInput(userApiKey || "");
+    setConfigModalOpen(true);
+  };
+
+  const handleTestAndSaveKey = async () => {
+    const raw = keyInput.trim();
+    if (!raw) {
+      toast.error("Introduce una clave de API válida");
       return;
     }
-    setLocalGoogleAiKey(inlineKeyInput.trim());
-    setAiApiKey(inlineKeyInput.trim(), "google");
-    setUserApiKey(inlineKeyInput.trim());
-    setShowInlineKeySetup(false);
-    toast.success("Clave de Google Gemini guardada y sincronizada en todos tus dispositivos");
+    setTestingKey(true);
+    try {
+      const res = await testAiConnectionFn({
+        data: {
+          provider: "google",
+          apiKey: raw,
+        },
+      });
+      if (res.success) {
+        setLocalGoogleAiKey(raw);
+        setAiApiKey(raw, "google");
+        setUserApiKey(raw);
+        toast.success(res.message || "¡Clave de Google AI conectada correctamente! 🎉");
+        setConfigModalOpen(false);
+      } else {
+        toast.error(res.message || "No se pudo validar la clave de Google AI. Comprueba que sea correcta.");
+      }
+    } catch (err: any) {
+      toast.error(err?.message || "Error al verificar la clave de Google AI");
+    } finally {
+      setTestingKey(false);
+    }
   };
 
   // Ejecutar Auditoría
   const handleRunAudit = async () => {
+    if (!userApiKey) {
+      handleOpenConfigModal();
+      toast.info("Introduce tu API de Google desde aquí para activar el Auditor", {
+        action: {
+          label: "Configurar",
+          onClick: () => handleOpenConfigModal(),
+        },
+      });
+      return;
+    }
+
     setLoading(true);
     try {
       const res = await runAuditorFn({
@@ -281,7 +330,17 @@ export function AiAuditorPanel({
         toast.success("Auditoría de sesión completada");
       }
     } catch (err: any) {
-      toast.error(err?.message || "Error al ejecutar la auditoría");
+      const msg = err?.message || "";
+      if (msg.includes("clave") || msg.includes("API") || msg.includes("Google") || msg.includes("proveedor")) {
+        toast.error("Introduce tu API de Google desde aquí para activar la IA", {
+          action: {
+            label: "Configurar",
+            onClick: () => handleOpenConfigModal(),
+          },
+        });
+      } else {
+        toast.error(msg || "Error al ejecutar la auditoría");
+      }
     } finally {
       setLoading(false);
     }
@@ -289,6 +348,17 @@ export function AiAuditorPanel({
 
   // Generar Plan de Trading
   const handleGeneratePlan = async () => {
+    if (!userApiKey) {
+      handleOpenConfigModal();
+      toast.info("Introduce tu API de Google desde aquí para activar el Auditor", {
+        action: {
+          label: "Configurar",
+          onClick: () => handleOpenConfigModal(),
+        },
+      });
+      return;
+    }
+
     setLoading(true);
     try {
       const strat = strategies.find((s) => s.id === selectedStrategyId);
@@ -327,7 +397,17 @@ export function AiAuditorPanel({
         toast.success("Plan generado correctamente");
       }
     } catch (err: any) {
-      toast.error(err?.message || "Error al generar el plan de trading");
+      const msg = err?.message || "";
+      if (msg.includes("clave") || msg.includes("API") || msg.includes("Google") || msg.includes("proveedor")) {
+        toast.error("Introduce tu API de Google desde aquí para activar la IA", {
+          action: {
+            label: "Configurar",
+            onClick: () => handleOpenConfigModal(),
+          },
+        });
+      } else {
+        toast.error(msg || "Error al generar el plan de trading");
+      }
     } finally {
       setLoading(false);
     }
@@ -337,6 +417,17 @@ export function AiAuditorPanel({
   const handleSendMessage = async (customText?: string) => {
     const text = (customText || inputQuery).trim();
     if (!text || loading) return;
+
+    if (!userApiKey) {
+      handleOpenConfigModal();
+      toast.info("Introduce tu API de Google desde aquí para activar el Auditor", {
+        action: {
+          label: "Configurar",
+          onClick: () => handleOpenConfigModal(),
+        },
+      });
+      return;
+    }
 
     const userMsg: Message = {
       id: String(Date.now()),
@@ -377,7 +468,17 @@ export function AiAuditorPanel({
         setChatMessages((prev) => [...prev, assistantMsg]);
       }
     } catch (err: any) {
-      toast.error(err?.message || "Error al obtener respuesta de la IA");
+      const msg = err?.message || "";
+      if (msg.includes("clave") || msg.includes("API") || msg.includes("Google") || msg.includes("proveedor")) {
+        toast.error("Introduce tu API de Google desde aquí para activar la IA", {
+          action: {
+            label: "Configurar",
+            onClick: () => handleOpenConfigModal(),
+          },
+        });
+      } else {
+        toast.error(msg || "Error al obtener respuesta de la IA");
+      }
     } finally {
       setLoading(false);
     }
@@ -426,15 +527,54 @@ export function AiAuditorPanel({
               </div>
             </div>
 
-            <Badge
+            <Button
               variant="outline"
-              className="text-[10px] uppercase font-bold tracking-wider text-brand border-brand/35 bg-brand/5 gap-1 shrink-0"
+              size="sm"
+              onClick={handleOpenConfigModal}
+              className={cn(
+                "h-7 text-[10px] uppercase font-bold tracking-wider gap-1 shrink-0 px-2.5",
+                userApiKey
+                  ? "border-profit/40 text-profit bg-profit/5 hover:bg-profit/10"
+                  : "border-brand/40 text-brand bg-brand/5 hover:bg-brand/10",
+              )}
+              title="Configurar clave de IA de Google"
             >
-              <Sparkles className="size-2.5 text-brand" />
-              {userApiKey ? `Clave Propia (${providerConfig.name})` : "IA Integrada Activa"}
-            </Badge>
+              {userApiKey ? (
+                <>
+                  <CheckCircle2 className="size-3 text-profit" /> IA Conectada
+                </>
+              ) : (
+                <>
+                  <KeyRound className="size-3 text-brand" /> Configurar IA
+                </>
+              )}
+            </Button>
           </div>
         </SheetHeader>
+
+        {/* Banner llamativo para introducir la clave si aún no está conectada */}
+        {!userApiKey && (
+          <div className="mx-4 mt-3 rounded-xl border border-brand/40 bg-brand/10 p-3 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 shadow-xs">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-brand text-primary-foreground">
+                <Sparkles className="size-3.5" />
+              </div>
+              <div className="min-w-0">
+                <p className="font-bold text-foreground">Introduce tu API de Google desde aquí</p>
+                <p className="text-[11px] text-muted-foreground">
+                  Configura tu clave gratuita para activar auditorías, diagnósticos y planes
+                </p>
+              </div>
+            </div>
+            <Button
+              size="sm"
+              onClick={handleOpenConfigModal}
+              className="h-7 px-3 text-xs font-bold shrink-0 gap-1.5 shadow-xs"
+            >
+              <KeyRound className="size-3" /> Configurar IA
+            </Button>
+          </div>
+        )}
 
         {/* CONTENIDO PRINCIPAL CON PESTAÑAS */}
         <Tabs
@@ -880,6 +1020,87 @@ export function AiAuditorPanel({
           </TabsContent>
         </Tabs>
       </SheetContent>
+
+      {/* CUADRO / MODAL PARA CONFIGURAR LA IA DE GOOGLE */}
+      <Dialog open={configModalOpen} onOpenChange={setConfigModalOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 font-display text-lg">
+              <KeyRound className="size-5 text-brand" /> Configurar IA de Google
+            </DialogTitle>
+            <DialogDescription className="text-xs leading-relaxed">
+              Introduce tu API Key gratuita de Google AI Studio para activar el Auditor IA, diagnósticos y asesoramiento cuantitativo.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            {/* Paso 1: Enlace para obtener la clave */}
+            <div className="rounded-xl border border-brand/30 bg-brand/5 p-3.5 text-xs space-y-1.5">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-foreground">1. ¿No tienes tu clave de Google aún?</span>
+                <a
+                  href="https://aistudio.google.com/app/apikey"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 font-bold text-brand hover:underline"
+                >
+                  Obtener en Google AI Studio <ExternalLink className="size-3" />
+                </a>
+              </div>
+              <p className="text-[11px] text-muted-foreground leading-normal">
+                Es 100% oficial y gratuita. Inicia sesión con tu cuenta de Google y pulsa en <em>"Create API key"</em>.
+              </p>
+            </div>
+
+            {/* Paso 2: Campo para pegar la clave */}
+            <div className="space-y-1.5">
+              <Label htmlFor="google-ai-key-input" className="text-xs font-semibold">
+                2. Pega aquí tu API Key de Google (AIzaSy...)
+              </Label>
+              <Input
+                id="google-ai-key-input"
+                type="password"
+                placeholder="AIzaSy..."
+                value={keyInput}
+                onChange={(e) => setKeyInput(e.target.value)}
+                className="font-mono text-xs h-9"
+              />
+              <p className="text-[10px] text-muted-foreground">
+                🔒 Tu clave se almacena de forma segura en tu navegador y se usa únicamente para tus consultas de trading.
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={testingKey}
+              onClick={() => setConfigModalOpen(false)}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              disabled={testingKey || !keyInput.trim()}
+              onClick={handleTestAndSaveKey}
+              className="gap-1.5"
+            >
+              {testingKey ? (
+                <>
+                  <RefreshCw className="size-3.5 animate-spin" /> Verificando...
+                </>
+              ) : (
+                <>
+                  <CheckCircle2 className="size-3.5" /> Guardar y Probar Clave
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Sheet>
   );
 }
