@@ -113,46 +113,54 @@ ${modeInstruction}`;
 
     let replyText = "";
 
-    // 1. GOOGLE AI (GEMINI)
+    // 1. GOOGLE AI (GEMINI DIRECTO)
     if (provider === "google" && (userKey || serverGeminiKey)) {
-      const key = userKey || serverGeminiKey!;
-      const targetModel = model || "gemini-2.0-flash";
+      try {
+        const key = userKey || serverGeminiKey!;
+        const targetModel = model || "gemini-2.0-flash";
 
-      const contents: any[] = [];
-      // Si hay historial de chat, incluirlo
-      if (history.length > 0) {
-        contents.push({
-          role: "user",
-          parts: [{ text: `CONTEXTO DE LA CUENTA Y ESTRATEGIAS:\n${contextText}` }],
-        });
-        contents.push({
-          role: "model",
-          parts: [{ text: "Entendido. He cargado todas tus estrategias, cuentas y reglas operativas." }],
-        });
-        for (const msg of history) {
+        const contents: any[] = [];
+        if (history.length > 0) {
           contents.push({
-            role: msg.role === "assistant" ? "model" : "user",
-            parts: [{ text: msg.content }],
+            role: "user",
+            parts: [{ text: `CONTEXTO DE LA CUENTA Y ESTRATEGIAS:\n${contextText}` }],
+          });
+          contents.push({
+            role: "model",
+            parts: [{ text: "Entendido. He cargado todas tus estrategias, cuentas y reglas operativas." }],
+          });
+          for (const msg of history) {
+            contents.push({
+              role: msg.role === "assistant" ? "model" : "user",
+              parts: [{ text: msg.content }],
+            });
+          }
+          contents.push({
+            role: "user",
+            parts: [{ text: modeInstruction }],
+          });
+        } else {
+          contents.push({
+            role: "user",
+            parts: [{ text: fullPrompt }],
           });
         }
-        contents.push({
-          role: "user",
-          parts: [{ text: modeInstruction }],
-        });
-      } else {
-        contents.push({
-          role: "user",
-          parts: [{ text: fullPrompt }],
-        });
-      }
 
-      const { text } = await executeGeminiGenerateContent(key, targetModel, contents, {
-        temperature: 0.3,
-      });
-      replyText = text;
+        const { text } = await executeGeminiGenerateContent(key, targetModel, contents, {
+          temperature: 0.3,
+        });
+        replyText = text;
+      } catch (err: any) {
+        if (!userKey && (lovableKey || groqKey)) {
+          console.warn("Fallo en Gemini directo, intentando fallback de servidor...", err);
+        } else {
+          throw err;
+        }
+      }
     }
+
     // 2. GROQ CLOUD
-    else if (provider === "groq" && (userKey || groqKey)) {
+    if (!replyText && provider === "groq" && (userKey || groqKey)) {
       const key = userKey || groqKey!;
       const targetModel = model || "llama-3.3-70b-versatile";
 
@@ -182,8 +190,9 @@ ${modeInstruction}`;
       const dataJson = await res.json();
       replyText = dataJson.choices?.[0]?.message?.content || "";
     }
+
     // 3. OPENROUTER
-    else if (provider === "openrouter" && (userKey || openrouterKey)) {
+    if (!replyText && provider === "openrouter" && (userKey || openrouterKey)) {
       const key = userKey || openrouterKey!;
       const targetModel = model || "google/gemini-2.0-flash-exp:free";
 
@@ -215,8 +224,9 @@ ${modeInstruction}`;
       const dataJson = await res.json();
       replyText = dataJson.choices?.[0]?.message?.content || "";
     }
+
     // 4. DEEPSEEK
-    else if (provider === "deepseek" && (userKey || deepseekKey)) {
+    if (!replyText && provider === "deepseek" && (userKey || deepseekKey)) {
       const key = userKey || deepseekKey!;
       const targetModel = model || "deepseek-chat";
 
@@ -246,8 +256,9 @@ ${modeInstruction}`;
       const dataJson = await res.json();
       replyText = dataJson.choices?.[0]?.message?.content || "";
     }
-    // 5. FALLBACK: GATEWAY
-    else if (lovableKey) {
+
+    // 5. UNIVERSAL GATEWAY FALLBACK (LOVABLE AI GATEWAY - GEMINI 2.5 FLASH)
+    if (!replyText && (lovableKey || serverGeminiKey)) {
       const messages: any[] = [{ role: "system", content: `${AUDITOR_SYSTEM_PROMPT}\n\n${contextText}` }];
       for (const msg of history) {
         messages.push({ role: msg.role, content: msg.content });
@@ -257,7 +268,7 @@ ${modeInstruction}`;
       const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
         method: "POST",
         headers: {
-          "Authorization": `Bearer ${lovableKey}`,
+          "Authorization": `Bearer ${lovableKey || serverGeminiKey}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
@@ -267,15 +278,18 @@ ${modeInstruction}`;
         }),
       });
 
-      if (!res.ok) {
+      if (res.ok) {
+        const dataJson = await res.json();
+        replyText = dataJson.choices?.[0]?.message?.content || "";
+      } else {
         const err = await res.json().catch(() => null);
-        throw new Error((err as any)?.error?.message || `Error de IA (${res.status})`);
+        throw new Error((err as any)?.error?.message || `Error en el servicio de IA (${res.status})`);
       }
-      const dataJson = await res.json();
-      replyText = dataJson.choices?.[0]?.message?.content || "";
-    } else {
+    }
+
+    if (!replyText) {
       throw new Error(
-        "No se encontró una clave de IA configurada. Ve a tu perfil para conectar Google AI, Groq, OpenRouter o DeepSeek.",
+        "El servicio de IA no está disponible temporalmente. Si tienes una clave personal de Google AI Studio, Groq u OpenRouter puedes añadirla en tu perfil.",
       );
     }
 
