@@ -86,7 +86,6 @@ export const extractTradesFromImages = createServerFn({ method: "POST" })
       process.env["GEMINI_API_KEY"] ||
       process.env["GOOGLE_AI_API_KEY"] ||
       process.env["GOOGLE_API_KEY"];
-    const lovableKey = process.env["LOVABLE_API_KEY"];
 
     const symbolHint = data.symbols?.length
       ? `Activos habituales del usuario: ${data.symbols.join(", ")}, MGC (Oro), MNQ (Nasdaq), NQ, ES, MES.`
@@ -100,7 +99,7 @@ export const extractTradesFromImages = createServerFn({ method: "POST" })
 
     let content = "{}";
 
-    // 1. GOOGLE AI (GEMINI) DIRECTO
+    // GOOGLE AI (GEMINI DIRECTO OFICIAL)
     if (userApiKey || serverGeminiKey) {
       const key = userApiKey || serverGeminiKey!;
       const geminiModel = data.model || "gemini-2.0-flash";
@@ -133,38 +132,9 @@ export const extractTradesFromImages = createServerFn({ method: "POST" })
       );
 
       content = text;
-    }
-    // 2. FALLBACK: GATEWAY DE RESPALDO
-    else if (lovableKey) {
-      const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-        method: "POST",
-        headers: { "content-type": "application/json", Authorization: `Bearer ${lovableKey}` },
-        body: JSON.stringify({
-          model: "google/gemini-2.5-flash",
-          messages: [
-            { role: "system", content: `${PROMPT}\n${hints}` },
-            {
-              role: "user",
-              content: [
-                { type: "text", text: "Extrae todas las operaciones de estas capturas (omitiendo cuentas SIM)." },
-                ...data.images.map((url) => ({ type: "image_url", image_url: { url } })),
-              ],
-            },
-          ],
-          response_format: { type: "json_object" },
-        }),
-      });
-
-      if (!res.ok) {
-        const err = await res.json().catch(() => null);
-        throw new Error((err as any)?.error?.message || `Error de IA (${res.status})`);
-      }
-
-      const json = (await res.json()) as { choices?: { message?: { content?: string } }[] };
-      content = json.choices?.[0]?.message?.content ?? "{}";
     } else {
       throw new Error(
-        "Para usar funciones de IA conecta Google AI aquí (en la pestaña de tu Perfil).",
+        "Para usar el reconocimiento de imágenes de Trade Vision conecta tu clave de Google AI Studio en la pestaña de tu Perfil.",
       );
     }
 

@@ -70,7 +70,6 @@ export const runAiAuditorServerFn = createServerFn({ method: "POST" })
     const groqKey = process.env["GROQ_API_KEY"];
     const openrouterKey = process.env["OPENROUTER_API_KEY"];
     const deepseekKey = process.env["DEEPSEEK_API_KEY"];
-    const lovableKey = process.env["LOVABLE_API_KEY"];
 
     // Construir la petición según el modo
     let modeInstruction = "";
@@ -113,183 +112,160 @@ ${modeInstruction}`;
 
     let replyText = "";
 
-    // 1. GOOGLE AI (GEMINI DIRECTO)
-    if (provider === "google" && (userKey || serverGeminiKey)) {
-      try {
-        const key = userKey || serverGeminiKey!;
-        const targetModel = model || "gemini-2.0-flash";
-
-        const contents: any[] = [];
-        if (history.length > 0) {
-          contents.push({
-            role: "user",
-            parts: [{ text: `CONTEXTO DE LA CUENTA Y ESTRATEGIAS:\n${contextText}` }],
-          });
-          contents.push({
-            role: "model",
-            parts: [{ text: "Entendido. He cargado todas tus estrategias, cuentas y reglas operativas." }],
-          });
-          for (const msg of history) {
+    // 1. GOOGLE AI (GEMINI DIRECTO OFICIAL)
+    if (provider === "google" || (!userKey && serverGeminiKey)) {
+      const activeGeminiKey = userKey && provider === "google" ? userKey : serverGeminiKey;
+      if (activeGeminiKey) {
+        try {
+          const targetModel = model || "gemini-2.0-flash";
+          const contents: any[] = [];
+          if (history.length > 0) {
             contents.push({
-              role: msg.role === "assistant" ? "model" : "user",
-              parts: [{ text: msg.content }],
+              role: "user",
+              parts: [{ text: `CONTEXTO DE LA CUENTA Y ESTRATEGIAS:\n${contextText}` }],
+            });
+            contents.push({
+              role: "model",
+              parts: [{ text: "Entendido. He cargado todas tus estrategias, cuentas y reglas operativas." }],
+            });
+            for (const msg of history) {
+              contents.push({
+                role: msg.role === "assistant" ? "model" : "user",
+                parts: [{ text: msg.content }],
+              });
+            }
+            contents.push({
+              role: "user",
+              parts: [{ text: modeInstruction }],
+            });
+          } else {
+            contents.push({
+              role: "user",
+              parts: [{ text: fullPrompt }],
             });
           }
-          contents.push({
-            role: "user",
-            parts: [{ text: modeInstruction }],
-          });
-        } else {
-          contents.push({
-            role: "user",
-            parts: [{ text: fullPrompt }],
-          });
-        }
 
-        const { text } = await executeGeminiGenerateContent(key, targetModel, contents, {
-          temperature: 0.3,
+          const { text } = await executeGeminiGenerateContent(activeGeminiKey, targetModel, contents, {
+            temperature: 0.3,
+          });
+          replyText = text;
+        } catch (err: any) {
+          if (!userKey && (groqKey || openrouterKey || deepseekKey)) {
+            console.warn("Fallo en Gemini oficial del servidor, probando fallback a Groq/OpenRouter:", err?.message);
+          } else {
+            throw err;
+          }
+        }
+      }
+    }
+
+    // 2. GROQ CLOUD OFICIAL
+    if (!replyText && (provider === "groq" || (!userKey && groqKey))) {
+      const activeGroqKey = userKey && provider === "groq" ? userKey : groqKey;
+      if (activeGroqKey) {
+        const targetModel = model || "llama-3.3-70b-versatile";
+        const messages: any[] = [{ role: "system", content: `${AUDITOR_SYSTEM_PROMPT}\n\n${contextText}` }];
+        for (const msg of history) {
+          messages.push({ role: msg.role, content: msg.content });
+        }
+        messages.push({ role: "user", content: modeInstruction });
+
+        const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${activeGroqKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            model: targetModel,
+            messages,
+            temperature: 0.3,
+          }),
         });
-        replyText = text;
-      } catch (err: any) {
-        if (!userKey && (lovableKey || groqKey)) {
-          console.warn("Fallo en Gemini directo, intentando fallback de servidor...", err);
-        } else {
-          throw err;
+
+        if (res.ok) {
+          const dataJson = await res.json();
+          replyText = dataJson.choices?.[0]?.message?.content || "";
+        } else if (userKey && provider === "groq") {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err?.error?.message || `Error Groq (${res.status})`);
         }
       }
     }
 
-    // 2. GROQ CLOUD
-    if (!replyText && provider === "groq" && (userKey || groqKey)) {
-      const key = userKey || groqKey!;
-      const targetModel = model || "llama-3.3-70b-versatile";
+    // 3. OPENROUTER OFICIAL
+    if (!replyText && (provider === "openrouter" || (!userKey && openrouterKey))) {
+      const activeOpenRouterKey = userKey && provider === "openrouter" ? userKey : openrouterKey;
+      if (activeOpenRouterKey) {
+        const targetModel = model || "google/gemini-2.0-flash-exp:free";
+        const messages: any[] = [{ role: "system", content: `${AUDITOR_SYSTEM_PROMPT}\n\n${contextText}` }];
+        for (const msg of history) {
+          messages.push({ role: msg.role, content: msg.content });
+        }
+        messages.push({ role: "user", content: modeInstruction });
 
-      const messages: any[] = [{ role: "system", content: `${AUDITOR_SYSTEM_PROMPT}\n\n${contextText}` }];
-      for (const msg of history) {
-        messages.push({ role: msg.role, content: msg.content });
+        const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${activeOpenRouterKey}`,
+            "Content-Type": "application/json",
+            "HTTP-Referer": "https://vita-trading.app",
+            "X-Title": "Vita-Trading Auditor IA",
+          },
+          body: JSON.stringify({
+            model: targetModel,
+            messages,
+            temperature: 0.3,
+          }),
+        });
+
+        if (res.ok) {
+          const dataJson = await res.json();
+          replyText = dataJson.choices?.[0]?.message?.content || "";
+        } else if (userKey && provider === "openrouter") {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err?.error?.message || `Error OpenRouter (${res.status})`);
+        }
       }
-      messages.push({ role: "user", content: modeInstruction });
-
-      const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${key}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: targetModel,
-          messages,
-          temperature: 0.3,
-        }),
-      });
-
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err?.error?.message || `Error Groq (${res.status})`);
-      }
-      const dataJson = await res.json();
-      replyText = dataJson.choices?.[0]?.message?.content || "";
     }
 
-    // 3. OPENROUTER
-    if (!replyText && provider === "openrouter" && (userKey || openrouterKey)) {
-      const key = userKey || openrouterKey!;
-      const targetModel = model || "google/gemini-2.0-flash-exp:free";
+    // 4. DEEPSEEK OFICIAL
+    if (!replyText && (provider === "deepseek" || (!userKey && deepseekKey))) {
+      const activeDeepSeekKey = userKey && provider === "deepseek" ? userKey : deepseekKey;
+      if (activeDeepSeekKey) {
+        const targetModel = model || "deepseek-chat";
+        const messages: any[] = [{ role: "system", content: `${AUDITOR_SYSTEM_PROMPT}\n\n${contextText}` }];
+        for (const msg of history) {
+          messages.push({ role: msg.role, content: msg.content });
+        }
+        messages.push({ role: "user", content: modeInstruction });
 
-      const messages: any[] = [{ role: "system", content: `${AUDITOR_SYSTEM_PROMPT}\n\n${contextText}` }];
-      for (const msg of history) {
-        messages.push({ role: msg.role, content: msg.content });
-      }
-      messages.push({ role: "user", content: modeInstruction });
+        const res = await fetch("https://api.deepseek.com/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${activeDeepSeekKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            model: targetModel,
+            messages,
+            temperature: 0.3,
+          }),
+        });
 
-      const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${key}`,
-          "Content-Type": "application/json",
-          "HTTP-Referer": "https://vita-trading.app",
-          "X-Title": "Vita-Trading Auditor IA",
-        },
-        body: JSON.stringify({
-          model: targetModel,
-          messages,
-          temperature: 0.3,
-        }),
-      });
-
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err?.error?.message || `Error OpenRouter (${res.status})`);
-      }
-      const dataJson = await res.json();
-      replyText = dataJson.choices?.[0]?.message?.content || "";
-    }
-
-    // 4. DEEPSEEK
-    if (!replyText && provider === "deepseek" && (userKey || deepseekKey)) {
-      const key = userKey || deepseekKey!;
-      const targetModel = model || "deepseek-chat";
-
-      const messages: any[] = [{ role: "system", content: `${AUDITOR_SYSTEM_PROMPT}\n\n${contextText}` }];
-      for (const msg of history) {
-        messages.push({ role: msg.role, content: msg.content });
-      }
-      messages.push({ role: "user", content: modeInstruction });
-
-      const res = await fetch("https://api.deepseek.com/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${key}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: targetModel,
-          messages,
-          temperature: 0.3,
-        }),
-      });
-
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err?.error?.message || `Error DeepSeek (${res.status})`);
-      }
-      const dataJson = await res.json();
-      replyText = dataJson.choices?.[0]?.message?.content || "";
-    }
-
-    // 5. UNIVERSAL GATEWAY FALLBACK (LOVABLE AI GATEWAY - GEMINI 2.5 FLASH)
-    if (!replyText && (lovableKey || serverGeminiKey)) {
-      const messages: any[] = [{ role: "system", content: `${AUDITOR_SYSTEM_PROMPT}\n\n${contextText}` }];
-      for (const msg of history) {
-        messages.push({ role: msg.role, content: msg.content });
-      }
-      messages.push({ role: "user", content: modeInstruction });
-
-      const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${lovableKey || serverGeminiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "google/gemini-2.5-flash",
-          messages,
-          temperature: 0.3,
-        }),
-      });
-
-      if (res.ok) {
-        const dataJson = await res.json();
-        replyText = dataJson.choices?.[0]?.message?.content || "";
-      } else {
-        const err = await res.json().catch(() => null);
-        throw new Error((err as any)?.error?.message || `Error en el servicio de IA (${res.status})`);
+        if (res.ok) {
+          const dataJson = await res.json();
+          replyText = dataJson.choices?.[0]?.message?.content || "";
+        } else if (userKey && provider === "deepseek") {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err?.error?.message || `Error DeepSeek (${res.status})`);
+        }
       }
     }
 
     if (!replyText) {
       throw new Error(
-        "El servicio de IA no está disponible temporalmente. Si tienes una clave personal de Google AI Studio, Groq u OpenRouter puedes añadirla en tu perfil.",
+        "No se pudo conectar con el proveedor de IA. Puedes configurar tu clave propia de Google AI Studio, Groq, OpenRouter o DeepSeek en tu perfil.",
       );
     }
 
