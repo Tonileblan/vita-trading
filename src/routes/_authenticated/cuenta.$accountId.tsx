@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { AlertTriangle, ArrowLeft, Building2, ExternalLink, Trash2, User } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Building2, ExternalLink, LayoutDashboard, Trash2, User } from "lucide-react";
 import { toast } from "sonner";
 import { AccountCostCard } from "@/components/account-cost-card";
 import { AppShell } from "@/components/app-shell";
@@ -199,12 +199,22 @@ function AccountDetail() {
         )
       }
       actions={
-        <Link
-          to="/cuentas"
-          className="inline-flex items-center gap-2 text-sm font-semibold text-brand hover:underline"
-        >
-          <ArrowLeft className="size-4" /> Cuentas
-        </Link>
+        <div className="flex items-center gap-3">
+          <Link
+            to="/panel"
+            search={{ account: account.id }}
+            className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-border bg-card hover:border-brand/40 hover:text-brand transition-colors"
+            title={`Ver métricas de ${account.name} en el Resumen`}
+          >
+            <LayoutDashboard className="size-3.5" /> Ver en Resumen
+          </Link>
+          <Link
+            to="/cuentas"
+            className="inline-flex items-center gap-1.5 text-sm font-semibold text-brand hover:underline"
+          >
+            <ArrowLeft className="size-4" /> Cuentas
+          </Link>
+        </div>
       }
     >
       <div className="space-y-5">

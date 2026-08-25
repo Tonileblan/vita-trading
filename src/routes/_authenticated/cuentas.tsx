@@ -34,6 +34,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { useJournal } from "@/lib/journal-store";
 import {
   accountBalance,
@@ -575,16 +581,29 @@ function AccountsPage() {
         {/* CABECERA: IDENTIDAD DE CUENTA + ACCIONES */}
         <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-border/60">
           <div className="flex items-center gap-3 min-w-0">
-            <div
-              className={cn(
-                "flex size-10 shrink-0 items-center justify-center rounded-xl font-bold text-sm shadow-xs bg-card",
-                acc.type === "funded"
-                  ? "text-brand border border-brand/35"
-                  : "text-purple-500 border border-purple-500/35",
-              )}
-            >
-              {acc.type === "funded" ? <Building2 className="size-5" /> : <Wallet className="size-5" />}
-            </div>
+            <TooltipProvider delayDuration={120}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Link
+                    to="/panel"
+                    search={{ account: acc.id }}
+                    className={cn(
+                      "flex size-10 shrink-0 items-center justify-center rounded-xl font-bold text-sm shadow-xs bg-card transition-all duration-200 hover:scale-105 hover:shadow-md cursor-pointer",
+                      acc.type === "funded"
+                        ? "text-brand border border-brand/35 hover:bg-brand/15 hover:border-brand"
+                        : "text-purple-500 border border-purple-500/35 hover:bg-purple-500/15 hover:border-purple-500",
+                    )}
+                    aria-label={`Ver resumen de ${acc.name}`}
+                    title={`Ver resumen de ${acc.name}`}
+                  >
+                    {acc.type === "funded" ? <Building2 className="size-5" /> : <Wallet className="size-5" />}
+                  </Link>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="font-semibold text-xs py-1.5 px-3">
+                  Ver resumen de {acc.name}
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
 
             <div className="min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
@@ -873,50 +892,76 @@ function AccountsPage() {
 
         <div className="relative z-10 space-y-4">
           <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0 flex-1">
-              <Link
-                to="/cuenta/$accountId"
-                params={{ accountId: acc.id }}
-                className="group/title block"
-              >
-                <div className="flex items-center gap-2 flex-wrap">
-                  <h3 className="text-base font-bold group-hover/title:text-brand transition-colors break-words">
-                    {acc.name}
-                  </h3>
-                  {acc.type === "funded" && <PhaseChip phase={acc.phase ?? "eval"} />}
-                  {isLowDrawdown && (
-                    <DrawdownAlertButton
-                      remaining={dd?.remaining ?? 0}
-                      isFunded={acc.type === "funded" && Boolean(acc.drawdownLimit)}
-                      breached={dd?.breached ?? false}
-                      threshold={600}
-                    />
-                  )}
-                </div>
-              </Link>
-              <p className="text-xs text-muted-foreground mt-1 font-medium flex items-center gap-1 flex-wrap">
-                {(() => {
-                  const firmName = acc.type === "funded" ? acc.firm || "Prop firm" : acc.broker || "Cuenta personal";
-                  const firmUrl = getFirmWebsite(firmName);
-                  if (firmUrl) {
-                    return (
-                      <a
-                        href={firmUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="hover:text-brand hover:underline inline-flex items-center gap-0.5 transition-colors cursor-pointer text-foreground/80 font-medium"
-                        title={`Visitar web oficial de ${firmName}`}
-                      >
-                        <span>{firmName}</span>
-                        <ExternalLink className="size-2.5 opacity-60 ml-0.5" />
-                      </a>
-                    );
-                  }
-                  return <span>{firmName}</span>;
-                })()}
-                <span>—</span>
-                <span>{formatCurrency(acc.initialBalance)}</span>
-              </p>
+            <div className="flex items-start gap-2.5 min-w-0 flex-1">
+              <TooltipProvider delayDuration={120}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Link
+                      to="/panel"
+                      search={{ account: acc.id }}
+                      className={cn(
+                        "flex size-9 shrink-0 items-center justify-center rounded-xl font-bold text-xs shadow-xs bg-card transition-all duration-200 hover:scale-105 hover:shadow-md cursor-pointer mt-0.5",
+                        acc.type === "funded"
+                          ? "text-brand border border-brand/35 hover:bg-brand/15 hover:border-brand"
+                          : "text-purple-500 border border-purple-500/35 hover:bg-purple-500/15 hover:border-purple-500",
+                      )}
+                      aria-label={`Ver resumen de ${acc.name}`}
+                      title={`Ver resumen de ${acc.name}`}
+                    >
+                      {acc.type === "funded" ? <Building2 className="size-4" /> : <Wallet className="size-4" />}
+                    </Link>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="font-semibold text-xs py-1.5 px-3">
+                    Ver resumen de {acc.name}
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+
+              <div className="min-w-0 flex-1">
+                <Link
+                  to="/cuenta/$accountId"
+                  params={{ accountId: acc.id }}
+                  className="group/title block"
+                >
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h3 className="text-base font-bold group-hover/title:text-brand transition-colors break-words">
+                      {acc.name}
+                    </h3>
+                    {acc.type === "funded" && <PhaseChip phase={acc.phase ?? "eval"} />}
+                    {isLowDrawdown && (
+                      <DrawdownAlertButton
+                        remaining={dd?.remaining ?? 0}
+                        isFunded={acc.type === "funded" && Boolean(acc.drawdownLimit)}
+                        breached={dd?.breached ?? false}
+                        threshold={600}
+                      />
+                    )}
+                  </div>
+                </Link>
+                <p className="text-xs text-muted-foreground mt-1 font-medium flex items-center gap-1 flex-wrap">
+                  {(() => {
+                    const firmName = acc.type === "funded" ? acc.firm || "Prop firm" : acc.broker || "Cuenta personal";
+                    const firmUrl = getFirmWebsite(firmName);
+                    if (firmUrl) {
+                      return (
+                        <a
+                          href={firmUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="hover:text-brand hover:underline inline-flex items-center gap-0.5 transition-colors cursor-pointer text-foreground/80 font-medium"
+                          title={`Visitar web oficial de ${firmName}`}
+                        >
+                          <span>{firmName}</span>
+                          <ExternalLink className="size-2.5 opacity-60 ml-0.5" />
+                        </a>
+                      );
+                    }
+                    return <span>{firmName}</span>;
+                  })()}
+                  <span>—</span>
+                  <span>{formatCurrency(acc.initialBalance)}</span>
+                </p>
+              </div>
             </div>
 
             <div className="flex flex-col items-end gap-1 shrink-0">

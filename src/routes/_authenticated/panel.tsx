@@ -50,6 +50,10 @@ import { tradeDayKey } from "@/lib/emotions";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/panel")({
+  validateSearch: (search: Record<string, unknown>) => ({
+    account: typeof search["account"] === "string" ? (search["account"] as string) : undefined,
+    filter: typeof search["filter"] === "string" ? (search["filter"] as string) : undefined,
+  }),
   head: () => ({
     meta: [
       { title: "Resumen — Vita-Trading" },
@@ -185,11 +189,20 @@ function Overview() {
     [isSupervisedView, accounts, journalStore.selectedAccountIds],
   );
 
+  const searchParams = Route.useSearch();
   const [range, setRange] = useState<RangeKey>("all");
   const [customRange, setCustomRange] = useState<DateRange>({ from: undefined, to: undefined });
   const [scope, setScope] = useState<Scope>("all");
   // Unified filter: "all" | account.id | `strategy:${strategyId}`
-  const [filter, setFilter] = useState<string>("all");
+  const [filter, setFilter] = useState<string>(() => searchParams.account || searchParams.filter || "all");
+
+  useEffect(() => {
+    if (searchParams.account) {
+      setFilter(searchParams.account);
+    } else if (searchParams.filter) {
+      setFilter(searchParams.filter);
+    }
+  }, [searchParams.account, searchParams.filter]);
 
   const isStrategy = filter.startsWith("strategy:");
   const accountFilter = isStrategy ? "all" : filter;
