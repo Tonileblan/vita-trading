@@ -11,9 +11,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 
 export const Route = createFileRoute("/auth")({
-  validateSearch: (s: Record<string, unknown>) => ({
-    next: typeof s['next'] === "string" ? (s['next'] as string) : undefined,
-    verified: s['verified'] === "true" || s['verified'] === true,
+  validateSearch: (s: Record<string, unknown>): { next?: string; verified?: boolean } => ({
+    ...(typeof s['next'] === "string" ? { next: s['next'] as string } : {}),
+    ...(s['verified'] === "true" || s['verified'] === true ? { verified: true } : {}),
   }),
   head: () => ({
     meta: [
