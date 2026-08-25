@@ -607,13 +607,24 @@ function AccountsPage() {
 
             <div className="min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
-                <Link
-                  to="/cuenta/$accountId"
-                  params={{ accountId: acc.id }}
-                  className="font-extrabold text-base sm:text-lg text-foreground hover:text-brand transition-colors truncate"
-                >
-                  {acc.name}
-                </Link>
+                <TooltipProvider delayDuration={120}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Link
+                        to="/cuenta/$accountId"
+                        params={{ accountId: acc.id }}
+                        className="font-extrabold text-base sm:text-lg text-foreground hover:text-brand transition-colors truncate"
+                        title="Ver cuenta"
+                        aria-label={`Ver cuenta ${acc.name}`}
+                      >
+                        {acc.name}
+                      </Link>
+                    </TooltipTrigger>
+                    <TooltipContent side="top" className="font-semibold text-xs py-1.5 px-3">
+                      Ver cuenta
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
                 {acc.type === "funded" && <PhaseChip phase={acc.phase ?? "eval"} />}
                 {isLowDrawdown && (
                   <DrawdownAlertButton
@@ -668,13 +679,6 @@ function AccountsPage() {
                 </Button>
               }
             />
-
-            <Link to="/cuenta/$accountId" params={{ accountId: acc.id }}>
-              <Button size="sm" variant="outline" className="h-8 px-3 text-xs font-bold gap-1 rounded-lg border-brand/40 text-brand hover:bg-brand/10">
-                <span>Ver cuenta</span>
-                <span className="text-xs">→</span>
-              </Button>
-            </Link>
           </div>
         </div>
 
@@ -918,26 +922,37 @@ function AccountsPage() {
               </TooltipProvider>
 
               <div className="min-w-0 flex-1">
-                <Link
-                  to="/cuenta/$accountId"
-                  params={{ accountId: acc.id }}
-                  className="group/title block"
-                >
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <h3 className="text-base font-bold group-hover/title:text-brand transition-colors break-words">
-                      {acc.name}
-                    </h3>
-                    {acc.type === "funded" && <PhaseChip phase={acc.phase ?? "eval"} />}
-                    {isLowDrawdown && (
-                      <DrawdownAlertButton
-                        remaining={dd?.remaining ?? 0}
-                        isFunded={acc.type === "funded" && Boolean(acc.drawdownLimit)}
-                        breached={dd?.breached ?? false}
-                        threshold={600}
-                      />
-                    )}
-                  </div>
-                </Link>
+                <TooltipProvider delayDuration={120}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Link
+                        to="/cuenta/$accountId"
+                        params={{ accountId: acc.id }}
+                        className="group/title block"
+                        title="Ver cuenta"
+                        aria-label={`Ver cuenta ${acc.name}`}
+                      >
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h3 className="text-base font-bold group-hover/title:text-brand transition-colors break-words">
+                            {acc.name}
+                          </h3>
+                          {acc.type === "funded" && <PhaseChip phase={acc.phase ?? "eval"} />}
+                          {isLowDrawdown && (
+                            <DrawdownAlertButton
+                              remaining={dd?.remaining ?? 0}
+                              isFunded={acc.type === "funded" && Boolean(acc.drawdownLimit)}
+                              breached={dd?.breached ?? false}
+                              threshold={600}
+                            />
+                          )}
+                        </div>
+                      </Link>
+                    </TooltipTrigger>
+                    <TooltipContent side="top" className="font-semibold text-xs py-1.5 px-3">
+                      Ver cuenta
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
                 <p className="text-xs text-muted-foreground mt-1 font-medium flex items-center gap-1 flex-wrap">
                   {(() => {
                     const firmName = acc.type === "funded" ? acc.firm || "Prop firm" : acc.broker || "Cuenta personal";
@@ -994,14 +1009,19 @@ function AccountsPage() {
           {/* 3 Metric Grid */}
           <div className="grid grid-cols-3 gap-2 rounded-xl border border-border/80 bg-card p-2.5 text-center shadow-xs">
             <div>
-              <p className="text-[11px] text-muted-foreground font-medium">Inicial</p>
-              <p className="num text-xs font-bold font-mono text-foreground">
-                {formatCurrency(acc.initialBalance)}
-              </p>
+              <p className="text-[11px] text-muted-foreground font-medium">Balance</p>
+              <p className="num text-xs font-bold font-mono text-foreground">{formatCurrency(balance)}</p>
             </div>
             <div>
-              <p className="text-[11px] text-muted-foreground font-medium">Actual</p>
-              <p className="num text-xs font-bold font-mono text-foreground">{formatCurrency(balance)}</p>
+              <p className="text-[11px] text-muted-foreground font-medium">Resultado</p>
+              <p
+                className={cn(
+                  "num text-xs font-bold font-mono",
+                  result >= 0 ? "text-profit" : "text-loss",
+                )}
+              >
+                {formatCurrency(result, true)}
+              </p>
             </div>
             <div>
               <p className="text-[11px] text-muted-foreground font-medium">Win Rate</p>
@@ -1024,13 +1044,9 @@ function AccountsPage() {
               {Number.isFinite(m.profitFactor) ? m.profitFactor.toFixed(2) : "—"}
             </strong>
           </span>
-          <Link
-            to="/cuenta/$accountId"
-            params={{ accountId: acc.id }}
-            className="font-bold text-brand hover:underline"
-          >
-            Ver cuenta →
-          </Link>
+          <span className="text-[11px] text-muted-foreground">
+            {m.wins}W · {m.losses}L
+          </span>
         </div>
       </article>
     );
