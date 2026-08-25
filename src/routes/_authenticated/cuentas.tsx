@@ -593,14 +593,14 @@ function AccountsPage() {
                         ? "text-brand border border-brand/35 hover:bg-brand/15 hover:border-brand"
                         : "text-purple-500 border border-purple-500/35 hover:bg-purple-500/15 hover:border-purple-500",
                     )}
-                    aria-label={`Ver resumen de ${acc.name}`}
-                    title={`Ver resumen de ${acc.name}`}
+                    aria-label="Métricas"
+                    title="Métricas"
                   >
                     {acc.type === "funded" ? <Building2 className="size-5" /> : <Wallet className="size-5" />}
                   </Link>
                 </TooltipTrigger>
                 <TooltipContent side="top" className="font-semibold text-xs py-1.5 px-3">
-                  Ver resumen de {acc.name}
+                  Métricas
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
@@ -905,14 +905,14 @@ function AccountsPage() {
                           ? "text-brand border border-brand/35 hover:bg-brand/15 hover:border-brand"
                           : "text-purple-500 border border-purple-500/35 hover:bg-purple-500/15 hover:border-purple-500",
                       )}
-                      aria-label={`Ver resumen de ${acc.name}`}
-                      title={`Ver resumen de ${acc.name}`}
+                      aria-label="Métricas"
+                      title="Métricas"
                     >
                       {acc.type === "funded" ? <Building2 className="size-4" /> : <Wallet className="size-4" />}
                     </Link>
                   </TooltipTrigger>
                   <TooltipContent side="top" className="font-semibold text-xs py-1.5 px-3">
-                    Ver resumen de {acc.name}
+                    Métricas
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
