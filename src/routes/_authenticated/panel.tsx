@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import {
@@ -50,9 +50,9 @@ import { tradeDayKey } from "@/lib/emotions";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/panel")({
-  validateSearch: (search: Record<string, unknown>) => ({
-    account: typeof search["account"] === "string" ? (search["account"] as string) : undefined,
-    filter: typeof search["filter"] === "string" ? (search["filter"] as string) : undefined,
+  validateSearch: (search: Record<string, unknown>): { account?: string; filter?: string } => ({
+    ...(typeof search["account"] === "string" ? { account: search["account"] as string } : {}),
+    ...(typeof search["filter"] === "string" ? { filter: search["filter"] as string } : {}),
   }),
   head: () => ({
     meta: [
