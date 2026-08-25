@@ -459,7 +459,7 @@ function FuncionesPage() {
                   <Link to="/">Inicio</Link>
                 </Button>
                 <Button asChild size="sm" variant="outline">
-                  <Link to="/auth" search={{ next: undefined }}>Entrar</Link>
+                  <Link to="/auth" search={{}}>Entrar</Link>
                 </Button>
               </>
             )}
@@ -664,10 +664,10 @@ function FuncionesPage() {
             ) : (
               <>
                 <Button asChild size="lg">
-                  <Link to="/auth" search={{ next: undefined }}>Crear cuenta gratis</Link>
+                  <Link to="/auth" search={{}}>Crear cuenta gratis</Link>
                 </Button>
                 <Button asChild size="lg" variant="outline">
-                  <Link to="/auth" search={{ next: undefined }}>Iniciar sesión</Link>
+                  <Link to="/auth" search={{}}>Iniciar sesión</Link>
                 </Button>
               </>
             )}
