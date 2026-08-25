@@ -70,7 +70,7 @@ function Landing() {
               <Link to="/funciones">Funciones</Link>
             </Button>
             <Button asChild size="sm" variant="outline">
-              <Link to="/auth" search={{ next: undefined }}>Entrar</Link>
+              <Link to="/auth" search={{}}>Entrar</Link>
             </Button>
           </div>
         </div>
@@ -88,10 +88,10 @@ function Landing() {
         </p>
         <div className="mt-8 flex flex-wrap gap-3">
           <Button asChild size="lg">
-            <Link to="/auth" search={{ next: undefined }}>Crear cuenta gratis</Link>
+            <Link to="/auth" search={{}}>Crear cuenta gratis</Link>
           </Button>
           <Button asChild size="lg" variant="outline">
-            <Link to="/auth" search={{ next: undefined }}>Ya tengo cuenta</Link>
+            <Link to="/auth" search={{}}>Ya tengo cuenta</Link>
           </Button>
         </div>
       </section>

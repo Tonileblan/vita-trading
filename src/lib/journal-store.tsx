@@ -423,11 +423,11 @@ export async function fetchJournalData(journalId: string): Promise<JournalData> 
 
     // Auto-migrar en la base de datos cualquier operación que tuviera el símbolo GCM
     const legacyGcmTrades = tradeRows.filter((r) => {
-      const s = String(r.symbol || "").toUpperCase().trim();
+      const s = String(r["symbol"] || "").toUpperCase().trim();
       return s === "GCM" || s.startsWith("GCM") || s === "GC" || s === "XAUUSD";
     });
     if (legacyGcmTrades.length > 0) {
-      const gcmIds = legacyGcmTrades.map((t) => t.id).filter(Boolean);
+      const gcmIds = legacyGcmTrades.map((t) => String(t["id"] ?? "")).filter(Boolean);
       if (gcmIds.length > 0) {
         supabase.from("trades").update({ symbol: "MGC" } as never).in("id", gcmIds).then();
       }
