@@ -85,7 +85,7 @@ export function AppShell({
   bareHeader,
 }: {
   title: ReactNode;
-  subtitle?: React.ReactNode;
+  subtitle?: ReactNode;
   actions?: ReactNode;
   children: ReactNode;
   showAccountPanel?: boolean;
