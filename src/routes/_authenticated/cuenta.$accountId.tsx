@@ -203,10 +203,10 @@ function AccountDetail() {
           <Link
             to="/panel"
             search={{ account: account.id }}
-            className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-border bg-card hover:border-brand/40 hover:text-brand transition-colors"
-            title={`Ver métricas de ${account.name} en el Resumen`}
+            className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-border bg-card hover:border-brand/40 hover:text-brand transition-colors shadow-xs"
+            title={`Ver métricas de ${account.name}`}
           >
-            <LayoutDashboard className="size-3.5" /> Ver en Resumen
+            <LayoutDashboard className="size-3.5" /> Métricas
           </Link>
           <Link
             to="/cuentas"
