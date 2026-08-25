@@ -67,7 +67,7 @@ function UserMenu() {
         <DropdownMenuItem
           onSelect={async () => {
             await signOut();
-            navigate({ to: "/auth", replace: true, search: { next: undefined } });
+            navigate({ to: "/auth", replace: true, search: {} });
           }}
         >
           <LogOut className="size-4" /> Cerrar sesión
