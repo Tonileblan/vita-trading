@@ -556,14 +556,14 @@ export function accountDrawdown(
     hasDailyLimit,
     ...(hasDailyLimit
       ? {
-          dailyLimit,
-          startOfDayBalance,
-          dailyFloor,
-          dailyUsed,
-          dailyRemaining,
-          dailyPct,
-          dailyHealthPct,
-          dailyBreached,
+          dailyLimit: dailyLimit!,
+          startOfDayBalance: startOfDayBalance!,
+          dailyFloor: dailyFloor!,
+          dailyUsed: dailyUsed!,
+          dailyRemaining: dailyRemaining!,
+          dailyPct: dailyPct!,
+          dailyHealthPct: dailyHealthPct!,
+          dailyBreached: dailyBreached!,
         }
       : {}),
   };
