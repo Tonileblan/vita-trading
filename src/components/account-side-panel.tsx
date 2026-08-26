@@ -21,16 +21,20 @@ export function AccountSidePanel() {
   const sortedAccounts = useMemo(() => {
     return [...accounts].sort((a, b) => {
       const ddA =
-        a.type === "funded" && Boolean(a.drawdownLimit)
+        a.type === "funded" && Boolean(a.maxLossLimit ?? a.drawdownLimit ?? a.dailyLossLimit)
           ? accountDrawdown(a, trades, withdrawals)
           : null;
       const ddB =
-        b.type === "funded" && Boolean(b.drawdownLimit)
+        b.type === "funded" && Boolean(b.maxLossLimit ?? b.drawdownLimit ?? b.dailyLossLimit)
           ? accountDrawdown(b, trades, withdrawals)
           : null;
 
-      const isAlertA = Boolean(ddA && (ddA.remaining < 600 || ddA.breached));
-      const isAlertB = Boolean(ddB && (ddB.remaining < 600 || ddB.breached));
+      const isAlertA = Boolean(
+        ddA && (ddA.remaining < 600 || ddA.breached || (ddA.hasDailyLimit && ((ddA.dailyRemaining ?? 9999) < 300 || ddA.dailyBreached))),
+      );
+      const isAlertB = Boolean(
+        ddB && (ddB.remaining < 600 || ddB.breached || (ddB.hasDailyLimit && ((ddB.dailyRemaining ?? 9999) < 300 || ddB.dailyBreached))),
+      );
 
       if (isAlertA && !isAlertB) return -1;
       if (!isAlertA && isAlertB) return 1;
@@ -64,9 +68,9 @@ export function AccountSidePanel() {
           const dd = accountDrawdown(acc, trades, withdrawals);
           const isLowDrawdown =
             acc.type === "funded" &&
-            Boolean(acc.drawdownLimit) &&
+            Boolean(acc.maxLossLimit ?? acc.drawdownLimit ?? acc.dailyLossLimit) &&
             dd !== null &&
-            (dd.remaining < 600 || dd.breached);
+            (dd.remaining < 600 || dd.breached || (dd.hasDailyLimit && ((dd.dailyRemaining ?? 9999) < 300 || dd.dailyBreached)));
 
           return (
             <button
@@ -94,7 +98,7 @@ export function AccountSidePanel() {
                   <DrawdownAlertButton
                     size="sm"
                     remaining={dd?.remaining ?? 0}
-                    isFunded={acc.type === "funded" && Boolean(acc.drawdownLimit)}
+                    isFunded={acc.type === "funded" && Boolean(acc.maxLossLimit ?? acc.drawdownLimit ?? acc.dailyLossLimit)}
                     breached={dd?.breached ?? false}
                     threshold={600}
                   />

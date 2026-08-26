@@ -137,8 +137,11 @@ function AccountDialog({
   const [initial, setInitial] = useState(String(account?.initialBalance ?? 50000));
   const [current, setCurrent] = useState(String(account?.currentBalance ?? 50000));
 
-  const [dd, setDd] = useState(String(account?.drawdownLimit ?? 2500));
-  const [ddType, setDdType] = useState<DrawdownType>(account?.drawdownType ?? "static");
+  const [maxLoss, setMaxLoss] = useState(String(account?.maxLossLimit ?? account?.drawdownLimit ?? 2500));
+  const [dailyLoss, setDailyLoss] = useState(account?.dailyLossLimit != null ? String(account.dailyLossLimit) : "");
+  const [highWatermark, setHighWatermark] = useState(String(account?.highWatermark ?? account?.initialBalance ?? 50000));
+  const [startOfDay, setStartOfDay] = useState(String(account?.startOfDayBalance ?? account?.initialBalance ?? 50000));
+  const [ddType, setDdType] = useState<DrawdownType>(account?.drawdownType ?? "trailing");
   const [phase, setPhase] = useState<AccountPhase>(account?.phase ?? "eval");
   const [target, setTarget] = useState(account?.profitTarget ? String(account.profitTarget) : "");
 
@@ -152,8 +155,11 @@ function AccountDialog({
       setInitial(String(account.initialBalance));
       setCurrent(String(account.currentBalance));
 
-      setDd(String(account.drawdownLimit ?? 0));
-      setDdType(account.drawdownType ?? "static");
+      setMaxLoss(String(account.maxLossLimit ?? account.drawdownLimit ?? 2500));
+      setDailyLoss(account.dailyLossLimit != null ? String(account.dailyLossLimit) : "");
+      setHighWatermark(String(account.highWatermark ?? account.initialBalance));
+      setStartOfDay(String(account.startOfDayBalance ?? account.initialBalance));
+      setDdType(account.drawdownType ?? "trailing");
       setPhase(account.phase ?? "eval");
       setTarget(account.profitTarget ? String(account.profitTarget) : "");
     }
@@ -166,9 +172,21 @@ function AccountDialog({
     }
     const initialBalance = parseMoneyInput(initial);
     const currentBalance = parseMoneyInput(current);
+    const parsedMaxLoss = parseMoneyInput(maxLoss);
+    const parsedDailyLoss = dailyLoss.trim() ? parseMoneyInput(dailyLoss) : undefined;
+    const parsedHwm = highWatermark.trim() ? parseMoneyInput(highWatermark) : initialBalance;
+    const parsedSod = startOfDay.trim() ? parseMoneyInput(startOfDay) : initialBalance;
+
     if (!Number.isFinite(initialBalance) || !Number.isFinite(currentBalance)) {
       toast.error("Revisa los balances introducidos");
       return;
+    }
+
+    if (type === "funded") {
+      if (!Number.isFinite(parsedMaxLoss) || parsedMaxLoss <= 0) {
+        toast.error("Introduce un Límite Total de Pérdida válido");
+        return;
+      }
     }
 
     const payload = {
@@ -178,7 +196,18 @@ function AccountDialog({
       broker: type === "personal" ? broker : undefined,
       initialBalance,
       currentBalance,
-      drawdownLimit: type === "funded" ? Number(dd) || 0 : undefined,
+      maxLossLimit: type === "funded" ? parsedMaxLoss : undefined,
+      drawdownLimit: type === "funded" ? parsedMaxLoss : undefined,
+      dailyLossLimit:
+        type === "funded" && parsedDailyLoss !== undefined && Number.isFinite(parsedDailyLoss) && parsedDailyLoss > 0
+          ? parsedDailyLoss
+          : undefined,
+      highWatermark:
+        Number.isFinite(parsedHwm) && parsedHwm > 0
+          ? parsedHwm
+          : Math.max(initialBalance, currentBalance),
+      startOfDayBalance:
+        Number.isFinite(parsedSod) && parsedSod > 0 ? parsedSod : initialBalance,
       drawdownType: type === "funded" ? ddType : undefined,
       phase: type === "funded" ? phase : undefined,
       profitTarget:
@@ -417,33 +446,78 @@ function AccountDialog({
                 </p>
               </div>
 
+              <div className="space-y-1.5">
+                <Label>Tipo de Drawdown</Label>
+                <Select value={ddType} onValueChange={(v) => setDdType(v as DrawdownType)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {DRAWDOWN_TYPES.map((d) => (
+                      <SelectItem key={d.key} value={d.key}>
+                        {d.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-[11px] text-muted-foreground">
+                  {DRAWDOWN_TYPES.find((d) => d.key === ddType)?.help}
+                </p>
+              </div>
+
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                  <Label htmlFor="acc-dd">Límite de Drawdown ($)</Label>
+                  <Label htmlFor="acc-max-loss">Límite Total de Pérdida ($) *</Label>
                   <Input
-                    id="acc-dd"
-                    value={dd}
-                    onChange={(e) => setDd(e.target.value)}
+                    id="acc-max-loss"
+                    value={maxLoss}
+                    onChange={(e) => setMaxLoss(e.target.value)}
                     inputMode="decimal"
                     placeholder="2500"
                   />
+                  <p className="text-[10px] text-muted-foreground">Max Loss total permitido</p>
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Tipo de Drawdown</Label>
-                  <Select value={ddType} onValueChange={(v) => setDdType(v as DrawdownType)}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {DRAWDOWN_TYPES.map((d) => (
-                        <SelectItem key={d.key} value={d.key}>
-                          {d.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Label htmlFor="acc-daily-loss">Límite Diario ($)</Label>
+                  <Input
+                    id="acc-daily-loss"
+                    value={dailyLoss}
+                    onChange={(e) => setDailyLoss(e.target.value)}
+                    inputMode="decimal"
+                    placeholder="1000 (opcional)"
+                  />
+                  <p className="text-[10px] text-muted-foreground">Pérdida máx. por día de trading</p>
                 </div>
               </div>
+
+              {editing && (
+                <div className="grid grid-cols-2 gap-3 pt-1 border-t border-border/40">
+                  <div className="space-y-1">
+                    <Label htmlFor="acc-hwm" className="text-xs text-muted-foreground">
+                      High Watermark ($)
+                    </Label>
+                    <Input
+                      id="acc-hwm"
+                      value={highWatermark}
+                      onChange={(e) => setHighWatermark(e.target.value)}
+                      inputMode="decimal"
+                      className="h-8 text-xs font-mono"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="acc-sod" className="text-xs text-muted-foreground">
+                      Balance Inicio Día ($)
+                    </Label>
+                    <Input
+                      id="acc-sod"
+                      value={startOfDay}
+                      onChange={(e) => setStartOfDay(e.target.value)}
+                      inputMode="decimal"
+                      className="h-8 text-xs font-mono"
+                    />
+                  </div>
+                </div>
+              )}
             </>
           )}
         </div>
@@ -499,16 +573,20 @@ function AccountsPage() {
     // Priorizar arriba las cuentas con alertas activas de Drawdown
     return [...list].sort((a, b) => {
       const ddA =
-        a.type === "funded" && Boolean(a.drawdownLimit)
+        a.type === "funded" && Boolean(a.maxLossLimit ?? a.drawdownLimit ?? a.dailyLossLimit)
           ? accountDrawdown(a, safeTrades, safeWithdrawals)
           : null;
       const ddB =
-        b.type === "funded" && Boolean(b.drawdownLimit)
+        b.type === "funded" && Boolean(b.maxLossLimit ?? b.drawdownLimit ?? b.dailyLossLimit)
           ? accountDrawdown(b, safeTrades, safeWithdrawals)
           : null;
 
-      const isAlertA = Boolean(ddA && (ddA.remaining < 600 || ddA.breached));
-      const isAlertB = Boolean(ddB && (ddB.remaining < 600 || ddB.breached));
+      const isAlertA = Boolean(
+        ddA && (ddA.remaining < 600 || ddA.breached || (ddA.hasDailyLimit && ((ddA.dailyRemaining ?? 9999) < 300 || ddA.dailyBreached))),
+      );
+      const isAlertB = Boolean(
+        ddB && (ddB.remaining < 600 || ddB.breached || (ddB.hasDailyLimit && ((ddB.dailyRemaining ?? 9999) < 300 || ddB.dailyBreached))),
+      );
 
       // Cuentas con alerta primero
       if (isAlertA && !isAlertB) return -1;
@@ -554,13 +632,13 @@ function AccountsPage() {
 
     const isLowDrawdown =
       acc.type === "funded" &&
-      Boolean(acc.drawdownLimit) &&
+      Boolean(acc.maxLossLimit ?? acc.drawdownLimit ?? acc.dailyLossLimit) &&
       dd !== null &&
-      (dd.remaining < 600 || dd.breached);
+      (dd.remaining < 600 || dd.breached || (dd.hasDailyLimit && ((dd.dailyRemaining ?? 9999) < 300 || dd.dailyBreached)));
 
     const drawdownFloor = dd && Number.isFinite(dd.floor)
       ? dd.floor
-      : acc.initialBalance - (acc.drawdownLimit || 0);
+      : acc.initialBalance - (acc.maxLossLimit ?? acc.drawdownLimit ?? 0);
 
     return (
       <article
@@ -777,7 +855,7 @@ function AccountsPage() {
                       isLowDrawdown ? "text-loss" : "text-muted-foreground",
                     )}
                   />{" "}
-                  DD
+                  {dd.type === "trailing" ? "Trailing" : dd.type === "eod" ? "EOD" : "Estático"}
                 </span>
                 <span
                   className={cn(
@@ -796,14 +874,18 @@ function AccountsPage() {
                     isLowDrawdown ? "bg-loss" : "bg-profit",
                   )}
                   style={{
-                    width: `${Math.min(100, Math.max(0, (dd.remaining / (dd.limit || 1)) * 100))}%`,
+                    width: `${Math.min(100, Math.max(0, dd.healthPct))}%`,
                   }}
                 />
               </div>
 
               <div className="flex justify-between text-[10px] text-muted-foreground font-mono">
-                <span>Suelo: {formatCurrency(drawdownFloor)}</span>
-                <span>Límite: {formatCurrency(dd.limit)}</span>
+                <span>Suelo Máx: {formatCurrency(drawdownFloor)}</span>
+                {dd.hasDailyLimit && dd.dailyFloor !== undefined ? (
+                  <span className="font-semibold text-foreground/90">Hoy: {formatCurrency(dd.dailyFloor)}</span>
+                ) : (
+                  <span>Límite: {formatCurrency(dd.limit)}</span>
+                )}
               </div>
             </div>
           ) : (
@@ -874,9 +956,9 @@ function AccountsPage() {
 
     const isLowDrawdown =
       acc.type === "funded" &&
-      Boolean(acc.drawdownLimit) &&
+      Boolean(acc.maxLossLimit ?? acc.drawdownLimit ?? acc.dailyLossLimit) &&
       dd !== null &&
-      (dd.remaining < 600 || dd.breached);
+      (dd.remaining < 600 || dd.breached || (dd.hasDailyLimit && ((dd.dailyRemaining ?? 9999) < 300 || dd.dailyBreached)));
 
     return (
       <article

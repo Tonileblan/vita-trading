@@ -226,9 +226,12 @@ export function buildEquityCurve(
       new Date(b.openedAt || b.closedAt || b.createdAt || 0).getTime(),
   );
 
-  let equity = startBalance;
-  const isFunded = fundedAccount?.type === "funded" && Boolean(fundedAccount.drawdownLimit);
-  const ddLimit = isFunded ? (fundedAccount.drawdownLimit ?? 0) : 0;
+  const isFunded =
+    fundedAccount?.type === "funded" &&
+    Boolean(fundedAccount.maxLossLimit ?? fundedAccount.drawdownLimit);
+  const ddLimit = isFunded
+    ? (fundedAccount.maxLossLimit ?? fundedAccount.drawdownLimit ?? 0)
+    : 0;
   const ddType = isFunded ? (fundedAccount.drawdownType ?? "static") : "static";
   const initial = fundedAccount?.initialBalance ?? startBalance;
 
@@ -440,127 +443,128 @@ export interface DrawdownStatus {
   type: NonNullable<Account["drawdownType"]>;
   label: string;
   limit: number;
-  /** Balance mínimo permitido antes de romper la cuenta. */
+  /** Balance mínimo permitido antes de romper la cuenta (Suelo Máximo). */
   floor: number;
-  /** Referencia sobre la que se calcula el suelo (inicial o máximo alcanzado). */
+  /** Referencia de cálculo (High Watermark para trailing/eod o inicial para static). */
   reference: number;
+  /** Pico máximo alcanzado */
+  highWatermark: number;
   balance: number;
+  /** Pérdida total consumida (DD Consumido) */
   used: number;
+  /** Margen total restante antes de la liquidación */
   remaining: number;
+  /** Porcentaje de drawdown consumido (0 - 100) */
   pct: number;
+  /** Porcentaje de salud / margen restante (0 - 100) */
+  healthPct: number;
   breached: boolean;
-  /** Último cierre diario por debajo del suelo vigente (informativo, no rompe la cuenta). */
+  /** Último cierre diario por debajo del suelo vigente. */
   breachedAt?: string;
-  /** El suelo dinámico ya no sube más (alcanzó el capital inicial). */
-  frozen: boolean;
+  /** El suelo dinámico ya no sube más (si aplica tope). */
+  frozen?: boolean;
+  // Métricas de Límite Diario (Daily Loss)
+  hasDailyLimit: boolean;
+  dailyLimit?: number;
+  startOfDayBalance?: number;
+  /** Suelo de liquidación diaria (start_of_day_balance - daily_loss_limit) */
+  dailyFloor?: number;
+  /** Pérdida consumida en la sesión de hoy */
+  dailyUsed?: number;
+  /** Margen diario restante */
+  dailyRemaining?: number;
+  dailyPct?: number;
+  dailyHealthPct?: number;
+  dailyBreached?: boolean;
 }
 
 const DD_LABELS: Record<NonNullable<Account["drawdownType"]>, string> = {
+  trailing: "Trailing (Intraday)",
+  eod: "End of Day (EOD)",
   static: "Estático",
-  trailing: "Dinámico (trailing)",
-  eod: "Dinámico a cierre (EOD)",
 };
 
-function localDayKey(iso: string) {
-  const d = new Date(iso);
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-}
-
-/** Calcula el estado de drawdown según el tipo configurado en la cuenta. */
+/** Calcula el estado de drawdown y límite diario según el tipo configurado en la cuenta. */
 export function accountDrawdown(
   account: Account,
-  trades: Trade[],
-  withdrawals: { accountId?: string | undefined; date: string; amount: number }[] = [],
+  trades: Trade[] = [],
+  withdrawals: { accountId?: string | undefined; date?: string; amount: number }[] = [],
 ): DrawdownStatus | null {
-  const limit = account.drawdownLimit ?? 0;
+  const maxLimit = account.maxLossLimit ?? account.drawdownLimit ?? 0;
+  const dailyLimit = account.dailyLossLimit ?? 0;
   const type = account.drawdownType ?? "static";
-  if (!limit) return null;
 
-  const initial = account.initialBalance;
-  const recordedPnl = accountPnl(trades, account.id);
-  const balanceBeforeEvents = account.currentBalance - recordedPnl;
+  // Si no tiene límite máximo ni diario configurado, no aplica control de drawdown
+  if (!maxLimit && !dailyLimit) return null;
 
+  const initial = account.initialBalance || 0;
+  const balance = accountBalance(account, trades, withdrawals);
 
-  // El suelo dinámico deja de subir cuando la referencia alcanza inicial + límite.
-  const maxReference = initial + limit;
-
-  type Ev = { at: string; delta: number };
-  const events: Ev[] = [
-    ...trades
-      .filter((t) => t.accountId === account.id)
-      .map((t) => ({
-        at: t.openedAt || t.closedAt || new Date().toISOString(),
-        delta: t.pnl,
-      })),
-    ...withdrawals
-      .filter((w) => w.accountId === account.id)
-      .map((w) => ({ at: w.date, delta: -Math.abs(w.amount) })),
-  ].sort((a, b) => new Date(a.at).getTime() - new Date(b.at).getTime());
-
-  const today = localDayKey(new Date().toISOString());
-
-  let running = balanceBeforeEvents;
-  let peak = Math.max(initial, balanceBeforeEvents);
-  let breachedAt: string | undefined;
-  const eodBalances = new Map<string, number>();
-  // Referencia EOD vigente durante el recorrido (mayor cierre de días anteriores).
-  let eodReference = initial;
-  let lastDay: string | null = null;
-  let lastAt: string | null = null;
-
-  const refFor = (peakNow: number, eodRef: number) => {
-    if (type === "trailing") return Math.min(peakNow, maxReference);
-    if (type === "eod") return Math.min(Math.max(initial, eodRef), maxReference);
-    return initial;
-  };
-
-  const closeDay = (day: string, at: string) => {
-    const close = eodBalances.get(day);
-    if (close === undefined) return;
-    // La rotura se evalúa solo sobre cierres diarios ya consolidados.
-    const refNow = refFor(peak, eodReference);
-    if (close <= refNow - limit) breachedAt = at;
-    eodReference = Math.max(eodReference, close);
-  };
-
-  for (const ev of events) {
-    const day = localDayKey(ev.at);
-    if (lastDay !== null && day !== lastDay) closeDay(lastDay, lastAt ?? ev.at);
-    lastDay = day;
-    lastAt = ev.at;
-
-    running += ev.delta;
-    eodBalances.set(day, running);
-    peak = Math.max(peak, running);
+  // 1. Determinar High Watermark histórico
+  // Si la cuenta tiene highWatermark guardado lo respetamos; de lo contrario calculamos con el pico actual
+  let highWatermark = account.highWatermark ?? Math.max(initial, balance);
+  if (type === "trailing" && balance > highWatermark) {
+    highWatermark = balance;
+  } else if (type === "static") {
+    highWatermark = initial;
   }
-  // Consolida el último día si ya no es hoy.
-  if (lastDay !== null && lastDay !== today) closeDay(lastDay, lastAt ?? new Date().toISOString());
 
-  const balance = running;
-
-  const reference = refFor(peak, eodReference);
-
-  const floor = reference - limit;
+  // 2. Fórmulas de Suelo Máximo y DD Consumido
+  // Trailing / EOD: Suelo = high_watermark - max_loss_limit
+  // Static: Suelo = initial_balance - max_loss_limit
+  const reference = type === "static" ? initial : highWatermark;
+  const floor = maxLimit > 0 ? reference - maxLimit : 0;
   const used = Math.max(0, reference - balance);
-  const frozen = type !== "static" && reference >= maxReference;
-  const breached = balance <= floor;
+  const remaining = maxLimit > 0 ? Math.max(0, balance - floor) : 0;
+  const pct = maxLimit > 0 ? Math.min(100, Math.max(0, (used / maxLimit) * 100)) : 0;
+  const healthPct = maxLimit > 0 ? Math.min(100, Math.max(0, (remaining / maxLimit) * 100)) : 100;
+  const breached = maxLimit > 0 && balance <= floor;
+
+  // 3. Fórmulas de Límite Diario (Daily Loss)
+  const hasDailyLimit = Boolean(dailyLimit && dailyLimit > 0);
+  const startOfDayBalance = account.startOfDayBalance ?? initial;
+  let dailyFloor: number | undefined;
+  let dailyUsed: number | undefined;
+  let dailyRemaining: number | undefined;
+  let dailyPct: number | undefined;
+  let dailyHealthPct: number | undefined;
+  let dailyBreached: boolean | undefined;
+
+  if (hasDailyLimit) {
+    dailyFloor = startOfDayBalance - dailyLimit;
+    dailyUsed = Math.max(0, startOfDayBalance - balance);
+    dailyRemaining = Math.max(0, balance - dailyFloor);
+    dailyPct = Math.min(100, Math.max(0, (dailyUsed / dailyLimit) * 100));
+    dailyHealthPct = Math.min(100, Math.max(0, (dailyRemaining / dailyLimit) * 100));
+    dailyBreached = balance <= dailyFloor;
+  }
 
   return {
     type,
-    label: DD_LABELS[type],
-    limit,
+    label: DD_LABELS[type] ?? "Estático",
+    limit: maxLimit,
     floor,
     reference,
+    highWatermark,
     balance,
     used,
-    remaining: Math.max(0, balance - floor),
-    pct: Math.min(100, (used / limit) * 100),
+    remaining,
+    pct,
+    healthPct,
     breached,
-    ...(breachedAt ? { breachedAt } : {}),
-    frozen,
+    hasDailyLimit,
+    ...(hasDailyLimit
+      ? {
+          dailyLimit,
+          startOfDayBalance,
+          dailyFloor,
+          dailyUsed,
+          dailyRemaining,
+          dailyPct,
+          dailyHealthPct,
+          dailyBreached,
+        }
+      : {}),
   };
 }
 
