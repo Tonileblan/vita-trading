@@ -235,6 +235,7 @@ export function buildEquityCurve(
   const ddType = isFunded ? (fundedAccount.drawdownType ?? "static") : "static";
   const initial = fundedAccount?.initialBalance ?? startBalance;
 
+  let equity = startBalance;
   let peak = Math.max(initial, startBalance);
   let eodRef = initial;
   let lastDay: string | null = null;
@@ -555,14 +556,14 @@ export function accountDrawdown(
     hasDailyLimit,
     ...(hasDailyLimit
       ? {
-          dailyLimit,
-          startOfDayBalance,
-          dailyFloor,
-          dailyUsed,
-          dailyRemaining,
-          dailyPct,
-          dailyHealthPct,
-          dailyBreached,
+          dailyLimit: dailyLimit!,
+          startOfDayBalance: startOfDayBalance!,
+          dailyFloor: dailyFloor!,
+          dailyUsed: dailyUsed!,
+          dailyRemaining: dailyRemaining!,
+          dailyPct: dailyPct!,
+          dailyHealthPct: dailyHealthPct!,
+          dailyBreached: dailyBreached!,
         }
       : {}),
   };
