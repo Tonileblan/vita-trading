@@ -235,6 +235,7 @@ export function buildEquityCurve(
   const ddType = isFunded ? (fundedAccount.drawdownType ?? "static") : "static";
   const initial = fundedAccount?.initialBalance ?? startBalance;
 
+  let equity = startBalance;
   let peak = Math.max(initial, startBalance);
   let eodRef = initial;
   let lastDay: string | null = null;
