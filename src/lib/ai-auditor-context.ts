@@ -166,9 +166,7 @@ export function computeAuditorStatus(ctx: AuditorContextData): AuditorStatusSumm
 
   // 4. Drawdowns por cuenta
   const drawdownAlerts = ctx.accounts.map((acc) => {
-    const maxLimit = acc.maxLossLimit ?? acc.drawdownLimit ?? 0;
-    const dailyLimit = acc.dailyLossLimit ?? 0;
-    if (maxLimit <= 0 && dailyLimit <= 0) {
+    if (!acc.drawdownLimit || acc.drawdownLimit <= 0) {
       return {
         accountId: acc.id,
         accountName: acc.name,
@@ -176,23 +174,14 @@ export function computeAuditorStatus(ctx: AuditorContextData): AuditorStatusSumm
         danger: false,
       };
     }
-    const type = acc.drawdownType ?? "static";
-    const initial = acc.initialBalance || 0;
-    const balance = acc.currentBalance || 0;
-    const hwm = type === "static" ? initial : (acc.highWatermark ?? Math.max(initial, balance));
-    const floor = maxLimit > 0 ? hwm - maxLimit : 0;
-    const remaining = maxLimit > 0 ? Math.max(0, balance - floor) : 999999;
-    const danger = maxLimit > 0 && remaining <= maxLimit * 0.25;
-    const warning = maxLimit > 0 && remaining <= maxLimit * 0.5;
+    const currentLoss = Math.max(0, acc.initialBalance - acc.currentBalance);
+    const remaining = Math.max(0, acc.drawdownLimit - currentLoss);
+    const danger = remaining <= acc.drawdownLimit * 0.25;
+    const warning = remaining <= acc.drawdownLimit * 0.5;
 
-    const sod = acc.startOfDayBalance ?? initial;
-    const dailyFloor = dailyLimit > 0 ? sod - dailyLimit : 0;
-    const dailyRemaining = dailyLimit > 0 ? Math.max(0, balance - dailyFloor) : 999999;
-    const dailyDanger = dailyLimit > 0 && dailyRemaining <= dailyLimit * 0.25;
-
-    if (danger || dailyDanger) {
+    if (danger) {
       activeAlerts.push(
-        `Cuenta "${acc.name}": Riesgo crítico de liquidación (Margen total: $${remaining.toFixed(2)}${dailyLimit > 0 ? `, Margen hoy: $${dailyRemaining.toFixed(2)}` : ""}).`,
+        `Cuenta "${acc.name}": A solo $${remaining.toFixed(2)} del límite de drawdown ($${acc.drawdownLimit}).`,
       );
       hasDanger = true;
     } else if (warning) {
@@ -205,8 +194,8 @@ export function computeAuditorStatus(ctx: AuditorContextData): AuditorStatusSumm
     return {
       accountId: acc.id,
       accountName: acc.name,
-      remainingDrawdown: Math.min(remaining, dailyRemaining),
-      danger: danger || dailyDanger,
+      remainingDrawdown: remaining,
+      danger,
     };
   });
 
@@ -264,16 +253,10 @@ export function formatAuditorContextForPrompt(ctx: AuditorContextData): string {
     ctx.accounts.forEach((a) => {
       const pnl = a.currentBalance - a.initialBalance;
       const targetInfo = a.profitTarget ? ` | Objetivo: $${a.profitTarget}` : "";
-      const maxLimit = a.maxLossLimit ?? a.drawdownLimit;
-      const type = a.drawdownType || "static";
-      const hwm = type === "static" ? a.initialBalance : (a.highWatermark ?? Math.max(a.initialBalance, a.currentBalance));
-      const floor = maxLimit ? hwm - maxLimit : null;
-      const remainingDD = floor !== null ? Math.max(0, a.currentBalance - floor) : null;
-      const dailyInfo = a.dailyLossLimit
-        ? ` | Límite Diario: $${a.dailyLossLimit} (Suelo hoy: $${(a.startOfDayBalance ?? a.initialBalance) - a.dailyLossLimit})`
-        : "";
-      const ddInfo = maxLimit
-        ? ` | Límite Drawdown: $${maxLimit} (${type}, Suelo máx: $${floor?.toFixed(2)}, Restan: $${remainingDD?.toFixed(2)})${dailyInfo}`
+      const currentLoss = Math.max(0, a.initialBalance - a.currentBalance);
+      const remainingDD = a.drawdownLimit ? Math.max(0, a.drawdownLimit - currentLoss) : null;
+      const ddInfo = a.drawdownLimit
+        ? ` | Límite Drawdown: $${a.drawdownLimit} (${a.drawdownType || "estático"}, Restan para quebrar: $${remainingDD?.toFixed(2)})`
         : "";
       parts.push(
         `- Cuenta "${a.name}" (ID: ${a.id}, Tipo: ${a.type === "funded" ? `Fondeo (${a.phase || "eval"})` : "Personal"}): Balance: $${a.currentBalance.toFixed(2)} (Inicio: $${a.initialBalance.toFixed(2)}, PnL: ${pnl >= 0 ? "+" : ""}$${pnl.toFixed(2)})${targetInfo}${ddInfo}`,

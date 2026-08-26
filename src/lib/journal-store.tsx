@@ -21,25 +21,6 @@ const STORAGE_KEY = "tj:active-journal";
 type Row = Record<string, unknown>;
 
 export function toAccount(r: Row): Account {
-  const initialBalance = Number(r["initial_balance"] ?? 0);
-  const currentBalance = Number(r["current_balance"] ?? 0);
-  const maxLossLimit =
-    r["max_loss_limit"] != null
-      ? Number(r["max_loss_limit"])
-      : r["drawdown_limit"] != null
-        ? Number(r["drawdown_limit"])
-        : undefined;
-  const dailyLossLimit =
-    r["daily_loss_limit"] != null ? Number(r["daily_loss_limit"]) : undefined;
-  const highWatermark =
-    r["high_watermark"] != null
-      ? Number(r["high_watermark"])
-      : Math.max(initialBalance, currentBalance);
-  const startOfDayBalance =
-    r["start_of_day_balance"] != null
-      ? Number(r["start_of_day_balance"])
-      : initialBalance;
-
   return {
     id: String(r["id"]),
     name: String(r["name"] ?? ""),
@@ -49,14 +30,10 @@ export function toAccount(r: Row): Account {
     strategyId: (r["strategy_id"] as string | null) ?? undefined,
     phase: (r["phase"] === "live" ? "live" : "eval") as Account["phase"],
     profitTarget: r["profit_target"] == null ? undefined : Number(r["profit_target"]),
-    initialBalance,
-    currentBalance,
-    maxLossLimit,
-    dailyLossLimit,
-    highWatermark,
-    startOfDayBalance,
-    drawdownLimit: maxLossLimit,
-    drawdownType: (["trailing", "eod", "static"].includes(String(r["drawdown_type"]))
+    initialBalance: Number(r["initial_balance"] ?? 0),
+    currentBalance: Number(r["current_balance"] ?? 0),
+    drawdownLimit: r["drawdown_limit"] == null ? undefined : Number(r["drawdown_limit"]),
+    drawdownType: (["static", "trailing", "eod"].includes(String(r["drawdown_type"]))
       ? String(r["drawdown_type"])
       : "static") as Account["drawdownType"],
     currency: String(r["currency"] ?? "USD"),
@@ -74,30 +51,10 @@ function fromAccount(a: Partial<Omit<Account, "id">>): Row {
   if (a.profitTarget !== undefined) out["profit_target"] = a.profitTarget ?? null;
   if (a.initialBalance !== undefined) out["initial_balance"] = a.initialBalance;
   if (a.currentBalance !== undefined) out["current_balance"] = a.currentBalance;
-  if (a.maxLossLimit !== undefined) {
-    out["max_loss_limit"] = a.maxLossLimit ?? null;
-    out["drawdown_limit"] = a.maxLossLimit ?? null;
-  } else if (a.drawdownLimit !== undefined) {
-    out["max_loss_limit"] = a.drawdownLimit ?? null;
-    out["drawdown_limit"] = a.drawdownLimit ?? null;
-  }
-  if (a.dailyLossLimit !== undefined) out["daily_loss_limit"] = a.dailyLossLimit ?? null;
-  if (a.highWatermark !== undefined) out["high_watermark"] = a.highWatermark ?? null;
-  if (a.startOfDayBalance !== undefined) out["start_of_day_balance"] = a.startOfDayBalance ?? null;
+  if (a.drawdownLimit !== undefined) out["drawdown_limit"] = a.drawdownLimit ?? null;
   if (a.drawdownType !== undefined) out["drawdown_type"] = a.drawdownType ?? "static";
   if (a.currency !== undefined) out["currency"] = a.currency;
   return out;
-}
-
-export function updateAccountBalanceAndHwm(a: Account, newBalance: number): Account {
-  const isTrailingOrEod = a.drawdownType === "trailing" || a.drawdownType === "eod";
-  const prevHwm = a.highWatermark ?? Math.max(a.initialBalance, a.currentBalance);
-  const newHwm = isTrailingOrEod ? Math.max(prevHwm, newBalance) : a.initialBalance;
-  return {
-    ...a,
-    currentBalance: newBalance,
-    highWatermark: newHwm,
-  };
 }
 
 export function toStrategy(r: Row): Strategy {
@@ -291,18 +248,9 @@ async function applyBalanceDeltas(accounts: Account[], deltas: Map<string, numbe
     [...deltas].map(([id, delta]) => {
       const account = accounts.find((a) => a.id === id);
       if (!account || delta === 0) return Promise.resolve();
-      const newBalance = account.currentBalance + delta;
-      const isTrailingOrEod = account.drawdownType === "trailing" || account.drawdownType === "eod";
-      const hwm = isTrailingOrEod
-        ? Math.max(account.highWatermark ?? account.initialBalance, newBalance)
-        : account.initialBalance;
-
       return supabase
         .from("accounts")
-        .update({
-          current_balance: newBalance,
-          high_watermark: hwm,
-        } as never)
+        .update({ current_balance: account.currentBalance + delta } as never)
         .eq("id", id)
         .then(() => undefined);
     }),
@@ -738,7 +686,7 @@ export function JournalProvider({ children }: { children: ReactNode }) {
           trades: safeOld.trades.filter((t) => !idSet.has(t.id)),
           accounts: safeOld.accounts.map((a) => {
             const delta = deltas.get(a.id);
-            return delta ? updateAccountBalanceAndHwm(a, a.currentBalance + delta) : a;
+            return delta ? { ...a, currentBalance: a.currentBalance + delta } : a;
           }),
         };
       });
@@ -865,7 +813,7 @@ export function JournalProvider({ children }: { children: ReactNode }) {
           ...old,
           trades: [optimisticTrade, ...old.trades],
           accounts: old.accounts.map((a) =>
-            a.id === trade.accountId ? updateAccountBalanceAndHwm(a, a.currentBalance + trade.pnl) : a,
+            a.id === trade.accountId ? { ...a, currentBalance: a.currentBalance + trade.pnl } : a,
           ),
         }));
 
@@ -929,7 +877,7 @@ export function JournalProvider({ children }: { children: ReactNode }) {
           trades: old.trades.map((t) => (t.id === id ? { ...t, ...patch } : t)),
           accounts: old.accounts.map((a) => {
             const delta = deltas.get(a.id);
-            return delta ? updateAccountBalanceAndHwm(a, a.currentBalance + delta) : a;
+            return delta ? { ...a, currentBalance: a.currentBalance + delta } : a;
           }),
         }));
 
@@ -986,7 +934,7 @@ export function JournalProvider({ children }: { children: ReactNode }) {
           trades: [...optimisticTrades, ...old.trades],
           accounts: old.accounts.map((a) => {
             const delta = deltas.get(a.id);
-            return delta ? updateAccountBalanceAndHwm(a, a.currentBalance + delta) : a;
+            return delta ? { ...a, currentBalance: a.currentBalance + delta } : a;
           }),
         }));
 

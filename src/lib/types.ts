@@ -1,23 +1,23 @@
 export type AccountType = "funded" | "personal";
 
 /** Cómo se calcula el límite de pérdida de la cuenta. */
-export type DrawdownType = "trailing" | "eod" | "static";
+export type DrawdownType = "static" | "trailing" | "eod";
 
 export const DRAWDOWN_TYPES: { key: DrawdownType; label: string; help: string }[] = [
   {
+    key: "static",
+    label: "Estático",
+    help: "El límite se fija sobre el balance inicial y no se mueve.",
+  },
+  {
     key: "trailing",
-    label: "Trailing (Intraday)",
-    help: "El límite sube dinámicamente con cada nuevo pico máximo alcanzado (High Watermark).",
+    label: "Dinámico (trailing)",
+    help: "El límite sube con cada nuevo máximo de balance alcanzado.",
   },
   {
     key: "eod",
-    label: "End of Day (EOD)",
-    help: "El límite sube con el balance máximo consolidado al cierre de cada sesión/día.",
-  },
-  {
-    key: "static",
-    label: "Estático",
-    help: "El límite se fija sobre el balance inicial y nunca sube.",
+    label: "Dinámico a cierre (EOD)",
+    help: "El límite sube con el máximo del balance al cierre de cada día.",
   },
 ];
 
@@ -52,15 +52,6 @@ export interface Account {
   strategyId?: string | undefined;
   initialBalance: number;
   currentBalance: number;
-  /** Límite total de pérdida (Max Loss Limit) */
-  maxLossLimit?: number | undefined;
-  /** Límite máximo de pérdida diaria (Daily Loss Limit) */
-  dailyLossLimit?: number | undefined;
-  /** Pico máximo histórico de balance/equity alcanzado */
-  highWatermark?: number | undefined;
-  /** Balance al inicio de la jornada de trading */
-  startOfDayBalance?: number | undefined;
-  /** Alias para retrocompatibilidad con maxLossLimit */
   drawdownLimit?: number | undefined;
   drawdownType?: DrawdownType | undefined;
   currency: string;

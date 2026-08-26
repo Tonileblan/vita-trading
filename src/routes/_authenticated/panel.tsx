@@ -316,34 +316,15 @@ function Overview() {
     }
     if (fundedAccs.length > 1 && scope === "funded") {
       const totalInitial = fundedAccs.reduce((s, a) => s + a.initialBalance, 0);
-      const totalMaxLimit = fundedAccs.reduce(
-        (s, a) => s + (a.maxLossLimit ?? a.drawdownLimit ?? 0),
-        0,
-      );
-      const totalDailyLimit = fundedAccs.reduce(
-        (s, a) => s + (a.dailyLossLimit ?? 0),
-        0,
-      );
-      const totalHwm = fundedAccs.reduce(
-        (s, a) => s + (a.highWatermark ?? a.initialBalance),
-        0,
-      );
-      const totalSod = fundedAccs.reduce(
-        (s, a) => s + (a.startOfDayBalance ?? a.initialBalance),
-        0,
-      );
-      if (totalMaxLimit > 0 || totalDailyLimit > 0) {
+      const totalLimit = fundedAccs.reduce((s, a) => s + (a.drawdownLimit ?? 0), 0);
+      if (totalLimit > 0) {
         return {
           id: "combined-funded",
           name: "Fondeo Combinado",
           type: "funded" as const,
           initialBalance: totalInitial,
           currentBalance: fundedAccs.reduce((s, a) => s + a.currentBalance, 0),
-          maxLossLimit: totalMaxLimit,
-          drawdownLimit: totalMaxLimit,
-          dailyLossLimit: totalDailyLimit > 0 ? totalDailyLimit : undefined,
-          highWatermark: totalHwm,
-          startOfDayBalance: totalSod,
+          drawdownLimit: totalLimit,
           drawdownType: "trailing" as const,
           currency: fundedAccs[0]?.currency ?? "USD",
         };

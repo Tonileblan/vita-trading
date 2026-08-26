@@ -97,41 +97,22 @@ export function useActiveRiskAlerts() {
   const drawdownAlerts: RiskAlert[] = useMemo(
     () =>
       accounts
-        .filter((a) => a.type === "funded" && Boolean(a.maxLossLimit ?? a.drawdownLimit ?? a.dailyLossLimit))
+        .filter((a) => a.type === "funded" && Boolean(a.drawdownLimit))
         .map((a) => ({ account: a, dd: accountDrawdown(a, trades, withdrawals) }))
-        .filter(
-          (x) =>
-            x.dd !== null &&
-            (x.dd.remaining < 600 ||
-              x.dd.breached ||
-              (x.dd.hasDailyLimit && ((x.dd.dailyRemaining ?? 9999) < 300 || x.dd.dailyBreached))),
-        )
+        .filter((x) => x.dd !== null && (x.dd.remaining < 600 || x.dd.breached))
         .map((x) => {
-          const isMaxBreached = x.dd!.breached;
-          const isDailyBreached = Boolean(x.dd!.hasDailyLimit && x.dd!.dailyBreached);
-          const isBreached = isMaxBreached || isDailyBreached;
-          const isDailyWarning = Boolean(x.dd!.hasDailyLimit && !isDailyBreached && (x.dd!.dailyRemaining ?? 9999) < 300);
-
-          let tag = "Drawdown Crítico";
-          let detail = `Solo quedan ${formatCurrency(x.dd!.remaining)} de margen disponible (Suelo: ${formatCurrency(x.dd!.floor)}).`;
-          if (isMaxBreached) {
-            tag = "Cuenta Rota";
-            detail = `Límite máximo de pérdida total superado.`;
-          } else if (isDailyBreached) {
-            tag = "Límite Diario Roto";
-            detail = `Límite de pérdida diaria superado hoy (Suelo: ${formatCurrency(x.dd!.dailyFloor ?? 0)}).`;
-          } else if (isDailyWarning) {
-            tag = "Límite Diario Crítico";
-            detail = `Solo quedan ${formatCurrency(x.dd!.dailyRemaining ?? 0)} de margen diario para la sesión de hoy.`;
-          }
-
+          const isBreached = x.dd!.breached;
           return {
             key: `dd-${x.account.id}`,
-            tone: isBreached ? "danger" : "warn",
-            tag,
+            tone: "danger",
+            tag: isBreached ? "Cuenta Rota" : "Drawdown Crítico",
             title: `Cuenta ${x.account.name}`,
-            detail,
-            message: `Cuenta ${x.account.name}: ${tag}.`,
+            detail: isBreached
+              ? "Límite máximo de drawdown superado."
+              : `Solo quedan ${formatCurrency(x.dd!.remaining)} de drawdown disponible.`,
+            message: isBreached
+              ? `Cuenta ${x.account.name}: Cuenta rota.`
+              : `Cuenta ${x.account.name}: Drawdown crítico (${formatCurrency(x.dd!.remaining)} restantes).`,
             actionLabel: "Ver cuenta",
             actionUrl: `/cuenta/${x.account.id}`,
           };

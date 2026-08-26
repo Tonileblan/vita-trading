@@ -127,9 +127,9 @@ function AccountDetail() {
 
   const isLowDrawdown =
     account.type === "funded" &&
-    Boolean(account.maxLossLimit ?? account.drawdownLimit ?? account.dailyLossLimit) &&
+    Boolean(account.drawdownLimit) &&
     dd !== null &&
-    (dd.remaining < 600 || dd.breached || (dd.hasDailyLimit && ((dd.dailyRemaining ?? 9999) < 300 || dd.dailyBreached)));
+    (dd.remaining < 600 || dd.breached);
 
   return (
     <AppShell
@@ -140,7 +140,7 @@ function AccountDetail() {
           {isLowDrawdown && (
             <DrawdownAlertButton
               remaining={dd?.remaining ?? 0}
-              isFunded={account.type === "funded" && Boolean(account.maxLossLimit ?? account.drawdownLimit ?? account.dailyLossLimit)}
+              isFunded={account.type === "funded" && Boolean(account.drawdownLimit)}
               breached={dd?.breached ?? false}
               threshold={600}
             />
