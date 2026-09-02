@@ -27,6 +27,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { TradesTable } from "@/components/trades-table";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
+import { useSupervisorFilter } from "@/hooks/use-supervisor-filter";
 import {
   useJournal,
   toAccount,
@@ -95,35 +96,17 @@ function Overview() {
   const { isSupervisor, isAdmin, user, canEditOtherUsers } = useAuth();
   const journalStore = useJournal();
 
-  // Filtro de usuario para supervisores: "mine" (mi diario) o userId específico
-  const [supervisorUserFilter, setSupervisorUserFilter] = useState<string>("mine");
+  const {
+    selectedUserFilter: supervisorUserFilter,
+    setSelectedUserFilter: setSupervisorUserFilter,
+    availableUsers: svProfiles,
+    isSupervisingOther: isSupervisedView,
+    isReadOnly,
+  } = useSupervisorFilter();
 
   // Filtro por clic en un día concreto del calendario (YYYY-MM-DD)
   const [selectedCalendarDate, setSelectedCalendarDate] = useState<string | null>(null);
   const [showAllTrades, setShowAllTrades] = useState(false);
-
-  const { data: svProfiles = [] } = useQuery({
-    queryKey: ["sv-profiles", user?.id],
-    enabled: isSupervisor || isAdmin,
-    queryFn: async () => {
-      try {
-        const { data, error } = await supabase
-          .from("profiles")
-          .select("id, display_name, created_at, is_private")
-          .order("created_at", { ascending: true });
-
-        if (error) throw error;
-        return (data ?? []).filter((p) => p.id !== user?.id && !p.is_private) as {
-          id: string;
-          display_name: string | null;
-          created_at: string;
-        }[];
-      } catch (e) {
-        console.warn("Error al cargar perfiles para supervisión:", e);
-        return [];
-      }
-    },
-  });
 
   const { data: svData } = useQuery({
     queryKey: ["sv-panel-data", supervisorUserFilter],
@@ -161,8 +144,7 @@ function Overview() {
     },
   });
 
-  const isSupervisedView = (isSupervisor || isAdmin) && supervisorUserFilter !== "mine";
-  const canEdit = !isSupervisedView || canEditOtherUsers;
+  const canEdit = !isReadOnly;
   const accounts = useMemo(
     () => (isSupervisedView ? (svData?.accounts ?? []) : journalStore.accounts),
     [isSupervisedView, svData?.accounts, journalStore.accounts],

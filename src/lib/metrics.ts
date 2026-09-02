@@ -1,13 +1,6 @@
 import type { Account, AccountStrategyPeriod, Trade } from "./types";
 import { tradeDayKey } from "./emotions";
-
-export function formatCurrency(value: number, withSign = false) {
-  const sign = withSign && value > 0 ? "+" : value < 0 ? "-" : "";
-  return `${sign}$${Math.abs(value).toLocaleString("en-US", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })}`;
-}
+export { formatCurrency, parseMoneyInput, formatPercent } from "./money";
 
 export function formatDateTime(iso: string) {
   if (!iso) return "—";

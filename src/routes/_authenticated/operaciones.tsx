@@ -42,6 +42,7 @@ import { TradeImportDialog } from "@/components/trade-import-dialog";
 import { TradesTable, type SortDirection, type TradeSortField } from "@/components/trades-table";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
+import { useSupervisorFilter } from "@/hooks/use-supervisor-filter";
 import {
   useJournal,
   toAccount,
@@ -86,31 +87,13 @@ function TradesPage() {
     selectAll,
   } = journalStore;
 
-  // Filtro de usuario para supervisores/admin: "mine" o userId específico
-  const [supervisorUserFilter, setSupervisorUserFilter] = useState<string>("mine");
-
-  const { data: svProfiles = [] } = useQuery({
-    queryKey: ["sv-profiles", user?.id],
-    enabled: isSupervisor || isAdmin,
-    queryFn: async () => {
-      try {
-        const { data, error } = await supabase
-          .from("profiles")
-          .select("id, display_name, created_at, is_private")
-          .order("created_at", { ascending: true });
-
-        if (error) throw error;
-        return (data ?? []).filter((p) => p.id !== user?.id && !p.is_private) as {
-          id: string;
-          display_name: string | null;
-          created_at: string;
-        }[];
-      } catch (e) {
-        console.warn("Error al cargar perfiles para supervisión:", e);
-        return [];
-      }
-    },
-  });
+  const {
+    selectedUserFilter: supervisorUserFilter,
+    setSelectedUserFilter: setSupervisorUserFilter,
+    availableUsers: svProfiles,
+    isSupervisingOther: isSupervisedView,
+    isReadOnly,
+  } = useSupervisorFilter();
 
   const { data: svData } = useQuery({
     queryKey: ["sv-operaciones-data", supervisorUserFilter],
@@ -148,8 +131,7 @@ function TradesPage() {
     },
   });
 
-  const isSupervisedView = (isSupervisor || isAdmin) && supervisorUserFilter !== "mine";
-  const canEdit = !isSupervisedView || canEditOtherUsers;
+  const canEdit = !isReadOnly;
 
   const accounts = useMemo(
     () => (isSupervisedView ? (svData?.accounts ?? []) : (journalStore.accounts ?? [])),
