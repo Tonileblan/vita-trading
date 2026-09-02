@@ -15,9 +15,11 @@ import {
   LogOut,
   Bot,
   Zap,
+  Download,
 } from "lucide-react";
 import { type ReactNode } from "react";
 import { AiAuditorTrigger, HeaderAuditorButton, openAiAuditor } from "@/components/ai-auditor-trigger";
+import { openPWAInstallDialog } from "@/components/pwa-installer";
 import { HeaderAlertsButton } from "@/components/risk-alerts";
 import { Button } from "@/components/ui/button";
 import {
@@ -60,6 +62,14 @@ function UserMenu() {
         </DropdownMenuItem>
         <DropdownMenuItem onSelect={() => navigate({ to: "/usuarios" })}>
           <Users className="size-4" /> Mi perfil
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          onSelect={(e) => {
+            e.preventDefault();
+            openPWAInstallDialog();
+          }}
+        >
+          <Download className="size-4 text-brand" /> Instalar App (PWA)
         </DropdownMenuItem>
         <DropdownMenuItem onSelect={() => navigate({ to: "/funciones" })}>
           <HelpCircle className="size-4" /> Funciones y Ayuda

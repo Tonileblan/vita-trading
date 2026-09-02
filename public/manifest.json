@@ -1,0 +1,83 @@
+{
+  "$schema": "https://json.schemastore.org/web-manifest-combined.json",
+  "name": "Vita-Trading — Bitácora de Trading",
+  "short_name": "Vita-Trading",
+  "description": "Bitácora de trading profesional: diarios, métricas, gestión de cuentas y psicología operativa.",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#f4f3ef",
+  "theme_color": "#24272c",
+  "lang": "es",
+  "dir": "ltr",
+  "categories": [
+    "finance",
+    "productivity",
+    "utilities"
+  ],
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-maskable-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Resumen",
+      "short_name": "Panel",
+      "description": "Métricas y resumen general de trading",
+      "url": "/panel",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Diarios",
+      "short_name": "Diarios",
+      "description": "Registro de sesiones y diarios",
+      "url": "/diarios",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Operaciones",
+      "short_name": "Operaciones",
+      "description": "Historial y registro de operaciones",
+      "url": "/operaciones",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Cuentas",
+      "short_name": "Cuentas",
+      "description": "Gestión de cuentas fondeadas y personales",
+      "url": "/cuentas",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Mente & Psicología",
+      "short_name": "Mente",
+      "description": "Control emocional y estado mental",
+      "url": "/mente",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    }
+  ]
+}
