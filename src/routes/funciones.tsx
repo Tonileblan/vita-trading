@@ -435,9 +435,9 @@ function FuncionesPage() {
   const currentTutorial = TAB_TUTORIALS.find((t) => t.id === activeTutorialId) ?? TAB_TUTORIALS[0]!;
 
   return (
-    <main className="min-h-screen bg-background">
+    <main className="min-h-screen bg-background pb-safe">
       {/* Cabecera */}
-      <header className="sticky top-0 z-30 border-b border-border bg-card">
+      <header className="sticky top-0 z-30 border-b border-border bg-card pt-safe">
         <div className="mx-auto flex max-w-4xl items-center justify-between px-4 py-3">
           <Link to="/" className="flex items-center gap-2">
             <CandlestickChart className="size-5 shrink-0" />

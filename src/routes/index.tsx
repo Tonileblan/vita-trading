@@ -53,8 +53,8 @@ function Landing() {
   }, [loading, session, navigate]);
 
   return (
-    <main className="min-h-screen bg-background">
-      <header className="border-b border-border bg-card">
+    <main className="min-h-screen bg-background pb-safe">
+      <header className="border-b border-border bg-card pt-safe">
         <div className="mx-auto flex max-w-2xl items-center justify-between px-4 py-3">
           <div className="flex items-center gap-2">
             <CandlestickChart className="size-5" />

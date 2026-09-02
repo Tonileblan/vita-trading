@@ -188,7 +188,7 @@ function AuthPage() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-background px-4 py-10">
+    <main className="flex min-h-screen items-center justify-center bg-background px-4 py-10 pt-safe pb-safe pl-safe pr-safe">
       <div className="w-full max-w-sm">
         {/* Cabecera / Logotipo */}
         <div className="mb-6 flex flex-col items-center justify-center gap-1.5 text-center">

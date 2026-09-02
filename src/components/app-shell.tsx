@@ -122,7 +122,7 @@ export function AppShell({
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="sticky top-0 z-30 border-b border-border bg-card">
+      <header className="sticky top-0 z-30 border-b border-border bg-card pt-safe">
         <div className="mx-auto grid max-w-4xl grid-cols-[minmax(0,1fr)_auto] items-center gap-2 px-4 py-2.5 sm:gap-3 sm:py-3">
           <Link to="/panel" className="flex min-w-0 items-center gap-2">
             <CandlestickChart className="size-5 shrink-0" />
@@ -165,7 +165,7 @@ export function AppShell({
         </div>
       </header>
 
-      <main className="mx-auto max-w-4xl px-4 py-5 sm:py-6">
+      <main className="mx-auto max-w-4xl px-4 py-5 sm:py-6 pb-[calc(2rem+env(safe-area-inset-bottom,0px))] pl-[max(1rem,env(safe-area-inset-left,0px))] pr-[max(1rem,env(safe-area-inset-right,0px))]">
         <div
           className={cn(
             "flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between",

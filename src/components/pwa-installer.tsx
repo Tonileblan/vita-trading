@@ -76,7 +76,7 @@ export function PWAInstaller() {
     <>
       {/* 1. Alerta de Offline */}
       {isOffline && (
-        <div className="fixed bottom-3 left-1/2 z-50 flex -translate-x-1/2 items-center gap-2 rounded-full border border-destructive/40 bg-destructive/90 px-4 py-1.5 text-xs font-medium text-destructive-foreground shadow-lg backdrop-blur-sm animate-in fade-in slide-in-from-bottom-2">
+        <div className="fixed bottom-[calc(1rem+env(safe-area-inset-bottom,0px))] left-1/2 z-50 flex -translate-x-1/2 items-center gap-2 rounded-full border border-destructive/40 bg-destructive/90 px-4 py-1.5 text-xs font-medium text-destructive-foreground shadow-lg backdrop-blur-sm animate-in fade-in slide-in-from-bottom-2">
           <WifiOff className="size-3.5 animate-pulse" />
           <span>Modo sin conexión activo · Vita-Trading</span>
         </div>
@@ -84,7 +84,7 @@ export function PWAInstaller() {
 
       {/* 2. Banner de Actualización disponible */}
       {updateAvailable && (
-        <div className="fixed top-2 left-1/2 z-50 flex -translate-x-1/2 items-center gap-3 rounded-lg border border-brand/40 bg-card px-4 py-2.5 shadow-xl animate-in fade-in slide-in-from-top-2">
+        <div className="fixed top-[calc(1rem+env(safe-area-inset-top,0px))] left-1/2 z-50 flex -translate-x-1/2 items-center gap-3 rounded-lg border border-brand/40 bg-card px-4 py-2.5 shadow-xl animate-in fade-in slide-in-from-top-2">
           <RefreshCw className="size-4 text-brand animate-spin" />
           <div className="text-xs">
             <p className="font-semibold text-foreground">Nueva versión disponible</p>
@@ -98,7 +98,7 @@ export function PWAInstaller() {
 
       {/* 3. Banner flotante discreto para sugerir instalación */}
       {showBanner && !isInstalled && (
-        <div className="fixed bottom-4 right-4 z-40 hidden max-w-sm rounded-lg border border-border bg-card p-3.5 shadow-xl sm:flex sm:flex-col gap-2.5 animate-in fade-in slide-in-from-bottom-4">
+        <div className="fixed bottom-[calc(1rem+env(safe-area-inset-bottom,0px))] right-[max(1rem,env(safe-area-inset-right,0px))] z-40 hidden max-w-sm rounded-lg border border-border bg-card p-3.5 shadow-xl sm:flex sm:flex-col gap-2.5 animate-in fade-in slide-in-from-bottom-4">
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-center gap-2.5">
               <div className="flex size-9 items-center justify-center rounded-md bg-foreground text-background font-display text-lg">
