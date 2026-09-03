@@ -229,9 +229,20 @@ export function buildEquityCurve(
   const initial = fundedAccount?.initialBalance ?? startBalance;
 
   let equity = startBalance;
-  let peak = Math.max(initial, startBalance);
-  let eodRef = initial;
-  let lastDay: string | null = null;
+  let runningIntradayPeak = Math.max(initial, startBalance);
+  let runningEodPeak = initial;
+
+  // Pre-calcular el balance EOD de cierre de cada día
+  const dailyEndBalances = new Map<string, number>();
+  let cumEq = startBalance;
+  for (const t of sorted) {
+    cumEq += t.pnl;
+    const dateStr = t.openedAt || t.closedAt || t.createdAt || "";
+    const day = dateStr ? dateStr.slice(0, 10) : "";
+    if (day) {
+      dailyEndBalances.set(day, cumEq);
+    }
+  }
 
   const firstDateStr = sorted[0]?.openedAt || sorted[0]?.closedAt || sorted[0]?.createdAt || "";
   const initialDrawdownFloor =
@@ -255,26 +266,35 @@ export function buildEquityCurve(
     },
   ];
 
+  let currentDay: string | null = null;
   sorted.forEach((t, i) => {
     equity += t.pnl;
     const dateStr = t.openedAt || t.closedAt || t.createdAt || "";
     const day = dateStr ? dateStr.slice(0, 10) : "";
 
-    peak = Math.max(peak, equity);
+    runningIntradayPeak = Math.max(runningIntradayPeak, equity);
+
+    // En EOD, el suelo se ajusta al cierre de cada día consolidado
+    if (day && day !== currentDay) {
+      if (currentDay && dailyEndBalances.has(currentDay)) {
+        const prevDayClose = dailyEndBalances.get(currentDay)!;
+        runningEodPeak = Math.max(runningEodPeak, prevDayClose);
+      }
+      currentDay = day;
+    }
 
     let drawdownFloor: number | undefined;
     if (isFunded && ddLimit > 0) {
       if (ddType === "static") {
         drawdownFloor = Number((initial - ddLimit).toFixed(2));
       } else if (ddType === "trailing") {
-        // El trailing drawdown sigue a la curva de capital conforme sube a nuevos picos
-        drawdownFloor = Number((peak - ddLimit).toFixed(2));
+        // En Trailing, el suelo sube inmediatamente con cada nuevo máximo intradía
+        drawdownFloor = Number((runningIntradayPeak - ddLimit).toFixed(2));
       } else if (ddType === "eod") {
-        drawdownFloor = Number((Math.max(initial, eodRef) - ddLimit).toFixed(2));
-        if (day && day !== lastDay) {
-          eodRef = Math.max(eodRef, equity);
-          lastDay = day;
-        }
+        // En EOD, el suelo sube al cierre consolidado del día
+        const dayClose = day ? dailyEndBalances.get(day) ?? equity : equity;
+        const activeEodPeak = Math.max(initial, runningEodPeak, dayClose > runningEodPeak ? dayClose : runningEodPeak);
+        drawdownFloor = Number((activeEodPeak - ddLimit).toFixed(2));
       }
     }
 
@@ -500,10 +520,9 @@ export function accountDrawdown(
       ? trades
       : trades.filter((t) => !t.accountId || t.accountId === account.id);
 
-  // 1. Reconstruir el pico histórico y los cierres EOD a partir de las operaciones en orden cronológico
-  let computedPeak = Math.max(initial, balance);
+  // 1. Reconstruir la evolución día a día (EOD) y trade a trade (Intraday)
+  let computedIntradayPeak = Math.max(initial, balance);
   let computedEodPeak = initial;
-  let lastDay: string | null = null;
 
   if (accTrades.length > 0) {
     const sortedTrades = [...accTrades].sort((a, b) => {
@@ -514,38 +533,44 @@ export function accountDrawdown(
       return String(a.id ?? "").localeCompare(String(b.id ?? ""));
     });
 
+    const dailyBalances = new Map<string, number>();
     let runningEquity = initial;
     for (const t of sortedTrades) {
       runningEquity += t.pnl;
-      if (runningEquity > computedPeak) {
-        computedPeak = runningEquity;
+      if (runningEquity > computedIntradayPeak) {
+        computedIntradayPeak = runningEquity;
       }
       const dateStr = t.openedAt || t.closedAt || t.createdAt || "";
       const day = dateStr ? dateStr.slice(0, 10) : "";
-      if (day && day !== lastDay) {
-        computedEodPeak = Math.max(computedEodPeak, runningEquity);
-        lastDay = day;
+      if (day) {
+        dailyBalances.set(day, runningEquity);
+      }
+    }
+
+    // El pico EOD es el máximo balance consolidado al final de cualquier sesión de trading
+    for (const endOfDayBalance of dailyBalances.values()) {
+      if (endOfDayBalance > computedEodPeak) {
+        computedEodPeak = endOfDayBalance;
       }
     }
   }
 
-  // 2. Determinar High Watermark histórico
-  let highWatermark = Math.max(initial, balance, computedPeak, account.highWatermark ?? 0);
+  // 2. Determinar High Watermark / Referencia según el tipo de drawdown
+  let reference = initial;
   if (type === "static") {
-    highWatermark = initial;
+    reference = initial;
+  } else if (type === "eod") {
+    // En EOD, la referencia es el máximo balance de cierre diario alcanzado
+    reference = Math.max(initial, computedEodPeak, account.highWatermark ?? initial);
+  } else {
+    // En Trailing, la referencia es el máximo intradía alcanzado
+    reference = Math.max(initial, balance, computedIntradayPeak, account.highWatermark ?? initial);
   }
 
-  // 3. Fórmulas de Suelo Máximo y DD Consumido
-  // Trailing: Suelo = high_watermark - max_loss_limit
-  // EOD: Suelo = eod_peak - max_loss_limit
-  // Static: Suelo = initial_balance - max_loss_limit
-  const reference =
-    type === "static"
-      ? initial
-      : type === "eod"
-        ? Math.max(initial, computedEodPeak, account.highWatermark ?? initial)
-        : highWatermark;
+  const highWatermark = reference;
 
+  // 3. Fórmulas de Suelo de Pérdida Máxima y Drawdown
+  // Los 2.500 (o límite) se cuentan desde la referencia (pico alcanzado) hacia abajo
   const floor = maxLimit > 0 ? reference - maxLimit : 0;
   const used = Math.max(0, reference - balance);
   const remaining = maxLimit > 0 ? Math.max(0, balance - floor) : 0;
