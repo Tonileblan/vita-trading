@@ -36,6 +36,7 @@ import {
 import { TargetProgress, PhaseChip } from "@/components/target-progress";
 import { DrawdownProgress } from "@/components/drawdown-progress";
 import { DrawdownAlertButton } from "@/components/drawdown-corner-alert";
+import { PnlCalendar } from "@/components/pnl-calendar";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/cuenta/$accountId")({
@@ -65,11 +66,22 @@ function AccountDetail() {
   const [selected, setSelected] = useState<string[]>([]);
   const [pending, setPending] = useState<{ ids: string[]; label: string } | null>(null);
   const [working, setWorking] = useState(false);
+  const [selectedCalendarDate, setSelectedCalendarDate] = useState<string | null>(null);
 
   const accTrades = useMemo(
     () => trades.filter((t) => isTradeOfAccount(t, { id: accountId, name: account?.name })),
     [trades, accountId, account?.name],
   );
+
+  const displayTrades = useMemo(() => {
+    if (!selectedCalendarDate) return accTrades;
+    return accTrades.filter((t) => {
+      const d = new Date(t.openedAt || t.closedAt);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      return key === selectedCalendarDate;
+    });
+  }, [accTrades, selectedCalendarDate]);
+
   const metrics = useMemo(() => computeMetrics(accTrades), [accTrades]);
   const curve = useMemo(
     () =>
@@ -298,12 +310,38 @@ function AccountDetail() {
           </section>
         )}
 
+        {/* Calendario de Rendimiento PnL con selector de vistas: Mes / Trimestral / Anual */}
+        <PnlCalendar
+          trades={accTrades}
+          selectedDate={selectedCalendarDate}
+          onSelectDate={setSelectedCalendarDate}
+        />
+
         <section className="space-y-3">
           <div className="flex items-center justify-between gap-2 flex-wrap">
-            <h2 className="text-base font-semibold">Operaciones de la cuenta</h2>
-            <span className="text-xs text-muted-foreground font-mono">
-              {accTrades.length} {accTrades.length === 1 ? "operación" : "operaciones"}
-            </span>
+            <div className="flex items-center gap-2">
+              <h2 className="text-base font-semibold">Operaciones de la cuenta</h2>
+              {selectedCalendarDate && (
+                <span className="rounded-full bg-brand/15 border border-brand/40 px-2.5 py-0.5 text-xs text-brand font-semibold">
+                  Día: {selectedCalendarDate.split("-").reverse().join("/")}
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              {selectedCalendarDate && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-7 text-xs text-brand hover:text-foreground"
+                  onClick={() => setSelectedCalendarDate(null)}
+                >
+                  Ver todas ({accTrades.length})
+                </Button>
+              )}
+              <span className="text-xs text-muted-foreground font-mono">
+                {displayTrades.length} {displayTrades.length === 1 ? "operación" : "operaciones"}
+              </span>
+            </div>
           </div>
 
           {/* Barra de acciones masivas */}
@@ -338,11 +376,15 @@ function AccountDetail() {
 
           {loading && accTrades.length === 0 ? (
             <p className="text-sm text-muted-foreground">Cargando…</p>
-          ) : accTrades.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Todavía no hay operaciones.</p>
+          ) : displayTrades.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              {selectedCalendarDate
+                ? "No hay operaciones registradas en el día seleccionado."
+                : "Todavía no hay operaciones."}
+            </p>
           ) : (
             <TradesTable
-              trades={accTrades}
+              trades={displayTrades}
               accounts={accounts}
               strategies={strategies}
               strategyPeriods={strategyPeriods}
