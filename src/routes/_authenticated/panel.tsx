@@ -502,18 +502,15 @@ function Overview() {
     0,
   );
 
-  // PnL total histórico de la estrategia / cuentas (siempre en consonancia con el balance actual)
-  const strategyTotalPnl = useMemo(() => {
-    if (!isStrategy) return 0;
-    return fusionAccounts.reduce(
-      (s, a) => s + accountResult(a, visibleTrades, withdrawals),
-      0,
-    );
-  }, [isStrategy, fusionAccounts, visibleTrades, withdrawals]);
+  // PnL total histórico de la estrategia (suma de todas las operaciones de la estrategia/cuentas seleccionadas)
+  const strategyTotalPnl = useMemo(
+    () => (isStrategy ? scopedTrades.reduce((s, t) => s + t.pnl, 0) : 0),
+    [isStrategy, scopedTrades],
+  );
 
   // PnL del recuadro
   const fusionPnl =
-    selectedCalendarDate || range !== "all"
+    selectedCalendarDate || isStrategy || range !== "all"
       ? trades.reduce((s, t) => s + t.pnl, 0)
       : fusionAccounts.reduce((s, a) => s + accountResult(a, visibleTrades, withdrawals), 0);
 
