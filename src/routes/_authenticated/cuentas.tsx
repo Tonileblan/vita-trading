@@ -403,19 +403,20 @@ function AccountsPage() {
                   {dd.type === "trailing" ? "Trailing" : dd.type === "eod" ? "EOD" : "Estático"}
                 </span>
                 <span
-                  className="num font-mono font-bold text-[11px] text-muted-foreground"
-                  title={`Límite de Drawdown configurado: ${formatCurrency(dd.limit)}`}
+                  className={cn(
+                    "text-[10px] font-mono font-bold",
+                    isLowDrawdown ? "text-loss" : "text-muted-foreground",
+                  )}
                 >
-                  Límite: {formatCurrency(dd.limit)}
+                  {dd.healthPct.toFixed(0)}%
                 </span>
               </div>
 
               <div className="my-0.5">
                 <div className="flex items-baseline justify-between">
-                  <span className="text-[10px] text-muted-foreground font-medium">Le queda</span>
                   <span
                     className={cn(
-                      "num font-mono font-black text-sm sm:text-base",
+                      "num font-mono font-black text-base sm:text-lg tracking-tight",
                       isLowDrawdown ? "text-loss font-black" : "text-profit",
                     )}
                   >
@@ -436,11 +437,11 @@ function AccountsPage() {
               </div>
 
               <div className="flex justify-between text-[10px] text-muted-foreground font-mono">
-                <span>Suelo: {formatCurrency(drawdownFloor)}</span>
+                <span title="Límite de liquidación en el que se quema la cuenta">Suelo: {formatCurrency(drawdownFloor)}</span>
                 {dd.hasDailyLimit && dd.dailyFloor !== undefined ? (
                   <span className="font-semibold text-foreground/90">Hoy: {formatCurrency(dd.dailyFloor)}</span>
                 ) : (
-                  <span>Pico: {formatCurrency(dd.highWatermark)}</span>
+                  <span>Max: {formatCurrency(dd.highWatermark)}</span>
                 )}
               </div>
             </div>

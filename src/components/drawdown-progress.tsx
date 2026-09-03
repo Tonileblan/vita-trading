@@ -132,11 +132,11 @@ export function DrawdownProgress({
           )}
         </div>
 
-        {/* Hero metrics: Le queda, Límite, Suelo, Pico HWM, Bajada */}
+        {/* Hero metrics: Margen, Límite, Suelo, Max, Bajada */}
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5 rounded-lg bg-muted/30 p-3.5 border border-border/50">
           <div>
             <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-              Le Queda
+              Margen
             </p>
             <p className={cn("num text-lg sm:text-xl font-black font-mono tracking-tight", colorClass)}>
               {formatCurrency(status.remaining)}
@@ -151,8 +151,8 @@ export function DrawdownProgress({
             </p>
           </div>
           <div>
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-              Suelo Máximo
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground" title="Límite en el que se quema la cuenta">
+              Suelo Liquidación
             </p>
             <p className="num text-base sm:text-lg font-bold font-mono text-foreground">
               {formatCurrency(status.floor)}
@@ -160,7 +160,7 @@ export function DrawdownProgress({
           </div>
           <div>
             <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-              Pico Máx. (HWM)
+              Max Histórico
             </p>
             <p className="num text-base sm:text-lg font-bold font-mono text-foreground">
               {formatCurrency(status.highWatermark)}
@@ -168,7 +168,7 @@ export function DrawdownProgress({
           </div>
           <div>
             <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-              Bajada desde Pico
+              Bajada desde Max
             </p>
             <p
               className={cn(
@@ -263,7 +263,7 @@ export function DrawdownProgress({
         className,
       )}
     >
-      {/* Top row: Drawdown tag + Límite fijo */}
+      {/* Top row: Drawdown tag + health % */}
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-1.5 min-w-0">
           <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
@@ -284,28 +284,22 @@ export function DrawdownProgress({
           </span>
         ) : (
           <span className="text-[10px] font-mono font-bold text-muted-foreground">
-            Límite: {formatCurrency(status.limit)}
+            {healthPct.toFixed(0)}%
           </span>
         )}
       </div>
 
-      {/* Hero numbers: Le queda (Margen restante) */}
+      {/* Hero numbers: Margen restante vs Suelo de liquidación */}
       <div className="flex items-end justify-between gap-2 pt-0.5">
         <div>
-          <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-            Le queda
-          </span>
-          <p className={cn("num text-lg font-black font-mono tracking-tight leading-none mt-0.5", colorClass)}>
+          <p className={cn("num text-lg font-black font-mono tracking-tight leading-none", colorClass)}>
             {formatCurrency(status.remaining)}
           </p>
         </div>
 
         <div className="text-right">
-          <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-            Suelo
-          </span>
-          <p className="num text-xs font-bold font-mono text-foreground mt-0.5">
-            {formatCurrency(status.floor)}
+          <p className="num text-xs font-bold font-mono text-foreground" title="Límite en el que se quema la cuenta">
+            Suelo: {formatCurrency(status.floor)}
           </p>
         </div>
       </div>
@@ -321,7 +315,7 @@ export function DrawdownProgress({
 
         {/* Micro-footer info */}
         <div className="flex items-center justify-between text-[10px] text-muted-foreground font-mono">
-          <span>Pico máx: {formatCurrency(status.highWatermark)}</span>
+          <span>Max: {formatCurrency(status.highWatermark)}</span>
           <span className={status.used > 0 ? "text-loss font-semibold" : "text-muted-foreground"}>
             {status.used > 0 ? `Bajada: -${formatCurrency(status.used)}` : "En máximos"}
           </span>
