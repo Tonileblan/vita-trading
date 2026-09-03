@@ -167,15 +167,45 @@ export function parseTradeDate(val: string | number | Date | null | undefined): 
     return new Date(year, month, day, hour, min, sec);
   }
 
-  // 2. Formato DD/MM/YYYY o DD-MM-YYYY (con o sin hora) - Formato Español / Europeo
-  const euroMatch = s.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})(?:[ T](\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?/);
-  if (euroMatch) {
-    const day = Number(euroMatch[1]);
-    const month = Number(euroMatch[2]) - 1;
-    const year = Number(euroMatch[3]);
-    const hour = Number(euroMatch[4] ?? 0);
-    const min = Number(euroMatch[5] ?? 0);
-    const sec = Number(euroMatch[6] ?? 0);
+  // 2. Formato con día/mes o mes/día (DD/MM/YYYY, MM/DD/YYYY, D-M-YYYY)
+  const slashMatch = s.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})(?:[ T](\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?/);
+  if (slashMatch) {
+    const a = Number(slashMatch[1]);
+    const b = Number(slashMatch[2]);
+    const year = Number(slashMatch[3]);
+    const hour = Number(slashMatch[4] ?? 0);
+    const min = Number(slashMatch[5] ?? 0);
+    const sec = Number(slashMatch[6] ?? 0);
+
+    let day = a;
+    let month = b - 1; // 0-indexed
+
+    if (a > 12 && b <= 12) {
+      // Formato Europeo estricto: DD/MM/YYYY (ej: 28/07/2026 -> 28 jul)
+      day = a;
+      month = b - 1;
+    } else if (b > 12 && a <= 12) {
+      // Formato US estricto: MM/DD/YYYY (ej: 07/28/2026 -> 28 jul)
+      day = b;
+      month = a - 1;
+    } else {
+      // Caso ambiguo (ambos <= 12, ej: 08/04/2026 vs 04/08/2026):
+      // El número mayor corresponde al mes activo de trading (julio=7, agosto=8, septiembre=9, etc.)
+      if (a >= 7 && a <= 12 && b < a) {
+        // 'a' es el mes (formato US: MM/DD/YYYY, ej: 08/04/2026 -> 4 de agosto)
+        month = a - 1;
+        day = b;
+      } else if (b >= 7 && b <= 12 && a < b) {
+        // 'b' es el mes (formato EU: DD/MM/YYYY, ej: 04/08/2026 -> 4 de agosto)
+        month = b - 1;
+        day = a;
+      } else {
+        // Fallback natural a DD/MM/YYYY
+        day = a;
+        month = b - 1;
+      }
+    }
+
     return new Date(year, month, day, hour, min, sec);
   }
 

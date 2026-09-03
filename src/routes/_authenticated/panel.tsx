@@ -38,6 +38,7 @@ import {
 } from "@/lib/journal-store";
 import {
   accountBalance,
+  accountCurveStart,
   accountDrawdown,
   accountTarget,
   accountResult,
@@ -46,6 +47,7 @@ import {
   effectiveStrategyId,
   filterByRange,
   formatCurrency,
+  isTradeOfAccount,
 } from "@/lib/metrics";
 import { tradeDayKey, parseTradeTime } from "@/lib/emotions";
 import { cn } from "@/lib/utils";
@@ -175,20 +177,27 @@ function Overview() {
   const [range, setRange] = useState<RangeKey>("all");
   const [customRange, setCustomRange] = useState<DateRange>({ from: undefined, to: undefined });
   const [scope, setScope] = useState<Scope>("all");
-  // Unified filter: "all" | account.id | `strategy:${strategyId}`
   const [filter, setFilter] = useState<string>(() => searchParams.account || searchParams.filter || "all");
+  const [strategyAccountFilter, setStrategyAccountFilter] = useState<string>("all");
 
   useEffect(() => {
     if (searchParams.account) {
       setFilter(searchParams.account);
       setRange("all");
       setSelectedCalendarDate(null);
+      setStrategyAccountFilter("all");
     } else if (searchParams.filter) {
       setFilter(searchParams.filter);
       setRange("all");
       setSelectedCalendarDate(null);
+      setStrategyAccountFilter("all");
     }
   }, [searchParams.account, searchParams.filter]);
+
+  useEffect(() => {
+    setStrategyAccountFilter("all");
+    setSelectedCalendarDate(null);
+  }, [filter]);
 
   const isStrategy = filter.startsWith("strategy:");
   const accountFilter = isStrategy ? "all" : filter;
@@ -211,18 +220,67 @@ function Overview() {
     [selectedAccounts, scope, accountFilter],
   );
   const scopedIds = useMemo(() => new Set(scopedAccounts.map((a) => a.id)), [scopedAccounts]);
+
+  const strategyAccounts = useMemo(() => {
+    if (!isStrategy) return [];
+    const ids = new Set<string>();
+    for (const a of selectedAccounts) {
+      if (a.strategyId === strategyFilter) ids.add(a.id);
+    }
+    for (const p of strategyPeriods) {
+      if (p.strategyId === strategyFilter) ids.add(p.accountId);
+    }
+    for (const t of visibleTrades) {
+      if (
+        t.accountId &&
+        (t.strategyId === strategyFilter ||
+          effectiveStrategyId(t, accounts, strategyPeriods) === strategyFilter)
+      ) {
+        const found = accounts.find((a) => isTradeOfAccount(t, a));
+        if (found) ids.add(found.id);
+        else ids.add(t.accountId);
+      }
+    }
+    return accounts.filter((a) => ids.has(a.id));
+  }, [isStrategy, strategyFilter, selectedAccounts, strategyPeriods, visibleTrades, accounts]);
+
+  const activeStrategyAccount = useMemo(() => {
+    if (!isStrategy || strategyAccountFilter === "all") return null;
+    return strategyAccounts.find((a) => a.id === strategyAccountFilter) ?? null;
+  }, [isStrategy, strategyAccountFilter, strategyAccounts]);
+
   const scopedTrades = useMemo(
     () =>
-      visibleTrades.filter(
-        (t) =>
-          (accountFilter !== "all"
-            ? t.accountId === accountFilter
-            : scopedIds.size === 0 || scopedIds.has(t.accountId) || (!t.accountId && scope === "all")) &&
-          (strategyFilter === "all" ||
+      visibleTrades.filter((t) => {
+        if (strategyFilter !== "all") {
+          const matchesStrat =
             effectiveStrategyId(t, accounts, strategyPeriods) === strategyFilter ||
-            t.strategyId === strategyFilter),
-      ),
-    [visibleTrades, scopedIds, accountFilter, scope, strategyFilter, accounts, strategyPeriods],
+            t.strategyId === strategyFilter;
+          if (!matchesStrat) return false;
+
+          if (activeStrategyAccount) {
+            return isTradeOfAccount(t, activeStrategyAccount);
+          }
+          return true;
+        }
+
+        if (accountFilter !== "all") {
+          const acc = accounts.find((a) => a.id === accountFilter);
+          return acc ? isTradeOfAccount(t, acc) : t.accountId === accountFilter;
+        }
+
+        return scopedIds.size === 0 || scopedIds.has(t.accountId) || (!t.accountId && scope === "all");
+      }),
+    [
+      visibleTrades,
+      scopedIds,
+      accountFilter,
+      scope,
+      strategyFilter,
+      activeStrategyAccount,
+      accounts,
+      strategyPeriods,
+    ],
   );
 
   const accountStrategies = useMemo(() => {
@@ -259,25 +317,9 @@ function Overview() {
     [isStrategy, strategies, strategyFilter],
   );
 
-  // Accounts (capital + PnL) of the selected account/strategy.
-  const strategyAccounts = useMemo(() => {
-    if (!isStrategy) return [];
-    const ids = new Set<string>();
-    for (const a of selectedAccounts) {
-      if (a.strategyId === strategyFilter) ids.add(a.id);
-    }
-    for (const p of strategyPeriods) {
-      if (p.strategyId === strategyFilter) ids.add(p.accountId);
-    }
-    for (const t of scopedTrades) {
-      if (t.accountId) ids.add(t.accountId);
-    }
-    return selectedAccounts.filter((a) => ids.has(a.id));
-  }, [isStrategy, strategyFilter, selectedAccounts, strategyPeriods, scopedTrades]);
-
   const fusionAccounts = useMemo(
-    () => (isStrategy ? strategyAccounts : scopedAccounts),
-    [isStrategy, strategyAccounts, scopedAccounts],
+    () => (isStrategy ? (activeStrategyAccount ? [activeStrategyAccount] : strategyAccounts) : scopedAccounts),
+    [isStrategy, activeStrategyAccount, strategyAccounts, scopedAccounts],
   );
   const fusionEquity = useMemo(
     () =>
@@ -288,12 +330,12 @@ function Overview() {
     [fusionAccounts, visibleTrades, withdrawals],
   );
 
-  // Calendario: muestra exclusivamente las operaciones de la estrategia o cuenta seleccionada
   const calendarTrades = scopedTrades;
 
-  // Cuenta de fondeo concreta seleccionada → progreso hacia objetivo (eval / retiro) y drawdown
   const selectedFundedAccount = useMemo(() => {
-    if (isStrategy) return null;
+    if (isStrategy) {
+      return activeStrategyAccount?.type === "funded" ? activeStrategyAccount : null;
+    }
     if (accountFilter !== "all") {
       const acc = accounts.find((a) => a.id === accountFilter);
       return acc?.type === "funded" ? acc : null;
@@ -338,7 +380,7 @@ function Overview() {
       }
     }
     return null;
-  }, [isStrategy, accountFilter, accounts, scopedAccounts, scope]);
+  }, [isStrategy, activeStrategyAccount, accountFilter, accounts, scopedAccounts, scope]);
 
   const fundedTarget = useMemo(() => {
     if (!selectedFundedAccount) return null;
@@ -350,19 +392,67 @@ function Overview() {
     return accountDrawdown(selectedFundedAccount, visibleTrades, withdrawals);
   }, [selectedFundedAccount, visibleTrades, withdrawals]);
 
-  const curveAccounts = isStrategy ? strategyAccounts : scopedAccounts;
+  const curveAccounts = isStrategy
+    ? activeStrategyAccount
+      ? [activeStrategyAccount]
+      : strategyAccounts
+    : scopedAccounts;
+
   const curve = useMemo(() => {
     if (isStrategy) {
-      // Para una estrategia, la curva muestra la evolución del PnL acumulado de esa estrategia
+      if (activeStrategyAccount) {
+        return buildEquityCurve(
+          trades,
+          accountCurveStart(activeStrategyAccount, scopedTrades, withdrawals),
+          activeStrategyAccount,
+          scopedTrades,
+        );
+      }
       return buildEquityCurve(trades, 0, null, scopedTrades);
     }
     return buildEquityCurve(
       trades,
-      accountsCurveStart(curveAccounts, scopedTrades, withdrawals),
+      selectedFundedAccount
+        ? accountCurveStart(selectedFundedAccount, scopedTrades, withdrawals)
+        : accountsCurveStart(curveAccounts, scopedTrades, withdrawals),
       selectedFundedAccount,
       scopedTrades,
     );
-  }, [isStrategy, trades, curveAccounts, withdrawals, selectedFundedAccount, scopedTrades]);
+  }, [
+    isStrategy,
+    activeStrategyAccount,
+    trades,
+    curveAccounts,
+    withdrawals,
+    selectedFundedAccount,
+    scopedTrades,
+  ]);
+
+  const getAccountStratPnl = useCallback(
+    (acc: Account) => {
+      return visibleTrades
+        .filter(
+          (t) =>
+            (effectiveStrategyId(t, accounts, strategyPeriods) === strategyFilter ||
+              t.strategyId === strategyFilter) &&
+            isTradeOfAccount(t, acc),
+        )
+        .reduce((s, t) => s + (t.pnl ?? 0), 0);
+    },
+    [visibleTrades, strategyFilter, accounts, strategyPeriods],
+  );
+
+  const getAccountStratCount = useCallback(
+    (acc: Account) => {
+      return visibleTrades.filter(
+        (t) =>
+          (effectiveStrategyId(t, accounts, strategyPeriods) === strategyFilter ||
+            t.strategyId === strategyFilter) &&
+          isTradeOfAccount(t, acc),
+      ).length;
+    },
+    [visibleTrades, strategyFilter, accounts, strategyPeriods],
+  );
 
   const fundedAccounts = selectedAccounts.filter((a) => a.type === "funded");
   const realAccounts = selectedAccounts.filter((a) => a.type !== "funded");
@@ -757,36 +847,41 @@ function Overview() {
             })}
           </section>
         ) : (
-          <section className="panel p-4 bg-card shadow-xs">
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-3">
-              <div className="flex items-center gap-2.5">
+          <section className="panel p-4 sm:p-5 bg-card shadow-xs rounded-2xl border border-border/80 space-y-4">
+            {/* Cabecera de la Estrategia / Cuenta */}
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-3.5">
+              <div className="flex items-center gap-3">
                 {isStrategy ? (
-                  <span
-                    className="size-4 rounded-full shadow-xs shrink-0"
+                  <div
+                    className="size-5 rounded-full shadow-sm shrink-0 ring-2 ring-background ring-offset-2 ring-offset-brand/20"
                     style={{
                       backgroundColor:
                         selectedStrategy?.color ?? "var(--color-brand)",
                     }}
                   />
                 ) : (
-                  <Building2 className="size-4 text-brand shrink-0" />
+                  <div className="p-2 rounded-xl bg-brand/10 border border-brand/20">
+                    <Building2 className="size-4 text-brand shrink-0" />
+                  </div>
                 )}
                 <div>
                   <div className="flex items-center gap-2 flex-wrap">
-                    <h2 className="text-lg font-bold font-display tracking-wide uppercase leading-none">
+                    <h2 className="text-lg sm:text-xl font-bold font-display tracking-wide uppercase leading-none">
                       {isStrategy
                         ? `Estrategia: ${selectedStrategy?.name ?? "Estrategia"}`
                         : (accounts.find((a) => a.id === accountFilter)?.name ?? "Cuenta")}
                     </h2>
                     {isStrategy && selectedStrategy?.mainSymbol && (
-                      <span className="rounded bg-brand/10 border border-brand/25 px-1.5 py-0.2 text-[10px] font-bold text-brand uppercase">
+                      <span className="rounded-md bg-brand/10 border border-brand/25 px-2 py-0.5 text-[10px] font-bold text-brand uppercase tracking-wider">
                         {selectedStrategy.mainSymbol}
                       </span>
                     )}
                   </div>
-                  <p className="text-xs text-muted-foreground mt-0.5">
+                  <p className="text-xs text-muted-foreground mt-1">
                     {isStrategy
-                      ? `Rendimiento exclusivo de la estrategia ${selectedStrategy?.name ?? ""}`
+                      ? activeStrategyAccount
+                        ? `Filtrando exclusivamente por la cuenta ${activeStrategyAccount.name}${activeStrategyAccount.firm ? ` (${activeStrategyAccount.firm})` : ""}`
+                        : `Rendimiento consolidado en las ${strategyAccounts.length} cuentas vinculadas`
                       : "Supervisión detallada de cuenta"}
                   </p>
                 </div>
@@ -794,42 +889,195 @@ function Overview() {
 
               <div className="flex items-center gap-2 flex-wrap">
                 {fundedTarget && <PhaseChip phase={fundedTarget.phase} />}
-                <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs font-semibold text-muted-foreground">
+                <span className="rounded-full bg-muted/80 border border-border px-3 py-1 text-xs font-semibold text-muted-foreground">
                   {isStrategy
-                    ? `${strategyAccounts.length} ${strategyAccounts.length === 1 ? "cuenta vinculada" : "cuentas vinculadas"}`
+                    ? activeStrategyAccount
+                      ? activeStrategyAccount.type === "funded"
+                        ? "Cuenta de Fondeo"
+                        : "Cuenta Personal"
+                      : `${strategyAccounts.length} ${strategyAccounts.length === 1 ? "cuenta vinculada" : "cuentas vinculadas"}`
                     : accounts.find((a) => a.id === accountFilter)?.type === "funded"
                       ? "Fondeo"
                       : "Personal"}
                 </span>
+                {isStrategy && activeStrategyAccount && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setStrategyAccountFilter("all")}
+                    className="h-7 px-2.5 text-xs text-brand hover:text-brand hover:bg-brand/10 gap-1 rounded-lg border-brand/30"
+                  >
+                    <X className="size-3.5" /> Ver consolidado
+                  </Button>
+                )}
               </div>
             </div>
 
+            {/* Selector Interactivo de Cuentas vinculadas a la Estrategia */}
+            {isStrategy && strategyAccounts.length > 0 && (
+              <div className="rounded-xl border border-border/70 bg-muted/15 p-3 sm:p-3.5 space-y-2.5">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                    <Wallet className="size-3.5 text-brand" />
+                    <span>Seleccionar cuenta para aislar sus métricas:</span>
+                  </div>
+                  <span className="text-[11px] text-muted-foreground">
+                    {activeStrategyAccount
+                      ? `Mostrando solo: ${activeStrategyAccount.name}`
+                      : "Mostrando todas las cuentas"}
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-2 flex-wrap pt-0.5">
+                  {/* Botón 'Todas las cuentas' */}
+                  <button
+                    type="button"
+                    onClick={() => setStrategyAccountFilter("all")}
+                    className={cn(
+                      "group relative flex items-center gap-2 rounded-xl px-3 py-1.5 text-xs font-medium transition-all duration-200 border cursor-pointer",
+                      strategyAccountFilter === "all"
+                        ? "bg-brand text-brand-foreground border-brand shadow-sm shadow-brand/25 font-bold"
+                        : "bg-card hover:bg-muted/80 text-muted-foreground hover:text-foreground border-border/80",
+                    )}
+                  >
+                    <Layers
+                      className={cn(
+                        "size-3.5",
+                        strategyAccountFilter === "all"
+                          ? "text-brand-foreground"
+                          : "text-brand",
+                      )}
+                    />
+                    <span>Todas las cuentas</span>
+                    <span
+                      className={cn(
+                        "rounded-full px-1.5 py-0.2 text-[10px] font-bold tabular-nums",
+                        strategyAccountFilter === "all"
+                          ? "bg-black/20 text-white"
+                          : "bg-muted text-foreground",
+                      )}
+                    >
+                      {strategyAccounts.length}
+                    </span>
+                    <span
+                      className={cn(
+                        "num text-[11px] font-bold ml-0.5",
+                        strategyAccountFilter === "all"
+                          ? "text-brand-foreground"
+                          : strategyTotalPnl >= 0
+                            ? "text-profit"
+                            : "text-loss",
+                      )}
+                    >
+                      {strategyTotalPnl >= 0 ? "+" : ""}
+                      {formatCurrency(strategyTotalPnl, true)}
+                    </span>
+                  </button>
+
+                  {/* Botones por cuenta individual */}
+                  {strategyAccounts.map((acc) => {
+                    const isSelected = strategyAccountFilter === acc.id;
+                    const accPnl = getAccountStratPnl(acc);
+                    const accCount = getAccountStratCount(acc);
+
+                    return (
+                      <button
+                        key={acc.id}
+                        type="button"
+                        onClick={() =>
+                          setStrategyAccountFilter(isSelected ? "all" : acc.id)
+                        }
+                        className={cn(
+                          "group relative flex items-center gap-2 rounded-xl px-3 py-1.5 text-xs font-medium transition-all duration-200 border cursor-pointer",
+                          isSelected
+                            ? "bg-brand/15 border-brand text-foreground shadow-sm shadow-brand/10 font-bold ring-2 ring-brand/40"
+                            : "bg-card hover:bg-muted/60 text-muted-foreground hover:text-foreground border-border/80 hover:border-border",
+                        )}
+                      >
+                        {acc.type === "funded" ? (
+                          <ShieldCheck
+                            className={cn(
+                              "size-3.5 shrink-0",
+                              isSelected ? "text-brand" : "text-brand/80",
+                            )}
+                          />
+                        ) : (
+                          <Wallet
+                            className={cn(
+                              "size-3.5 shrink-0",
+                              isSelected ? "text-brand" : "text-muted-foreground",
+                            )}
+                          />
+                        )}
+                        <span className="truncate max-w-[170px] sm:max-w-[220px]">
+                          {acc.name}
+                        </span>
+                        {acc.firm && (
+                          <span
+                            className={cn(
+                              "text-[10px] px-1.5 py-0.2 rounded font-normal shrink-0",
+                              isSelected
+                                ? "bg-brand/25 text-foreground"
+                                : "bg-muted text-muted-foreground",
+                            )}
+                          >
+                            {acc.firm}
+                          </span>
+                        )}
+                        <span
+                          className={cn(
+                            "num text-[11px] font-bold tabular-nums shrink-0 ml-0.5",
+                            accPnl >= 0 ? "text-profit" : "text-loss",
+                          )}
+                        >
+                          {accPnl >= 0 ? "+" : ""}
+                          {formatCurrency(accPnl, true)}
+                        </span>
+                        {accCount > 0 && (
+                          <span className="text-[10px] text-muted-foreground/80 tabular-nums">
+                            ({accCount} ops)
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             {/* Cuadrícula de Métricas de la Estrategia / Cuenta */}
-            <div className="mt-3.5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              <div className="rounded-lg bg-muted/20 border border-border/60 p-3">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="rounded-xl bg-muted/20 border border-border/60 p-3.5 space-y-1">
                 <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
                   Resultado en Periodo
                 </p>
                 <p
                   className={cn(
-                    "num text-2xl font-black tabular-nums mt-1",
+                    "num text-2xl font-black tabular-nums",
                     fusionPnl >= 0 ? "text-profit" : "text-loss",
                   )}
                 >
-                  {fusionPnl >= 0 ? "+" : "−"}{formatCurrency(Math.abs(fusionPnl), false)}
+                  {fusionPnl >= 0 ? "+" : "−"}
+                  {formatCurrency(Math.abs(fusionPnl), false)}
                 </p>
-                <p className="text-[10px] text-muted-foreground mt-0.5">
-                  {range === "all" ? "Periodo completo" : `En rango seleccionado (${trades.length} ops)`}
+                <p className="text-[10px] text-muted-foreground">
+                  {range === "all"
+                    ? "Periodo completo"
+                    : `En rango seleccionado (${trades.length} ops)`}
                 </p>
               </div>
 
-              <div className="rounded-lg bg-muted/20 border border-border/60 p-3">
+              <div className="rounded-xl bg-muted/20 border border-border/60 p-3.5 space-y-1">
                 <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                  {isStrategy ? "PnL Total Histórico" : "Capital Actual"}
+                  {isStrategy
+                    ? activeStrategyAccount
+                      ? "PnL de la Cuenta"
+                      : "PnL Total Histórico"
+                    : "Capital Actual"}
                 </p>
                 <p
                   className={cn(
-                    "num text-2xl font-black tracking-tight mt-1",
+                    "num text-2xl font-black tracking-tight",
                     isStrategy
                       ? strategyTotalPnl >= 0
                         ? "text-profit"
@@ -841,64 +1089,52 @@ function Overview() {
                     ? `${strategyTotalPnl >= 0 ? "+" : "−"}${formatCurrency(Math.abs(strategyTotalPnl), false)}`
                     : formatCurrency(fusionEquity)}
                 </p>
-                <p className="text-[10px] text-muted-foreground mt-0.5">
-                  {isStrategy ? `${scopedTrades.length} ops registradas en total` : `${fusionAccounts.length} cuenta(s)`}
+                <p className="text-[10px] text-muted-foreground">
+                  {isStrategy
+                    ? `${scopedTrades.length} ops registradas en total`
+                    : `${fusionAccounts.length} cuenta(s)`}
                 </p>
               </div>
 
-              <div className="rounded-lg bg-muted/20 border border-border/60 p-3">
+              <div className="rounded-xl bg-muted/20 border border-border/60 p-3.5 space-y-1">
                 <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
                   Tasa de Acierto (Win Rate)
                 </p>
-                <p className="num text-2xl font-black text-foreground mt-1">
+                <p className="num text-2xl font-black text-foreground">
                   {trades.length > 0
                     ? `${((trades.filter((t) => t.pnl > 0).length / trades.length) * 100).toFixed(0)}%`
                     : "—"}
                 </p>
-                <p className="text-[10px] text-muted-foreground mt-0.5">
+                <p className="text-[10px] text-muted-foreground">
                   {trades.length > 0
                     ? `${trades.filter((t) => t.pnl > 0).length}W / ${trades.filter((t) => t.pnl < 0).length}L`
                     : "Sin operaciones"}
                 </p>
               </div>
 
-              <div className="rounded-lg bg-muted/20 border border-border/60 p-3">
+              <div className="rounded-xl bg-muted/20 border border-border/60 p-3.5 space-y-1">
                 <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
                   Profit Factor
                 </p>
-                <p className="num text-2xl font-black text-foreground mt-1">
+                <p className="num text-2xl font-black text-foreground">
                   {strategyProfitFactor === Infinity
                     ? "∞"
                     : strategyProfitFactor > 0
                       ? strategyProfitFactor.toFixed(2)
                       : "—"}
                 </p>
-                <p className="text-[10px] text-muted-foreground mt-0.5">
+                <p className="text-[10px] text-muted-foreground">
                   Ratio Ganancias / Pérdidas
                 </p>
               </div>
             </div>
 
-            {/* Cuentas donde se ejecuta esta estrategia */}
-            {isStrategy && strategyAccounts.length > 0 && (
-              <div className="mt-3 pt-3 border-t border-border/50 flex items-center gap-2 flex-wrap">
-                <span className="text-[11px] text-muted-foreground font-semibold">Cuentas con esta estrategia:</span>
-                {strategyAccounts.map((acc) => (
-                  <span
-                    key={acc.id}
-                    className="inline-flex items-center gap-1 rounded bg-muted/70 border border-border px-2 py-0.5 text-[11px] font-medium text-foreground"
-                  >
-                    <Wallet className="size-3 text-brand" />
-                    {acc.name} {acc.firm ? `(${acc.firm})` : ""}
-                  </span>
-                ))}
-              </div>
-            )}
-
             {(fundedTarget || fundedDrawdown) && (
-              <div className="mt-4 grid gap-4 grid-cols-1 md:grid-cols-2">
+              <div className="grid gap-4 grid-cols-1 md:grid-cols-2 pt-1">
                 {fundedTarget && <TargetProgress status={fundedTarget} />}
-                {fundedDrawdown && <DrawdownProgress status={fundedDrawdown} threshold={600} />}
+                {fundedDrawdown && (
+                  <DrawdownProgress status={fundedDrawdown} threshold={600} />
+                )}
               </div>
             )}
           </section>
