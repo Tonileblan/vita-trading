@@ -726,8 +726,11 @@ export function JournalProvider({ children }: { children: ReactNode }) {
       const idSet = new Set(ids);
       const deltas = new Map<string, number>();
       for (const t of safeData.trades) {
-        if (!idSet.has(t.id) || !t.accountId) continue;
-        deltas.set(t.accountId, (deltas.get(t.accountId) ?? 0) - t.pnl);
+        if (!idSet.has(t.id)) continue;
+        const matchingAcc = safeData.accounts.find((a) => isTradeOfAccount(t, a));
+        if (matchingAcc) {
+          deltas.set(matchingAcc.id, (deltas.get(matchingAcc.id) ?? 0) - t.pnl);
+        }
       }
 
       // 1. Actualización optimista inmediata (0ms)
@@ -911,12 +914,16 @@ export function JournalProvider({ children }: { children: ReactNode }) {
           setManualSelection(null);
         }
 
+        const matchingAccount = data.accounts.find((a) => isTradeOfAccount(trade, a));
+
         // 1. Inserción optimista inmediata en caché (0ms)
         updateCache((old) => ({
           ...old,
           trades: [optimisticTrade, ...old.trades],
           accounts: old.accounts.map((a) =>
-            a.id === trade.accountId ? updateAccountBalanceAndHwm(a, a.currentBalance + trade.pnl) : a,
+            matchingAccount && a.id === matchingAccount.id
+              ? updateAccountBalanceAndHwm(a, a.currentBalance + trade.pnl)
+              : a,
           ),
         }));
 
@@ -928,11 +935,14 @@ export function JournalProvider({ children }: { children: ReactNode }) {
             .select()
             .single();
 
-          const account = data.accounts.find((a) => a.id === trade.accountId);
+          const account = matchingAccount;
           const accountPromise = account
             ? supabase
                 .from("accounts")
-                .update({ current_balance: account.currentBalance + trade.pnl } as never)
+                .update({
+                  current_balance: account.currentBalance + trade.pnl,
+                  high_watermark: updateAccountBalanceAndHwm(account, account.currentBalance + trade.pnl).highWatermark,
+                } as never)
                 .eq("id", account.id)
             : Promise.resolve();
 
@@ -958,8 +968,12 @@ export function JournalProvider({ children }: { children: ReactNode }) {
       },
       updateTrade: async (id, patch) => {
         const oldTrade = data.trades.find((t) => t.id === id);
-        const oldAccountId = oldTrade?.accountId;
-        const newAccountId = patch.accountId !== undefined ? patch.accountId : oldAccountId;
+        const oldAcc = oldTrade ? data.accounts.find((a) => isTradeOfAccount(oldTrade, a)) : undefined;
+        const newAcc = data.accounts.find((a) =>
+          isTradeOfAccount({ ...(oldTrade ?? {}), ...patch }, a),
+        );
+        const oldAccountId = oldAcc?.id;
+        const newAccountId = newAcc?.id;
         const oldPnl = oldTrade?.pnl ?? 0;
         const newPnl = patch.pnl !== undefined ? patch.pnl : oldPnl;
 
@@ -1015,8 +1029,9 @@ export function JournalProvider({ children }: { children: ReactNode }) {
             typeof crypto !== "undefined" && "randomUUID" in crypto
               ? crypto.randomUUID()
               : `temp-${Date.now()}-${idx}`;
-          if (t.accountId) {
-            deltas.set(t.accountId, (deltas.get(t.accountId) ?? 0) + t.pnl);
+          const matchingAcc = data.accounts.find((a) => isTradeOfAccount(t, a));
+          if (matchingAcc) {
+            deltas.set(matchingAcc.id, (deltas.get(matchingAcc.id) ?? 0) + t.pnl);
           }
           return {
             id: tempId,
