@@ -1000,104 +1000,72 @@ function Overview() {
               </div>
             </div>
 
-            {/* Selector Interactivo de Cuentas: Todas / Deseleccionar arriba + 2 Filas Paralelas abajo */}
-            {isStrategy && strategyAccounts.length > 0 && (() => {
-              const half = Math.ceil(strategyAccounts.length / 2);
-              const row1 = strategyAccounts.slice(0, half);
-              const row2 = strategyAccounts.slice(half);
-
-              return (
-                <div className="rounded-xl border border-border/70 bg-muted/15 p-3 sm:p-3.5 space-y-3">
-                  {/* Fila superior: Botones 'Todas' y 'Deseleccionar' */}
-                  <div className="flex items-center justify-between gap-2 flex-wrap">
-                    <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                      <Wallet className="size-3.5 text-brand" />
-                      <span>Cuentas vinculadas a esta estrategia ({activeStrategyAccountIds.length}/{strategyAccounts.length}):</span>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={handleSelectAllStrategyAccounts}
-                        className={cn(
-                          "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all border cursor-pointer select-none",
-                          activeStrategyAccountIds.length === strategyAccounts.length
-                            ? "bg-brand text-brand-foreground border-brand shadow-xs shadow-brand/20"
-                            : "bg-card hover:bg-muted/80 text-muted-foreground hover:text-foreground border-border/80",
-                        )}
-                      >
-                        <CheckCheck className="size-3.5" />
-                        Todas
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={handleDeselectAllStrategyAccounts}
-                        className={cn(
-                          "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all border cursor-pointer select-none",
-                          activeStrategyAccountIds.length === 0
-                            ? "bg-muted text-foreground border-border font-bold ring-1 ring-border"
-                            : "bg-card hover:bg-muted/80 text-muted-foreground hover:text-foreground border-border/80",
-                        )}
-                      >
-                        <X className="size-3.5" />
-                        Deseleccionar
-                      </button>
-                    </div>
+            {/* Selector Interactivo de Cuentas: Todas / Deseleccionar arriba + Cuadrícula fluida abajo sin scroll lateral */}
+            {isStrategy && strategyAccounts.length > 0 && (
+              <div className="rounded-xl border border-border/70 bg-muted/15 p-3 sm:p-3.5 space-y-3">
+                {/* Fila superior: Botones 'Todas' y 'Deseleccionar' */}
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                    <Wallet className="size-3.5 text-brand" />
+                    <span>Cuentas vinculadas a esta estrategia ({activeStrategyAccountIds.length}/{strategyAccounts.length}):</span>
                   </div>
 
-                  {/* Dos Filas Paralelas de Cuentas con ancho uniforme idéntico y nombre completo */}
-                  <div className="overflow-x-auto pb-1 scrollbar-thin">
-                    <div
-                      className="grid gap-2"
-                      style={{
-                        gridTemplateColumns: `repeat(${half}, minmax(230px, 1fr))`,
-                      }}
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={handleSelectAllStrategyAccounts}
+                      className={cn(
+                        "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all border cursor-pointer select-none",
+                        activeStrategyAccountIds.length === strategyAccounts.length
+                          ? "bg-brand text-brand-foreground border-brand shadow-xs shadow-brand/20"
+                          : "bg-card hover:bg-muted/80 text-muted-foreground hover:text-foreground border-border/80",
+                      )}
                     >
-                      {/* Fila 1 */}
-                      {row1.map((acc) => {
-                        const isSelected = activeStrategyAccountIds.includes(acc.id);
-                        return (
-                          <button
-                            key={acc.id}
-                            type="button"
-                            onClick={() => handleToggleStrategyAccount(acc.id)}
-                            className={cn(
-                              "group relative flex items-center justify-center text-center px-4 py-2.5 rounded-xl text-xs whitespace-nowrap transition-all duration-150 border cursor-pointer select-none",
-                              isSelected
-                                ? "bg-brand/15 border-brand text-foreground shadow-xs ring-1 ring-brand/50 font-bold"
-                                : "bg-card text-muted-foreground border-border/80 hover:bg-muted/50 hover:text-foreground opacity-50 hover:opacity-100 font-medium",
-                            )}
-                          >
-                            <span>{acc.name}</span>
-                          </button>
-                        );
-                      })}
+                      <CheckCheck className="size-3.5" />
+                      Todas
+                    </button>
 
-                      {/* Fila 2 */}
-                      {row2.map((acc) => {
-                        const isSelected = activeStrategyAccountIds.includes(acc.id);
-                        return (
-                          <button
-                            key={acc.id}
-                            type="button"
-                            onClick={() => handleToggleStrategyAccount(acc.id)}
-                            className={cn(
-                              "group relative flex items-center justify-center text-center px-4 py-2.5 rounded-xl text-xs whitespace-nowrap transition-all duration-150 border cursor-pointer select-none",
-                              isSelected
-                                ? "bg-brand/15 border-brand text-foreground shadow-xs ring-1 ring-brand/50 font-bold"
-                                : "bg-card text-muted-foreground border-border/80 hover:bg-muted/50 hover:text-foreground opacity-50 hover:opacity-100 font-medium",
-                            )}
-                          >
-                            <span>{acc.name}</span>
-                          </button>
-                        );
-                      })}
-                    </div>
+                    <button
+                      type="button"
+                      onClick={handleDeselectAllStrategyAccounts}
+                      className={cn(
+                        "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all border cursor-pointer select-none",
+                        activeStrategyAccountIds.length === 0
+                          ? "bg-muted text-foreground border-border font-bold ring-1 ring-border"
+                          : "bg-card hover:bg-muted/80 text-muted-foreground hover:text-foreground border-border/80",
+                      )}
+                    >
+                      <X className="size-3.5" />
+                      Deseleccionar
+                    </button>
                   </div>
                 </div>
-              );
-            })()}
+
+                {/* Cuadrícula adaptable de cuentas ocupando las filas necesarias sin scroll horizontal */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2">
+                  {strategyAccounts.map((acc) => {
+                    const isSelected = activeStrategyAccountIds.includes(acc.id);
+                    return (
+                      <button
+                        key={acc.id}
+                        type="button"
+                        onClick={() => handleToggleStrategyAccount(acc.id)}
+                        className={cn(
+                          "group relative flex items-center justify-center text-center px-3 py-2.5 rounded-xl text-xs transition-all duration-150 border cursor-pointer select-none w-full min-h-[42px]",
+                          isSelected
+                            ? "bg-brand/15 border-brand text-foreground shadow-xs ring-1 ring-brand/50 font-bold"
+                            : "bg-card text-muted-foreground border-border/80 hover:bg-muted/50 hover:text-foreground opacity-50 hover:opacity-100 font-medium",
+                        )}
+                      >
+                        <span className="text-center leading-snug break-words">
+                          {acc.name}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             {/* Cuadrícula de Métricas de la Estrategia / Cuenta */}
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
