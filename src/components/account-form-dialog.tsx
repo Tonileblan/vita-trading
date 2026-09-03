@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Building2, User, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -97,28 +97,47 @@ export function AccountFormDialog({
   const [startOfDay, setStartOfDay] = useState(
     String(account?.startOfDayBalance ?? account?.initialBalance ?? 50000),
   );
-  const [ddType, setDdType] = useState<DrawdownType>(account?.drawdownType ?? "trailing");
+  const [ddType, setDdType] = useState<DrawdownType>(account?.drawdownType ?? "eod");
   const [phase, setPhase] = useState<AccountPhase>(account?.phase ?? "eval");
   const [target, setTarget] = useState(account?.profitTarget ? String(account.profitTarget) : "");
 
+  // Sincronizar todos los campos del formulario cada vez que se abre el modal o cambia la cuenta
+  useEffect(() => {
+    if (open) {
+      if (account) {
+        setType(account.type);
+        setName(account.name);
+        setFirm(account.firm ?? PROP_FIRMS[0]!);
+        setBroker(account.broker ?? BROKERS[0]!);
+        setInitial(String(account.initialBalance));
+        setCurrent(String(account.currentBalance));
+        setMaxLoss(String(account.maxLossLimit ?? account.drawdownLimit ?? 2500));
+        setDailyLoss(account.dailyLossLimit != null ? String(account.dailyLossLimit) : "");
+        setHighWatermark(String(account.highWatermark ?? account.initialBalance));
+        setStartOfDay(String(account.startOfDayBalance ?? account.initialBalance));
+        setDdType(account.drawdownType ?? "eod");
+        setPhase(account.phase ?? "eval");
+        setTarget(account.profitTarget ? String(account.profitTarget) : "");
+      } else {
+        setType("funded");
+        setName("");
+        setFirm(PROP_FIRMS[0]!);
+        setBroker(BROKERS[0]!);
+        setInitial("50000");
+        setCurrent("50000");
+        setMaxLoss("2500");
+        setDailyLoss("");
+        setHighWatermark("50000");
+        setStartOfDay("50000");
+        setDdType("eod");
+        setPhase("eval");
+        setTarget("");
+      }
+    }
+  }, [open, account]);
+
   const handleOpenChange = (v: boolean) => {
     setOpen(v);
-    if (v && account) {
-      setType(account.type);
-      setName(account.name);
-      setFirm(account.firm ?? PROP_FIRMS[0]!);
-      setBroker(account.broker ?? BROKERS[0]!);
-      setInitial(String(account.initialBalance));
-      setCurrent(String(account.currentBalance));
-
-      setMaxLoss(String(account.maxLossLimit ?? account.drawdownLimit ?? 2500));
-      setDailyLoss(account.dailyLossLimit != null ? String(account.dailyLossLimit) : "");
-      setHighWatermark(String(account.highWatermark ?? account.initialBalance));
-      setStartOfDay(String(account.startOfDayBalance ?? account.initialBalance));
-      setDdType(account.drawdownType ?? "trailing");
-      setPhase(account.phase ?? "eval");
-      setTarget(account.profitTarget ? String(account.profitTarget) : "");
-    }
   };
 
   const submit = async () => {
@@ -185,8 +204,10 @@ export function AccountFormDialog({
         setName("");
       }
       setOpen(false);
-    } catch {
-      toast.error("No se pudo guardar la cuenta");
+    } catch (err: unknown) {
+      console.error("Error al guardar la cuenta:", err);
+      const msg = err instanceof Error ? err.message : "No se pudo guardar la cuenta";
+      toast.error(msg);
     }
   };
 

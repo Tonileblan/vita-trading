@@ -403,23 +403,20 @@ function AccountsPage() {
                   {dd.type === "trailing" ? "Trailing" : dd.type === "eod" ? "EOD" : "Estático"}
                 </span>
                 <span
-                  className={cn(
-                    "num font-mono font-bold text-[11px]",
-                    dd.used > 0 ? "text-loss" : "text-muted-foreground",
-                  )}
-                  title={`Drawdown actual consumido: ${formatCurrency(dd.used)}`}
+                  className="num font-mono font-bold text-[11px] text-muted-foreground"
+                  title={`Límite de Drawdown configurado: ${formatCurrency(dd.limit)}`}
                 >
-                  DD: {formatCurrency(dd.used)}
+                  Límite: {formatCurrency(dd.limit)}
                 </span>
               </div>
 
               <div className="my-0.5">
                 <div className="flex items-baseline justify-between">
-                  <span className="text-[10px] text-muted-foreground font-medium">Margen rest.</span>
+                  <span className="text-[10px] text-muted-foreground font-medium">Le queda</span>
                   <span
                     className={cn(
                       "num font-mono font-black text-sm sm:text-base",
-                      isLowDrawdown ? "text-loss" : "text-profit",
+                      isLowDrawdown ? "text-loss font-black" : "text-profit",
                     )}
                   >
                     {formatCurrency(dd.remaining)}
@@ -443,7 +440,7 @@ function AccountsPage() {
                 {dd.hasDailyLimit && dd.dailyFloor !== undefined ? (
                   <span className="font-semibold text-foreground/90">Hoy: {formatCurrency(dd.dailyFloor)}</span>
                 ) : (
-                  <span>Límite: {formatCurrency(dd.limit)}</span>
+                  <span>Pico: {formatCurrency(dd.reference)}</span>
                 )}
               </div>
             </div>

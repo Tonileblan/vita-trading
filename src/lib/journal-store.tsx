@@ -797,8 +797,36 @@ export function JournalProvider({ children }: { children: ReactNode }) {
             .insert({ ...fromAccount(account), ...base } as never)
             .select()
             .single();
-          if (error) throw error;
-          if (inserted) {
+          if (error) {
+            console.warn("Reintentando inserción de cuenta con campos estándar:", error.message);
+            const minimalRow: Row = {
+              ...base,
+              name: account.name,
+              type: account.type,
+              firm: account.firm ?? null,
+              broker: account.broker ?? null,
+              strategy_id: account.strategyId || null,
+              phase: account.phase ?? "eval",
+              profit_target: account.profitTarget ?? null,
+              initial_balance: account.initialBalance,
+              current_balance: account.currentBalance,
+              drawdown_limit: account.maxLossLimit ?? account.drawdownLimit ?? null,
+              currency: account.currency ?? "USD",
+            };
+            const { data: insertedFallback, error: fallbackErr } = await supabase
+              .from("accounts")
+              .insert(minimalRow as never)
+              .select()
+              .single();
+            if (fallbackErr) throw fallbackErr;
+            if (insertedFallback) {
+              const realAcc = toAccount(insertedFallback as Row);
+              updateCache((old) => ({
+                ...old,
+                accounts: old.accounts.map((a) => (a.id === tempId ? realAcc : a)),
+              }));
+            }
+          } else if (inserted) {
             const realAcc = toAccount(inserted as Row);
             updateCache((old) => ({
               ...old,
@@ -806,6 +834,7 @@ export function JournalProvider({ children }: { children: ReactNode }) {
             }));
           }
         } catch (err) {
+          console.error("Error al crear cuenta:", err);
           await refresh();
           throw err;
         }
@@ -817,12 +846,34 @@ export function JournalProvider({ children }: { children: ReactNode }) {
         }));
 
         try {
+          const fullRow = fromAccount(patch);
           const { error } = await supabase
             .from("accounts")
-            .update(fromAccount(patch) as never)
+            .update(fullRow as never)
             .eq("id", id);
-          if (error) throw error;
+          if (error) {
+            console.warn("Reintentando actualización de cuenta con campos estándar:", error.message);
+            const minimalRow: Row = {
+              name: patch.name,
+              type: patch.type,
+              firm: patch.firm ?? null,
+              broker: patch.broker ?? null,
+              strategy_id: patch.strategyId || null,
+              phase: patch.phase ?? "eval",
+              profit_target: patch.profitTarget ?? null,
+              initial_balance: patch.initialBalance,
+              current_balance: patch.currentBalance,
+              drawdown_limit: patch.maxLossLimit ?? patch.drawdownLimit ?? null,
+              currency: patch.currency ?? "USD",
+            };
+            const { error: fallbackErr } = await supabase
+              .from("accounts")
+              .update(minimalRow as never)
+              .eq("id", id);
+            if (fallbackErr) throw fallbackErr;
+          }
         } catch (err) {
+          console.error("Error al actualizar la cuenta:", err);
           await refresh();
           throw err;
         }

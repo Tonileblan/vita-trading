@@ -50,17 +50,14 @@ export function DrawdownProgress({
     return (
       <div className={cn("space-y-1 min-w-[110px]", className)}>
         <div className="flex items-center justify-between text-xs">
-          <span className="text-[10px] text-muted-foreground font-medium">Margen:</span>
+          <span className="text-[10px] text-muted-foreground font-medium">Le queda:</span>
           <span className={cn("num font-bold font-mono text-xs", colorClass)}>
             {formatCurrency(status.remaining)}
           </span>
         </div>
         <div className="flex items-center justify-between text-[10px] text-muted-foreground font-mono">
           <span>
-            DD:{" "}
-            <strong className={status.used > 0 ? "text-loss font-bold" : "text-foreground font-medium"}>
-              {formatCurrency(status.used)}
-            </strong>
+            Límite: <strong className="text-foreground font-medium">{formatCurrency(status.limit)}</strong>
           </span>
           <span className={cn("font-semibold", colorClass)}>{healthPct.toFixed(0)}%</span>
         </div>
@@ -135,11 +132,11 @@ export function DrawdownProgress({
           )}
         </div>
 
-        {/* Hero metrics: Margen restante, DD Consumido, Suelo, HWM, Límite */}
+        {/* Hero metrics: Le queda, Límite, Suelo, Pico HWM, Bajada */}
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5 rounded-lg bg-muted/30 p-3.5 border border-border/50">
           <div>
             <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-              Margen Restante
+              Le Queda
             </p>
             <p className={cn("num text-lg sm:text-xl font-black font-mono tracking-tight", colorClass)}>
               {formatCurrency(status.remaining)}
@@ -147,15 +144,10 @@ export function DrawdownProgress({
           </div>
           <div>
             <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-              DD Consumido
+              Límite Drawdown
             </p>
-            <p
-              className={cn(
-                "num text-base sm:text-lg font-bold font-mono",
-                status.used > 0 ? "text-loss" : "text-foreground",
-              )}
-            >
-              {formatCurrency(status.used)}
+            <p className="num text-base sm:text-lg font-bold font-mono text-foreground">
+              {formatCurrency(status.limit)}
             </p>
           </div>
           <div>
@@ -168,7 +160,7 @@ export function DrawdownProgress({
           </div>
           <div>
             <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-              {status.type === "static" ? "Balance Inicial" : "High Watermark"}
+              {status.type === "static" ? "Balance Inicial" : "Pico Máx. (HWM)"}
             </p>
             <p className="num text-base sm:text-lg font-bold font-mono text-foreground">
               {formatCurrency(status.reference)}
@@ -176,10 +168,15 @@ export function DrawdownProgress({
           </div>
           <div>
             <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-              Límite Pérdida Total
+              Bajada desde Pico
             </p>
-            <p className="num text-base sm:text-lg font-bold font-mono text-muted-foreground">
-              {formatCurrency(status.limit)}
+            <p
+              className={cn(
+                "num text-base sm:text-lg font-bold font-mono",
+                status.used > 0 ? "text-loss" : "text-foreground",
+              )}
+            >
+              {formatCurrency(status.used)}
             </p>
           </div>
         </div>
@@ -191,7 +188,7 @@ export function DrawdownProgress({
               {healthPct.toFixed(1)}% de margen de supervivencia total
             </span>
             <span className="font-mono text-xs font-semibold text-muted-foreground">
-              DD Consumido: {formatCurrency(status.used)} / {formatCurrency(status.limit)}
+              Bajada: {formatCurrency(status.used)} / Límite: {formatCurrency(status.limit)}
             </span>
           </div>
           <div className="h-2.5 w-full overflow-hidden rounded-full bg-muted/60 dark:bg-muted/40">
@@ -266,7 +263,7 @@ export function DrawdownProgress({
         className,
       )}
     >
-      {/* Top row: Drawdown tag + status */}
+      {/* Top row: Drawdown tag + Límite fijo */}
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-1.5 min-w-0">
           <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
@@ -286,17 +283,17 @@ export function DrawdownProgress({
             <AlertTriangle className="size-3 animate-pulse" /> DD Crítico
           </span>
         ) : (
-          <span className={cn("text-[10px] font-mono font-bold", colorClass)}>
-            {healthPct.toFixed(0)}% salud
+          <span className="text-[10px] font-mono font-bold text-muted-foreground">
+            Límite: {formatCurrency(status.limit)}
           </span>
         )}
       </div>
 
-      {/* Hero numbers: Margen restante vs DD Consumido */}
+      {/* Hero numbers: Le queda (Margen restante) */}
       <div className="flex items-end justify-between gap-2 pt-0.5">
         <div>
           <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-            Margen restante
+            Le queda
           </span>
           <p className={cn("num text-lg font-black font-mono tracking-tight leading-none mt-0.5", colorClass)}>
             {formatCurrency(status.remaining)}
@@ -305,20 +302,15 @@ export function DrawdownProgress({
 
         <div className="text-right">
           <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-            DD Consumido
+            Suelo
           </span>
-          <p
-            className={cn(
-              "num text-xs font-bold font-mono mt-0.5",
-              status.used > 0 ? "text-loss" : "text-muted-foreground",
-            )}
-          >
-            {formatCurrency(status.used)}
+          <p className="num text-xs font-bold font-mono text-foreground mt-0.5">
+            {formatCurrency(status.floor)}
           </p>
         </div>
       </div>
 
-      {/* Visual Bar: Mide la salud de Drawdown Total (DD Consumido vs Límite) */}
+      {/* Visual Bar: Mide la salud de Drawdown Total */}
       <div className="space-y-1">
         <div className="h-2 w-full overflow-hidden rounded-full bg-muted/60 dark:bg-muted/40">
           <div
@@ -329,8 +321,10 @@ export function DrawdownProgress({
 
         {/* Micro-footer info */}
         <div className="flex items-center justify-between text-[10px] text-muted-foreground font-mono">
-          <span>Suelo: {formatCurrency(status.floor)}</span>
-          <span>Límite: {formatCurrency(status.limit)}</span>
+          <span>Pico máx: {formatCurrency(status.reference)}</span>
+          <span className={status.used > 0 ? "text-loss font-semibold" : "text-muted-foreground"}>
+            {status.used > 0 ? `Bajada: -${formatCurrency(status.used)}` : "En máximos"}
+          </span>
         </div>
       </div>
 
