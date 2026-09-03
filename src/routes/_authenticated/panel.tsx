@@ -1046,10 +1046,15 @@ function Overview() {
                     </div>
                   </div>
 
-                  {/* Dos Filas Paralelas de Cuentas ocupando el mismo espacio */}
-                  <div className="space-y-2">
-                    {/* Fila 1 */}
-                    <div className="grid grid-flow-col auto-cols-fr gap-2 overflow-x-auto pb-0.5 scrollbar-thin">
+                  {/* Dos Filas Paralelas de Cuentas con ancho uniforme idéntico y nombre completo */}
+                  <div className="overflow-x-auto pb-1 scrollbar-thin">
+                    <div
+                      className="grid gap-2"
+                      style={{
+                        gridTemplateColumns: `repeat(${half}, minmax(230px, 1fr))`,
+                      }}
+                    >
+                      {/* Fila 1 */}
                       {row1.map((acc) => {
                         const isSelected = activeStrategyAccountIds.includes(acc.id);
                         return (
@@ -1057,44 +1062,38 @@ function Overview() {
                             key={acc.id}
                             type="button"
                             onClick={() => handleToggleStrategyAccount(acc.id)}
-                            title={acc.name}
                             className={cn(
-                              "group relative flex items-center justify-center text-center px-4 py-2.5 rounded-xl text-xs transition-all duration-150 border cursor-pointer select-none",
+                              "group relative flex items-center justify-center text-center px-4 py-2.5 rounded-xl text-xs whitespace-nowrap transition-all duration-150 border cursor-pointer select-none",
                               isSelected
                                 ? "bg-brand/15 border-brand text-foreground shadow-xs ring-1 ring-brand/50 font-bold"
                                 : "bg-card text-muted-foreground border-border/80 hover:bg-muted/50 hover:text-foreground opacity-50 hover:opacity-100 font-medium",
                             )}
                           >
-                            <span className="truncate">{acc.name}</span>
+                            <span>{acc.name}</span>
+                          </button>
+                        );
+                      })}
+
+                      {/* Fila 2 */}
+                      {row2.map((acc) => {
+                        const isSelected = activeStrategyAccountIds.includes(acc.id);
+                        return (
+                          <button
+                            key={acc.id}
+                            type="button"
+                            onClick={() => handleToggleStrategyAccount(acc.id)}
+                            className={cn(
+                              "group relative flex items-center justify-center text-center px-4 py-2.5 rounded-xl text-xs whitespace-nowrap transition-all duration-150 border cursor-pointer select-none",
+                              isSelected
+                                ? "bg-brand/15 border-brand text-foreground shadow-xs ring-1 ring-brand/50 font-bold"
+                                : "bg-card text-muted-foreground border-border/80 hover:bg-muted/50 hover:text-foreground opacity-50 hover:opacity-100 font-medium",
+                            )}
+                          >
+                            <span>{acc.name}</span>
                           </button>
                         );
                       })}
                     </div>
-
-                    {/* Fila 2 */}
-                    {row2.length > 0 && (
-                      <div className="grid grid-flow-col auto-cols-fr gap-2 overflow-x-auto pb-0.5 scrollbar-thin">
-                        {row2.map((acc) => {
-                          const isSelected = activeStrategyAccountIds.includes(acc.id);
-                          return (
-                            <button
-                              key={acc.id}
-                              type="button"
-                              onClick={() => handleToggleStrategyAccount(acc.id)}
-                              title={acc.name}
-                              className={cn(
-                                "group relative flex items-center justify-center text-center px-4 py-2.5 rounded-xl text-xs transition-all duration-150 border cursor-pointer select-none",
-                                isSelected
-                                  ? "bg-brand/15 border-brand text-foreground shadow-xs ring-1 ring-brand/50 font-bold"
-                                  : "bg-card text-muted-foreground border-border/80 hover:bg-muted/50 hover:text-foreground opacity-50 hover:opacity-100 font-medium",
-                              )}
-                            >
-                              <span className="truncate">{acc.name}</span>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    )}
                   </div>
                 </div>
               );
