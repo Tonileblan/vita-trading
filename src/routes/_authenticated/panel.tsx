@@ -1041,8 +1041,8 @@ function Overview() {
                   </div>
                 </div>
 
-                {/* Cuadrícula adaptable de cuentas ocupando las filas necesarias sin scroll horizontal */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2">
+                {/* Cuadrícula adaptable con ancho dictado por los nombres más largos (sin solapamientos) */}
+                <div className="grid gap-2.5 grid-cols-[repeat(auto-fill,minmax(250px,1fr))]">
                   {strategyAccounts.map((acc) => {
                     const isSelected = activeStrategyAccountIds.includes(acc.id);
                     return (
@@ -1051,13 +1051,13 @@ function Overview() {
                         type="button"
                         onClick={() => handleToggleStrategyAccount(acc.id)}
                         className={cn(
-                          "group relative flex items-center justify-center text-center px-3 py-2.5 rounded-xl text-xs transition-all duration-150 border cursor-pointer select-none w-full min-h-[42px]",
+                          "group relative flex items-center justify-center text-center px-4 py-2.5 rounded-xl text-xs transition-all duration-150 border cursor-pointer select-none w-full min-h-[44px]",
                           isSelected
                             ? "bg-brand/15 border-brand text-foreground shadow-xs ring-1 ring-brand/50 font-bold"
                             : "bg-card text-muted-foreground border-border/80 hover:bg-muted/50 hover:text-foreground opacity-50 hover:opacity-100 font-medium",
                         )}
                       >
-                        <span className="text-center leading-snug break-words">
+                        <span className="text-center font-semibold tracking-tight whitespace-nowrap">
                           {acc.name}
                         </span>
                       </button>
