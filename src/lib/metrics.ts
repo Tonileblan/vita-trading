@@ -402,10 +402,18 @@ export function effectiveStrategyId(
 }
 
 
-export function accountPnl(trades: Trade[], accountId: string) {
+export function isTradeOfAccount(t: Trade, account: { id: string; name?: string }): boolean {
+  if (!t.accountId) return false;
+  const tAcc = String(t.accountId).trim().toLowerCase();
+  const accId = String(account.id || "").trim().toLowerCase();
+  const accName = String(account.name || "").trim().toLowerCase();
+  return tAcc === accId || (Boolean(accName) && tAcc === accName);
+}
+
+export function accountPnl(trades: Trade[], accountId: string, accountName?: string) {
   return trades
-    .filter((t) => t.accountId === accountId)
-    .reduce((s, t) => s + t.pnl, 0);
+    .filter((t) => isTradeOfAccount(t, { id: accountId, name: accountName }))
+    .reduce((s, t) => s + (t.pnl ?? 0), 0);
 }
 
 /** Retiros aprobados imputados a una cuenta. */
@@ -413,8 +421,9 @@ export function accountWithdrawn(
   withdrawals: { accountId?: string | undefined; amount: number }[],
   accountId: string,
 ) {
+  const normId = String(accountId || "").trim().toLowerCase();
   return withdrawals
-    .filter((w) => w.accountId === accountId)
+    .filter((w) => String(w.accountId || "").trim().toLowerCase() === normId)
     .reduce((s, w) => s + Math.abs(w.amount), 0);
 }
 
@@ -425,14 +434,13 @@ export function accountBalance(
   withdrawals: { accountId?: string | undefined; amount: number }[] = [],
 ) {
   const withdrawn = accountWithdrawn(withdrawals, account.id);
-  const accTrades = trades.filter((t) => t.accountId === account.id);
+  const accTrades = trades.filter((t) => isTradeOfAccount(t, account));
   if (accTrades.length > 0) {
     const pnl = accTrades.reduce((s, t) => s + (t.pnl ?? 0), 0);
     return Number(((account.initialBalance || 0) + pnl - withdrawn).toFixed(2));
   }
   return Number(((account.currentBalance || account.initialBalance || 0) - withdrawn).toFixed(2));
 }
-
 
 /** Resultado real de la cuenta = balance vigente − capital inicial. */
 export function accountResult(
@@ -449,7 +457,7 @@ export function accountCurveStart(
   trades: Trade[],
   withdrawals: { accountId?: string | undefined; amount: number }[] = [],
 ) {
-  return accountBalance(account, trades, withdrawals) - accountPnl(trades, account.id);
+  return accountBalance(account, trades, withdrawals) - accountPnl(trades, account.id, account.name);
 }
 
 
@@ -565,8 +573,8 @@ export function accountDrawdown(
   // Filtrar operaciones de esta cuenta específica
   const accTrades =
     account.id === "combined-funded"
-      ? trades.filter((t) => !t.accountId || t.accountId === account.id)
-      : trades.filter((t) => t.accountId === account.id);
+      ? trades.filter((t) => !t.accountId || isTradeOfAccount(t, account))
+      : trades.filter((t) => isTradeOfAccount(t, account));
 
   // 1. Reconstruir la evolución día a día (EOD) y trade a trade (Intraday)
   // Utilizamos la misma base de curva que buildEquityCurve

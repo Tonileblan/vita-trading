@@ -48,6 +48,7 @@ import {
   accountTarget,
   computeMetrics,
   formatCurrency,
+  isTradeOfAccount,
 } from "@/lib/metrics";
 import { PhaseChip, TargetProgress } from "@/components/target-progress";
 import { DrawdownProgress } from "@/components/drawdown-progress";
@@ -167,7 +168,7 @@ function AccountsPage() {
   // FILA HORIZONTAL PANORÁMICA DE CUENTA
   // ==========================================
   const AccountHorizontalRow = ({ acc }: { acc: Account }) => {
-    const accTrades = safeTrades.filter((t) => t.accountId === acc.id);
+    const accTrades = safeTrades.filter((t) => isTradeOfAccount(t, acc));
     const m = computeMetrics(accTrades);
     const result = accountResult(acc, safeTrades, safeWithdrawals);
     const balance = accountBalance(acc, safeTrades, safeWithdrawals);
@@ -500,7 +501,7 @@ function AccountsPage() {
   // TARJETA VERTICAL CLÁSICA (OPCIÓN GRID)
   // ==========================================
   const AccountCard = ({ acc }: { acc: Account }) => {
-    const accTrades = safeTrades.filter((t) => t.accountId === acc.id);
+    const accTrades = safeTrades.filter((t) => isTradeOfAccount(t, acc));
     const m = computeMetrics(accTrades);
     const result = accountResult(acc, safeTrades, safeWithdrawals);
     const balance = accountBalance(acc, safeTrades, safeWithdrawals);

@@ -31,6 +31,7 @@ import {
   formatCurrency,
   accountDrawdown,
   accountTarget,
+  isTradeOfAccount,
 } from "@/lib/metrics";
 import { TargetProgress, PhaseChip } from "@/components/target-progress";
 import { DrawdownProgress } from "@/components/drawdown-progress";
@@ -66,8 +67,8 @@ function AccountDetail() {
   const [working, setWorking] = useState(false);
 
   const accTrades = useMemo(
-    () => trades.filter((t) => t.accountId === accountId),
-    [trades, accountId],
+    () => trades.filter((t) => isTradeOfAccount(t, { id: accountId, name: account?.name })),
+    [trades, accountId, account?.name],
   );
   const metrics = useMemo(() => computeMetrics(accTrades), [accTrades]);
   const curve = useMemo(
