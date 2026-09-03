@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { effectiveStrategyId, formatCurrency, formatDateTime, formatTradeDate } from "@/lib/metrics";
+import { parseTradeTime } from "@/lib/emotions";
 import type { Account, AccountStrategyPeriod, Strategy, Trade } from "@/lib/types";
 import { useJournal } from "@/lib/journal-store";
 import { TradeFormDialog } from "@/components/trade-form-dialog";
@@ -119,8 +120,8 @@ export function TradesTable({
     return [...trades].sort((a, b) => {
       let cmp = 0;
       if (currentSortField === "date") {
-        const aTime = new Date(a.openedAt || a.closedAt || a.createdAt || "").getTime() || 0;
-        const bTime = new Date(b.openedAt || b.closedAt || b.createdAt || "").getTime() || 0;
+        const aTime = parseTradeTime(a.openedAt || a.closedAt || a.createdAt);
+        const bTime = parseTradeTime(b.openedAt || b.closedAt || b.createdAt);
         cmp = aTime - bTime;
       } else if (currentSortField === "strategy") {
         const aStrat = strategyOf(a)?.name || "";

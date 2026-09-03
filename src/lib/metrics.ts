@@ -96,10 +96,10 @@ export interface StreakInfo {
 export function computeStreaks(trades: Trade[]): StreakInfo {
   const winTrades = trades.filter((t) => t.pnl > 0);
   const lossTrades = trades.filter((t) => t.pnl < 0);
-  const wins = winTrades.length;
-  const losses = lossTrades.length;
-  const winsPnl = winTrades.reduce((s, t) => s + t.pnl, 0);
-  const lossesPnl = lossTrades.reduce((s, t) => s + t.pnl, 0);
+  const totalWins = winTrades.length;
+  const totalLosses = lossTrades.length;
+  const totalWinsPnl = winTrades.reduce((s, t) => s + t.pnl, 0);
+  const totalLossesPnl = lossTrades.reduce((s, t) => s + t.pnl, 0);
 
   if (!trades.length) {
     return {
@@ -116,9 +116,9 @@ export function computeStreaks(trades: Trade[]): StreakInfo {
   }
 
   const desc = [...trades].sort((a, b) => {
-    const aDate = a.openedAt || a.closedAt;
-    const bDate = b.openedAt || b.closedAt;
-    const diff = new Date(bDate).getTime() - new Date(aDate).getTime();
+    const aDate = a.openedAt || a.closedAt || a.createdAt || "";
+    const bDate = b.openedAt || b.closedAt || b.createdAt || "";
+    const diff = parseTradeTime(bDate) - parseTradeTime(aDate);
     if (diff !== 0) return diff;
     return String(b.id ?? "").localeCompare(String(a.id ?? ""));
   });
@@ -134,48 +134,47 @@ export function computeStreaks(trades: Trade[]): StreakInfo {
       curType = type;
       curCount = 1;
       curPnl = t.pnl;
-    } else if (type === curType) {
+    } else if (curType === type) {
       curCount++;
       curPnl += t.pnl;
-    } else break;
+    } else {
+      break;
+    }
   }
 
-  // Mejor racha de ganancias y de pérdidas (recorriendo cronológicamente de antiguo a nuevo)
+  // Rachas máximas históricas
   const asc = [...desc].reverse();
   let maxWin = 0;
   let maxWinPnl = 0;
   let maxLoss = 0;
   let maxLossPnl = 0;
 
-  let currentRunType: "win" | "loss" | "none" = "none";
-  let currentRunCount = 0;
-  let currentRunPnl = 0;
+  let runType: "win" | "loss" | "none" = "none";
+  let runCount = 0;
+  let runPnl = 0;
 
   for (const t of asc) {
     if (t.pnl === 0) continue;
     const type: "win" | "loss" = t.pnl > 0 ? "win" : "loss";
-    if (currentRunType === type) {
-      currentRunCount++;
-      currentRunPnl += t.pnl;
+
+    if (runType === type) {
+      runCount++;
+      runPnl += t.pnl;
     } else {
-      currentRunType = type;
-      currentRunCount = 1;
-      currentRunPnl = t.pnl;
+      runType = type;
+      runCount = 1;
+      runPnl = t.pnl;
     }
 
-    if (type === "win") {
-      if (currentRunCount > maxWin) {
-        maxWin = currentRunCount;
-        maxWinPnl = currentRunPnl;
-      } else if (currentRunCount === maxWin && currentRunPnl > maxWinPnl) {
-        maxWinPnl = currentRunPnl;
+    if (runType === "win") {
+      if (runCount > maxWin || (runCount === maxWin && runPnl > maxWinPnl)) {
+        maxWin = runCount;
+        maxWinPnl = runPnl;
       }
-    } else {
-      if (currentRunCount > maxLoss) {
-        maxLoss = currentRunCount;
-        maxLossPnl = currentRunPnl;
-      } else if (currentRunCount === maxLoss && currentRunPnl < maxLossPnl) {
-        maxLossPnl = currentRunPnl;
+    } else if (runType === "loss") {
+      if (runCount > maxLoss || (runCount === maxLoss && runPnl < maxLossPnl)) {
+        maxLoss = runCount;
+        maxLossPnl = runPnl;
       }
     }
   }
@@ -186,10 +185,10 @@ export function computeStreaks(trades: Trade[]): StreakInfo {
     maxWinPnl,
     maxLoss,
     maxLossPnl,
-    wins,
-    losses,
-    winsPnl,
-    lossesPnl,
+    wins: totalWins,
+    losses: totalLosses,
+    winsPnl: totalWinsPnl,
+    lossesPnl: totalLossesPnl,
   };
 }
 
@@ -197,11 +196,11 @@ export function computeStreaks(trades: Trade[]): StreakInfo {
 export function filterByDays(trades: Trade[], days: number) {
   if (!days) return trades;
   const latest = trades.reduce(
-    (max, t) => Math.max(max, new Date(t.openedAt || t.closedAt).getTime()),
+    (max, t) => Math.max(max, parseTradeTime(t.openedAt || t.closedAt)),
     0,
   );
   const cutoff = latest - days * 86400000;
-  return trades.filter((t) => new Date(t.openedAt || t.closedAt).getTime() >= cutoff);
+  return trades.filter((t) => parseTradeTime(t.openedAt || t.closedAt) >= cutoff);
 }
 
 export function buildEquityCurve(

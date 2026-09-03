@@ -1,5 +1,6 @@
 import { useState, useMemo, useCallback } from "react";
 import type { Trade } from "@/lib/types";
+import { parseTradeDate } from "@/lib/emotions";
 
 export type DateRangePreset = "7d" | "30d" | "90d" | "month" | "all" | "custom";
 
@@ -80,7 +81,7 @@ export function useTradeFilters(trades: Trade[] = []) {
 
       // 5. Filtro de fechas preset
       if (minDate) {
-        const tradeDate = new Date(trade.openedAt || trade.closedAt);
+        const tradeDate = parseTradeDate(trade.openedAt || trade.closedAt);
         if (tradeDate < minDate) return false;
       }
 

@@ -52,6 +52,7 @@ import {
   toPeriod,
 } from "@/lib/journal-store";
 import { computeMetrics, effectiveStrategyId, formatCurrency, formatDateTime } from "@/lib/metrics";
+import { parseTradeTime } from "@/lib/emotions";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/operaciones")({
@@ -230,8 +231,8 @@ function TradesPage() {
         .sort((a, b) => {
           let cmp = 0;
           if (sortField === "date") {
-            const aTime = new Date(a.openedAt || a.closedAt || a.createdAt || "").getTime() || 0;
-            const bTime = new Date(b.openedAt || b.closedAt || b.createdAt || "").getTime() || 0;
+            const aTime = parseTradeTime(a.openedAt || a.closedAt || a.createdAt);
+            const bTime = parseTradeTime(b.openedAt || b.closedAt || b.createdAt);
             cmp = aTime - bTime;
           } else if (sortField === "strategy") {
             const aStratId = effectiveStrategyId(a, accounts, strategyPeriods) || a.strategyId;
