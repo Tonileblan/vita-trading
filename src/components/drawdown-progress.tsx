@@ -50,12 +50,19 @@ export function DrawdownProgress({
     return (
       <div className={cn("space-y-1 min-w-[110px]", className)}>
         <div className="flex items-center justify-between text-xs">
+          <span className="text-[10px] text-muted-foreground font-medium">Margen:</span>
           <span className={cn("num font-bold font-mono text-xs", colorClass)}>
             {formatCurrency(status.remaining)}
           </span>
-          <span className={cn("text-[10px] font-mono font-semibold", colorClass)}>
-            {healthPct.toFixed(0)}%
+        </div>
+        <div className="flex items-center justify-between text-[10px] text-muted-foreground font-mono">
+          <span>
+            DD:{" "}
+            <strong className={status.used > 0 ? "text-loss font-bold" : "text-foreground font-medium"}>
+              {formatCurrency(status.used)}
+            </strong>
           </span>
+          <span className={cn("font-semibold", colorClass)}>{healthPct.toFixed(0)}%</span>
         </div>
         <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted/60 dark:bg-muted/40">
           <div
@@ -128,14 +135,27 @@ export function DrawdownProgress({
           )}
         </div>
 
-        {/* Hero metrics: Suelo Máximo y Referencias */}
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 rounded-lg bg-muted/30 p-3.5 border border-border/50">
+        {/* Hero metrics: Margen restante, DD Consumido, Suelo, HWM, Límite */}
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5 rounded-lg bg-muted/30 p-3.5 border border-border/50">
           <div>
             <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-              Margen Total Restante
+              Margen Restante
             </p>
             <p className={cn("num text-lg sm:text-xl font-black font-mono tracking-tight", colorClass)}>
               {formatCurrency(status.remaining)}
+            </p>
+          </div>
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              DD Consumido
+            </p>
+            <p
+              className={cn(
+                "num text-base sm:text-lg font-bold font-mono",
+                status.used > 0 ? "text-loss" : "text-foreground",
+              )}
+            >
+              {formatCurrency(status.used)}
             </p>
           </div>
           <div>
@@ -272,7 +292,7 @@ export function DrawdownProgress({
         )}
       </div>
 
-      {/* Hero numbers: Margen restante vs Suelo Máximo y Suelo Diario */}
+      {/* Hero numbers: Margen restante vs DD Consumido */}
       <div className="flex items-end justify-between gap-2 pt-0.5">
         <div>
           <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
@@ -285,10 +305,15 @@ export function DrawdownProgress({
 
         <div className="text-right">
           <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-            Suelo Máximo
+            DD Consumido
           </span>
-          <p className="num text-xs font-bold font-mono text-foreground mt-0.5">
-            {formatCurrency(status.floor)}
+          <p
+            className={cn(
+              "num text-xs font-bold font-mono mt-0.5",
+              status.used > 0 ? "text-loss" : "text-muted-foreground",
+            )}
+          >
+            {formatCurrency(status.used)}
           </p>
         </div>
       </div>
@@ -304,7 +329,7 @@ export function DrawdownProgress({
 
         {/* Micro-footer info */}
         <div className="flex items-center justify-between text-[10px] text-muted-foreground font-mono">
-          <span>Consumido: {formatCurrency(status.used)}</span>
+          <span>Suelo: {formatCurrency(status.floor)}</span>
           <span>Límite: {formatCurrency(status.limit)}</span>
         </div>
       </div>

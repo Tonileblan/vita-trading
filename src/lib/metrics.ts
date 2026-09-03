@@ -494,19 +494,58 @@ export function accountDrawdown(
   const initial = account.initialBalance || 0;
   const balance = accountBalance(account, trades, withdrawals);
 
-  // 1. Determinar High Watermark histórico
-  // Si la cuenta tiene highWatermark guardado lo respetamos; de lo contrario calculamos con el pico actual
-  let highWatermark = account.highWatermark ?? Math.max(initial, balance);
-  if (type === "trailing" && balance > highWatermark) {
-    highWatermark = balance;
-  } else if (type === "static") {
+  // Filtrar operaciones de esta cuenta específica
+  const accTrades =
+    account.id === "combined-funded"
+      ? trades
+      : trades.filter((t) => !t.accountId || t.accountId === account.id);
+
+  // 1. Reconstruir el pico histórico y los cierres EOD a partir de las operaciones en orden cronológico
+  let computedPeak = Math.max(initial, balance);
+  let computedEodPeak = initial;
+  let lastDay: string | null = null;
+
+  if (accTrades.length > 0) {
+    const sortedTrades = [...accTrades].sort((a, b) => {
+      const aDate = a.openedAt || a.closedAt || a.createdAt || "";
+      const bDate = b.openedAt || b.closedAt || b.createdAt || "";
+      const diff = new Date(aDate).getTime() - new Date(bDate).getTime();
+      if (diff !== 0) return diff;
+      return String(a.id ?? "").localeCompare(String(b.id ?? ""));
+    });
+
+    let runningEquity = initial;
+    for (const t of sortedTrades) {
+      runningEquity += t.pnl;
+      if (runningEquity > computedPeak) {
+        computedPeak = runningEquity;
+      }
+      const dateStr = t.openedAt || t.closedAt || t.createdAt || "";
+      const day = dateStr ? dateStr.slice(0, 10) : "";
+      if (day && day !== lastDay) {
+        computedEodPeak = Math.max(computedEodPeak, runningEquity);
+        lastDay = day;
+      }
+    }
+  }
+
+  // 2. Determinar High Watermark histórico
+  let highWatermark = Math.max(initial, balance, computedPeak, account.highWatermark ?? 0);
+  if (type === "static") {
     highWatermark = initial;
   }
 
-  // 2. Fórmulas de Suelo Máximo y DD Consumido
-  // Trailing / EOD: Suelo = high_watermark - max_loss_limit
+  // 3. Fórmulas de Suelo Máximo y DD Consumido
+  // Trailing: Suelo = high_watermark - max_loss_limit
+  // EOD: Suelo = eod_peak - max_loss_limit
   // Static: Suelo = initial_balance - max_loss_limit
-  const reference = type === "static" ? initial : highWatermark;
+  const reference =
+    type === "static"
+      ? initial
+      : type === "eod"
+        ? Math.max(initial, computedEodPeak, account.highWatermark ?? initial)
+        : highWatermark;
+
   const floor = maxLimit > 0 ? reference - maxLimit : 0;
   const used = Math.max(0, reference - balance);
   const remaining = maxLimit > 0 ? Math.max(0, balance - floor) : 0;
@@ -514,9 +553,21 @@ export function accountDrawdown(
   const healthPct = maxLimit > 0 ? Math.min(100, Math.max(0, (remaining / maxLimit) * 100)) : 100;
   const breached = maxLimit > 0 && balance <= floor;
 
-  // 3. Fórmulas de Límite Diario (Daily Loss)
+  // 4. Fórmulas de Límite Diario (Daily Loss)
   const hasDailyLimit = Boolean(dailyLimit && dailyLimit > 0);
-  const startOfDayBalance = account.startOfDayBalance ?? initial;
+  let startOfDayBalance = account.startOfDayBalance;
+  if (startOfDayBalance === undefined || startOfDayBalance === null || startOfDayBalance === initial) {
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const todayTrades = accTrades.filter(
+      (t) => (t.openedAt || t.closedAt || t.createdAt || "").slice(0, 10) === todayStr,
+    );
+    const todayPnl = todayTrades.reduce((s, t) => s + t.pnl, 0);
+    startOfDayBalance = balance - todayPnl;
+  }
+  if (!startOfDayBalance) {
+    startOfDayBalance = initial;
+  }
+
   let dailyFloor: number | undefined;
   let dailyUsed: number | undefined;
   let dailyRemaining: number | undefined;

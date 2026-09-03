@@ -404,28 +404,42 @@ function AccountsPage() {
                 </span>
                 <span
                   className={cn(
-                    "num font-mono font-bold text-xs sm:text-sm",
-                    isLowDrawdown ? "text-loss font-black" : "text-profit",
+                    "num font-mono font-bold text-[11px]",
+                    dd.used > 0 ? "text-loss" : "text-muted-foreground",
                   )}
+                  title={`Drawdown actual consumido: ${formatCurrency(dd.used)}`}
                 >
-                  {formatCurrency(dd.remaining)}
+                  DD: {formatCurrency(dd.used)}
                 </span>
               </div>
 
-              <div className="h-2 w-full overflow-hidden rounded-full bg-muted/80 my-0.5">
-                <div
-                  className={cn(
-                    "h-full rounded-full transition-all duration-300",
-                    isLowDrawdown ? "bg-loss" : "bg-profit",
-                  )}
-                  style={{
-                    width: `${Math.min(100, Math.max(0, dd.healthPct))}%`,
-                  }}
-                />
+              <div className="my-0.5">
+                <div className="flex items-baseline justify-between">
+                  <span className="text-[10px] text-muted-foreground font-medium">Margen rest.</span>
+                  <span
+                    className={cn(
+                      "num font-mono font-black text-sm sm:text-base",
+                      isLowDrawdown ? "text-loss" : "text-profit",
+                    )}
+                  >
+                    {formatCurrency(dd.remaining)}
+                  </span>
+                </div>
+                <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted/80 mt-1">
+                  <div
+                    className={cn(
+                      "h-full rounded-full transition-all duration-300",
+                      isLowDrawdown ? "bg-loss" : "bg-profit",
+                    )}
+                    style={{
+                      width: `${Math.min(100, Math.max(0, dd.healthPct))}%`,
+                    }}
+                  />
+                </div>
               </div>
 
               <div className="flex justify-between text-[10px] text-muted-foreground font-mono">
-                <span>Suelo Máx: {formatCurrency(drawdownFloor)}</span>
+                <span>Suelo: {formatCurrency(drawdownFloor)}</span>
                 {dd.hasDailyLimit && dd.dailyFloor !== undefined ? (
                   <span className="font-semibold text-foreground/90">Hoy: {formatCurrency(dd.dailyFloor)}</span>
                 ) : (
