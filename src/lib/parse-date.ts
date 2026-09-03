@@ -140,11 +140,25 @@ export function parseDetectedDate(
     const a = Number(num[1]);
     const b = Number(num[2]);
     const year = num[3] ? Number(num[3]) : currentYear;
-    // Si el primero supera 12 es día (formato europeo); si el segundo supera 12 es día → formato US.
+    // Si el primero supera 12 es día (formato europeo D/M/YYYY)
     if (a > 12 && b <= 12) return build(year, b, a, hh, mm, ss, hasExplicitTime, tzMode);
+    // Si el segundo supera 12 es día (formato US M/D/YYYY)
     if (b > 12 && a <= 12) return build(year, a, b, hh, mm, ss, hasExplicitTime, tzMode);
-    // Ambiguo: asumimos día/mes (formato usado en ES y la mayoría de plataformas EU/Latam).
-    return build(year, b, a, hh, mm, ss, hasExplicitTime, tzMode);
+
+    // Caso ambiguo (ambos <= 12, ej: 9/3/2026):
+    const now = new Date();
+    const curMonth = now.getMonth() + 1; // 9 para septiembre
+    if (a === curMonth && b !== curMonth) {
+      // 'a' es el mes actual (ej: 9/3 en septiembre -> Mes 9, Día 3)
+      return build(year, a, b, hh, mm, ss, hasExplicitTime, tzMode);
+    }
+    if (b === curMonth && a !== curMonth) {
+      // 'b' es el mes actual (ej: 3/9 en septiembre -> Mes 9, Día 3)
+      return build(year, b, a, hh, mm, ss, hasExplicitTime, tzMode);
+    }
+
+    // Por defecto en plataformas de futuros (NinjaTrader, Tradovate, Rithmic, Topstep): formato M/D/YYYY
+    return build(year, a, b, hh, mm, ss, hasExplicitTime, tzMode);
   }
 
   // Textual: "14 may 2026" o "May 14, 2026"
