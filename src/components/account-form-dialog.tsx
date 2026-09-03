@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/select";
 import { useJournal } from "@/lib/journal-store";
 import { parseMoneyInput } from "@/lib/money";
+import { isTradeOfAccount, accountBalance } from "@/lib/metrics";
 import {
   ACCOUNT_PHASES,
   BROKERS,
@@ -49,7 +50,7 @@ export function AccountFormDialog({
   open: controlledOpen,
   onOpenChange: setControlledOpen,
 }: AccountDialogProps) {
-  const { addAccount, updateAccount, removeAccount } = useJournal();
+  const { addAccount, updateAccount, removeAccount, trades, withdrawals } = useJournal();
   const editing = Boolean(account);
 
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
@@ -164,13 +165,37 @@ export function AccountFormDialog({
       }
     }
 
+    let finalInitialBalance = initialBalance;
+    let finalCurrentBalance = currentBalance;
+
+    if (account) {
+      const accTrades = (trades || []).filter((t) => isTradeOfAccount(t, account));
+      const tradePnl = accTrades.reduce((s, t) => s + (t.pnl ?? 0), 0);
+      const withdrawn = (withdrawals || [])
+        .filter((w) => String(w.accountId || "").toLowerCase() === account.id.toLowerCase())
+        .reduce((s, w) => s + Math.abs(w.amount), 0);
+
+      if (accTrades.length > 0) {
+        const prevCalcBalance = Number(((account.initialBalance || 0) + tradePnl - withdrawn).toFixed(2));
+        if (currentBalance !== prevCalcBalance && initialBalance === account.initialBalance) {
+          // El usuario editó manualmente el balance actual
+          finalInitialBalance = Number((currentBalance - tradePnl + withdrawn).toFixed(2));
+          finalCurrentBalance = currentBalance;
+        } else if (initialBalance !== account.initialBalance) {
+          // El usuario editó el balance inicial
+          finalInitialBalance = initialBalance;
+          finalCurrentBalance = Number((initialBalance + tradePnl - withdrawn).toFixed(2));
+        }
+      }
+    }
+
     const payload = {
       name: name.trim(),
       type,
       firm: type === "funded" ? firm : undefined,
       broker: type === "personal" ? broker : undefined,
-      initialBalance,
-      currentBalance,
+      initialBalance: finalInitialBalance,
+      currentBalance: finalCurrentBalance,
       maxLossLimit: type === "funded" ? parsedMaxLoss : undefined,
       drawdownLimit: type === "funded" ? parsedMaxLoss : undefined,
       dailyLossLimit:
@@ -183,8 +208,8 @@ export function AccountFormDialog({
       highWatermark:
         Number.isFinite(parsedHwm) && parsedHwm > 0
           ? parsedHwm
-          : Math.max(initialBalance, currentBalance),
-      startOfDayBalance: Number.isFinite(parsedSod) && parsedSod > 0 ? parsedSod : initialBalance,
+          : Math.max(finalInitialBalance, finalCurrentBalance),
+      startOfDayBalance: Number.isFinite(parsedSod) && parsedSod > 0 ? parsedSod : finalInitialBalance,
       drawdownType: type === "funded" ? ddType : undefined,
       phase: type === "funded" ? phase : undefined,
       profitTarget:

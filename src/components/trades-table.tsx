@@ -79,7 +79,9 @@ export function TradesTable({
     }
   };
 
-  const nameOf = (id: string) => accounts.find((a) => a.id === id)?.name ?? "—";
+  const nameOf = (id: string) =>
+    accounts.find((a) => a.id === id || a.name.toLowerCase() === String(id || "").toLowerCase())
+      ?.name ?? (id || "—");
   /** Treats empty or "N/D" (legacy) symbols as unavailable. */
   const symbolOf = (s: string) => (s && s !== "N/D" ? s : "—");
   const selectable = !!onToggleSelect && !readOnly;
@@ -104,7 +106,7 @@ export function TradesTable({
       const direct = strategies.find((s) => s.id === trade.strategyId);
       if (direct) return direct;
     }
-    const acc = accounts.find((a) => a.id === trade.accountId);
+    const acc = accounts.find((a) => isTradeOfAccount(trade, a));
     if (acc?.strategyId) {
       return strategies.find((s) => s.id === acc.strategyId) ?? null;
     }

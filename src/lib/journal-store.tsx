@@ -717,7 +717,12 @@ export function JournalProvider({ children }: { children: ReactNode }) {
       selectedAccountIds.length === 0 ||
       selectedAccountIds.length === safeData.accounts.length
         ? safeData.trades
-        : safeData.trades.filter((t) => !t.accountId || selected.has(t.accountId));
+        : safeData.trades.filter((t) => {
+            if (!t.accountId) return true;
+            return safeData.accounts.some(
+              (a) => selected.has(a.id) && isTradeOfAccount(t, a),
+            );
+          });
     const importBatches = groupImportBatches(safeData.trades);
 
     /** Borra operaciones de inmediato en caché y persiste en Supabase. */

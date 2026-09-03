@@ -177,9 +177,10 @@ function TradesPage() {
 
   const accountStrategies = useMemo(() => {
     if (accountFilter === "all") return strategies;
+    const targetAcc = accounts.find((a) => a.id === accountFilter);
     const used = new Set(
       visibleTrades
-        .filter((t) => t.accountId === accountFilter)
+        .filter((t) => (targetAcc ? isTradeOfAccount(t, targetAcc) : t.accountId === accountFilter))
         .map((t) => effectiveStrategyId(t, accounts, strategyPeriods)),
     );
     const filtered = strategies.filter((s) => used.has(s.id));
@@ -188,15 +189,21 @@ function TradesPage() {
 
   const scopedTrades = useMemo(
     () =>
-      visibleTrades.filter(
-        (t) =>
-          (accountFilter !== "all"
-            ? t.accountId === accountFilter
-            : scopedIds.size === 0 || scopedIds.has(t.accountId) || !t.accountId) &&
-          (strategyFilter === "all" ||
-            effectiveStrategyId(t, accounts, strategyPeriods) === strategyFilter ||
-            t.strategyId === strategyFilter),
-      ),
+      visibleTrades.filter((t) => {
+        if (accountFilter !== "all") {
+          const targetAcc = accounts.find((a) => a.id === accountFilter);
+          const match = targetAcc ? isTradeOfAccount(t, targetAcc) : t.accountId === accountFilter;
+          if (!match) return false;
+        } else if (scopedIds.size > 0 && t.accountId) {
+          const match = accounts.some((a) => scopedIds.has(a.id) && isTradeOfAccount(t, a));
+          if (!match) return false;
+        }
+        return (
+          strategyFilter === "all" ||
+          effectiveStrategyId(t, accounts, strategyPeriods) === strategyFilter ||
+          t.strategyId === strategyFilter
+        );
+      }),
     [visibleTrades, scopedIds, accountFilter, strategyFilter, accounts, strategyPeriods],
   );
 
@@ -245,8 +252,8 @@ function TradesPage() {
           } else if (sortField === "pnl") {
             cmp = (a.pnl ?? 0) - (b.pnl ?? 0);
           } else if (sortField === "account") {
-            const aName = accounts.find((acc) => acc.id === a.accountId)?.name ?? "";
-            const bName = accounts.find((acc) => acc.id === b.accountId)?.name ?? "";
+            const aName = accounts.find((acc) => isTradeOfAccount(a, acc))?.name ?? a.accountId ?? "";
+            const bName = accounts.find((acc) => isTradeOfAccount(b, acc))?.name ?? b.accountId ?? "";
             cmp = aName.localeCompare(bName, "es", { sensitivity: "base" });
           } else if (sortField === "symbol") {
             cmp = (a.symbol || "").localeCompare(b.symbol || "", "es", { sensitivity: "base" });

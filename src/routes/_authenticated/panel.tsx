@@ -308,7 +308,11 @@ function Overview() {
           return acc ? isTradeOfAccount(t, acc) : t.accountId === accountFilter;
         }
 
-        return scopedIds.size === 0 || scopedIds.has(t.accountId) || (!t.accountId && scope === "all");
+        return (
+          scopedIds.size === 0 ||
+          accounts.some((a) => scopedIds.has(a.id) && isTradeOfAccount(t, a)) ||
+          (!t.accountId && scope === "all")
+        );
       }),
     [
       visibleTrades,
@@ -325,9 +329,10 @@ function Overview() {
 
   const accountStrategies = useMemo(() => {
     if (accountFilter === "all") return strategies;
+    const targetAcc = accounts.find((a) => a.id === accountFilter);
     const used = new Set(
       visibleTrades
-        .filter((t) => t.accountId === accountFilter)
+        .filter((t) => (targetAcc ? isTradeOfAccount(t, targetAcc) : t.accountId === accountFilter))
         .map((t) => effectiveStrategyId(t, accounts, strategyPeriods)),
     );
     const filtered = strategies.filter((s) => used.has(s.id));
