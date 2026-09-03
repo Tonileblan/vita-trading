@@ -192,12 +192,12 @@ function TradesPage() {
         (t) =>
           (accountFilter !== "all"
             ? t.accountId === accountFilter
-            : scopedIds.size === 0 || scopedIds.has(t.accountId) || (!t.accountId && scope === "all")) &&
+            : scopedIds.size === 0 || scopedIds.has(t.accountId) || !t.accountId) &&
           (strategyFilter === "all" ||
             effectiveStrategyId(t, accounts, strategyPeriods) === strategyFilter ||
             t.strategyId === strategyFilter),
       ),
-    [visibleTrades, scopedIds, accountFilter, scope, strategyFilter, accounts, strategyPeriods],
+    [visibleTrades, scopedIds, accountFilter, strategyFilter, accounts, strategyPeriods],
   );
 
   const [selected, setSelected] = useState<string[]>([]);
