@@ -1125,7 +1125,7 @@ function Overview() {
               <div className="rounded-xl bg-muted/20 border border-border/60 p-3.5 space-y-1">
                 <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
                   {isStrategy
-                    ? activeStrategyAccount
+                    ? activeStrategyAccountIds.length === 1
                       ? "PnL de la Cuenta"
                       : "PnL Total Histórico"
                     : "Capital Actual"}
