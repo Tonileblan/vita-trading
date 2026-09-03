@@ -307,6 +307,7 @@ export function buildEquityCurve(
     {
       index: 0,
       date: firstDateStr ? formatTradeDateLabel(firstDateStr) : "Inicio",
+      fullDate: firstDateStr ? formatDateTime(firstDateStr) : "Balance Inicial",
       equity: Number(computedStartBalance.toFixed(2)),
       ...(initialDrawdownFloor !== undefined ? { drawdownFloor: initialDrawdownFloor } : {}),
     },
@@ -347,6 +348,7 @@ export function buildEquityCurve(
     points.push({
       index: i + 1,
       date: dateStr ? formatTradeDateLabel(dateStr) : `T${i + 1}`,
+      fullDate: dateStr ? formatDateTime(dateStr) : `Operación #${i + 1}`,
       equity: Number(equity.toFixed(2)),
       ...(drawdownFloor !== undefined ? { drawdownFloor } : {}),
     });

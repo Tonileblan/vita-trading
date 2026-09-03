@@ -13,7 +13,13 @@ import {
 export function EquityChart({
   data,
 }: {
-  data: { index: number; date: string; equity: number; drawdownFloor?: number | undefined }[];
+  data: {
+    index: number;
+    date: string;
+    equity: number;
+    drawdownFloor?: number | undefined;
+    fullDate?: string | undefined;
+  }[];
 }) {
   const hasDrawdown = data.some((d) => d.drawdownFloor !== undefined);
 
@@ -71,7 +77,8 @@ export function EquityChart({
             tick={{ fontSize: 11, fill: "var(--color-muted-foreground)" }}
             tickLine={false}
             axisLine={false}
-            minTickGap={40}
+            minTickGap={30}
+            interval="preserveStartEnd"
           />
           <YAxis
             domain={[minVal, maxVal]}
@@ -89,6 +96,7 @@ export function EquityChart({
           <Tooltip
             content={({ active, payload, label }) => {
               if (!active || !payload || !payload.length) return null;
+              const point = payload[0]?.payload;
               const equityEntry = payload.find((p: any) => p.dataKey === "equity");
               const ddEntry = payload.find((p: any) => p.dataKey === "drawdownFloor");
 
@@ -104,10 +112,12 @@ export function EquityChart({
               const formatMoney = (n: number) =>
                 `$${n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
+              const displayDate = point?.fullDate || point?.date || label;
+
               return (
                 <div className="rounded-xl border border-border/80 bg-popover/95 backdrop-blur-sm p-3 shadow-xl text-xs space-y-1.5 min-w-[210px]">
                   <p className="font-semibold text-muted-foreground pb-1 border-b border-border/50 font-mono">
-                    {label}
+                    {displayDate}
                   </p>
 
                   {equityVal !== null && (

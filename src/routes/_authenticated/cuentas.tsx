@@ -438,11 +438,7 @@ function AccountsPage() {
 
               <div className="flex justify-between text-[10px] text-muted-foreground font-mono">
                 <span title="Límite de liquidación en el que se quema la cuenta">Suelo: {formatCurrency(drawdownFloor)}</span>
-                {dd.hasDailyLimit && dd.dailyFloor !== undefined ? (
-                  <span className="font-semibold text-foreground/90">Hoy: {formatCurrency(dd.dailyFloor)}</span>
-                ) : (
-                  <span>Max: {formatCurrency(dd.highWatermark)}</span>
-                )}
+                <span>Max: {formatCurrency(dd.highWatermark)}</span>
               </div>
             </div>
           ) : (
