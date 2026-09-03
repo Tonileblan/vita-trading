@@ -517,12 +517,18 @@ export function accountDrawdown(
   // Filtrar operaciones de esta cuenta específica
   const accTrades =
     account.id === "combined-funded"
-      ? trades
-      : trades.filter((t) => !t.accountId || t.accountId === account.id);
+      ? trades.filter((t) => !t.accountId || t.accountId === account.id)
+      : trades.filter((t) => t.accountId === account.id);
 
   // 1. Reconstruir la evolución día a día (EOD) y trade a trade (Intraday)
-  let computedIntradayPeak = Math.max(initial, balance);
-  let computedEodPeak = initial;
+  // Utilizamos la misma base de curva que buildEquityCurve
+  const startBalance =
+    accTrades.length > 0 && account.id !== "combined-funded"
+      ? accountCurveStart(account, accTrades, withdrawals)
+      : initial;
+
+  let runningIntradayPeak = Math.max(initial, startBalance);
+  let runningEodPeak = Math.max(initial, startBalance);
 
   if (accTrades.length > 0) {
     const sortedTrades = [...accTrades].sort((a, b) => {
@@ -534,11 +540,11 @@ export function accountDrawdown(
     });
 
     const dailyBalances = new Map<string, number>();
-    let runningEquity = initial;
+    let runningEquity = startBalance;
     for (const t of sortedTrades) {
       runningEquity += t.pnl;
-      if (runningEquity > computedIntradayPeak) {
-        computedIntradayPeak = runningEquity;
+      if (runningEquity > runningIntradayPeak) {
+        runningIntradayPeak = runningEquity;
       }
       const dateStr = t.openedAt || t.closedAt || t.createdAt || "";
       const day = dateStr ? dateStr.slice(0, 10) : "";
@@ -549,8 +555,8 @@ export function accountDrawdown(
 
     // El pico EOD es el máximo balance consolidado al final de cualquier sesión de trading
     for (const endOfDayBalance of dailyBalances.values()) {
-      if (endOfDayBalance > computedEodPeak) {
-        computedEodPeak = endOfDayBalance;
+      if (endOfDayBalance > runningEodPeak) {
+        runningEodPeak = endOfDayBalance;
       }
     }
   }
@@ -560,11 +566,11 @@ export function accountDrawdown(
   if (type === "static") {
     reference = initial;
   } else if (type === "eod") {
-    // En EOD, la referencia es el máximo balance de cierre diario alcanzado
-    reference = Math.max(initial, computedEodPeak, account.highWatermark ?? initial);
+    // En EOD, la referencia es el máximo balance de cierre diario alcanzado según las operaciones
+    reference = accTrades.length > 0 ? runningEodPeak : Math.max(initial, account.highWatermark ?? initial);
   } else {
-    // En Trailing, la referencia es el máximo intradía alcanzado
-    reference = Math.max(initial, balance, computedIntradayPeak, account.highWatermark ?? initial);
+    // En Trailing, la referencia es el máximo intradía alcanzado según las operaciones
+    reference = accTrades.length > 0 ? runningIntradayPeak : Math.max(initial, balance, account.highWatermark ?? initial);
   }
 
   const highWatermark = reference;
