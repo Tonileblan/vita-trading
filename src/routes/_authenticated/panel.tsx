@@ -47,7 +47,7 @@ import {
   filterByRange,
   formatCurrency,
 } from "@/lib/metrics";
-import { tradeDayKey } from "@/lib/emotions";
+import { tradeDayKey, parseTradeTime } from "@/lib/emotions";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/panel")({
@@ -243,7 +243,7 @@ function Overview() {
       const to = customRange.to;
       if (!from && !to) return scopedTrades;
       return scopedTrades.filter((t) => {
-        const ts = new Date(t.openedAt || t.closedAt).getTime();
+        const ts = parseTradeTime(t.openedAt || t.closedAt);
         if (from && ts < from.getTime()) return false;
         if (to && ts > new Date(to.getTime() + 86400000).getTime()) return false;
         return true;

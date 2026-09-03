@@ -1,10 +1,10 @@
 import type { Account, AccountStrategyPeriod, Trade } from "./types";
-import { tradeDayKey } from "./emotions";
+import { tradeDayKey, parseTradeDate, parseTradeTime, formatTradeDateLabel } from "./emotions";
 export { formatCurrency, parseMoneyInput, formatPercent } from "./money";
 
 export function formatDateTime(iso: string) {
   if (!iso) return "—";
-  const d = new Date(iso);
+  const d = parseTradeDate(iso);
   if (isNaN(d.getTime())) return "—";
   return d.toLocaleString("es-ES", {
     day: "2-digit",
@@ -17,7 +17,7 @@ export function formatDateTime(iso: string) {
 
 export function formatTradeDate(iso: string) {
   if (!iso) return "—";
-  const d = new Date(iso);
+  const d = parseTradeDate(iso);
   if (isNaN(d.getTime())) return "—";
   const day = d.getDate();
   const month = d.toLocaleString("es-ES", { month: "short" }).replace(".", "");
@@ -44,9 +44,9 @@ export function computeMetrics(trades: Trade[]): Metrics {
   const grossProfit = wins.reduce((s, t) => s + t.pnl, 0);
   const grossLoss = Math.abs(losses.reduce((s, t) => s + t.pnl, 0));
   const sorted = [...trades].sort((a, b) => {
-    const aDate = a.openedAt || a.closedAt;
-    const bDate = b.openedAt || b.closedAt;
-    const diff = new Date(bDate).getTime() - new Date(aDate).getTime();
+    const aDate = a.openedAt || a.closedAt || a.createdAt || "";
+    const bDate = b.openedAt || b.closedAt || b.createdAt || "";
+    const diff = parseTradeTime(bDate) - parseTradeTime(aDate);
     if (diff !== 0) return diff;
     return String(b.id ?? "").localeCompare(String(a.id ?? ""));
   });
@@ -216,8 +216,9 @@ export function buildEquityCurve(
 
   const sorted = [...trades].sort(
     (a, b) =>
-      new Date(a.openedAt || a.closedAt || a.createdAt || 0).getTime() -
-      new Date(b.openedAt || b.closedAt || b.createdAt || 0).getTime(),
+      parseTradeTime(a.openedAt || a.closedAt || a.createdAt) -
+      parseTradeTime(b.openedAt || b.closedAt || b.createdAt) ||
+      String(a.id ?? "").localeCompare(String(b.id ?? "")),
   );
 
   const isFunded =
@@ -236,16 +237,17 @@ export function buildEquityCurve(
   // Si se dispone del historial completo de la cuenta, calculamos la posición real y picos acumulados hasta justo antes de este periodo
   if (allTrades && allTrades.length > 0 && sorted.length > 0) {
     const firstTradeDateStr = sorted[0]?.openedAt || sorted[0]?.closedAt || sorted[0]?.createdAt || "";
-    const firstTradeTime = firstTradeDateStr ? new Date(firstTradeDateStr).getTime() : 0;
+    const firstTradeTime = parseTradeTime(firstTradeDateStr);
 
     const sortedAll = [...allTrades].sort(
       (a, b) =>
-        new Date(a.openedAt || a.closedAt || a.createdAt || 0).getTime() -
-        new Date(b.openedAt || b.closedAt || b.createdAt || 0).getTime(),
+        parseTradeTime(a.openedAt || a.closedAt || a.createdAt) -
+        parseTradeTime(b.openedAt || b.closedAt || b.createdAt) ||
+        String(a.id ?? "").localeCompare(String(b.id ?? "")),
     );
 
     const priorTrades = sortedAll.filter((t) => {
-      const ts = new Date(t.openedAt || t.closedAt || t.createdAt || 0).getTime();
+      const ts = parseTradeTime(t.openedAt || t.closedAt || t.createdAt);
       return ts < firstTradeTime;
     });
 
@@ -260,8 +262,7 @@ export function buildEquityCurve(
         if (priorEquity > priorIntraPeak) {
           priorIntraPeak = priorEquity;
         }
-        const dStr = t.openedAt || t.closedAt || t.createdAt || "";
-        const dayKey = dStr ? dStr.slice(0, 10) : "";
+        const dayKey = tradeDayKey(t);
         if (dayKey) {
           priorDailyBalances.set(dayKey, priorEquity);
         }
@@ -284,8 +285,7 @@ export function buildEquityCurve(
   let cumEq = computedStartBalance;
   for (const t of sorted) {
     cumEq += t.pnl;
-    const dateStr = t.openedAt || t.closedAt || t.createdAt || "";
-    const day = dateStr ? dateStr.slice(0, 10) : "";
+    const day = tradeDayKey(t);
     if (day) {
       dailyEndBalances.set(day, cumEq);
     }
@@ -306,12 +306,7 @@ export function buildEquityCurve(
   const points = [
     {
       index: 0,
-      date: firstDateStr
-        ? new Date(firstDateStr).toLocaleDateString("es-ES", {
-            day: "2-digit",
-            month: "short",
-          })
-        : "Inicio",
+      date: firstDateStr ? formatTradeDateLabel(firstDateStr) : "Inicio",
       equity: Number(computedStartBalance.toFixed(2)),
       ...(initialDrawdownFloor !== undefined ? { drawdownFloor: initialDrawdownFloor } : {}),
     },
@@ -321,7 +316,7 @@ export function buildEquityCurve(
   sorted.forEach((t, i) => {
     equity += t.pnl;
     const dateStr = t.openedAt || t.closedAt || t.createdAt || "";
-    const day = dateStr ? dateStr.slice(0, 10) : "";
+    const day = tradeDayKey(t);
 
     runningIntradayPeak = Math.max(runningIntradayPeak, equity);
 
@@ -351,12 +346,7 @@ export function buildEquityCurve(
 
     points.push({
       index: i + 1,
-      date: dateStr
-        ? new Date(dateStr).toLocaleDateString("es-ES", {
-            day: "2-digit",
-            month: "short",
-          })
-        : `T${i + 1}`,
+      date: dateStr ? formatTradeDateLabel(dateStr) : `T${i + 1}`,
       equity: Number(equity.toFixed(2)),
       ...(drawdownFloor !== undefined ? { drawdownFloor } : {}),
     });
@@ -372,16 +362,16 @@ export function filterByRange(
   if (range === "all") return trades;
   const now = new Date();
   if (range === "month") {
-    const start = new Date(now.getFullYear(), now.getMonth(), 1);
-    return trades.filter((t) => new Date(t.openedAt || t.closedAt).getTime() >= start.getTime());
+    const start = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+    return trades.filter((t) => parseTradeTime(t.openedAt || t.closedAt) >= start);
   }
   const days = range === "7d" ? 7 : range === "30d" ? 30 : range === "180d" ? 180 : 90;
   const latest = trades.reduce(
-    (max, t) => Math.max(max, new Date(t.openedAt || t.closedAt).getTime()),
+    (max, t) => Math.max(max, parseTradeTime(t.openedAt || t.closedAt)),
     now.getTime(),
   );
   const cutoff = latest - days * 86400000;
-  return trades.filter((t) => new Date(t.openedAt || t.closedAt).getTime() >= cutoff);
+  return trades.filter((t) => parseTradeTime(t.openedAt || t.closedAt) >= cutoff);
 }
 
 /** PnL acumulado de las operaciones de una cuenta. */
@@ -585,7 +575,7 @@ export function accountDrawdown(
     const sortedTrades = [...accTrades].sort((a, b) => {
       const aDate = a.openedAt || a.closedAt || a.createdAt || "";
       const bDate = b.openedAt || b.closedAt || b.createdAt || "";
-      const diff = new Date(aDate).getTime() - new Date(bDate).getTime();
+      const diff = parseTradeTime(aDate) - parseTradeTime(bDate);
       if (diff !== 0) return diff;
       return String(a.id ?? "").localeCompare(String(b.id ?? ""));
     });
@@ -597,8 +587,7 @@ export function accountDrawdown(
       if (runningEquity > runningIntradayPeak) {
         runningIntradayPeak = runningEquity;
       }
-      const dateStr = t.openedAt || t.closedAt || t.createdAt || "";
-      const day = dateStr ? dateStr.slice(0, 10) : "";
+      const day = tradeDayKey(t);
       if (day) {
         dailyBalances.set(day, runningEquity);
       }

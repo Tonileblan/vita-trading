@@ -143,19 +143,65 @@ export function todayKey(d: Date | string = new Date()): string {
   ).padStart(2, "0")}`;
 }
 
+/**
+ * Parsea de forma segura cualquier formato de fecha (ISO, YYYY-MM-DD, DD/MM/YYYY, DD-MM-YYYY)
+ * evitando que JavaScript interprete DD/MM/YYYY como MM/DD/YYYY (ej: 05/08/2026 como 8 de mayo).
+ */
+export function parseTradeDate(val: string | number | Date | null | undefined): Date {
+  if (!val) return new Date();
+  if (val instanceof Date) return isNaN(val.getTime()) ? new Date() : val;
+  if (typeof val === "number") return new Date(val);
+
+  const s = String(val).trim();
+  if (!s) return new Date();
+
+  // 1. Formato ISO YYYY-MM-DD o YYYY/MM/DD (con o sin hora)
+  const isoMatch = s.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})(?:[ T](\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?/);
+  if (isoMatch) {
+    const year = Number(isoMatch[1]);
+    const month = Number(isoMatch[2]) - 1;
+    const day = Number(isoMatch[3]);
+    const hour = Number(isoMatch[4] ?? 0);
+    const min = Number(isoMatch[5] ?? 0);
+    const sec = Number(isoMatch[6] ?? 0);
+    return new Date(year, month, day, hour, min, sec);
+  }
+
+  // 2. Formato DD/MM/YYYY o DD-MM-YYYY (con o sin hora) - Formato Español / Europeo
+  const euroMatch = s.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})(?:[ T](\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?/);
+  if (euroMatch) {
+    const day = Number(euroMatch[1]);
+    const month = Number(euroMatch[2]) - 1;
+    const year = Number(euroMatch[3]);
+    const hour = Number(euroMatch[4] ?? 0);
+    const min = Number(euroMatch[5] ?? 0);
+    const sec = Number(euroMatch[6] ?? 0);
+    return new Date(year, month, day, hour, min, sec);
+  }
+
+  // 3. Fallback estándar
+  const d = new Date(s);
+  return isNaN(d.getTime()) ? new Date() : d;
+}
+
+export function parseTradeTime(val: string | number | Date | null | undefined): number {
+  return parseTradeDate(val).getTime();
+}
+
+export function formatTradeDateLabel(val: string | number | Date | null | undefined): string {
+  const d = parseTradeDate(val);
+  return d.toLocaleDateString("es-ES", {
+    day: "2-digit",
+    month: "short",
+  });
+}
+
 /** Clave local YYYY-MM-DD de una operación comercial. */
 export function tradeDayKey(t: { closedAt?: string | null; openedAt?: string | null }): string {
   const iso = t.openedAt || t.closedAt;
   if (!iso) return "";
-  const cleaned = iso.trim().replace(" ", "T");
-  const d = new Date(cleaned);
-  if (!isNaN(d.getTime())) {
-    return todayKey(d);
-  }
-  // Fallback si el parser de fechas del navegador falla: extraer YYYY-MM-DD directo
-  const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})/);
-  if (m) return `${m[1]}-${m[2]}-${m[3]}`;
-  return "";
+  const d = parseTradeDate(iso);
+  return todayKey(d);
 }
 
 /**
