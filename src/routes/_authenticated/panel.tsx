@@ -1000,14 +1000,23 @@ function Overview() {
               </div>
             </div>
 
-            {/* Selector Interactivo de Cuentas: Todas / Deseleccionar arriba + Cuadrícula fluida abajo sin scroll lateral */}
+            {/* Selector Interactivo de Cuentas: Todas / Deseleccionar arriba + Cuadrícula atractiva sin scroll lateral */}
             {isStrategy && strategyAccounts.length > 0 && (
-              <div className="rounded-xl border border-border/70 bg-muted/15 p-3 sm:p-3.5 space-y-3">
+              <div className="rounded-2xl border border-border/80 bg-card p-3.5 sm:p-4 shadow-2xs space-y-3.5">
                 {/* Fila superior: Botones 'Todas' y 'Deseleccionar' */}
-                <div className="flex items-center justify-between gap-2 flex-wrap">
-                  <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                    <Wallet className="size-3.5 text-brand" />
-                    <span>Cuentas vinculadas a esta estrategia ({activeStrategyAccountIds.length}/{strategyAccounts.length}):</span>
+                <div className="flex items-center justify-between gap-3 flex-wrap">
+                  <div className="flex items-center gap-2">
+                    <div className="p-1.5 rounded-lg bg-brand/10 border border-brand/20">
+                      <Wallet className="size-3.5 text-brand" />
+                    </div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-xs font-bold uppercase tracking-wider text-foreground">
+                        Cuentas vinculadas a esta estrategia
+                      </span>
+                      <span className="rounded-full bg-muted border border-border/70 px-2 py-0.5 text-[11px] font-semibold text-muted-foreground">
+                        {activeStrategyAccountIds.length} de {strategyAccounts.length}
+                      </span>
+                    </div>
                   </div>
 
                   <div className="flex items-center gap-2">
@@ -1015,10 +1024,10 @@ function Overview() {
                       type="button"
                       onClick={handleSelectAllStrategyAccounts}
                       className={cn(
-                        "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all border cursor-pointer select-none",
+                        "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs transition-all border cursor-pointer select-none",
                         activeStrategyAccountIds.length === strategyAccounts.length
-                          ? "bg-brand text-brand-foreground border-brand shadow-xs shadow-brand/20"
-                          : "bg-card hover:bg-muted/80 text-muted-foreground hover:text-foreground border-border/80",
+                          ? "bg-brand text-brand-foreground border-brand shadow-xs shadow-brand/20 font-bold"
+                          : "bg-muted/60 hover:bg-muted text-foreground border-border/80 hover:border-border font-medium",
                       )}
                     >
                       <CheckCheck className="size-3.5" />
@@ -1029,10 +1038,10 @@ function Overview() {
                       type="button"
                       onClick={handleDeselectAllStrategyAccounts}
                       className={cn(
-                        "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all border cursor-pointer select-none",
+                        "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs transition-all border cursor-pointer select-none",
                         activeStrategyAccountIds.length === 0
-                          ? "bg-muted text-foreground border-border font-bold ring-1 ring-border"
-                          : "bg-card hover:bg-muted/80 text-muted-foreground hover:text-foreground border-border/80",
+                          ? "bg-foreground/10 text-foreground border-border font-bold ring-1 ring-border"
+                          : "bg-muted/60 hover:bg-muted text-foreground/80 hover:text-foreground border-border/80 hover:border-border font-medium",
                       )}
                     >
                       <X className="size-3.5" />
@@ -1041,7 +1050,7 @@ function Overview() {
                   </div>
                 </div>
 
-                {/* Cuadrícula adaptable con ancho dictado por los nombres más largos (sin solapamientos) */}
+                {/* Cuadrícula de cuentas con diseño atractivo y sin solapamientos */}
                 <div className="grid gap-2.5 grid-cols-[repeat(auto-fill,minmax(250px,1fr))]">
                   {strategyAccounts.map((acc) => {
                     const isSelected = activeStrategyAccountIds.includes(acc.id);
@@ -1051,15 +1060,25 @@ function Overview() {
                         type="button"
                         onClick={() => handleToggleStrategyAccount(acc.id)}
                         className={cn(
-                          "group relative flex items-center justify-center text-center px-4 py-2.5 rounded-xl text-xs transition-all duration-150 border cursor-pointer select-none w-full min-h-[44px]",
+                          "group relative flex items-center justify-between px-4 py-2.5 rounded-xl text-xs transition-all duration-200 border cursor-pointer select-none w-full min-h-[44px]",
                           isSelected
-                            ? "bg-brand/15 border-brand text-foreground shadow-xs ring-1 ring-brand/50 font-bold"
-                            : "bg-card text-muted-foreground border-border/80 hover:bg-muted/50 hover:text-foreground opacity-50 hover:opacity-100 font-medium",
+                            ? "bg-brand/15 border-brand text-foreground font-bold shadow-xs ring-2 ring-brand/30"
+                            : "bg-muted/30 hover:bg-muted/70 text-foreground/85 hover:text-foreground border-border/80 hover:border-border font-semibold hover:shadow-2xs",
                         )}
                       >
-                        <span className="text-center font-semibold tracking-tight whitespace-nowrap">
+                        <span className="font-semibold tracking-tight whitespace-nowrap text-foreground">
                           {acc.name}
                         </span>
+                        <div
+                          className={cn(
+                            "size-4 rounded-full flex items-center justify-center transition-all shrink-0 ml-2 border",
+                            isSelected
+                              ? "bg-brand border-brand text-brand-foreground shadow-xs"
+                              : "border-border/80 bg-background/80 group-hover:border-foreground/40",
+                          )}
+                        >
+                          {isSelected && <Check className="size-2.5 stroke-[3]" />}
+                        </div>
                       </button>
                     );
                   })}
