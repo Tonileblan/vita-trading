@@ -181,8 +181,12 @@ function Overview() {
   useEffect(() => {
     if (searchParams.account) {
       setFilter(searchParams.account);
+      setRange("all");
+      setSelectedCalendarDate(null);
     } else if (searchParams.filter) {
       setFilter(searchParams.filter);
+      setRange("all");
+      setSelectedCalendarDate(null);
     }
   }, [searchParams.account, searchParams.filter]);
 
