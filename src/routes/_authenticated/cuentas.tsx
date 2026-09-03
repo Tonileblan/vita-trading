@@ -440,7 +440,7 @@ function AccountsPage() {
                 {dd.hasDailyLimit && dd.dailyFloor !== undefined ? (
                   <span className="font-semibold text-foreground/90">Hoy: {formatCurrency(dd.dailyFloor)}</span>
                 ) : (
-                  <span>Pico: {formatCurrency(dd.reference)}</span>
+                  <span>Pico: {formatCurrency(dd.highWatermark)}</span>
                 )}
               </div>
             </div>

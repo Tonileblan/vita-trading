@@ -160,10 +160,10 @@ export function DrawdownProgress({
           </div>
           <div>
             <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-              {status.type === "static" ? "Balance Inicial" : "Pico Máx. (HWM)"}
+              Pico Máx. (HWM)
             </p>
             <p className="num text-base sm:text-lg font-bold font-mono text-foreground">
-              {formatCurrency(status.reference)}
+              {formatCurrency(status.highWatermark)}
             </p>
           </div>
           <div>
@@ -321,7 +321,7 @@ export function DrawdownProgress({
 
         {/* Micro-footer info */}
         <div className="flex items-center justify-between text-[10px] text-muted-foreground font-mono">
-          <span>Pico máx: {formatCurrency(status.reference)}</span>
+          <span>Pico máx: {formatCurrency(status.highWatermark)}</span>
           <span className={status.used > 0 ? "text-loss font-semibold" : "text-muted-foreground"}>
             {status.used > 0 ? `Bajada: -${formatCurrency(status.used)}` : "En máximos"}
           </span>

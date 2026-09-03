@@ -561,22 +561,20 @@ export function accountDrawdown(
     }
   }
 
-  // 2. Determinar High Watermark / Referencia según el tipo de drawdown
-  let reference = initial;
-  if (type === "static") {
-    reference = initial;
-  } else if (type === "eod") {
-    // En EOD, la referencia es el máximo balance de cierre diario alcanzado según las operaciones
-    reference = accTrades.length > 0 ? runningEodPeak : Math.max(initial, account.highWatermark ?? initial);
-  } else {
-    // En Trailing, la referencia es el máximo intradía alcanzado según las operaciones
-    reference = accTrades.length > 0 ? runningIntradayPeak : Math.max(initial, balance, account.highWatermark ?? initial);
-  }
+  // 2. High Watermark real (pico histórico máximo alcanzado por la cuenta según sus operaciones)
+  const truePeak =
+    type === "eod"
+      ? (accTrades.length > 0 ? runningEodPeak : Math.max(initial, account.highWatermark ?? initial))
+      : (accTrades.length > 0 ? runningIntradayPeak : Math.max(initial, balance, account.highWatermark ?? initial));
 
-  const highWatermark = reference;
+  const highWatermark = truePeak;
 
-  // 3. Fórmulas de Suelo de Pérdida Máxima y Drawdown
-  // Los 2.500 (o límite) se cuentan desde la referencia (pico alcanzado) hacia abajo
+  // 3. Determinar la Referencia de cálculo para el suelo según el tipo de drawdown
+  // - En Estático: El suelo de pérdida parte del balance inicial (initial) y no sube.
+  // - En EOD / Trailing: El suelo parte y sube desde el pico histórico consolidado (highWatermark).
+  const reference = type === "static" ? initial : highWatermark;
+
+  // 4. Fórmulas de Suelo de Pérdida Máxima y Drawdown
   const floor = maxLimit > 0 ? reference - maxLimit : 0;
   const used = Math.max(0, reference - balance);
   const remaining = maxLimit > 0 ? Math.max(0, balance - floor) : 0;
