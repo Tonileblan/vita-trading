@@ -502,23 +502,18 @@ function Overview() {
     0,
   );
 
-  // PnL total histórico de la estrategia
-  const strategyTotalPnl = useMemo(
-    () => (isStrategy ? scopedTrades.reduce((s, t) => s + t.pnl, 0) : 0),
-    [isStrategy, scopedTrades],
-  );
-
-  // Profit Factor de la estrategia en el periodo
-  const strategyProfitFactor = useMemo(() => {
-    const grossProfit = trades.filter((t) => t.pnl > 0).reduce((s, t) => s + t.pnl, 0);
-    const grossLoss = Math.abs(trades.filter((t) => t.pnl < 0).reduce((s, t) => s + t.pnl, 0));
-    if (grossLoss === 0) return grossProfit > 0 ? Infinity : 0;
-    return grossProfit / grossLoss;
-  }, [trades]);
+  // PnL total histórico de la estrategia / cuentas (siempre en consonancia con el balance actual)
+  const strategyTotalPnl = useMemo(() => {
+    if (!isStrategy) return 0;
+    return fusionAccounts.reduce(
+      (s, a) => s + accountResult(a, visibleTrades, withdrawals),
+      0,
+    );
+  }, [isStrategy, fusionAccounts, visibleTrades, withdrawals]);
 
   // PnL del recuadro
   const fusionPnl =
-    selectedCalendarDate || isStrategy || range !== "all"
+    selectedCalendarDate || range !== "all"
       ? trades.reduce((s, t) => s + t.pnl, 0)
       : fusionAccounts.reduce((s, a) => s + accountResult(a, visibleTrades, withdrawals), 0);
 
@@ -1023,7 +1018,7 @@ function Overview() {
             )}
 
             {/* Cuadrícula de Métricas de la Estrategia / Cuenta */}
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="grid gap-3 sm:grid-cols-2">
               <div className="rounded-xl bg-muted/20 border border-border/60 p-3.5 space-y-1">
                 <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
                   Resultado en Periodo
@@ -1070,38 +1065,6 @@ function Overview() {
                   {isStrategy
                     ? `${scopedTrades.length} ops registradas en total`
                     : `${fusionAccounts.length} cuenta(s)`}
-                </p>
-              </div>
-
-              <div className="rounded-xl bg-muted/20 border border-border/60 p-3.5 space-y-1">
-                <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                  Tasa de Acierto (Win Rate)
-                </p>
-                <p className="num text-2xl font-black text-foreground">
-                  {trades.length > 0
-                    ? `${((trades.filter((t) => t.pnl > 0).length / trades.length) * 100).toFixed(0)}%`
-                    : "—"}
-                </p>
-                <p className="text-[10px] text-muted-foreground">
-                  {trades.length > 0
-                    ? `${trades.filter((t) => t.pnl > 0).length}W / ${trades.filter((t) => t.pnl < 0).length}L`
-                    : "Sin operaciones"}
-                </p>
-              </div>
-
-              <div className="rounded-xl bg-muted/20 border border-border/60 p-3.5 space-y-1">
-                <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                  Profit Factor
-                </p>
-                <p className="num text-2xl font-black text-foreground">
-                  {strategyProfitFactor === Infinity
-                    ? "∞"
-                    : strategyProfitFactor > 0
-                      ? strategyProfitFactor.toFixed(2)
-                      : "—"}
-                </p>
-                <p className="text-[10px] text-muted-foreground">
-                  Ratio Ganancias / Pérdidas
                 </p>
               </div>
             </div>
