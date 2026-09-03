@@ -418,13 +418,19 @@ export function accountWithdrawn(
     .reduce((s, w) => s + Math.abs(w.amount), 0);
 }
 
-/** Balance real = balance actual guardado − retiros aprobados de la cuenta. */
+/** Balance real = capital inicial + suma de PnL de operaciones − retiros aprobados. */
 export function accountBalance(
   account: Account,
-  trades: Trade[],
+  trades: Trade[] = [],
   withdrawals: { accountId?: string | undefined; amount: number }[] = [],
 ) {
-  return account.currentBalance - accountWithdrawn(withdrawals, account.id);
+  const withdrawn = accountWithdrawn(withdrawals, account.id);
+  const accTrades = trades.filter((t) => t.accountId === account.id);
+  if (accTrades.length > 0) {
+    const pnl = accTrades.reduce((s, t) => s + (t.pnl ?? 0), 0);
+    return Number(((account.initialBalance || 0) + pnl - withdrawn).toFixed(2));
+  }
+  return Number(((account.currentBalance || account.initialBalance || 0) - withdrawn).toFixed(2));
 }
 
 
