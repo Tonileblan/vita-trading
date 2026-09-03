@@ -208,6 +208,7 @@ export function buildEquityCurve(
   trades: Trade[],
   startBalance: number,
   fundedAccount?: Account | null,
+  allTrades?: Trade[],
 ) {
   if (!trades || trades.length === 0) {
     return [];
@@ -228,13 +229,59 @@ export function buildEquityCurve(
   const ddType = isFunded ? (fundedAccount.drawdownType ?? "static") : "static";
   const initial = fundedAccount?.initialBalance ?? startBalance;
 
-  let equity = startBalance;
+  let computedStartBalance = startBalance;
   let runningIntradayPeak = Math.max(initial, startBalance);
   let runningEodPeak = initial;
 
+  // Si se dispone del historial completo de la cuenta, calculamos la posición real y picos acumulados hasta justo antes de este periodo
+  if (allTrades && allTrades.length > 0 && sorted.length > 0) {
+    const firstTradeDateStr = sorted[0]?.openedAt || sorted[0]?.closedAt || sorted[0]?.createdAt || "";
+    const firstTradeTime = firstTradeDateStr ? new Date(firstTradeDateStr).getTime() : 0;
+
+    const sortedAll = [...allTrades].sort(
+      (a, b) =>
+        new Date(a.openedAt || a.closedAt || a.createdAt || 0).getTime() -
+        new Date(b.openedAt || b.closedAt || b.createdAt || 0).getTime(),
+    );
+
+    const priorTrades = sortedAll.filter((t) => {
+      const ts = new Date(t.openedAt || t.closedAt || t.createdAt || 0).getTime();
+      return ts < firstTradeTime;
+    });
+
+    if (priorTrades.length > 0 || sortedAll.length > sorted.length) {
+      let priorEquity = initial;
+      let priorIntraPeak = initial;
+      let priorEod = initial;
+      const priorDailyBalances = new Map<string, number>();
+
+      for (const t of priorTrades) {
+        priorEquity += t.pnl;
+        if (priorEquity > priorIntraPeak) {
+          priorIntraPeak = priorEquity;
+        }
+        const dStr = t.openedAt || t.closedAt || t.createdAt || "";
+        const dayKey = dStr ? dStr.slice(0, 10) : "";
+        if (dayKey) {
+          priorDailyBalances.set(dayKey, priorEquity);
+        }
+      }
+
+      for (const eodBal of priorDailyBalances.values()) {
+        if (eodBal > priorEod) {
+          priorEod = eodBal;
+        }
+      }
+
+      computedStartBalance = priorEquity;
+      runningIntradayPeak = Math.max(initial, priorIntraPeak);
+      runningEodPeak = Math.max(initial, priorEod);
+    }
+  }
+
   // Pre-calcular el balance EOD de cierre de cada día
   const dailyEndBalances = new Map<string, number>();
-  let cumEq = startBalance;
+  let cumEq = computedStartBalance;
   for (const t of sorted) {
     cumEq += t.pnl;
     const dateStr = t.openedAt || t.closedAt || t.createdAt || "";
@@ -244,12 +291,16 @@ export function buildEquityCurve(
     }
   }
 
+  let equity = computedStartBalance;
+
   const firstDateStr = sorted[0]?.openedAt || sorted[0]?.closedAt || sorted[0]?.createdAt || "";
   const initialDrawdownFloor =
     isFunded && ddLimit > 0
       ? ddType === "static"
         ? Number((initial - ddLimit).toFixed(2))
-        : Number((Math.max(initial, startBalance) - ddLimit).toFixed(2))
+        : ddType === "eod"
+          ? Number((Math.max(initial, runningEodPeak) - ddLimit).toFixed(2))
+          : Number((Math.max(initial, runningIntradayPeak) - ddLimit).toFixed(2))
       : undefined;
 
   const points = [
@@ -261,7 +312,7 @@ export function buildEquityCurve(
             month: "short",
           })
         : "Inicio",
-      equity: Number(startBalance.toFixed(2)),
+      equity: Number(computedStartBalance.toFixed(2)),
       ...(initialDrawdownFloor !== undefined ? { drawdownFloor: initialDrawdownFloor } : {}),
     },
   ];

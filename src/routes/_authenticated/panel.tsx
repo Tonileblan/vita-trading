@@ -348,14 +348,15 @@ function Overview() {
   const curve = useMemo(() => {
     if (isStrategy) {
       // Para una estrategia, la curva muestra la evolución del PnL acumulado de esa estrategia
-      return buildEquityCurve(trades, 0, null);
+      return buildEquityCurve(trades, 0, null, scopedTrades);
     }
     return buildEquityCurve(
       trades,
-      accountsCurveStart(curveAccounts, trades, withdrawals),
+      accountsCurveStart(curveAccounts, scopedTrades, withdrawals),
       selectedFundedAccount,
+      scopedTrades,
     );
-  }, [isStrategy, trades, curveAccounts, withdrawals, selectedFundedAccount]);
+  }, [isStrategy, trades, curveAccounts, withdrawals, selectedFundedAccount, scopedTrades]);
 
   const fundedAccounts = selectedAccounts.filter((a) => a.type === "funded");
   const realAccounts = selectedAccounts.filter((a) => a.type !== "funded");

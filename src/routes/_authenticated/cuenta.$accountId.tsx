@@ -76,6 +76,7 @@ function AccountDetail() {
         accTrades,
         account ? accountCurveStart(account, accTrades, withdrawals) : 0,
         account,
+        accTrades,
       ),
     [accTrades, account, withdrawals],
   );
