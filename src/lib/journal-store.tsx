@@ -12,6 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { mockStrategies } from "./mock-data";
 import { useJournals } from "./journals";
 import { tradeDayKey } from "./emotions";
+import { isTradeOfAccount } from "./metrics";
 import type { Account, AccountStrategyPeriod, Strategy, Trade, Withdrawal } from "./types";
 
 const STORAGE_KEY = "tj:active-journal";

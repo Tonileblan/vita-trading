@@ -402,7 +402,10 @@ export function effectiveStrategyId(
 }
 
 
-export function isTradeOfAccount(t: Trade, account: { id: string; name?: string }): boolean {
+export function isTradeOfAccount(
+  t: { accountId?: string | null | undefined },
+  account: { id: string; name?: string | undefined },
+): boolean {
   if (!t.accountId) return false;
   const tAcc = String(t.accountId).trim().toLowerCase();
   const accId = String(account.id || "").trim().toLowerCase();

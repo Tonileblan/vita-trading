@@ -52,6 +52,7 @@ import {
   isTradeOfAccount,
 } from "@/lib/metrics";
 import { tradeDayKey, parseTradeTime } from "@/lib/emotions";
+import type { Account } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/panel")({

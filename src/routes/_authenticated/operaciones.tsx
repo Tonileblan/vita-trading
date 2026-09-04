@@ -51,7 +51,7 @@ import {
   toWithdrawal,
   toPeriod,
 } from "@/lib/journal-store";
-import { computeMetrics, effectiveStrategyId, formatCurrency, formatDateTime } from "@/lib/metrics";
+import { computeMetrics, effectiveStrategyId, formatCurrency, formatDateTime, isTradeOfAccount } from "@/lib/metrics";
 import { parseTradeTime } from "@/lib/emotions";
 import { cn } from "@/lib/utils";
 
@@ -226,7 +226,7 @@ function TradesPage() {
             const matchesSymbol = (t.symbol || "").toLowerCase().includes(q);
             const matchesNotes = (t.notes || "").toLowerCase().includes(q);
             const matchesTags = (t.tags || []).some((tag) => tag.toLowerCase().includes(q));
-            const accName = accounts.find((a) => a.id === t.accountId)?.name.toLowerCase() ?? "";
+            const accName = accounts.find((a) => isTradeOfAccount(t, a))?.name.toLowerCase() ?? "";
             const matchesAccount = accName.includes(q);
             if (!matchesSymbol && !matchesNotes && !matchesTags && !matchesAccount) {
               return false;

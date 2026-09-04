@@ -13,7 +13,7 @@ import {
   Zap,
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
-import { effectiveStrategyId, formatCurrency, formatDateTime, formatTradeDate } from "@/lib/metrics";
+import { effectiveStrategyId, formatCurrency, formatDateTime, formatTradeDate, isTradeOfAccount } from "@/lib/metrics";
 import { parseTradeTime } from "@/lib/emotions";
 import type { Account, AccountStrategyPeriod, Strategy, Trade } from "@/lib/types";
 import { useJournal } from "@/lib/journal-store";
