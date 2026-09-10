@@ -27,6 +27,9 @@ function accountRow(a: (typeof mockAccounts)[number], journalId: string, userId:
   return {
     name: a.name,
     type: a.type,
+    status: a.status ?? "active",
+    burned_at: a.burnedAt ?? null,
+    burned_reason: a.burnedReason ?? null,
     phase: a.phase ?? "eval",
     profit_target: a.profitTarget ?? null,
     firm: a.firm ?? null,

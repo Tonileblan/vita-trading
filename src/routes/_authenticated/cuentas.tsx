@@ -1,17 +1,25 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import {
+  Archive,
   Building2,
+  CheckCircle2,
   DollarSign,
   ExternalLink,
+  Flame,
+  Info,
   Pencil,
   Percent,
   Plus,
+  RotateCcw,
   ShieldAlert,
+  ShieldCheck,
   Sparkles,
+  Trash2,
   TrendingUp,
   User,
   Wallet,
+  Zap,
 } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/app-shell";
@@ -25,6 +33,16 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -55,17 +73,21 @@ import { DrawdownProgress } from "@/components/drawdown-progress";
 import { DrawdownAlertButton } from "@/components/drawdown-corner-alert";
 import {
   ACCOUNT_PHASES,
+  ACCOUNT_STATUSES,
   BROKERS,
   DRAWDOWN_TYPES,
   PROP_FIRMS,
   type Account,
   type AccountPhase,
+  type AccountStatus,
   type AccountType,
   type DrawdownType,
 } from "@/lib/types";
 import { getFirmWebsite, usePropFirms } from "@/lib/prop-firms";
 import { useBrokers } from "@/lib/brokers";
 import { cn } from "@/lib/utils";
+import { AccountFormDialog as AccountDialog } from "@/components/account-form-dialog";
+import { parseMoneyInput } from "@/lib/money";
 
 export const Route = createFileRoute("/_authenticated/cuentas")({
   head: () => ({
@@ -73,38 +95,72 @@ export const Route = createFileRoute("/_authenticated/cuentas")({
       { title: "Gestión de cuentas — Vita-Trading" },
       {
         name: "description",
-        content: "Administra cuentas de fondeo y personales: balance, drawdown y rendimiento.",
+        content: "Administra cuentas de fondeo, personales y cuentas quemadas: balance, drawdown y rendimiento.",
       },
       { property: "og:title", content: "Gestión de cuentas — Vita-Trading" },
       {
         property: "og:description",
-        content: "Cuentas de prop firm y personales con control de drawdown en tiempo real.",
+        content: "Cuentas de prop firm y personales con control de drawdown e historial de cuentas quemadas.",
       },
     ],
   }),
   component: AccountsPage,
 });
 
-import { AccountFormDialog as AccountDialog } from "@/components/account-form-dialog";
-import { parseMoneyInput } from "@/lib/money";
+type FilterType = "active" | "funded" | "personal" | "burned" | "all";
 
 function AccountsPage() {
-  const { accounts = [], trades = [], withdrawals = [] } = useJournal();
-  const [filterType, setFilterType] = useState<"all" | "funded" | "personal">("all");
+  const {
+    accounts = [],
+    trades = [],
+    withdrawals = [],
+    reactivateAccount,
+    restoreFundedNextAccount,
+    removeAccount,
+  } = useJournal();
+
+  const [filterType, setFilterType] = useState<FilterType>("active");
   const [viewMode, setViewMode] = useState<"horizontal" | "grid">("horizontal");
   const [searchQuery, setSearchQuery] = useState("");
+  const [accountToDelete, setAccountToDelete] = useState<Account | null>(null);
 
   const safeAccounts = accounts || [];
   const safeTrades = trades || [];
   const safeWithdrawals = withdrawals || [];
 
-  const funded = useMemo(() => safeAccounts.filter((a) => a.type === "funded"), [safeAccounts]);
-  const personal = useMemo(() => safeAccounts.filter((a) => a.type === "personal"), [safeAccounts]);
+  const activeAccounts = useMemo(
+    () => safeAccounts.filter((a) => (a.status ?? "active") === "active"),
+    [safeAccounts],
+  );
+  const burnedAccounts = useMemo(
+    () => safeAccounts.filter((a) => a.status === "burned"),
+    [safeAccounts],
+  );
+  const fundedActive = useMemo(
+    () => activeAccounts.filter((a) => a.type === "funded"),
+    [activeAccounts],
+  );
+  const personalActive = useMemo(
+    () => activeAccounts.filter((a) => a.type === "personal"),
+    [activeAccounts],
+  );
+
+  const hasFundedNextAccount = useMemo(() => {
+    return safeAccounts.some(
+      (a) =>
+        (a.firm && (a.firm.toLowerCase().includes("fundednext") || a.firm.toLowerCase().includes("funded next"))) ||
+        a.name.toLowerCase().includes("fundednext") ||
+        a.name.toLowerCase().includes("funded next"),
+    );
+  }, [safeAccounts]);
 
   const displayedAccounts = useMemo(() => {
     let list = safeAccounts;
-    if (filterType === "funded") list = funded;
-    if (filterType === "personal") list = personal;
+    if (filterType === "active") list = activeAccounts;
+    else if (filterType === "funded") list = fundedActive;
+    else if (filterType === "personal") list = personalActive;
+    else if (filterType === "burned") list = burnedAccounts;
+    else if (filterType === "all") list = safeAccounts;
 
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
@@ -112,12 +168,19 @@ function AccountsPage() {
         (a) =>
           a.name.toLowerCase().includes(q) ||
           (a.firm && a.firm.toLowerCase().includes(q)) ||
-          (a.broker && a.broker.toLowerCase().includes(q)),
+          (a.broker && a.broker.toLowerCase().includes(q)) ||
+          (a.burnedReason && a.burnedReason.toLowerCase().includes(q)),
       );
     }
 
     // Priorizar arriba las cuentas con alertas activas de Drawdown
     return [...list].sort((a, b) => {
+      // Cuentas quemadas al final si vemos todas
+      if (filterType === "all") {
+        if (a.status === "burned" && b.status !== "burned") return 1;
+        if (a.status !== "burned" && b.status === "burned") return -1;
+      }
+
       const ddA =
         a.type === "funded" && Boolean(a.maxLossLimit ?? a.drawdownLimit ?? a.dailyLossLimit)
           ? accountDrawdown(a, safeTrades, safeWithdrawals)
@@ -147,7 +210,7 @@ function AccountsPage() {
 
       return 0;
     });
-  }, [safeAccounts, funded, personal, filterType, searchQuery, safeTrades, safeWithdrawals]);
+  }, [safeAccounts, activeAccounts, fundedActive, personalActive, burnedAccounts, filterType, searchQuery, safeTrades, safeWithdrawals]);
 
   const sumTotals = (list: typeof safeAccounts) => {
     const initial = list.reduce((s, a) => s + (a.initialBalance || 0), 0);
@@ -157,12 +220,42 @@ function AccountsPage() {
     return { initial, current, result, pnlPct };
   };
 
-  const grandTotals = useMemo(() => sumTotals(safeAccounts), [safeAccounts, safeTrades, safeWithdrawals]);
-  const fundedTotals = useMemo(() => sumTotals(funded), [funded, safeTrades, safeWithdrawals]);
-  const personalTotals = useMemo(() => sumTotals(personal), [personal, safeTrades, safeWithdrawals]);
+  const activeTotals = useMemo(() => sumTotals(activeAccounts), [activeAccounts, safeTrades, safeWithdrawals]);
+  const fundedTotals = useMemo(() => sumTotals(fundedActive), [fundedActive, safeTrades, safeWithdrawals]);
+  const personalTotals = useMemo(() => sumTotals(personalActive), [personalActive, safeTrades, safeWithdrawals]);
 
-  const liveFundedCount = funded.filter((a) => a.phase === "live").length;
-  const evalFundedCount = funded.filter((a) => a.phase === "eval").length;
+  const burnedTotalCapital = useMemo(() => {
+    return burnedAccounts.reduce((s, a) => s + (a.initialBalance || 0), 0);
+  }, [burnedAccounts]);
+
+  const liveFundedCount = fundedActive.filter((a) => a.phase === "live").length;
+  const evalFundedCount = fundedActive.filter((a) => a.phase === "eval").length;
+
+  const handleReactivate = async (acc: Account, e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    try {
+      await reactivateAccount(acc.id);
+      toast.success(`Cuenta "${acc.name}" reactivada con éxito.`);
+    } catch (err) {
+      toast.error("No se pudo reactivar la cuenta");
+    }
+  };
+
+  const handleRecoverFundedNext = async () => {
+    try {
+      await restoreFundedNextAccount();
+      toast.success("¡Cuenta de FundedNext 50K recuperada y agregada a tu diario!");
+    } catch (err) {
+      toast.error("No se pudo recuperar la cuenta de FundedNext");
+    }
+  };
+
+  const handleConfirmDelete = () => {
+    if (!accountToDelete) return;
+    removeAccount(accountToDelete.id);
+    toast.success(`Cuenta "${accountToDelete.name}" eliminada permanentemente.`);
+    setAccountToDelete(null);
+  };
 
   // ==========================================
   // FILA HORIZONTAL PANORÁMICA DE CUENTA
@@ -176,7 +269,10 @@ function AccountsPage() {
     const target = accountTarget(acc, safeTrades, safeWithdrawals);
     const pnlPct = acc.initialBalance > 0 ? (result / acc.initialBalance) * 100 : 0;
 
+    const isBurned = acc.status === "burned";
+
     const isLowDrawdown =
+      !isBurned &&
       acc.type === "funded" &&
       Boolean(acc.maxLossLimit ?? acc.drawdownLimit ?? acc.dailyLossLimit) &&
       dd !== null &&
@@ -191,13 +287,22 @@ function AccountsPage() {
         className={cn(
           "group relative overflow-hidden rounded-2xl border border-border/80 bg-card p-4 sm:p-5 transition-all duration-200 hover:border-brand/40 hover:shadow-md space-y-3.5",
           isLowDrawdown && "border-loss/40",
+          isBurned && "border-rose-500/35 bg-rose-500/[0.02] hover:border-rose-500/50",
         )}
       >
-        {/* FRANJA DIAGONAL DE ALERTA DD DE FONDO EN LA ESQUINA SUPERIOR IZQUIERDA (DOBLE DE ANCHA) */}
+        {/* FRANJA DIAGONAL DE ALERTA DD O QUEMADA */}
         {isLowDrawdown && (
           <div className="absolute top-0 left-0 size-36 overflow-hidden pointer-events-none z-0">
             <div className="absolute top-[26px] -left-[42px] w-[180px] -rotate-45 bg-loss/12 text-loss/50 text-[10px] font-black uppercase tracking-wider text-center py-2.5 border-y border-loss/15 select-none">
               DD
+            </div>
+          </div>
+        )}
+
+        {isBurned && (
+          <div className="absolute top-0 left-0 size-36 overflow-hidden pointer-events-none z-0">
+            <div className="absolute top-[26px] -left-[42px] w-[180px] -rotate-45 bg-rose-500/15 text-rose-500/70 text-[9px] font-black uppercase tracking-wider text-center py-2.5 border-y border-rose-500/25 select-none">
+              QUEMADA
             </div>
           </div>
         )}
@@ -213,14 +318,22 @@ function AccountsPage() {
                     search={{ account: acc.id }}
                     className={cn(
                       "flex size-10 shrink-0 items-center justify-center rounded-xl font-bold text-sm shadow-xs bg-card transition-all duration-200 hover:scale-105 hover:shadow-md cursor-pointer",
-                      acc.type === "funded"
-                        ? "text-brand border border-brand/35 hover:bg-brand/15 hover:border-brand"
-                        : "text-purple-500 border border-purple-500/35 hover:bg-purple-500/15 hover:border-purple-500",
+                      isBurned
+                        ? "text-rose-500 border border-rose-500/35 hover:bg-rose-500/15 hover:border-rose-500"
+                        : acc.type === "funded"
+                          ? "text-brand border border-brand/35 hover:bg-brand/15 hover:border-brand"
+                          : "text-purple-500 border border-purple-500/35 hover:bg-purple-500/15 hover:border-purple-500",
                     )}
                     aria-label="Métricas"
                     title="Métricas"
                   >
-                    {acc.type === "funded" ? <Building2 className="size-5" /> : <Wallet className="size-5" />}
+                    {isBurned ? (
+                      <Flame className="size-5" />
+                    ) : acc.type === "funded" ? (
+                      <Building2 className="size-5" />
+                    ) : (
+                      <Wallet className="size-5" />
+                    )}
                   </Link>
                 </TooltipTrigger>
                 <TooltipContent side="top" className="font-semibold text-xs py-1.5 px-3">
@@ -237,7 +350,10 @@ function AccountsPage() {
                       <Link
                         to="/cuenta/$accountId"
                         params={{ accountId: acc.id }}
-                        className="font-extrabold text-base sm:text-lg text-foreground hover:text-brand transition-colors truncate"
+                        className={cn(
+                          "font-extrabold text-base sm:text-lg text-foreground hover:text-brand transition-colors truncate",
+                          isBurned && "line-through opacity-85",
+                        )}
                         title="Ver cuenta"
                         aria-label={`Ver cuenta ${acc.name}`}
                       >
@@ -249,7 +365,15 @@ function AccountsPage() {
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
-                {acc.type === "funded" && <PhaseChip phase={acc.phase ?? "eval"} />}
+
+                {isBurned ? (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-rose-500/15 border border-rose-500/30 px-2 py-0.5 text-[11px] font-bold text-rose-600 dark:text-rose-400">
+                    <Flame className="size-3" /> Quemada / Perdida
+                  </span>
+                ) : (
+                  acc.type === "funded" && <PhaseChip phase={acc.phase ?? "eval"} />
+                )}
+
                 {isLowDrawdown && (
                   <DrawdownAlertButton
                     remaining={dd?.remaining ?? 0}
@@ -259,7 +383,8 @@ function AccountsPage() {
                   />
                 )}
               </div>
-              <p className="text-xs text-muted-foreground font-medium flex items-center gap-1.5 mt-0.5">
+
+              <div className="text-xs text-muted-foreground font-medium flex items-center gap-1.5 mt-0.5 flex-wrap">
                 {(() => {
                   const firmName = acc.type === "funded" ? acc.firm || "Prop Firm" : acc.broker || "Broker";
                   const firmUrl = getFirmWebsite(firmName);
@@ -281,14 +406,48 @@ function AccountsPage() {
                   return <span className="font-semibold text-foreground/90">{firmName}</span>;
                 })()}
                 <span>•</span>
-                <span className="font-mono">
-                  {acc.initialBalance.toLocaleString("en-US")}
-                </span>
-              </p>
+                <span className="font-mono">{formatCurrency(acc.initialBalance)}</span>
+
+                {isBurned && acc.burnedReason && (
+                  <>
+                    <span>•</span>
+                    <span className="text-rose-500 font-medium text-[11px]">
+                      Causa: {acc.burnedReason}
+                    </span>
+                  </>
+                )}
+
+                {isBurned && acc.burnedAt && (
+                  <>
+                    <span>•</span>
+                    <span className="text-[11px] text-muted-foreground">
+                      {new Date(acc.burnedAt).toLocaleDateString("es-ES", {
+                        day: "numeric",
+                        month: "short",
+                        year: "numeric",
+                      })}
+                    </span>
+                  </>
+                )}
+              </div>
             </div>
           </div>
 
+          {/* ACCIONES DE LA FILA */}
           <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
+            {isBurned ? (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={(e) => handleReactivate(acc, e)}
+                className="h-8 px-2.5 text-xs text-emerald-600 dark:text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/10 gap-1.5 rounded-lg font-semibold"
+                title="Reactivar esta cuenta para que vuelva a estar operativa"
+              >
+                <RotateCcw className="size-3.5" />
+                <span>Reactivar cuenta</span>
+              </Button>
+            ) : null}
+
             <AccountDialog
               account={acc}
               trigger={
@@ -303,15 +462,22 @@ function AccountsPage() {
                 </Button>
               }
             />
+
+            <Link to="/cuenta/$accountId" params={{ accountId: acc.id }}>
+              <Button size="sm" variant="secondary" className="h-8 px-3 text-xs gap-1 font-semibold">
+                <span>Detalle</span>
+                <span className="text-xs">→</span>
+              </Button>
+            </Link>
           </div>
         </div>
 
-        {/* CUERPO: GRID ESPACIOSO DE MÉTRICAS Y CONTROLES (6 MÓDULOS OPACOS) */}
+        {/* CUERPO: GRID DE MÉTRICAS */}
         <div className="relative z-10 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2.5 sm:gap-3">
           {/* 1. BALANCE ACTUAL */}
           <div className="rounded-xl bg-card border border-border/70 p-3 flex flex-col justify-between min-h-[84px] shadow-xs">
             <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">
-              Balance Actual
+              Balance Final
             </span>
             <div className="my-0.5">
               <span className="num text-base sm:text-lg font-black font-mono text-foreground block">
@@ -319,7 +485,7 @@ function AccountsPage() {
               </span>
             </div>
             <span className="text-[10px] text-muted-foreground font-mono">
-              {formatCurrency(acc.initialBalance)}
+              Inicial: {formatCurrency(acc.initialBalance)}
             </span>
           </div>
 
@@ -383,33 +549,35 @@ function AccountsPage() {
             <div
               className={cn(
                 "col-span-2 md:col-span-2 lg:col-span-1 rounded-xl p-3 flex flex-col justify-between min-h-[84px] space-y-1.5 transition-all duration-300",
-                isLowDrawdown
-                  ? "border border-loss/50 bg-loss/8 animate-drawdown-border shadow-xs"
-                  : "bg-muted/30 border border-border/70",
+                isBurned
+                  ? "bg-rose-500/10 border border-rose-500/30"
+                  : isLowDrawdown
+                    ? "border border-loss/50 bg-loss/8 animate-drawdown-border shadow-xs"
+                    : "bg-muted/30 border border-border/70",
               )}
             >
               <div className="flex items-center justify-between text-xs">
                 <span
                   className={cn(
                     "text-[10px] font-bold uppercase tracking-wider flex items-center gap-1",
-                    isLowDrawdown ? "text-loss" : "text-muted-foreground",
+                    isBurned || isLowDrawdown ? "text-loss" : "text-muted-foreground",
                   )}
                 >
                   <ShieldAlert
                     className={cn(
                       "size-3.5",
-                      isLowDrawdown ? "text-loss" : "text-muted-foreground",
+                      isBurned || isLowDrawdown ? "text-loss" : "text-muted-foreground",
                     )}
                   />{" "}
-                  {dd.type === "trailing" ? "Trailing" : dd.type === "eod" ? "EOD" : "Estático"}
+                  {isBurned ? "Drawdown Violado" : dd.type === "trailing" ? "Trailing" : dd.type === "eod" ? "EOD" : "Estático"}
                 </span>
                 <span
                   className={cn(
                     "text-[10px] font-mono font-bold",
-                    isLowDrawdown ? "text-loss" : "text-muted-foreground",
+                    isBurned || isLowDrawdown ? "text-loss" : "text-muted-foreground",
                   )}
                 >
-                  {dd.healthPct.toFixed(0)}%
+                  {isBurned ? "0%" : `${dd.healthPct.toFixed(0)}%`}
                 </span>
               </div>
 
@@ -418,27 +586,27 @@ function AccountsPage() {
                   <span
                     className={cn(
                       "num font-mono font-black text-base sm:text-lg tracking-tight",
-                      isLowDrawdown ? "text-loss font-black" : "text-profit",
+                      isBurned || isLowDrawdown ? "text-loss font-black" : "text-profit",
                     )}
                   >
-                    {formatCurrency(dd.remaining)}
+                    {formatCurrency(isBurned ? 0 : dd.remaining)}
                   </span>
                 </div>
                 <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted/80 mt-1">
                   <div
                     className={cn(
                       "h-full rounded-full transition-all duration-300",
-                      isLowDrawdown ? "bg-loss" : "bg-profit",
+                      isBurned ? "bg-rose-500" : isLowDrawdown ? "bg-loss" : "bg-profit",
                     )}
                     style={{
-                      width: `${Math.min(100, Math.max(0, dd.healthPct))}%`,
+                      width: isBurned ? "0%" : `${Math.min(100, Math.max(0, dd.healthPct))}%`,
                     }}
                   />
                 </div>
               </div>
 
               <div className="flex justify-between text-[10px] text-muted-foreground font-mono">
-                <span title="Límite de liquidación en el que se quema la cuenta">Suelo: {formatCurrency(drawdownFloor)}</span>
+                <span title="Límite de liquidación">Suelo: {formatCurrency(drawdownFloor)}</span>
                 <span>Max: {formatCurrency(dd.highWatermark)}</span>
               </div>
             </div>
@@ -508,7 +676,10 @@ function AccountsPage() {
     const dd = accountDrawdown(acc, safeTrades, safeWithdrawals);
     const target = accountTarget(acc, safeTrades, safeWithdrawals);
 
+    const isBurned = acc.status === "burned";
+
     const isLowDrawdown =
+      !isBurned &&
       acc.type === "funded" &&
       Boolean(acc.maxLossLimit ?? acc.drawdownLimit ?? acc.dailyLossLimit) &&
       dd !== null &&
@@ -519,13 +690,21 @@ function AccountsPage() {
         className={cn(
           "panel flex flex-col justify-between p-5 transition-all hover:border-foreground/20 rounded-2xl relative overflow-hidden",
           isLowDrawdown && "border-loss/40",
+          isBurned && "border-rose-500/35 bg-rose-500/[0.02]",
         )}
       >
-        {/* FRANJA DIAGONAL DE ALERTA DD DE FONDO EN LA ESQUINA SUPERIOR IZQUIERDA (DOBLE DE ANCHA) */}
         {isLowDrawdown && (
           <div className="absolute top-0 left-0 size-32 overflow-hidden pointer-events-none z-0">
             <div className="absolute top-[22px] -left-[38px] w-[160px] -rotate-45 bg-loss/12 text-loss/50 text-[9px] font-black uppercase tracking-wider text-center py-2 border-y border-loss/15 select-none">
               DD
+            </div>
+          </div>
+        )}
+
+        {isBurned && (
+          <div className="absolute top-0 left-0 size-32 overflow-hidden pointer-events-none z-0">
+            <div className="absolute top-[22px] -left-[38px] w-[160px] -rotate-45 bg-rose-500/15 text-rose-500/70 text-[8px] font-black uppercase tracking-wider text-center py-2 border-y border-rose-500/25 select-none">
+              QUEMADA
             </div>
           </div>
         )}
@@ -541,14 +720,22 @@ function AccountsPage() {
                       search={{ account: acc.id }}
                       className={cn(
                         "flex size-9 shrink-0 items-center justify-center rounded-xl font-bold text-xs shadow-xs bg-card transition-all duration-200 hover:scale-105 hover:shadow-md cursor-pointer mt-0.5",
-                        acc.type === "funded"
-                          ? "text-brand border border-brand/35 hover:bg-brand/15 hover:border-brand"
-                          : "text-purple-500 border border-purple-500/35 hover:bg-purple-500/15 hover:border-purple-500",
+                        isBurned
+                          ? "text-rose-500 border border-rose-500/35 hover:bg-rose-500/15 hover:border-rose-500"
+                          : acc.type === "funded"
+                            ? "text-brand border border-brand/35 hover:bg-brand/15 hover:border-brand"
+                            : "text-purple-500 border border-purple-500/35 hover:bg-purple-500/15 hover:border-purple-500",
                       )}
                       aria-label="Métricas"
                       title="Métricas"
                     >
-                      {acc.type === "funded" ? <Building2 className="size-4" /> : <Wallet className="size-4" />}
+                      {isBurned ? (
+                        <Flame className="size-4" />
+                      ) : acc.type === "funded" ? (
+                        <Building2 className="size-4" />
+                      ) : (
+                        <Wallet className="size-4" />
+                      )}
                     </Link>
                   </TooltipTrigger>
                   <TooltipContent side="top" className="font-semibold text-xs py-1.5 px-3">
@@ -569,10 +756,21 @@ function AccountsPage() {
                         aria-label={`Ver cuenta ${acc.name}`}
                       >
                         <div className="flex items-center gap-2 flex-wrap">
-                          <h3 className="text-base font-bold group-hover/title:text-brand transition-colors break-words">
+                          <h3
+                            className={cn(
+                              "text-base font-bold group-hover/title:text-brand transition-colors break-words",
+                              isBurned && "line-through opacity-85",
+                            )}
+                          >
                             {acc.name}
                           </h3>
-                          {acc.type === "funded" && <PhaseChip phase={acc.phase ?? "eval"} />}
+                          {isBurned ? (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-rose-500/15 border border-rose-500/30 px-2 py-0.5 text-[10px] font-bold text-rose-600 dark:text-rose-400">
+                              <Flame className="size-2.5" /> Quemada
+                            </span>
+                          ) : (
+                            acc.type === "funded" && <PhaseChip phase={acc.phase ?? "eval"} />
+                          )}
                           {isLowDrawdown && (
                             <DrawdownAlertButton
                               remaining={dd?.remaining ?? 0}
@@ -665,11 +863,28 @@ function AccountsPage() {
             </div>
           </div>
 
+          {isBurned && (
+            <div className="rounded-xl border border-rose-500/20 bg-rose-500/5 p-2.5 text-xs space-y-1">
+              <p className="text-[11px] font-bold text-rose-600 dark:text-rose-400 flex items-center gap-1">
+                <Flame className="size-3 shrink-0" />
+                <span>Motivo: {acc.burnedReason || "Pérdida de cuenta"}</span>
+              </p>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={(e) => handleReactivate(acc, e)}
+                className="w-full text-xs h-7 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/10 gap-1 mt-1 font-semibold"
+              >
+                <RotateCcw className="size-3" /> Reactivar cuenta
+              </Button>
+            </div>
+          )}
+
           {/* Target Progress */}
-          {target && <TargetProgress status={target} />}
+          {!isBurned && target && <TargetProgress status={target} />}
 
           {/* Drawdown Progress */}
-          {dd && <DrawdownProgress status={dd} threshold={600} />}
+          {!isBurned && dd && <DrawdownProgress status={dd} threshold={600} />}
         </div>
 
         {/* Footer */}
@@ -691,18 +906,59 @@ function AccountsPage() {
   return (
     <AppShell
       title="Gestión de Cuentas"
-      subtitle="Supervisa el capital, control de drawdown y evolución de tus cuentas de fondeo y personales"
+      subtitle="Supervisa el capital, control de drawdown, cuentas activas e historial de cuentas quemadas"
       actions={
-        <AccountDialog
-          trigger={
-            <Button className="gap-1.5 shadow-xs">
-              <Plus className="size-4" /> Nueva cuenta
+        <div className="flex items-center gap-2">
+          {!hasFundedNextAccount && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleRecoverFundedNext}
+              className="gap-1.5 border-brand/40 text-brand hover:bg-brand/10 shadow-xs text-xs font-semibold"
+              title="Restaurar la cuenta eliminada de FundedNext"
+            >
+              <Zap className="size-3.5" />
+              Recuperar FundedNext
             </Button>
-          }
-        />
+          )}
+
+          <AccountDialog
+            trigger={
+              <Button className="gap-1.5 shadow-xs">
+                <Plus className="size-4" /> Nueva cuenta
+              </Button>
+            }
+          />
+        </div>
       }
     >
       <div className="space-y-6">
+        {/* BANNER DE RECUPERACIÓN DE FUNDEDNEXT SI NO EXISTE EN EL DIARIO */}
+        {!hasFundedNextAccount && (
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border border-brand/35 bg-brand/5 p-4 sm:p-5 shadow-xs">
+            <div className="flex items-start sm:items-center gap-3">
+              <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-brand/15 text-brand">
+                <Zap className="size-5" />
+              </div>
+              <div className="space-y-0.5">
+                <h4 className="text-sm font-bold text-foreground">
+                  ¿Buscabas tu cuenta de FundedNext eliminada?
+                </h4>
+                <p className="text-xs text-muted-foreground">
+                  Hemos configurado un acceso directo para restaurar tu cuenta <strong>FundedNext 50K Futures</strong> con todas sus reglas y límites en 1 solo clic.
+                </p>
+              </div>
+            </div>
+            <Button
+              onClick={handleRecoverFundedNext}
+              className="gap-1.5 text-xs font-bold shrink-0 self-end sm:self-auto shadow-xs"
+            >
+              <RotateCcw className="size-3.5" />
+              Recuperar FundedNext ahora
+            </Button>
+          </div>
+        )}
+
         {/* KPI Hero Counters */}
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <div className="panel flex items-center gap-3 p-4 rounded-2xl">
@@ -710,10 +966,10 @@ function AccountsPage() {
               <Wallet className="size-5" />
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">Capital Total Gestionado</p>
-              <p className="num text-lg font-bold">{formatCurrency(grandTotals.current)}</p>
+              <p className="text-xs text-muted-foreground">Capital Activo Gestionado</p>
+              <p className="num text-lg font-bold">{formatCurrency(activeTotals.current)}</p>
               <p className="text-[11px] text-muted-foreground">
-                Base inicial: {formatCurrency(grandTotals.initial)}
+                Base inicial: {formatCurrency(activeTotals.initial)}
               </p>
             </div>
           </div>
@@ -723,18 +979,18 @@ function AccountsPage() {
               <TrendingUp className="size-5" />
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">Resultado Global PnL</p>
+              <p className="text-xs text-muted-foreground">Resultado Global Activo</p>
               <p
                 className={cn(
                   "num text-lg font-bold",
-                  grandTotals.result >= 0 ? "text-profit" : "text-loss",
+                  activeTotals.result >= 0 ? "text-profit" : "text-loss",
                 )}
               >
-                {formatCurrency(grandTotals.result, true)}
+                {formatCurrency(activeTotals.result, true)}
               </p>
               <p className="text-[11px] text-muted-foreground">
-                Rentabilidad: {grandTotals.pnlPct >= 0 ? "+" : ""}
-                {grandTotals.pnlPct.toFixed(2)}%
+                Rentabilidad: {activeTotals.pnlPct >= 0 ? "+" : ""}
+                {activeTotals.pnlPct.toFixed(2)}%
               </p>
             </div>
           </div>
@@ -744,9 +1000,9 @@ function AccountsPage() {
               <Building2 className="size-5" />
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">Cuentas de Fondeo</p>
+              <p className="text-xs text-muted-foreground">Cuentas Fondeo Activas</p>
               <p className="text-lg font-bold">
-                {funded.length}{" "}
+                {fundedActive.length}{" "}
                 <span className="text-xs font-normal text-muted-foreground">
                   ({liveFundedCount} live / {evalFundedCount} eval)
                 </span>
@@ -757,15 +1013,25 @@ function AccountsPage() {
             </div>
           </div>
 
-          <div className="panel flex items-center gap-3 p-4 rounded-2xl">
-            <div className="flex size-10 items-center justify-center rounded-xl bg-purple-500/10 text-purple-500">
-              <User className="size-5" />
+          <div
+            onClick={() => setFilterType("burned")}
+            className={cn(
+              "panel flex items-center gap-3 p-4 rounded-2xl transition-all cursor-pointer hover:border-rose-500/40",
+              filterType === "burned" && "border-rose-500/50 bg-rose-500/5 ring-1 ring-rose-500/30",
+            )}
+          >
+            <div className="flex size-10 items-center justify-center rounded-xl bg-rose-500/10 text-rose-500">
+              <Flame className="size-5" />
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">Cuentas Personales</p>
-              <p className="text-lg font-bold">{personal.length}</p>
+              <p className="text-xs text-muted-foreground flex items-center gap-1">
+                <span>Cuentas Quemadas / Perdidas</span>
+              </p>
+              <p className="text-lg font-bold text-rose-600 dark:text-rose-400">
+                {burnedAccounts.length} {burnedAccounts.length === 1 ? "cuenta" : "cuentas"}
+              </p>
               <p className="num text-[11px] text-muted-foreground">
-                Cap: {formatCurrency(personalTotals.current)}
+                Historial guardado: {formatCurrency(burnedTotalCapital)}
               </p>
             </div>
           </div>
@@ -776,15 +1042,15 @@ function AccountsPage() {
           <div className="flex flex-wrap items-center gap-1.5">
             <button
               type="button"
-              onClick={() => setFilterType("all")}
+              onClick={() => setFilterType("active")}
               className={cn(
                 "rounded-full px-3.5 py-1.5 text-xs font-semibold transition-colors",
-                filterType === "all"
+                filterType === "active"
                   ? "bg-brand text-brand-foreground shadow-xs"
                   : "border border-border text-muted-foreground hover:text-foreground",
               )}
             >
-              Todas ({accounts.length})
+              Activas ({activeAccounts.length})
             </button>
             <button
               type="button"
@@ -796,7 +1062,7 @@ function AccountsPage() {
                   : "border border-border text-muted-foreground hover:text-foreground",
               )}
             >
-              Fondeo ({funded.length})
+              Fondeo ({fundedActive.length})
             </button>
             <button
               type="button"
@@ -808,7 +1074,32 @@ function AccountsPage() {
                   : "border border-border text-muted-foreground hover:text-foreground",
               )}
             >
-              Personales ({personal.length})
+              Personales ({personalActive.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setFilterType("burned")}
+              className={cn(
+                "rounded-full px-3.5 py-1.5 text-xs font-semibold transition-colors flex items-center gap-1.5",
+                filterType === "burned"
+                  ? "bg-rose-500 text-white shadow-xs font-bold"
+                  : "border border-rose-500/30 text-rose-600 dark:text-rose-400 hover:bg-rose-500/10",
+              )}
+            >
+              <Flame className="size-3.5" />
+              <span>Quemadas / Perdidas ({burnedAccounts.length})</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setFilterType("all")}
+              className={cn(
+                "rounded-full px-3.5 py-1.5 text-xs font-semibold transition-colors",
+                filterType === "all"
+                  ? "bg-brand text-brand-foreground shadow-xs"
+                  : "border border-border text-muted-foreground hover:text-foreground",
+              )}
+            >
+              Todas ({safeAccounts.length})
             </button>
           </div>
 
@@ -854,29 +1145,50 @@ function AccountsPage() {
           </div>
         </div>
 
+        {/* MENSAJE EXPLICATIVO SI SE ESTÁ EN LA PESTAÑA DE CUENTAS QUEMADAS */}
+        {filterType === "burned" && (
+          <div className="rounded-2xl border border-rose-500/25 bg-rose-500/[0.04] p-4 flex items-start gap-3">
+            <Flame className="size-5 text-rose-500 shrink-0 mt-0.5" />
+            <div className="space-y-1 text-xs">
+              <p className="font-bold text-foreground">Historial y Archivo de Cuentas Quemadas</p>
+              <p className="text-muted-foreground">
+                Aquí se conservan las cuentas de fondeo que sufrieron una violación de drawdown o expiración. Puedes consultar sus operaciones pasadas para analizar los errores de gestión o <strong>reactivarlas en cualquier momento</strong> si compraste un reset o restablecimiento de cuenta.
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Account Cards Presentation */}
         {displayedAccounts.length === 0 ? (
           <div className="panel p-10 text-center space-y-4 rounded-2xl">
             <div className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-brand/10 text-brand">
-              <Wallet className="size-6" />
+              {filterType === "burned" ? <Flame className="size-6 text-rose-500" /> : <Wallet className="size-6" />}
             </div>
             <div className="space-y-1">
-              <h3 className="text-lg font-bold">No hay cuentas para mostrar</h3>
+              <h3 className="text-lg font-bold">
+                {filterType === "burned"
+                  ? "No hay cuentas quemadas registradas"
+                  : "No hay cuentas para mostrar"}
+              </h3>
               <p className="text-sm text-muted-foreground">
                 {searchQuery
                   ? "No se encontraron cuentas que coincidan con tu búsqueda."
-                  : "Crea una cuenta de fondeo o personal para comenzar a registrar tus operaciones y controlar el drawdown."}
+                  : filterType === "burned"
+                    ? "¡Excelente trabajo en tu gestión de riesgo! Ninguna cuenta ha sido marcada como quemada."
+                    : "Crea una cuenta de fondeo o personal para comenzar a registrar tus operaciones y controlar el drawdown."}
               </p>
             </div>
-            <div className="pt-2">
-              <AccountDialog
-                trigger={
-                  <Button className="gap-1.5 shadow-xs">
-                    <Plus className="size-4" /> Crear mi primera cuenta
-                  </Button>
-                }
-              />
-            </div>
+            {filterType !== "burned" && (
+              <div className="pt-2">
+                <AccountDialog
+                  trigger={
+                    <Button className="gap-1.5 shadow-xs">
+                      <Plus className="size-4" /> Crear mi primera cuenta
+                    </Button>
+                  }
+                />
+              </div>
+            )}
           </div>
         ) : viewMode === "horizontal" ? (
           <div className="space-y-3">
@@ -892,6 +1204,31 @@ function AccountsPage() {
           </div>
         )}
       </div>
+
+      {/* DIÁLOGO DE ELIMINACIÓN PERMANENTE */}
+      <AlertDialog open={Boolean(accountToDelete)} onOpenChange={(open) => !open && setAccountToDelete(null)}>
+        <AlertDialogContent className="max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-base text-destructive">
+              ¿Eliminar cuenta permanentemente?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-xs">
+              Esta acción eliminará la cuenta <strong>"{accountToDelete?.name}"</strong> y todas las operaciones vinculadas a ella. Esta acción no se puede deshacer.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="text-xs">Cancelar</AlertDialogCancel>
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={handleConfirmDelete}
+              className="text-xs"
+            >
+              Eliminar definitivamente
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AppShell>
   );
 }

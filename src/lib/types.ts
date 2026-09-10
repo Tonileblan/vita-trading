@@ -37,10 +37,36 @@ export const ACCOUNT_PHASES: { key: AccountPhase; label: string; help: string }[
   },
 ];
 
+/** Estado de la cuenta: activa, quemada/perdida, aprobada o archivada */
+export type AccountStatus = "active" | "burned" | "passed" | "archived";
+
+export const ACCOUNT_STATUSES: { key: AccountStatus; label: string; description: string }[] = [
+  { key: "active", label: "Activa", description: "Cuenta operativa en curso" },
+  { key: "burned", label: "Quemada / Perdida", description: "Cuenta que superó drawdown o límite de pérdida" },
+  { key: "passed", label: "Superada / Aprobada", description: "Evaluación aprobada o fase superada" },
+  { key: "archived", label: "Archivada", description: "Cuenta cerrada o fuera de uso" },
+];
+
+export const BURNED_REASONS = [
+  "Límite total de pérdida superado (Max Loss)",
+  "Límite diario superado (Daily Loss)",
+  "Regla de consistencia incumplida",
+  "Operativa durante noticias no permitida",
+  "Inactividad prolongada o expiración",
+  "Error operativo / Pérdida de disciplina",
+  "Otro motivo",
+] as const;
+
 export interface Account {
   id: string;
   name: string;
   type: AccountType;
+  /** Estado de la cuenta: activa, quemada/perdida, aprobada o archivada */
+  status?: AccountStatus | undefined;
+  /** Fecha en la que se quemó o perdió la cuenta */
+  burnedAt?: string | undefined;
+  /** Motivo o causa por la que se quemó la cuenta */
+  burnedReason?: string | undefined;
   /** Solo cuentas de fondeo: evaluación o live. */
   phase?: AccountPhase | undefined;
   /** Capital objetivo (superar evaluación o umbral de payout). */

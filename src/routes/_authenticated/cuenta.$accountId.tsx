@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { AlertTriangle, ArrowLeft, Building2, ExternalLink, LayoutDashboard, Trash2, User } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Building2, ExternalLink, Flame, LayoutDashboard, RotateCcw, Trash2, User } from "lucide-react";
 import { toast } from "sonner";
 import { AccountCostCard } from "@/components/account-cost-card";
 import { AppShell } from "@/components/app-shell";
@@ -60,7 +60,17 @@ export const Route = createFileRoute("/_authenticated/cuenta/$accountId")({
 
 function AccountDetail() {
   const { accountId } = Route.useParams();
-  const { accounts, trades, strategies, withdrawals, strategyPeriods, removeTrades, loading } = useJournal();
+  const {
+    accounts,
+    trades,
+    strategies,
+    withdrawals,
+    strategyPeriods,
+    removeTrades,
+    reactivateAccount,
+    markAccountBurned,
+    loading,
+  } = useJournal();
   const account = accounts.find((a) => a.id === accountId);
 
   const [selected, setSelected] = useState<string[]>([]);
@@ -114,6 +124,26 @@ function AccountDetail() {
     }
   };
 
+  const handleReactivateAccount = async () => {
+    if (!account) return;
+    try {
+      await reactivateAccount(account.id);
+      toast.success(`Cuenta "${account.name}" reactivada con éxito.`);
+    } catch (err) {
+      toast.error("No se pudo reactivar la cuenta");
+    }
+  };
+
+  const handleMarkBurnedAccount = async () => {
+    if (!account) return;
+    try {
+      await markAccountBurned(account.id, "Límite total de pérdida superado (Max Loss)");
+      toast.success(`Cuenta "${account.name}" marcada como Cuenta Quemada.`);
+    } catch (err) {
+      toast.error("No se pudo marcar la cuenta como quemada");
+    }
+  };
+
   if (!account) {
     return (
       <AppShell title="Cuenta no encontrada" subtitle="Puede que se haya eliminado">
@@ -124,6 +154,7 @@ function AccountDetail() {
     );
   }
 
+  const isBurned = account.status === "burned";
   const pnl = accountPnl(trades, account.id);
   const balance = accountBalance(account, trades, withdrawals);
   const result = accountResult(account, trades, withdrawals);
@@ -140,6 +171,7 @@ function AccountDetail() {
     .sort((a, b) => b.net - a.net);
 
   const isLowDrawdown =
+    !isBurned &&
     account.type === "funded" &&
     Boolean(account.maxLossLimit ?? account.drawdownLimit ?? account.dailyLossLimit) &&
     dd !== null &&
@@ -149,8 +181,14 @@ function AccountDetail() {
     <AppShell
       title={
         <div className="flex items-center gap-2.5 flex-wrap">
-          <span>{account.name}</span>
-          {account.type === "funded" && <PhaseChip phase={account.phase ?? "eval"} />}
+          <span className={cn(isBurned && "line-through opacity-85")}>{account.name}</span>
+          {isBurned ? (
+            <span className="inline-flex items-center gap-1 rounded-full bg-rose-500/15 border border-rose-500/30 px-2.5 py-0.5 text-xs font-bold text-rose-600 dark:text-rose-400">
+              <Flame className="size-3.5" /> Quemada / Perdida
+            </span>
+          ) : (
+            account.type === "funded" && <PhaseChip phase={account.phase ?? "eval"} />
+          )}
           {isLowDrawdown && (
             <DrawdownAlertButton
               remaining={dd?.remaining ?? 0}
@@ -213,7 +251,17 @@ function AccountDetail() {
         )
       }
       actions={
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
+          {isBurned && (
+            <Button
+              size="sm"
+              onClick={handleReactivateAccount}
+              className="gap-1.5 text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs"
+            >
+              <RotateCcw className="size-3.5" />
+              Reactivar cuenta
+            </Button>
+          )}
           <Link
             to="/panel"
             search={{ account: account.id }}
@@ -232,10 +280,78 @@ function AccountDetail() {
       }
     >
       <div className="space-y-5">
+        {/* BANNER INFORMATIVO SI ESTÁ MARCADA COMO QUEMADA */}
+        {isBurned && (
+          <div className="rounded-2xl border border-rose-500/30 bg-rose-500/10 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xs">
+            <div className="flex items-start gap-3">
+              <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-rose-500/20 text-rose-500">
+                <Flame className="size-5" />
+              </div>
+              <div className="space-y-1 text-xs">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h4 className="text-sm font-bold text-rose-600 dark:text-rose-400">
+                    Esta cuenta se encuentra en el historial de Cuentas Quemadas / Perdidas
+                  </h4>
+                  <span className="rounded-full bg-rose-500/20 px-2 py-0.5 text-[10px] font-bold text-rose-600 dark:text-rose-300">
+                    Archivada
+                  </span>
+                </div>
+                <p className="text-muted-foreground">
+                  {account.burnedReason ? <span><strong>Causa:</strong> {account.burnedReason}. </span> : null}
+                  {account.burnedAt ? (
+                    <span>
+                      <strong>Fecha de registro:</strong>{" "}
+                      {new Date(account.burnedAt).toLocaleDateString("es-ES", {
+                        day: "numeric",
+                        month: "long",
+                        year: "numeric",
+                      })}.{" "}
+                    </span>
+                  ) : null}
+                  Se conservan todas las estadísticas y operaciones registradas para que puedas estudiar tus patrones de riesgo.
+                </p>
+              </div>
+            </div>
+            <Button
+              size="sm"
+              onClick={handleReactivateAccount}
+              className="gap-1.5 text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white shrink-0 self-end sm:self-auto shadow-xs"
+            >
+              <RotateCcw className="size-3.5" />
+              Reactivar cuenta
+            </Button>
+          </div>
+        )}
+
+        {/* ALERTA SI LA CUENTA NO ESTÁ QUEMADA PERO ROMPIÓ DRAWDOWN */}
+        {!isBurned && (dd?.breached || dd?.dailyBreached) && (
+          <div className="rounded-2xl border border-loss/40 bg-loss/10 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+            <div className="flex items-center gap-2.5">
+              <AlertTriangle className="size-5 text-loss shrink-0" />
+              <div className="text-xs">
+                <p className="font-bold text-loss">Límite de Drawdown Superado</p>
+                <p className="text-muted-foreground">
+                  Esta cuenta ha violado el límite máximo de pérdida. Puedes moverla a la sección de Cuentas Quemadas para registrarla ordenadamente.
+                </p>
+              </div>
+            </div>
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={handleMarkBurnedAccount}
+              className="text-xs gap-1.5 shrink-0 self-end sm:self-auto font-semibold"
+            >
+              <Flame className="size-3.5" />
+              Marcar como Cuenta Quemada
+            </Button>
+          </div>
+        )}
+
         <section
           className={cn(
-            "panel grid grid-cols-2 gap-4 p-4 md:grid-cols-4",
+            "panel grid grid-cols-2 gap-4 p-4 md:grid-cols-4 rounded-2xl",
             isLowDrawdown && "border-loss/40",
+            isBurned && "border-rose-500/30 bg-rose-500/[0.02]",
           )}
         >
           <div>

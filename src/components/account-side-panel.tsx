@@ -1,6 +1,6 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { Building2, User } from "lucide-react";
+import { Building2, ChevronDown, ChevronRight, Flame, User } from "lucide-react";
 import { useJournal } from "@/lib/journal-store";
 import {
   accountBalance,
@@ -12,11 +12,14 @@ import {
 import { PhaseChip, TargetProgress } from "@/components/target-progress";
 import { DrawdownProgress } from "@/components/drawdown-progress";
 import { DrawdownAlertButton } from "@/components/drawdown-corner-alert";
+import type { Account } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 export function AccountSidePanel() {
   const { accounts, trades, withdrawals, selectedAccountIds, toggleAccount, selectAll } =
     useJournal();
+
+  const [showBurned, setShowBurned] = useState(false);
 
   const sortedAccounts = useMemo(() => {
     return [...accounts].sort((a, b) => {
@@ -49,80 +52,128 @@ export function AccountSidePanel() {
     });
   }, [accounts, trades, withdrawals]);
 
+  const activeAccounts = useMemo(
+    () => sortedAccounts.filter((a) => (a.status ?? "active") === "active"),
+    [sortedAccounts],
+  );
+
+  const burnedAccounts = useMemo(
+    () => sortedAccounts.filter((a) => a.status === "burned"),
+    [sortedAccounts],
+  );
+
+  const renderAccountButton = (acc: Account) => {
+    const active = selectedAccountIds.includes(acc.id);
+    const result = accountResult(acc, trades, withdrawals);
+    const balance = accountBalance(acc, trades, withdrawals);
+    const target = accountTarget(acc, trades, withdrawals);
+    const dd = accountDrawdown(acc, trades, withdrawals);
+    const isBurned = acc.status === "burned";
+
+    const isLowDrawdown =
+      !isBurned &&
+      acc.type === "funded" &&
+      Boolean(acc.maxLossLimit ?? acc.drawdownLimit ?? acc.dailyLossLimit) &&
+      dd !== null &&
+      (dd.remaining < 600 || dd.breached || (dd.hasDailyLimit && ((dd.dailyRemaining ?? 9999) < 300 || dd.dailyBreached)));
+
+    return (
+      <button
+        key={acc.id}
+        onClick={() => toggleAccount(acc.id)}
+        className={cn(
+          "w-full rounded-lg border p-2.5 text-left transition-colors",
+          isBurned && "border-rose-500/25 bg-rose-500/5",
+          isLowDrawdown && "border-rose-500/40 bg-rose-500/5",
+          active
+            ? "border-brand/50 bg-sidebar-accent"
+            : "border-transparent opacity-65 hover:opacity-95 hover:bg-muted/30",
+        )}
+      >
+        <div className="flex items-center justify-between gap-1.5 min-w-0">
+          <div className="flex items-center gap-1.5 min-w-0 flex-1">
+            {isBurned ? (
+              <Flame className="size-3.5 shrink-0 text-rose-500" />
+            ) : acc.type === "funded" ? (
+              <Building2 className="size-3.5 shrink-0 text-brand-soft" />
+            ) : (
+              <User className="size-3.5 shrink-0 text-muted-foreground" />
+            )}
+            <span className={cn("truncate text-xs font-bold", isBurned && "line-through opacity-85")}>
+              {acc.name}
+            </span>
+            {isBurned ? (
+              <span className="rounded bg-rose-500/15 px-1 py-0.2 text-[9px] font-bold text-rose-500 shrink-0">
+                Quemada
+              </span>
+            ) : (
+              acc.type === "funded" && <PhaseChip phase={acc.phase ?? "eval"} />
+            )}
+          </div>
+          {isLowDrawdown && (
+            <DrawdownAlertButton
+              size="sm"
+              remaining={dd?.remaining ?? 0}
+              isFunded={acc.type === "funded" && Boolean(acc.maxLossLimit ?? acc.drawdownLimit ?? acc.dailyLossLimit)}
+              breached={dd?.breached ?? false}
+              threshold={600}
+            />
+          )}
+        </div>
+        <div className="mt-1.5 flex items-center justify-between">
+          <span className="num text-xs font-mono font-medium text-muted-foreground">
+            {formatCurrency(balance)}
+          </span>
+
+          <span
+            className={cn(
+              "num text-xs font-mono font-bold",
+              result >= 0 ? "text-profit" : "text-loss",
+            )}
+          >
+            {formatCurrency(result, true)}
+          </span>
+        </div>
+        {!isBurned && target && <TargetProgress status={target} compact />}
+        {!isBurned && dd && <DrawdownProgress status={dd} variant="compact" className="mt-1" />}
+      </button>
+    );
+  };
+
   return (
     <div className="mt-6 flex min-h-0 flex-1 flex-col border-t border-sidebar-border pt-4">
       <div className="flex items-center justify-between px-5 pb-2">
         <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-          Cuentas
+          Cuentas ({activeAccounts.length})
         </span>
         <button onClick={selectAll} className="text-xs font-medium text-brand hover:underline">
           Todas
         </button>
       </div>
       <div className="flex-1 space-y-1.5 overflow-y-auto px-3 pb-4">
-        {sortedAccounts.map((acc) => {
-          const active = selectedAccountIds.includes(acc.id);
-          const result = accountResult(acc, trades, withdrawals);
-          const balance = accountBalance(acc, trades, withdrawals);
-          const target = accountTarget(acc, trades, withdrawals);
-          const dd = accountDrawdown(acc, trades, withdrawals);
-          const isLowDrawdown =
-            acc.type === "funded" &&
-            Boolean(acc.maxLossLimit ?? acc.drawdownLimit ?? acc.dailyLossLimit) &&
-            dd !== null &&
-            (dd.remaining < 600 || dd.breached || (dd.hasDailyLimit && ((dd.dailyRemaining ?? 9999) < 300 || dd.dailyBreached)));
+        {activeAccounts.map(renderAccountButton)}
 
-          return (
+        {burnedAccounts.length > 0 && (
+          <div className="pt-2 border-t border-sidebar-border/60 mt-3">
             <button
-              key={acc.id}
-              onClick={() => toggleAccount(acc.id)}
-              className={cn(
-                "w-full rounded-lg border p-2.5 text-left transition-colors",
-                isLowDrawdown && "border-rose-500/40 bg-rose-500/5",
-                active
-                  ? "border-brand/50 bg-sidebar-accent"
-                  : "border-transparent opacity-65 hover:opacity-95 hover:bg-muted/30",
-              )}
+              type="button"
+              onClick={() => setShowBurned((prev) => !prev)}
+              className="flex items-center justify-between w-full px-2 py-1.5 text-xs font-semibold text-rose-500/80 hover:text-rose-500 hover:bg-rose-500/10 rounded-lg transition-colors"
             >
-              <div className="flex items-center justify-between gap-1.5 min-w-0">
-                <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                  {acc.type === "funded" ? (
-                    <Building2 className="size-3.5 shrink-0 text-brand-soft" />
-                  ) : (
-                    <User className="size-3.5 shrink-0 text-muted-foreground" />
-                  )}
-                  <span className="truncate text-xs font-bold">{acc.name}</span>
-                  {acc.type === "funded" && <PhaseChip phase={acc.phase ?? "eval"} />}
-                </div>
-                {isLowDrawdown && (
-                  <DrawdownAlertButton
-                    size="sm"
-                    remaining={dd?.remaining ?? 0}
-                    isFunded={acc.type === "funded" && Boolean(acc.maxLossLimit ?? acc.drawdownLimit ?? acc.dailyLossLimit)}
-                    breached={dd?.breached ?? false}
-                    threshold={600}
-                  />
-                )}
-              </div>
-              <div className="mt-1.5 flex items-center justify-between">
-                <span className="num text-xs font-mono font-medium text-muted-foreground">
-                  {formatCurrency(balance)}
-                </span>
-
-                <span
-                  className={cn(
-                    "num text-xs font-mono font-bold",
-                    result >= 0 ? "text-profit" : "text-loss",
-                  )}
-                >
-                  {formatCurrency(result, true)}
-                </span>
-              </div>
-              {target && <TargetProgress status={target} compact />}
-              {dd && <DrawdownProgress status={dd} variant="compact" className="mt-1" />}
+              <span className="flex items-center gap-1.5">
+                <Flame className="size-3.5" />
+                <span>Cuentas Quemadas ({burnedAccounts.length})</span>
+              </span>
+              {showBurned ? <ChevronDown className="size-3.5" /> : <ChevronRight className="size-3.5" />}
             </button>
-          );
-        })}
+
+            {showBurned && (
+              <div className="mt-1.5 space-y-1.5 pl-1">
+                {burnedAccounts.map(renderAccountButton)}
+              </div>
+            )}
+          </div>
+        )}
       </div>
       <Link
         to="/cuentas"

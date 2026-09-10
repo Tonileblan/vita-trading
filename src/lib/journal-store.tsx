@@ -41,10 +41,18 @@ export function toAccount(r: Row): Account {
       ? Number(r["start_of_day_balance"])
       : initialBalance;
 
+  const rawStatus = String(r["status"] ?? "active");
+  const validStatus = ["active", "burned", "passed", "archived"].includes(rawStatus)
+    ? (rawStatus as Account["status"])
+    : "active";
+
   return {
     id: String(r["id"]),
     name: String(r["name"] ?? ""),
     type: (r["type"] === "funded" ? "funded" : "personal") as Account["type"],
+    status: validStatus,
+    burnedAt: (r["burned_at"] as string | null) ?? undefined,
+    burnedReason: (r["burned_reason"] as string | null) ?? undefined,
     firm: (r["firm"] as string | null) ?? undefined,
     broker: (r["broker"] as string | null) ?? undefined,
     strategyId: (r["strategy_id"] as string | null) ?? undefined,
@@ -68,6 +76,9 @@ function fromAccount(a: Partial<Omit<Account, "id">>): Row {
   const out: Row = {};
   if (a.name !== undefined) out["name"] = a.name;
   if (a.type !== undefined) out["type"] = a.type;
+  if (a.status !== undefined) out["status"] = a.status ?? "active";
+  if (a.burnedAt !== undefined) out["burned_at"] = a.burnedAt ?? null;
+  if (a.burnedReason !== undefined) out["burned_reason"] = a.burnedReason ?? null;
   if (a.firm !== undefined) out["firm"] = a.firm ?? null;
   if (a.broker !== undefined) out["broker"] = a.broker ?? null;
   if (a.strategyId !== undefined) out["strategy_id"] = a.strategyId || null;
@@ -546,6 +557,9 @@ interface JournalState extends JournalData {
   selectAll: () => void;
   addAccount: (account: Omit<Account, "id">) => Promise<void>;
   updateAccount: (id: string, patch: Partial<Omit<Account, "id">>) => Promise<void>;
+  markAccountBurned: (id: string, reason?: string, date?: string) => Promise<void>;
+  reactivateAccount: (id: string) => Promise<void>;
+  restoreFundedNextAccount: () => Promise<void>;
   removeAccount: (id: string) => Promise<void>;
   addTrade: (trade: Omit<Trade, "id">) => Promise<void>;
   /** Modifica una operación y ajusta la diferencia de PnL en las cuentas correspondientes. */
@@ -885,6 +899,92 @@ export function JournalProvider({ children }: { children: ReactNode }) {
           console.error("Error al actualizar la cuenta:", err);
           await refresh();
           throw err;
+        }
+      },
+      markAccountBurned: async (id, reason, date) => {
+        const burnedAt = date || new Date().toISOString();
+        const burnedReason = reason || "Límite total de pérdida superado (Max Loss)";
+        updateCache((old) => ({
+          ...old,
+          accounts: old.accounts.map((a) =>
+            a.id === id ? { ...a, status: "burned", burnedAt, burnedReason } : a,
+          ),
+        }));
+
+        try {
+          const payload = fromAccount({ status: "burned", burnedAt, burnedReason });
+          const { error } = await supabase.from("accounts").update(payload as never).eq("id", id);
+          if (error) {
+            console.warn("Error guardando estado quemada en base de datos:", error.message);
+          }
+        } catch (err) {
+          console.error("Error al marcar cuenta como quemada:", err);
+        }
+      },
+      reactivateAccount: async (id) => {
+        updateCache((old) => ({
+          ...old,
+          accounts: old.accounts.map((a) =>
+            a.id === id ? { ...a, status: "active", burnedAt: undefined, burnedReason: undefined } : a,
+          ),
+        }));
+
+        try {
+          const payload = fromAccount({ status: "active", burnedAt: undefined, burnedReason: undefined });
+          const { error } = await supabase.from("accounts").update(payload as never).eq("id", id);
+          if (error) {
+            console.warn("Error reactivando cuenta en base de datos:", error.message);
+          }
+        } catch (err) {
+          console.error("Error al reactivar cuenta:", err);
+        }
+      },
+      restoreFundedNextAccount: async () => {
+        const base = await ownerFields();
+        const tempId =
+          typeof crypto !== "undefined" && "randomUUID" in crypto
+            ? crypto.randomUUID()
+            : `temp-fn-${Date.now()}`;
+        const newFnAccount: Account = {
+          id: tempId,
+          name: "FundedNext 50K — Futures",
+          type: "funded",
+          status: "active",
+          firm: "FundedNext Futures",
+          phase: "eval",
+          profitTarget: 53000,
+          initialBalance: 50000,
+          currentBalance: 50000,
+          maxLossLimit: 2500,
+          dailyLossLimit: 1500,
+          highWatermark: 50000,
+          startOfDayBalance: 50000,
+          drawdownLimit: 2500,
+          drawdownType: "eod",
+          currency: "USD",
+        };
+
+        updateCache((old) => ({
+          ...old,
+          accounts: [...old.accounts.filter((a) => a.id !== tempId), newFnAccount],
+        }));
+        setManualSelection(null);
+
+        try {
+          const { data: inserted, error } = await supabase
+            .from("accounts")
+            .insert({ ...fromAccount(newFnAccount), ...base } as never)
+            .select()
+            .single();
+          if (!error && inserted) {
+            const realAcc = toAccount(inserted as Row);
+            updateCache((old) => ({
+              ...old,
+              accounts: old.accounts.map((a) => (a.id === tempId ? realAcc : a)),
+            }));
+          }
+        } catch (err) {
+          console.error("Error al persistir FundedNext recuperada:", err);
         }
       },
       removeAccount: async (id) => {

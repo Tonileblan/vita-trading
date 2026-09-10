@@ -11,6 +11,8 @@ const STRAT_COLS = [
 const ACC_COLS = [
   "name", "type", "firm", "broker", "phase", "profit_target",
   "initial_balance", "current_balance", "drawdown_limit", "drawdown_type",
+  "max_loss_limit", "daily_loss_limit", "high_watermark", "start_of_day_balance",
+  "status", "burned_at", "burned_reason",
   "currency",
 ] as const;
 
