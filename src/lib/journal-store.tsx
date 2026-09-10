@@ -22,6 +22,7 @@ export interface StoredAccountStatus {
   status: Account["status"];
   burnedAt?: string;
   burnedReason?: string;
+  updatedAt?: number;
 }
 
 export function getStoredAccountStatuses(): Record<string, StoredAccountStatus> {
@@ -40,7 +41,7 @@ export function saveStoredAccountStatus(id: string, data: StoredAccountStatus) {
   if (typeof window === "undefined" || !id) return;
   try {
     const map = getStoredAccountStatuses();
-    map[id] = data;
+    map[id] = { ...data, updatedAt: data.updatedAt || Date.now() };
     window.localStorage.setItem(ACCOUNT_STATUS_STORAGE_KEY, JSON.stringify(map));
   } catch {
     // ignore quota
@@ -86,20 +87,45 @@ export function toAccount(r: Row): Account {
   const storedStatuses = getStoredAccountStatuses();
   const stored = storedStatuses[id];
 
-  const dbStatus = r["status"] != null ? String(r["status"]) : undefined;
-  const rawStatus = dbStatus ?? stored?.status ?? "active";
-  const validStatus = ["active", "burned", "passed", "archived"].includes(rawStatus)
-    ? (rawStatus as Account["status"])
-    : (stored?.status ?? "active");
+  const dbStatus = r["status"] != null ? String(r["status"]).toLowerCase().trim() : undefined;
 
-  const burnedAt = (r["burned_at"] as string | null) ?? stored?.burnedAt ?? undefined;
-  const burnedReason = (r["burned_reason"] as string | null) ?? stored?.burnedReason ?? undefined;
+  // Reconciliación definitiva: si en DB o en almacenamiento persistente está quemada, permanece quemada
+  let finalStatus: Account["status"] = "active";
+  if (dbStatus === "burned" || stored?.status === "burned") {
+    finalStatus = "burned";
+  } else if (dbStatus === "passed" || stored?.status === "passed") {
+    finalStatus = "passed";
+  } else if (dbStatus === "archived" || stored?.status === "archived") {
+    finalStatus = "archived";
+  } else if (dbStatus === "active" || stored?.status === "active") {
+    finalStatus = "active";
+  }
+
+  const burnedAt =
+    (r["burned_at"] as string | null) ||
+    stored?.burnedAt ||
+    (finalStatus === "burned" ? new Date().toISOString() : undefined);
+
+  const burnedReason =
+    (r["burned_reason"] as string | null) ||
+    stored?.burnedReason ||
+    (finalStatus === "burned" ? "Límite total de pérdida superado (Max Loss)" : undefined);
+
+  // Asegurar persistencia local sincronizada para que nunca se pierda
+  if (finalStatus === "burned" && (!stored || stored.status !== "burned" || !stored.burnedAt)) {
+    saveStoredAccountStatus(id, {
+      status: "burned",
+      burnedAt,
+      burnedReason,
+      updatedAt: Date.now(),
+    });
+  }
 
   return {
     id,
     name: String(r["name"] ?? ""),
     type: (r["type"] === "funded" ? "funded" : "personal") as Account["type"],
-    status: validStatus,
+    status: finalStatus,
     burnedAt,
     burnedReason,
     firm: (r["firm"] as string | null) ?? undefined,
@@ -534,6 +560,27 @@ export async function fetchJournalData(journalId: string): Promise<JournalData> 
       strategyPeriods: (periods.data ?? []).map((r) => toPeriod(r as Row)),
     };
 
+    // Auto-sanar en Supabase cualquier cuenta quemada que aún no tenga el estado 'burned' en la DB
+    if (parsed.accounts.some((a) => a.status === "burned")) {
+      for (const acc of parsed.accounts) {
+        if (acc.status === "burned") {
+          supabase
+            .from("accounts")
+            .update({
+              status: "burned",
+              burned_at: acc.burnedAt || new Date().toISOString(),
+              burned_reason: acc.burnedReason || "Límite total de pérdida superado (Max Loss)",
+            } as never)
+            .eq("id", acc.id)
+            .then(({ error }) => {
+              if (error) {
+                supabase.from("accounts").update({ status: "burned" } as never).eq("id", acc.id).then();
+              }
+            });
+        }
+      }
+    }
+
     // Auto-migrar en la base de datos cualquier operación que tuviera el símbolo GCM
     const legacyGcmTrades = tradeRows.filter((r) => {
       const s = String(r["symbol"] || "").toUpperCase().trim();
@@ -861,6 +908,7 @@ export function JournalProvider({ children }: { children: ReactNode }) {
             status: account.status,
             burnedAt: account.burnedAt,
             burnedReason: account.burnedReason,
+            updatedAt: Date.now(),
           });
         }
 
@@ -879,10 +927,11 @@ export function JournalProvider({ children }: { children: ReactNode }) {
             .single();
           if (error) {
             console.warn("Reintentando inserción de cuenta con campos estándar:", error.message);
-            const minimalRow: Row = {
+            const fallbackRow: Row = {
               ...base,
               name: account.name,
               type: account.type,
+              status: account.status ?? "active",
               firm: account.firm ?? null,
               broker: account.broker ?? null,
               strategy_id: account.strategyId || null,
@@ -895,17 +944,54 @@ export function JournalProvider({ children }: { children: ReactNode }) {
             };
             const { data: insertedFallback, error: fallbackErr } = await supabase
               .from("accounts")
-              .insert(minimalRow as never)
+              .insert(fallbackRow as never)
               .select()
               .single();
-            if (fallbackErr) throw fallbackErr;
-            if (insertedFallback) {
+            if (fallbackErr) {
+              const minimalRow: Row = {
+                ...base,
+                name: account.name,
+                type: account.type,
+                firm: account.firm ?? null,
+                broker: account.broker ?? null,
+                strategy_id: account.strategyId || null,
+                phase: account.phase ?? "eval",
+                profit_target: account.profitTarget ?? null,
+                initial_balance: account.initialBalance,
+                current_balance: account.currentBalance,
+                drawdown_limit: account.maxLossLimit ?? account.drawdownLimit ?? null,
+                currency: account.currency ?? "USD",
+              };
+              const { data: insertedMin, error: minErr } = await supabase
+                .from("accounts")
+                .insert(minimalRow as never)
+                .select()
+                .single();
+              if (minErr) throw minErr;
+              if (insertedMin) {
+                const realAcc = toAccount(insertedMin as Row);
+                if (account.status) {
+                  saveStoredAccountStatus(realAcc.id, {
+                    status: account.status,
+                    burnedAt: account.burnedAt,
+                    burnedReason: account.burnedReason,
+                    updatedAt: Date.now(),
+                  });
+                  removeStoredAccountStatus(tempId);
+                }
+                updateCache((old) => ({
+                  ...old,
+                  accounts: old.accounts.map((a) => (a.id === tempId ? { ...realAcc, status: account.status ?? realAcc.status } : a)),
+                }));
+              }
+            } else if (insertedFallback) {
               const realAcc = toAccount(insertedFallback as Row);
               if (account.status) {
                 saveStoredAccountStatus(realAcc.id, {
                   status: account.status,
                   burnedAt: account.burnedAt,
                   burnedReason: account.burnedReason,
+                  updatedAt: Date.now(),
                 });
                 removeStoredAccountStatus(tempId);
               }
@@ -921,6 +1007,7 @@ export function JournalProvider({ children }: { children: ReactNode }) {
                 status: account.status,
                 burnedAt: account.burnedAt,
                 burnedReason: account.burnedReason,
+                updatedAt: Date.now(),
               });
               removeStoredAccountStatus(tempId);
             }
@@ -941,6 +1028,7 @@ export function JournalProvider({ children }: { children: ReactNode }) {
             status: patch.status,
             burnedAt: patch.status === "burned" ? (patch.burnedAt || new Date().toISOString()) : undefined,
             burnedReason: patch.status === "burned" ? patch.burnedReason : undefined,
+            updatedAt: Date.now(),
           });
         }
 
@@ -957,9 +1045,10 @@ export function JournalProvider({ children }: { children: ReactNode }) {
             .eq("id", id);
           if (error) {
             console.warn("Reintentando actualización de cuenta con campos estándar:", error.message);
-            const minimalRow: Row = {
+            const fallbackRow: Row = {
               name: patch.name,
               type: patch.type,
+              status: patch.status ?? "active",
               firm: patch.firm ?? null,
               broker: patch.broker ?? null,
               strategy_id: patch.strategyId || null,
@@ -972,9 +1061,24 @@ export function JournalProvider({ children }: { children: ReactNode }) {
             };
             const { error: fallbackErr } = await supabase
               .from("accounts")
-              .update(minimalRow as never)
+              .update(fallbackRow as never)
               .eq("id", id);
-            if (fallbackErr) throw fallbackErr;
+            if (fallbackErr) {
+              const minimalRow: Row = {
+                name: patch.name,
+                type: patch.type,
+                firm: patch.firm ?? null,
+                broker: patch.broker ?? null,
+                strategy_id: patch.strategyId || null,
+                phase: patch.phase ?? "eval",
+                profit_target: patch.profitTarget ?? null,
+                initial_balance: patch.initialBalance,
+                current_balance: patch.currentBalance,
+                drawdown_limit: patch.maxLossLimit ?? patch.drawdownLimit ?? null,
+                currency: patch.currency ?? "USD",
+              };
+              await supabase.from("accounts").update(minimalRow as never).eq("id", id);
+            }
           }
         } catch (err) {
           console.error("Error al actualizar la cuenta:", err);
@@ -986,11 +1090,12 @@ export function JournalProvider({ children }: { children: ReactNode }) {
         const burnedAt = date || new Date().toISOString();
         const burnedReason = reason || "Límite total de pérdida superado (Max Loss)";
 
-        // 1. Guardar en almacenamiento persistente inmediato (permanece incluso tras recargar o si Supabase carece de columna)
+        // 1. Guardar en almacenamiento persistente inmediato (permanece siempre incluso tras recargar o si falla la red)
         saveStoredAccountStatus(id, {
           status: "burned",
           burnedAt,
           burnedReason,
+          updatedAt: Date.now(),
         });
 
         // 2. Actualizar caché en memoria
@@ -1001,12 +1106,17 @@ export function JournalProvider({ children }: { children: ReactNode }) {
           ),
         }));
 
-        // 3. Sincronizar con Supabase
+        // 3. Sincronizar con Supabase con reintentos progresivos
         try {
-          const payload = fromAccount({ status: "burned", burnedAt, burnedReason });
-          const { error } = await supabase.from("accounts").update(payload as never).eq("id", id);
-          if (error) {
-            console.warn("Aviso Supabase estado quemada (se mantiene persistencia local):", error.message);
+          const payload = {
+            status: "burned",
+            burned_at: burnedAt,
+            burned_reason: burnedReason,
+          };
+          const { error: err1 } = await supabase.from("accounts").update(payload as never).eq("id", id);
+          if (err1) {
+            console.warn("Reintentando marcar cuenta quemada solo con columna status:", err1.message);
+            await supabase.from("accounts").update({ status: "burned" } as never).eq("id", id);
           }
         } catch (err) {
           console.error("Error al marcar cuenta como quemada en Supabase:", err);
@@ -1018,6 +1128,7 @@ export function JournalProvider({ children }: { children: ReactNode }) {
           status: "active",
           burnedAt: undefined,
           burnedReason: undefined,
+          updatedAt: Date.now(),
         });
 
         // 2. Actualizar caché en memoria
@@ -1037,24 +1148,35 @@ export function JournalProvider({ children }: { children: ReactNode }) {
           }),
         }));
 
-        // 3. Sincronizar con Supabase
+        // 3. Sincronizar con Supabase con reintentos progresivos
         try {
           const targetAcc = safeData.accounts.find((a) => a.id === id);
-          const payload = fromAccount({
+          const fullPayload = {
             status: "active",
-            burnedAt: undefined,
-            burnedReason: undefined,
+            burned_at: null,
+            burned_reason: null,
             ...(resetBalance && targetAcc
               ? {
-                  currentBalance: targetAcc.initialBalance,
-                  highWatermark: targetAcc.initialBalance,
-                  startOfDayBalance: targetAcc.initialBalance,
+                  current_balance: targetAcc.initialBalance,
+                  high_watermark: targetAcc.initialBalance,
+                  start_of_day_balance: targetAcc.initialBalance,
                 }
               : {}),
-          });
-          const { error } = await supabase.from("accounts").update(payload as never).eq("id", id);
-          if (error) {
-            console.warn("Aviso Supabase reactivación (se mantiene persistencia local):", error.message);
+          };
+          const { error: err1 } = await supabase.from("accounts").update(fullPayload as never).eq("id", id);
+          if (err1) {
+            console.warn("Reintentando reactivación solo con status y balance:", err1.message);
+            const fallbackPayload = {
+              status: "active",
+              ...(resetBalance && targetAcc
+                ? {
+                    current_balance: targetAcc.initialBalance,
+                    high_watermark: targetAcc.initialBalance,
+                    start_of_day_balance: targetAcc.initialBalance,
+                  }
+                : {}),
+            };
+            await supabase.from("accounts").update(fallbackPayload as never).eq("id", id);
           }
         } catch (err) {
           console.error("Error al reactivar cuenta:", err);
