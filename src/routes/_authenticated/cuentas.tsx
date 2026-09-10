@@ -124,6 +124,17 @@ function AccountsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [accountToDelete, setAccountToDelete] = useState<Account | null>(null);
 
+  // Modal de recuperación personalizada de FundedNext
+  const [showFundedNextModal, setShowFundedNextModal] = useState(false);
+  const [fnSize, setFnSize] = useState("50000");
+  const [fnName, setFnName] = useState("FundedNext 50K — Futures");
+  const [fnCurrentBalance, setFnCurrentBalance] = useState("50000");
+  const [fnMaxLoss, setFnMaxLoss] = useState("2500");
+  const [fnDailyLoss, setFnDailyLoss] = useState("1500");
+  const [fnProfitTarget, setFnProfitTarget] = useState("53000");
+  const [fnPhase, setFnPhase] = useState<AccountPhase>("eval");
+  const [fnDdType, setFnDdType] = useState<DrawdownType>("eod");
+
   const safeAccounts = accounts || [];
   const safeTrades = trades || [];
   const safeWithdrawals = withdrawals || [];
@@ -231,6 +242,16 @@ function AccountsPage() {
   const liveFundedCount = fundedActive.filter((a) => a.phase === "live").length;
   const evalFundedCount = fundedActive.filter((a) => a.phase === "eval").length;
 
+  const handleApplyPreset = (size: number) => {
+    setFnSize(String(size));
+    setFnCurrentBalance(String(size));
+    const k = size >= 1000 ? `${size / 1000}K` : `${size}`;
+    setFnName(`FundedNext ${k} — Futures`);
+    setFnMaxLoss(String(size * 0.05));
+    setFnDailyLoss(String(size * 0.03));
+    setFnProfitTarget(String(size * 1.06));
+  };
+
   const handleReactivate = async (acc: Account, e?: React.MouseEvent) => {
     e?.stopPropagation();
     try {
@@ -247,6 +268,38 @@ function AccountsPage() {
       toast.success("¡Cuenta de FundedNext 50K recuperada y agregada a tu diario!");
     } catch (err) {
       toast.error("No se pudo recuperar la cuenta de FundedNext");
+    }
+  };
+
+  const handleCustomRestoreFundedNext = async () => {
+    try {
+      const initBal = parseMoneyInput(fnSize) || 50000;
+      const currBal = parseMoneyInput(fnCurrentBalance) || initBal;
+      const maxLoss = parseMoneyInput(fnMaxLoss) || initBal * 0.05;
+      const dailyLoss = fnDailyLoss.trim() ? parseMoneyInput(fnDailyLoss) : undefined;
+      const target = fnProfitTarget.trim() ? parseMoneyInput(fnProfitTarget) : undefined;
+
+      await restoreFundedNextAccount({
+        name: fnName.trim() || `FundedNext ${initBal / 1000}K — Futures`,
+        type: "funded",
+        status: "active",
+        firm: "FundedNext Futures",
+        initialBalance: initBal,
+        currentBalance: currBal,
+        maxLossLimit: maxLoss,
+        drawdownLimit: maxLoss,
+        dailyLossLimit: dailyLoss,
+        highWatermark: Math.max(initBal, currBal),
+        startOfDayBalance: initBal,
+        profitTarget: target,
+        phase: fnPhase,
+        drawdownType: fnDdType,
+      });
+
+      toast.success(`¡Cuenta "${fnName}" recuperada con éxito en tu diario!`);
+      setShowFundedNextModal(false);
+    } catch (err) {
+      toast.error("No se pudo restaurar la cuenta de FundedNext");
     }
   };
 
@@ -910,16 +963,18 @@ function AccountsPage() {
       actions={
         <div className="flex items-center gap-2">
           {!hasFundedNextAccount && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleRecoverFundedNext}
-              className="gap-1.5 border-brand/40 text-brand hover:bg-brand/10 shadow-xs text-xs font-semibold"
-              title="Restaurar la cuenta eliminada de FundedNext"
-            >
-              <Zap className="size-3.5" />
-              Recuperar FundedNext
-            </Button>
+            <div className="flex items-center gap-1.5">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowFundedNextModal(true)}
+                className="gap-1.5 border-brand/40 text-brand hover:bg-brand/10 shadow-xs text-xs font-semibold"
+                title="Personalizar y recuperar la cuenta de FundedNext"
+              >
+                <Zap className="size-3.5" />
+                Recuperar FundedNext
+              </Button>
+            </div>
           )}
 
           <AccountDialog
@@ -945,17 +1000,29 @@ function AccountsPage() {
                   ¿Buscabas tu cuenta de FundedNext eliminada?
                 </h4>
                 <p className="text-xs text-muted-foreground">
-                  Hemos configurado un acceso directo para restaurar tu cuenta <strong>FundedNext 50K Futures</strong> con todas sus reglas y límites en 1 solo clic.
+                  Recupérala con sus valores exactos previos a la eliminación (capital inicial, balance actual, drawdown y límites).
                 </p>
               </div>
             </div>
-            <Button
-              onClick={handleRecoverFundedNext}
-              className="gap-1.5 text-xs font-bold shrink-0 self-end sm:self-auto shadow-xs"
-            >
-              <RotateCcw className="size-3.5" />
-              Recuperar FundedNext ahora
-            </Button>
+            <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowFundedNextModal(true)}
+                className="gap-1.5 text-xs font-semibold shadow-xs"
+              >
+                <Pencil className="size-3.5" />
+                Ajustar valores exactos
+              </Button>
+              <Button
+                size="sm"
+                onClick={handleRecoverFundedNext}
+                className="gap-1.5 text-xs font-bold shadow-xs"
+              >
+                <RotateCcw className="size-3.5" />
+                Recuperar 50K al instante
+              </Button>
+            </div>
           </div>
         )}
 
@@ -1229,6 +1296,133 @@ function AccountsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      {/* DIÁLOGO DE RECUPERACIÓN PERSONALIZADA DE FUNDEDNEXT */}
+      <Dialog open={showFundedNextModal} onOpenChange={setShowFundedNextModal}>
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-base font-display">
+              <Zap className="size-4 text-brand" />
+              Recuperar Cuenta FundedNext
+            </DialogTitle>
+            <DialogDescription className="text-xs">
+              Ajusta los parámetros exactos que tenía tu cuenta antes de eliminarla para restaurarla fielmente.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3.5 py-2 text-xs">
+            {/* PRESETS DE CAPITAL */}
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold">Tamaño de cuenta (Presets rápidos)</Label>
+              <div className="grid grid-cols-4 gap-1.5">
+                {[25000, 50000, 100000, 200000].map((size) => (
+                  <button
+                    key={size}
+                    type="button"
+                    onClick={() => handleApplyPreset(size)}
+                    className={cn(
+                      "rounded-xl border p-2 text-center text-xs font-bold transition-all",
+                      fnSize === String(size)
+                        ? "border-brand bg-brand/10 text-brand ring-1 ring-brand/40 shadow-xs"
+                        : "border-border text-muted-foreground hover:text-foreground hover:bg-muted/30",
+                    )}
+                  >
+                    ${size >= 1000 ? `${size / 1000}K` : size}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="fn-name" className="text-xs">Nombre de la cuenta</Label>
+              <Input
+                id="fn-name"
+                value={fnName}
+                onChange={(e) => setFnName(e.target.value)}
+                className="text-xs h-8"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-2.5">
+              <div className="space-y-1.5">
+                <Label htmlFor="fn-init" className="text-xs">Capital inicial ($)</Label>
+                <Input
+                  id="fn-init"
+                  value={fnSize}
+                  onChange={(e) => setFnSize(e.target.value)}
+                  className="text-xs h-8 font-mono"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="fn-curr" className="text-xs">Balance antes de borrar ($)</Label>
+                <Input
+                  id="fn-curr"
+                  value={fnCurrentBalance}
+                  onChange={(e) => setFnCurrentBalance(e.target.value)}
+                  className="text-xs h-8 font-mono"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2.5">
+              <div className="space-y-1.5">
+                <Label htmlFor="fn-max-loss" className="text-xs">Límite Max Loss ($)</Label>
+                <Input
+                  id="fn-max-loss"
+                  value={fnMaxLoss}
+                  onChange={(e) => setFnMaxLoss(e.target.value)}
+                  className="text-xs h-8 font-mono"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="fn-daily-loss" className="text-xs">Límite Diario ($)</Label>
+                <Input
+                  id="fn-daily-loss"
+                  value={fnDailyLoss}
+                  onChange={(e) => setFnDailyLoss(e.target.value)}
+                  className="text-xs h-8 font-mono"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2.5">
+              <div className="space-y-1.5">
+                <Label htmlFor="fn-target" className="text-xs">Objetivo Profit ($)</Label>
+                <Input
+                  id="fn-target"
+                  value={fnProfitTarget}
+                  onChange={(e) => setFnProfitTarget(e.target.value)}
+                  className="text-xs h-8 font-mono"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Tipo Drawdown</Label>
+                <Select value={fnDdType} onValueChange={(v) => setFnDdType(v as DrawdownType)}>
+                  <SelectTrigger className="text-xs h-8">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {DRAWDOWN_TYPES.map((d) => (
+                      <SelectItem key={d.key} value={d.key} className="text-xs">
+                        {d.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter className="pt-2">
+            <Button variant="outline" size="sm" onClick={() => setShowFundedNextModal(false)} className="text-xs">
+              Cancelar
+            </Button>
+            <Button size="sm" onClick={handleCustomRestoreFundedNext} className="text-xs font-semibold gap-1.5">
+              <RotateCcw className="size-3.5" />
+              Restaurar cuenta ahora
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AppShell>
   );
 }

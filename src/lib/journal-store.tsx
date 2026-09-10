@@ -559,7 +559,7 @@ interface JournalState extends JournalData {
   updateAccount: (id: string, patch: Partial<Omit<Account, "id">>) => Promise<void>;
   markAccountBurned: (id: string, reason?: string, date?: string) => Promise<void>;
   reactivateAccount: (id: string) => Promise<void>;
-  restoreFundedNextAccount: () => Promise<void>;
+  restoreFundedNextAccount: (custom?: Partial<Account>) => Promise<Account>;
   removeAccount: (id: string) => Promise<void>;
   addTrade: (trade: Omit<Trade, "id">) => Promise<void>;
   /** Modifica una operación y ajusta la diferencia de PnL en las cuentas correspondientes. */
@@ -939,29 +939,37 @@ export function JournalProvider({ children }: { children: ReactNode }) {
           console.error("Error al reactivar cuenta:", err);
         }
       },
-      restoreFundedNextAccount: async () => {
+      restoreFundedNextAccount: async (custom) => {
         const base = await ownerFields();
         const tempId =
           typeof crypto !== "undefined" && "randomUUID" in crypto
             ? crypto.randomUUID()
             : `temp-fn-${Date.now()}`;
-        const newFnAccount: Account = {
+
+        const initialBalance = custom?.initialBalance ?? 50000;
+        const currentBalance = custom?.currentBalance ?? initialBalance;
+        const maxLoss = custom?.maxLossLimit ?? (initialBalance * 0.05);
+        const dailyLoss = custom?.dailyLossLimit ?? (initialBalance * 0.03);
+        const profitTarget = custom?.profitTarget ?? (initialBalance * 1.06);
+
+        let newFnAccount: Account = {
           id: tempId,
-          name: "FundedNext 50K — Futures",
+          name: custom?.name || "FundedNext 50K — Futures",
           type: "funded",
           status: "active",
-          firm: "FundedNext Futures",
-          phase: "eval",
-          profitTarget: 53000,
-          initialBalance: 50000,
-          currentBalance: 50000,
-          maxLossLimit: 2500,
-          dailyLossLimit: 1500,
-          highWatermark: 50000,
-          startOfDayBalance: 50000,
-          drawdownLimit: 2500,
-          drawdownType: "eod",
-          currency: "USD",
+          firm: custom?.firm || "FundedNext Futures",
+          phase: custom?.phase || "eval",
+          profitTarget,
+          initialBalance,
+          currentBalance,
+          maxLossLimit: maxLoss,
+          dailyLossLimit: dailyLoss,
+          highWatermark: custom?.highWatermark ?? Math.max(initialBalance, currentBalance),
+          startOfDayBalance: custom?.startOfDayBalance ?? initialBalance,
+          drawdownLimit: maxLoss,
+          drawdownType: custom?.drawdownType || "eod",
+          currency: custom?.currency || "USD",
+          ...custom,
         };
 
         updateCache((old) => ({
@@ -978,6 +986,7 @@ export function JournalProvider({ children }: { children: ReactNode }) {
             .single();
           if (!error && inserted) {
             const realAcc = toAccount(inserted as Row);
+            newFnAccount = realAcc;
             updateCache((old) => ({
               ...old,
               accounts: old.accounts.map((a) => (a.id === tempId ? realAcc : a)),
@@ -986,6 +995,8 @@ export function JournalProvider({ children }: { children: ReactNode }) {
         } catch (err) {
           console.error("Error al persistir FundedNext recuperada:", err);
         }
+
+        return newFnAccount;
       },
       removeAccount: async (id) => {
         updateCache((old) => ({
