@@ -255,8 +255,8 @@ function AccountsPage() {
   const handleReactivate = async (acc: Account, e?: React.MouseEvent) => {
     e?.stopPropagation();
     try {
-      await reactivateAccount(acc.id);
-      toast.success(`Cuenta "${acc.name}" reactivada con éxito.`);
+      await reactivateAccount(acc.id, true);
+      toast.success(`¡Cuenta "${acc.name}" reactivada con éxito con balance restaurado a ${formatCurrency(acc.initialBalance)}!`);
     } catch (err) {
       toast.error("No se pudo reactivar la cuenta");
     }
@@ -1211,6 +1211,30 @@ function AccountsPage() {
             </div>
           </div>
         </div>
+
+        {/* AVISO SI HAY CUENTAS QUEMADAS/PERDIDAS AL ESTAR EN LA PESTAÑA ACTIVAS */}
+        {filterType === "active" && burnedAccounts.length > 0 && (
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border border-rose-500/30 bg-rose-500/[0.04] p-3.5 sm:p-4 text-xs">
+            <div className="flex items-center gap-2.5">
+              <div className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-rose-500/15 text-rose-500">
+                <Flame className="size-4" />
+              </div>
+              <p className="text-foreground">
+                Tienes <strong>{burnedAccounts.length} {burnedAccounts.length === 1 ? "cuenta perdida" : "cuentas perdidas"}</strong> ({burnedAccounts.map((a) => a.name).join(", ")}) en el historial de cuentas quemadas.
+              </p>
+            </div>
+            <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setFilterType("burned")}
+                className="h-7 text-xs font-semibold border-rose-500/30 text-rose-600 dark:text-rose-400 hover:bg-rose-500/10 gap-1"
+              >
+                <Flame className="size-3" /> Ver {burnedAccounts.length === 1 ? "cuenta perdida" : "cuentas quemadas"}
+              </Button>
+            </div>
+          </div>
+        )}
 
         {/* MENSAJE EXPLICATIVO SI SE ESTÁ EN LA PESTAÑA DE CUENTAS QUEMADAS */}
         {filterType === "burned" && (

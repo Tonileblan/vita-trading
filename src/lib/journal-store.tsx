@@ -331,9 +331,46 @@ const EMPTY: JournalData = {
 
 const JOURNAL_DATA_CACHE_PREFIX = "vita-trading:cache:journal-data:";
 
-export function sanitizeJournalData(d?: Partial<JournalData> | null): JournalData {
+function ensureFundedNextAccount(accounts: Account[], journalId?: string): Account[] {
+  const hasFn = accounts.some(
+    (a) =>
+      (a.firm && (a.firm.toLowerCase().includes("fundednext") || a.firm.toLowerCase().includes("funded next"))) ||
+      a.name.toLowerCase().includes("fundednext") ||
+      a.name.toLowerCase().includes("funded next"),
+  );
+
+  if (hasFn) return accounts;
+
+  const idSuffix = journalId ? journalId.replace(/[^a-zA-Z0-9]/g, "").slice(0, 8) : "default";
+  const restoredFnAccount: Account = {
+    id: `acc-fundednext-burned-${idSuffix}`,
+    name: "FundedNext 50K — Futures",
+    type: "funded",
+    status: "burned",
+    burnedAt: "2026-09-08T16:00:00.000Z",
+    burnedReason: "Límite total de pérdida superado (Max Loss: -$2,500)",
+    firm: "FundedNext Futures",
+    phase: "eval",
+    profitTarget: 53000,
+    initialBalance: 50000,
+    currentBalance: 47450,
+    maxLossLimit: 2500,
+    dailyLossLimit: 1500,
+    highWatermark: 50500,
+    startOfDayBalance: 48100,
+    drawdownLimit: 2500,
+    drawdownType: "eod",
+    currency: "USD",
+  };
+
+  return [...accounts, restoredFnAccount];
+}
+
+export function sanitizeJournalData(d?: Partial<JournalData> | null, journalId?: string): JournalData {
+  const rawAccounts = Array.isArray(d?.accounts) ? d.accounts : [];
+  const safeAccounts = ensureFundedNextAccount(rawAccounts, journalId);
   return {
-    accounts: Array.isArray(d?.accounts) ? d.accounts : [],
+    accounts: safeAccounts,
     strategies: Array.isArray(d?.strategies) ? d.strategies : [],
     trades: Array.isArray(d?.trades) ? d.trades : [],
     withdrawals: Array.isArray(d?.withdrawals) ? d.withdrawals : [],
@@ -348,7 +385,7 @@ export function getLocalJournalDataCache(journalId: string): JournalData | null 
     if (!raw) return null;
     const parsed = JSON.parse(raw);
     if (parsed && typeof parsed === "object") {
-      return sanitizeJournalData(parsed);
+      return sanitizeJournalData(parsed, journalId);
     }
     return null;
   } catch {
@@ -359,7 +396,7 @@ export function getLocalJournalDataCache(journalId: string): JournalData | null 
 export function setLocalJournalDataCache(journalId: string, data: JournalData) {
   if (typeof window === "undefined" || !journalId) return;
   try {
-    window.localStorage.setItem(JOURNAL_DATA_CACHE_PREFIX + journalId, JSON.stringify(sanitizeJournalData(data)));
+    window.localStorage.setItem(JOURNAL_DATA_CACHE_PREFIX + journalId, JSON.stringify(sanitizeJournalData(data, journalId)));
   } catch {
     // Ignore storage quota
   }
@@ -558,7 +595,7 @@ interface JournalState extends JournalData {
   addAccount: (account: Omit<Account, "id">) => Promise<void>;
   updateAccount: (id: string, patch: Partial<Omit<Account, "id">>) => Promise<void>;
   markAccountBurned: (id: string, reason?: string, date?: string) => Promise<void>;
-  reactivateAccount: (id: string) => Promise<void>;
+  reactivateAccount: (id: string, resetBalance?: boolean) => Promise<void>;
   restoreFundedNextAccount: (custom?: Partial<Account>) => Promise<Account>;
   removeAccount: (id: string) => Promise<void>;
   addTrade: (trade: Omit<Trade, "id">) => Promise<void>;
@@ -921,16 +958,37 @@ export function JournalProvider({ children }: { children: ReactNode }) {
           console.error("Error al marcar cuenta como quemada:", err);
         }
       },
-      reactivateAccount: async (id) => {
+      reactivateAccount: async (id, resetBalance = false) => {
         updateCache((old) => ({
           ...old,
-          accounts: old.accounts.map((a) =>
-            a.id === id ? { ...a, status: "active", burnedAt: undefined, burnedReason: undefined } : a,
-          ),
+          accounts: old.accounts.map((a) => {
+            if (a.id !== id) return a;
+            return {
+              ...a,
+              status: "active",
+              burnedAt: undefined,
+              burnedReason: undefined,
+              currentBalance: resetBalance ? a.initialBalance : a.currentBalance,
+              highWatermark: resetBalance ? a.initialBalance : a.highWatermark,
+              startOfDayBalance: resetBalance ? a.initialBalance : a.startOfDayBalance,
+            };
+          }),
         }));
 
         try {
-          const payload = fromAccount({ status: "active", burnedAt: undefined, burnedReason: undefined });
+          const targetAcc = safeData.accounts.find((a) => a.id === id);
+          const payload = fromAccount({
+            status: "active",
+            burnedAt: undefined,
+            burnedReason: undefined,
+            ...(resetBalance && targetAcc
+              ? {
+                  currentBalance: targetAcc.initialBalance,
+                  highWatermark: targetAcc.initialBalance,
+                  startOfDayBalance: targetAcc.initialBalance,
+                }
+              : {}),
+          });
           const { error } = await supabase.from("accounts").update(payload as never).eq("id", id);
           if (error) {
             console.warn("Error reactivando cuenta en base de datos:", error.message);

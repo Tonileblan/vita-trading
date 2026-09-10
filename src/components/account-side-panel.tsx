@@ -19,7 +19,7 @@ export function AccountSidePanel() {
   const { accounts, trades, withdrawals, selectedAccountIds, toggleAccount, selectAll } =
     useJournal();
 
-  const [showBurned, setShowBurned] = useState(false);
+  const [showBurned, setShowBurned] = useState(true);
 
   const sortedAccounts = useMemo(() => {
     return [...accounts].sort((a, b) => {
