@@ -16,6 +16,47 @@ import { isTradeOfAccount } from "./metrics";
 import type { Account, AccountStrategyPeriod, Strategy, Trade, Withdrawal } from "./types";
 
 const STORAGE_KEY = "tj:active-journal";
+const ACCOUNT_STATUS_STORAGE_KEY = "vita-trading:account-status-v1";
+
+export interface StoredAccountStatus {
+  status: Account["status"];
+  burnedAt?: string;
+  burnedReason?: string;
+}
+
+export function getStoredAccountStatuses(): Record<string, StoredAccountStatus> {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = window.localStorage.getItem(ACCOUNT_STATUS_STORAGE_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+export function saveStoredAccountStatus(id: string, data: StoredAccountStatus) {
+  if (typeof window === "undefined" || !id) return;
+  try {
+    const map = getStoredAccountStatuses();
+    map[id] = data;
+    window.localStorage.setItem(ACCOUNT_STATUS_STORAGE_KEY, JSON.stringify(map));
+  } catch {
+    // ignore quota
+  }
+}
+
+export function removeStoredAccountStatus(id: string) {
+  if (typeof window === "undefined" || !id) return;
+  try {
+    const map = getStoredAccountStatuses();
+    delete map[id];
+    window.localStorage.setItem(ACCOUNT_STATUS_STORAGE_KEY, JSON.stringify(map));
+  } catch {
+    // ignore
+  }
+}
 
 /* ---------------------------------- mappers --------------------------------- */
 
@@ -41,18 +82,26 @@ export function toAccount(r: Row): Account {
       ? Number(r["start_of_day_balance"])
       : initialBalance;
 
-  const rawStatus = String(r["status"] ?? "active");
+  const id = String(r["id"]);
+  const storedStatuses = getStoredAccountStatuses();
+  const stored = storedStatuses[id];
+
+  const dbStatus = r["status"] != null ? String(r["status"]) : undefined;
+  const rawStatus = dbStatus ?? stored?.status ?? "active";
   const validStatus = ["active", "burned", "passed", "archived"].includes(rawStatus)
     ? (rawStatus as Account["status"])
-    : "active";
+    : (stored?.status ?? "active");
+
+  const burnedAt = (r["burned_at"] as string | null) ?? stored?.burnedAt ?? undefined;
+  const burnedReason = (r["burned_reason"] as string | null) ?? stored?.burnedReason ?? undefined;
 
   return {
-    id: String(r["id"]),
+    id,
     name: String(r["name"] ?? ""),
     type: (r["type"] === "funded" ? "funded" : "personal") as Account["type"],
     status: validStatus,
-    burnedAt: (r["burned_at"] as string | null) ?? undefined,
-    burnedReason: (r["burned_reason"] as string | null) ?? undefined,
+    burnedAt,
+    burnedReason,
     firm: (r["firm"] as string | null) ?? undefined,
     broker: (r["broker"] as string | null) ?? undefined,
     strategyId: (r["strategy_id"] as string | null) ?? undefined,
@@ -807,6 +856,14 @@ export function JournalProvider({ children }: { children: ReactNode }) {
           ...account,
         };
 
+        if (account.status) {
+          saveStoredAccountStatus(tempId, {
+            status: account.status,
+            burnedAt: account.burnedAt,
+            burnedReason: account.burnedReason,
+          });
+        }
+
         updateCache((old) => ({
           ...old,
           accounts: [...old.accounts, optimisticAccount],
@@ -844,16 +901,32 @@ export function JournalProvider({ children }: { children: ReactNode }) {
             if (fallbackErr) throw fallbackErr;
             if (insertedFallback) {
               const realAcc = toAccount(insertedFallback as Row);
+              if (account.status) {
+                saveStoredAccountStatus(realAcc.id, {
+                  status: account.status,
+                  burnedAt: account.burnedAt,
+                  burnedReason: account.burnedReason,
+                });
+                removeStoredAccountStatus(tempId);
+              }
               updateCache((old) => ({
                 ...old,
-                accounts: old.accounts.map((a) => (a.id === tempId ? realAcc : a)),
+                accounts: old.accounts.map((a) => (a.id === tempId ? { ...realAcc, status: account.status ?? realAcc.status } : a)),
               }));
             }
           } else if (inserted) {
             const realAcc = toAccount(inserted as Row);
+            if (account.status) {
+              saveStoredAccountStatus(realAcc.id, {
+                status: account.status,
+                burnedAt: account.burnedAt,
+                burnedReason: account.burnedReason,
+              });
+              removeStoredAccountStatus(tempId);
+            }
             updateCache((old) => ({
               ...old,
-              accounts: old.accounts.map((a) => (a.id === tempId ? realAcc : a)),
+              accounts: old.accounts.map((a) => (a.id === tempId ? { ...realAcc, status: account.status ?? realAcc.status } : a)),
             }));
           }
         } catch (err) {
@@ -863,6 +936,14 @@ export function JournalProvider({ children }: { children: ReactNode }) {
         }
       },
       updateAccount: async (id, patch) => {
+        if (patch.status) {
+          saveStoredAccountStatus(id, {
+            status: patch.status,
+            burnedAt: patch.status === "burned" ? (patch.burnedAt || new Date().toISOString()) : undefined,
+            burnedReason: patch.status === "burned" ? patch.burnedReason : undefined,
+          });
+        }
+
         updateCache((old) => ({
           ...old,
           accounts: old.accounts.map((a) => (a.id === id ? { ...a, ...patch } : a)),
@@ -904,6 +985,15 @@ export function JournalProvider({ children }: { children: ReactNode }) {
       markAccountBurned: async (id, reason, date) => {
         const burnedAt = date || new Date().toISOString();
         const burnedReason = reason || "Límite total de pérdida superado (Max Loss)";
+
+        // 1. Guardar en almacenamiento persistente inmediato (permanece incluso tras recargar o si Supabase carece de columna)
+        saveStoredAccountStatus(id, {
+          status: "burned",
+          burnedAt,
+          burnedReason,
+        });
+
+        // 2. Actualizar caché en memoria
         updateCache((old) => ({
           ...old,
           accounts: old.accounts.map((a) =>
@@ -911,17 +1001,26 @@ export function JournalProvider({ children }: { children: ReactNode }) {
           ),
         }));
 
+        // 3. Sincronizar con Supabase
         try {
           const payload = fromAccount({ status: "burned", burnedAt, burnedReason });
           const { error } = await supabase.from("accounts").update(payload as never).eq("id", id);
           if (error) {
-            console.warn("Error guardando estado quemada en base de datos:", error.message);
+            console.warn("Aviso Supabase estado quemada (se mantiene persistencia local):", error.message);
           }
         } catch (err) {
-          console.error("Error al marcar cuenta como quemada:", err);
+          console.error("Error al marcar cuenta como quemada en Supabase:", err);
         }
       },
       reactivateAccount: async (id, resetBalance = false) => {
+        // 1. Actualizar estado persistente a activa
+        saveStoredAccountStatus(id, {
+          status: "active",
+          burnedAt: undefined,
+          burnedReason: undefined,
+        });
+
+        // 2. Actualizar caché en memoria
         updateCache((old) => ({
           ...old,
           accounts: old.accounts.map((a) => {
@@ -938,6 +1037,7 @@ export function JournalProvider({ children }: { children: ReactNode }) {
           }),
         }));
 
+        // 3. Sincronizar con Supabase
         try {
           const targetAcc = safeData.accounts.find((a) => a.id === id);
           const payload = fromAccount({
@@ -954,7 +1054,7 @@ export function JournalProvider({ children }: { children: ReactNode }) {
           });
           const { error } = await supabase.from("accounts").update(payload as never).eq("id", id);
           if (error) {
-            console.warn("Error reactivando cuenta en base de datos:", error.message);
+            console.warn("Aviso Supabase reactivación (se mantiene persistencia local):", error.message);
           }
         } catch (err) {
           console.error("Error al reactivar cuenta:", err);
@@ -1020,6 +1120,7 @@ export function JournalProvider({ children }: { children: ReactNode }) {
         return newFnAccount;
       },
       removeAccount: async (id) => {
+        removeStoredAccountStatus(id);
         updateCache((old) => ({
           ...old,
           accounts: old.accounts.filter((a) => a.id !== id),
