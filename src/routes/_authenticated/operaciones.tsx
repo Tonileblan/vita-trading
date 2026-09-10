@@ -163,20 +163,24 @@ function TradesPage() {
   // Filtro unificado idéntico a Resumen: "all" | account.id | `strategy:${strategyId}`
   const [filter, setFilter] = useState<string>("all");
   const isStrategy = filter.startsWith("strategy:");
+  const isAllWithBurned = filter === "all_with_burned";
   const accountFilter = isStrategy ? "all" : filter;
   const strategyFilter = isStrategy ? filter.slice("strategy:".length) : "all";
 
-  const selectedAccounts = useMemo(
-    () =>
-      accounts.filter((a) =>
-        accountFilter === "all" ? selectedAccountIds.includes(a.id) : a.id === accountFilter,
-      ),
-    [accounts, selectedAccountIds, accountFilter],
-  );
+  const selectedAccounts = useMemo(() => {
+    if (accountFilter === "all_with_burned") {
+      return accounts;
+    }
+    if (accountFilter === "all") {
+      return accounts.filter((a) => (a.status ?? "active") === "active");
+    }
+    return accounts.filter((a) => a.id === accountFilter);
+  }, [accounts, accountFilter]);
+
   const scopedIds = useMemo(() => new Set(selectedAccounts.map((a) => a.id)), [selectedAccounts]);
 
   const accountStrategies = useMemo(() => {
-    if (accountFilter === "all") return strategies;
+    if (accountFilter === "all" || accountFilter === "all_with_burned") return strategies;
     const targetAcc = accounts.find((a) => a.id === accountFilter);
     const used = new Set(
       visibleTrades
@@ -190,7 +194,7 @@ function TradesPage() {
   const scopedTrades = useMemo(
     () =>
       visibleTrades.filter((t) => {
-        if (accountFilter !== "all") {
+        if (accountFilter !== "all" && accountFilter !== "all_with_burned") {
           const targetAcc = accounts.find((a) => a.id === accountFilter);
           const match = targetAcc ? isTradeOfAccount(t, targetAcc) : t.accountId === accountFilter;
           if (!match) return false;
@@ -515,11 +519,12 @@ function TradesPage() {
                   className="bg-transparent text-xs font-bold text-foreground focus:outline-none cursor-pointer [&>option]:bg-popover [&>option]:text-popover-foreground [&>optgroup]:bg-popover [&>optgroup]:text-muted-foreground"
                   aria-label="Cuenta o estrategia"
                 >
-                  <option value="all">🌐 Todas las cuentas y estrategias</option>
-                  {accounts.filter((a) => a.type === "funded").length > 0 && (
+                  <option value="all">Todas</option>
+                  <option value="all_with_burned">Todas+Quemadas</option>
+                  {accounts.filter((a) => a.type === "funded" && (a.status ?? "active") === "active").length > 0 && (
                     <optgroup label="🏢 Cuentas de Fondeo">
                       {accounts
-                        .filter((a) => a.type === "funded")
+                        .filter((a) => a.type === "funded" && (a.status ?? "active") === "active")
                         .map((a) => (
                           <option key={a.id} value={a.id}>
                             {a.name}
@@ -527,13 +532,24 @@ function TradesPage() {
                         ))}
                     </optgroup>
                   )}
-                  {accounts.filter((a) => a.type !== "funded").length > 0 && (
+                  {accounts.filter((a) => a.type !== "funded" && (a.status ?? "active") === "active").length > 0 && (
                     <optgroup label="👤 Cuentas Personales">
                       {accounts
-                        .filter((a) => a.type !== "funded")
+                        .filter((a) => a.type !== "funded" && (a.status ?? "active") === "active")
                         .map((a) => (
                           <option key={a.id} value={a.id}>
                             {a.name}
+                          </option>
+                        ))}
+                    </optgroup>
+                  )}
+                  {accounts.filter((a) => a.status === "burned").length > 0 && (
+                    <optgroup label="🔥 Cuentas Quemadas / Perdidas">
+                      {accounts
+                        .filter((a) => a.status === "burned")
+                        .map((a) => (
+                          <option key={a.id} value={a.id}>
+                            {a.name} (Quemada)
                           </option>
                         ))}
                     </optgroup>
