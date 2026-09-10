@@ -37,14 +37,85 @@ export function getStoredAccountStatuses(): Record<string, StoredAccountStatus> 
   }
 }
 
+export function hydrateAccountStatusesFromUser(user: any) {
+  if (typeof window === "undefined" || !user) return;
+  try {
+    const cloudStatuses = user.user_metadata?.account_statuses;
+    if (cloudStatuses && typeof cloudStatuses === "object") {
+      const local = getStoredAccountStatuses();
+      const merged: Record<string, StoredAccountStatus> = { ...cloudStatuses, ...local };
+      for (const [k, v] of Object.entries(cloudStatuses as Record<string, StoredAccountStatus>)) {
+        if (!local[k] || (v?.updatedAt && local[k]?.updatedAt && v.updatedAt >= local[k]!.updatedAt!)) {
+          merged[k] = v;
+        }
+      }
+      window.localStorage.setItem(ACCOUNT_STATUS_STORAGE_KEY, JSON.stringify(merged));
+    }
+  } catch {
+    // ignore
+  }
+}
+
 export function saveStoredAccountStatus(id: string, data: StoredAccountStatus) {
   if (typeof window === "undefined" || !id) return;
+  const payload: StoredAccountStatus = {
+    ...data,
+    updatedAt: data.updatedAt || Date.now(),
+  };
+
+  // 1. Guardar localmente
   try {
     const map = getStoredAccountStatuses();
-    map[id] = { ...data, updatedAt: data.updatedAt || Date.now() };
+    map[id] = payload;
     window.localStorage.setItem(ACCOUNT_STATUS_STORAGE_KEY, JSON.stringify(map));
   } catch {
     // ignore quota
+  }
+
+  // 2. Persistir en la base de datos de Supabase Cloud (auth.users metadata)
+  try {
+    supabase.auth.getUser().then(({ data: userData }) => {
+      if (userData?.user) {
+        const currentStatuses =
+          (userData.user.user_metadata?.account_statuses as Record<string, StoredAccountStatus>) || {};
+        const updatedStatuses = {
+          ...currentStatuses,
+          [id]: payload,
+        };
+        supabase.auth
+          .updateUser({
+            data: {
+              account_statuses: updatedStatuses,
+            },
+          })
+          .then();
+      }
+    });
+  } catch {
+    // ignore
+  }
+
+  // 3. Sincronizar directamente con la tabla public.accounts
+  try {
+    supabase
+      .from("accounts")
+      .update({
+        status: payload.status,
+        burned_at: payload.burnedAt ?? null,
+        burned_reason: payload.burnedReason ?? null,
+      } as never)
+      .eq("id", id)
+      .then(({ error }) => {
+        if (error) {
+          supabase
+            .from("accounts")
+            .update({ status: payload.status } as never)
+            .eq("id", id)
+            .then();
+        }
+      });
+  } catch {
+    // ignore
   }
 }
 
@@ -54,6 +125,26 @@ export function removeStoredAccountStatus(id: string) {
     const map = getStoredAccountStatuses();
     delete map[id];
     window.localStorage.setItem(ACCOUNT_STATUS_STORAGE_KEY, JSON.stringify(map));
+  } catch {
+    // ignore
+  }
+
+  try {
+    supabase.auth.getUser().then(({ data: userData }) => {
+      if (userData?.user) {
+        const currentStatuses =
+          (userData.user.user_metadata?.account_statuses as Record<string, StoredAccountStatus>) || {};
+        const updatedStatuses = { ...currentStatuses };
+        delete updatedStatuses[id];
+        supabase.auth
+          .updateUser({
+            data: {
+              account_statuses: updatedStatuses,
+            },
+          })
+          .then();
+      }
+    });
   } catch {
     // ignore
   }
@@ -89,30 +180,31 @@ export function toAccount(r: Row): Account {
 
   const dbStatus = r["status"] != null ? String(r["status"]).toLowerCase().trim() : undefined;
 
-  // Reconciliación definitiva: si en DB o en almacenamiento persistente está quemada, permanece quemada
+  // Prioridad de estado:
+  // 1. Si existe estado en almacenamiento sincronizado (cloud/local)
+  // 2. Si existe estado en columna de BD
+  // 3. 'active' por defecto
   let finalStatus: Account["status"] = "active";
-  if (dbStatus === "burned" || stored?.status === "burned") {
-    finalStatus = "burned";
-  } else if (dbStatus === "passed" || stored?.status === "passed") {
-    finalStatus = "passed";
-  } else if (dbStatus === "archived" || stored?.status === "archived") {
-    finalStatus = "archived";
-  } else if (dbStatus === "active" || stored?.status === "active") {
-    finalStatus = "active";
+  if (stored?.status && ["active", "burned", "passed", "archived"].includes(stored.status)) {
+    finalStatus = stored.status;
+  } else if (dbStatus && ["active", "burned", "passed", "archived"].includes(dbStatus)) {
+    finalStatus = dbStatus as Account["status"];
   }
 
   const burnedAt =
-    (r["burned_at"] as string | null) ||
-    stored?.burnedAt ||
-    (finalStatus === "burned" ? new Date().toISOString() : undefined);
+    finalStatus === "burned"
+      ? (stored?.burnedAt || (r["burned_at"] as string | null) || new Date().toISOString())
+      : undefined;
 
   const burnedReason =
-    (r["burned_reason"] as string | null) ||
-    stored?.burnedReason ||
-    (finalStatus === "burned" ? "Límite total de pérdida superado (Max Loss)" : undefined);
+    finalStatus === "burned"
+      ? (stored?.burnedReason ||
+          (r["burned_reason"] as string | null) ||
+          "Límite total de pérdida superado (Max Loss)")
+      : undefined;
 
-  // Asegurar persistencia local sincronizada para que nunca se pierda
-  if (finalStatus === "burned" && (!stored || stored.status !== "burned" || !stored.burnedAt)) {
+  // Si está quemada y no estaba en almacenamiento sincronizado, guardarlo
+  if (finalStatus === "burned" && (!stored || stored.status !== "burned")) {
     saveStoredAccountStatus(id, {
       status: "burned",
       burnedAt,

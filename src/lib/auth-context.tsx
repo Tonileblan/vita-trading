@@ -36,7 +36,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
 
   useEffect(() => {
-    const hydrateAiKeys = (sess: Session | null) => {
+    const hydrateUserData = (sess: Session | null) => {
       if (typeof window === "undefined" || !sess?.user) return;
       const meta = sess.user.user_metadata;
       if (meta?.['google_ai_key']) {
@@ -52,16 +52,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           window.localStorage.setItem("vita-trading:google-ai-model", meta['google_ai_model']);
         }
       }
+      try {
+        import("./journal-store").then(({ hydrateAccountStatusesFromUser }) => {
+          hydrateAccountStatusesFromUser(sess.user);
+        });
+      } catch {
+        // ignore
+      }
     };
 
     const { data: sub } = supabase.auth.onAuthStateChange((_event, next) => {
       setSession(next);
-      hydrateAiKeys(next);
+      hydrateUserData(next);
       setLoading(false);
     });
     supabase.auth.getSession().then(({ data }) => {
       setSession(data.session);
-      hydrateAiKeys(data.session);
+      hydrateUserData(data.session);
       setLoading(false);
     });
     return () => sub.subscription.unsubscribe();
