@@ -126,12 +126,12 @@ function AccountsPage() {
 
   // Modal de recuperación personalizada de FundedNext
   const [showFundedNextModal, setShowFundedNextModal] = useState(false);
-  const [fnSize, setFnSize] = useState("50000");
-  const [fnName, setFnName] = useState("FundedNext 50K — Futures");
-  const [fnCurrentBalance, setFnCurrentBalance] = useState("50000");
-  const [fnMaxLoss, setFnMaxLoss] = useState("2500");
-  const [fnDailyLoss, setFnDailyLoss] = useState("1500");
-  const [fnProfitTarget, setFnProfitTarget] = useState("53000");
+  const [fnSize, setFnSize] = useState("100000");
+  const [fnName, setFnName] = useState("FundedNext 100K — Futures");
+  const [fnCurrentBalance, setFnCurrentBalance] = useState("100000");
+  const [fnMaxLoss, setFnMaxLoss] = useState("5000");
+  const [fnDailyLoss, setFnDailyLoss] = useState("3000");
+  const [fnProfitTarget, setFnProfitTarget] = useState("106000");
   const [fnPhase, setFnPhase] = useState<AccountPhase>("eval");
   const [fnDdType, setFnDdType] = useState<DrawdownType>("eod");
 
@@ -265,7 +265,7 @@ function AccountsPage() {
   const handleRecoverFundedNext = async () => {
     try {
       await restoreFundedNextAccount();
-      toast.success("¡Cuenta de FundedNext 50K recuperada y agregada a tu diario!");
+      toast.success("¡Cuenta de FundedNext 100K recuperada y agregada a tu diario!");
     } catch (err) {
       toast.error("No se pudo recuperar la cuenta de FundedNext");
     }
@@ -273,7 +273,7 @@ function AccountsPage() {
 
   const handleCustomRestoreFundedNext = async () => {
     try {
-      const initBal = parseMoneyInput(fnSize) || 50000;
+      const initBal = parseMoneyInput(fnSize) || 100000;
       const currBal = parseMoneyInput(fnCurrentBalance) || initBal;
       const maxLoss = parseMoneyInput(fnMaxLoss) || initBal * 0.05;
       const dailyLoss = fnDailyLoss.trim() ? parseMoneyInput(fnDailyLoss) : undefined;
@@ -1020,7 +1020,7 @@ function AccountsPage() {
                 className="gap-1.5 text-xs font-bold shadow-xs"
               >
                 <RotateCcw className="size-3.5" />
-                Recuperar 50K al instante
+                Recuperar 100K al instante
               </Button>
             </div>
           </div>

@@ -344,21 +344,21 @@ function ensureFundedNextAccount(accounts: Account[], journalId?: string): Accou
   const idSuffix = journalId ? journalId.replace(/[^a-zA-Z0-9]/g, "").slice(0, 8) : "default";
   const restoredFnAccount: Account = {
     id: `acc-fundednext-burned-${idSuffix}`,
-    name: "FundedNext 50K — Futures",
+    name: "FundedNext 100K — Futures",
     type: "funded",
     status: "burned",
     burnedAt: "2026-09-08T16:00:00.000Z",
-    burnedReason: "Límite total de pérdida superado (Max Loss: -$2,500)",
+    burnedReason: "Límite total de pérdida superado (Max Loss: -$5,000)",
     firm: "FundedNext Futures",
     phase: "eval",
-    profitTarget: 53000,
-    initialBalance: 50000,
-    currentBalance: 47450,
-    maxLossLimit: 2500,
-    dailyLossLimit: 1500,
-    highWatermark: 50500,
-    startOfDayBalance: 48100,
-    drawdownLimit: 2500,
+    profitTarget: 106000,
+    initialBalance: 100000,
+    currentBalance: 94800,
+    maxLossLimit: 5000,
+    dailyLossLimit: 3000,
+    highWatermark: 100000,
+    startOfDayBalance: 96000,
+    drawdownLimit: 5000,
     drawdownType: "eod",
     currency: "USD",
   };
@@ -1004,7 +1004,7 @@ export function JournalProvider({ children }: { children: ReactNode }) {
             ? crypto.randomUUID()
             : `temp-fn-${Date.now()}`;
 
-        const initialBalance = custom?.initialBalance ?? 50000;
+        const initialBalance = custom?.initialBalance ?? 100000;
         const currentBalance = custom?.currentBalance ?? initialBalance;
         const maxLoss = custom?.maxLossLimit ?? (initialBalance * 0.05);
         const dailyLoss = custom?.dailyLossLimit ?? (initialBalance * 0.03);
@@ -1012,7 +1012,7 @@ export function JournalProvider({ children }: { children: ReactNode }) {
 
         let newFnAccount: Account = {
           id: tempId,
-          name: custom?.name || "FundedNext 50K — Futures",
+          name: custom?.name || "FundedNext 100K — Futures",
           type: "funded",
           status: "active",
           firm: custom?.firm || "FundedNext Futures",
