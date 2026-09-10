@@ -1,41 +1,21 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import {
-  Archive,
   Building2,
-  CheckCircle2,
-  DollarSign,
   ExternalLink,
   Flame,
-  Info,
   Pencil,
-  Percent,
   Plus,
   RotateCcw,
   ShieldAlert,
-  ShieldCheck,
-  Sparkles,
-  Trash2,
   TrendingUp,
-  User,
   Wallet,
-  Zap,
 } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import {
   AlertDialog,
-  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
@@ -44,14 +24,6 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   Tooltip,
   TooltipContent,
@@ -71,23 +43,10 @@ import {
 import { PhaseChip, TargetProgress } from "@/components/target-progress";
 import { DrawdownProgress } from "@/components/drawdown-progress";
 import { DrawdownAlertButton } from "@/components/drawdown-corner-alert";
-import {
-  ACCOUNT_PHASES,
-  ACCOUNT_STATUSES,
-  BROKERS,
-  DRAWDOWN_TYPES,
-  PROP_FIRMS,
-  type Account,
-  type AccountPhase,
-  type AccountStatus,
-  type AccountType,
-  type DrawdownType,
-} from "@/lib/types";
-import { getFirmWebsite, usePropFirms } from "@/lib/prop-firms";
-import { useBrokers } from "@/lib/brokers";
+import type { Account } from "@/lib/types";
+import { getFirmWebsite } from "@/lib/prop-firms";
 import { cn } from "@/lib/utils";
 import { AccountFormDialog as AccountDialog } from "@/components/account-form-dialog";
-import { parseMoneyInput } from "@/lib/money";
 
 export const Route = createFileRoute("/_authenticated/cuentas")({
   head: () => ({
@@ -115,7 +74,6 @@ function AccountsPage() {
     trades = [],
     withdrawals = [],
     reactivateAccount,
-    restoreFundedNextAccount,
     removeAccount,
   } = useJournal();
 
@@ -123,17 +81,6 @@ function AccountsPage() {
   const [viewMode, setViewMode] = useState<"horizontal" | "grid">("horizontal");
   const [searchQuery, setSearchQuery] = useState("");
   const [accountToDelete, setAccountToDelete] = useState<Account | null>(null);
-
-  // Modal de recuperación personalizada de FundedNext
-  const [showFundedNextModal, setShowFundedNextModal] = useState(false);
-  const [fnSize, setFnSize] = useState("100000");
-  const [fnName, setFnName] = useState("FundedNext 100K — Futures");
-  const [fnCurrentBalance, setFnCurrentBalance] = useState("100000");
-  const [fnMaxLoss, setFnMaxLoss] = useState("5000");
-  const [fnDailyLoss, setFnDailyLoss] = useState("3000");
-  const [fnProfitTarget, setFnProfitTarget] = useState("106000");
-  const [fnPhase, setFnPhase] = useState<AccountPhase>("eval");
-  const [fnDdType, setFnDdType] = useState<DrawdownType>("eod");
 
   const safeAccounts = accounts || [];
   const safeTrades = trades || [];
@@ -155,15 +102,6 @@ function AccountsPage() {
     () => activeAccounts.filter((a) => a.type === "personal"),
     [activeAccounts],
   );
-
-  const hasFundedNextAccount = useMemo(() => {
-    return safeAccounts.some(
-      (a) =>
-        (a.firm && (a.firm.toLowerCase().includes("fundednext") || a.firm.toLowerCase().includes("funded next"))) ||
-        a.name.toLowerCase().includes("fundednext") ||
-        a.name.toLowerCase().includes("funded next"),
-    );
-  }, [safeAccounts]);
 
   const displayedAccounts = useMemo(() => {
     let list = safeAccounts;
@@ -242,16 +180,6 @@ function AccountsPage() {
   const liveFundedCount = fundedActive.filter((a) => a.phase === "live").length;
   const evalFundedCount = fundedActive.filter((a) => a.phase === "eval").length;
 
-  const handleApplyPreset = (size: number) => {
-    setFnSize(String(size));
-    setFnCurrentBalance(String(size));
-    const k = size >= 1000 ? `${size / 1000}K` : `${size}`;
-    setFnName(`FundedNext ${k} — Futures`);
-    setFnMaxLoss(String(size * 0.05));
-    setFnDailyLoss(String(size * 0.03));
-    setFnProfitTarget(String(size * 1.06));
-  };
-
   const handleReactivate = async (acc: Account, e?: React.MouseEvent) => {
     e?.stopPropagation();
     try {
@@ -259,47 +187,6 @@ function AccountsPage() {
       toast.success(`¡Cuenta "${acc.name}" reactivada con éxito con balance restaurado a ${formatCurrency(acc.initialBalance)}!`);
     } catch (err) {
       toast.error("No se pudo reactivar la cuenta");
-    }
-  };
-
-  const handleRecoverFundedNext = async () => {
-    try {
-      await restoreFundedNextAccount();
-      toast.success("¡Cuenta de FundedNext 100K recuperada y agregada a tu diario!");
-    } catch (err) {
-      toast.error("No se pudo recuperar la cuenta de FundedNext");
-    }
-  };
-
-  const handleCustomRestoreFundedNext = async () => {
-    try {
-      const initBal = parseMoneyInput(fnSize) || 100000;
-      const currBal = parseMoneyInput(fnCurrentBalance) || initBal;
-      const maxLoss = parseMoneyInput(fnMaxLoss) || initBal * 0.05;
-      const dailyLoss = fnDailyLoss.trim() ? parseMoneyInput(fnDailyLoss) : undefined;
-      const target = fnProfitTarget.trim() ? parseMoneyInput(fnProfitTarget) : undefined;
-
-      await restoreFundedNextAccount({
-        name: fnName.trim() || `FundedNext ${initBal / 1000}K — Futures`,
-        type: "funded",
-        status: "active",
-        firm: "FundedNext Futures",
-        initialBalance: initBal,
-        currentBalance: currBal,
-        maxLossLimit: maxLoss,
-        drawdownLimit: maxLoss,
-        dailyLossLimit: dailyLoss,
-        highWatermark: Math.max(initBal, currBal),
-        startOfDayBalance: initBal,
-        profitTarget: target,
-        phase: fnPhase,
-        drawdownType: fnDdType,
-      });
-
-      toast.success(`¡Cuenta "${fnName}" recuperada con éxito en tu diario!`);
-      setShowFundedNextModal(false);
-    } catch (err) {
-      toast.error("No se pudo restaurar la cuenta de FundedNext");
     }
   };
 
@@ -961,71 +848,16 @@ function AccountsPage() {
       title="Gestión de Cuentas"
       subtitle="Supervisa el capital, control de drawdown, cuentas activas e historial de cuentas quemadas"
       actions={
-        <div className="flex items-center gap-2">
-          {!hasFundedNextAccount && (
-            <div className="flex items-center gap-1.5">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowFundedNextModal(true)}
-                className="gap-1.5 border-brand/40 text-brand hover:bg-brand/10 shadow-xs text-xs font-semibold"
-                title="Personalizar y recuperar la cuenta de FundedNext"
-              >
-                <Zap className="size-3.5" />
-                Recuperar FundedNext
-              </Button>
-            </div>
-          )}
-
-          <AccountDialog
-            trigger={
-              <Button className="gap-1.5 shadow-xs">
-                <Plus className="size-4" /> Nueva cuenta
-              </Button>
-            }
-          />
-        </div>
+        <AccountDialog
+          trigger={
+            <Button className="gap-1.5 shadow-xs">
+              <Plus className="size-4" /> Nueva cuenta
+            </Button>
+          }
+        />
       }
     >
       <div className="space-y-6">
-        {/* BANNER DE RECUPERACIÓN DE FUNDEDNEXT SI NO EXISTE EN EL DIARIO */}
-        {!hasFundedNextAccount && (
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border border-brand/35 bg-brand/5 p-4 sm:p-5 shadow-xs">
-            <div className="flex items-start sm:items-center gap-3">
-              <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-brand/15 text-brand">
-                <Zap className="size-5" />
-              </div>
-              <div className="space-y-0.5">
-                <h4 className="text-sm font-bold text-foreground">
-                  ¿Buscabas tu cuenta de FundedNext eliminada?
-                </h4>
-                <p className="text-xs text-muted-foreground">
-                  Recupérala con sus valores exactos previos a la eliminación (capital inicial, balance actual, drawdown y límites).
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowFundedNextModal(true)}
-                className="gap-1.5 text-xs font-semibold shadow-xs"
-              >
-                <Pencil className="size-3.5" />
-                Ajustar valores exactos
-              </Button>
-              <Button
-                size="sm"
-                onClick={handleRecoverFundedNext}
-                className="gap-1.5 text-xs font-bold shadow-xs"
-              >
-                <RotateCcw className="size-3.5" />
-                Recuperar 100K al instante
-              </Button>
-            </div>
-          </div>
-        )}
-
         {/* KPI Hero Counters */}
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <div className="panel flex items-center gap-3 p-4 rounded-2xl">
@@ -1320,133 +1152,6 @@ function AccountsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-      {/* DIÁLOGO DE RECUPERACIÓN PERSONALIZADA DE FUNDEDNEXT */}
-      <Dialog open={showFundedNextModal} onOpenChange={setShowFundedNextModal}>
-        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-base font-display">
-              <Zap className="size-4 text-brand" />
-              Recuperar Cuenta FundedNext
-            </DialogTitle>
-            <DialogDescription className="text-xs">
-              Ajusta los parámetros exactos que tenía tu cuenta antes de eliminarla para restaurarla fielmente.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-3.5 py-2 text-xs">
-            {/* PRESETS DE CAPITAL */}
-            <div className="space-y-1.5">
-              <Label className="text-xs font-semibold">Tamaño de cuenta (Presets rápidos)</Label>
-              <div className="grid grid-cols-4 gap-1.5">
-                {[25000, 50000, 100000, 200000].map((size) => (
-                  <button
-                    key={size}
-                    type="button"
-                    onClick={() => handleApplyPreset(size)}
-                    className={cn(
-                      "rounded-xl border p-2 text-center text-xs font-bold transition-all",
-                      fnSize === String(size)
-                        ? "border-brand bg-brand/10 text-brand ring-1 ring-brand/40 shadow-xs"
-                        : "border-border text-muted-foreground hover:text-foreground hover:bg-muted/30",
-                    )}
-                  >
-                    ${size >= 1000 ? `${size / 1000}K` : size}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="fn-name" className="text-xs">Nombre de la cuenta</Label>
-              <Input
-                id="fn-name"
-                value={fnName}
-                onChange={(e) => setFnName(e.target.value)}
-                className="text-xs h-8"
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-2.5">
-              <div className="space-y-1.5">
-                <Label htmlFor="fn-init" className="text-xs">Capital inicial ($)</Label>
-                <Input
-                  id="fn-init"
-                  value={fnSize}
-                  onChange={(e) => setFnSize(e.target.value)}
-                  className="text-xs h-8 font-mono"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="fn-curr" className="text-xs">Balance antes de borrar ($)</Label>
-                <Input
-                  id="fn-curr"
-                  value={fnCurrentBalance}
-                  onChange={(e) => setFnCurrentBalance(e.target.value)}
-                  className="text-xs h-8 font-mono"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-2.5">
-              <div className="space-y-1.5">
-                <Label htmlFor="fn-max-loss" className="text-xs">Límite Max Loss ($)</Label>
-                <Input
-                  id="fn-max-loss"
-                  value={fnMaxLoss}
-                  onChange={(e) => setFnMaxLoss(e.target.value)}
-                  className="text-xs h-8 font-mono"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="fn-daily-loss" className="text-xs">Límite Diario ($)</Label>
-                <Input
-                  id="fn-daily-loss"
-                  value={fnDailyLoss}
-                  onChange={(e) => setFnDailyLoss(e.target.value)}
-                  className="text-xs h-8 font-mono"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-2.5">
-              <div className="space-y-1.5">
-                <Label htmlFor="fn-target" className="text-xs">Objetivo Profit ($)</Label>
-                <Input
-                  id="fn-target"
-                  value={fnProfitTarget}
-                  onChange={(e) => setFnProfitTarget(e.target.value)}
-                  className="text-xs h-8 font-mono"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs">Tipo Drawdown</Label>
-                <Select value={fnDdType} onValueChange={(v) => setFnDdType(v as DrawdownType)}>
-                  <SelectTrigger className="text-xs h-8">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {DRAWDOWN_TYPES.map((d) => (
-                      <SelectItem key={d.key} value={d.key} className="text-xs">
-                        {d.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          </div>
-
-          <DialogFooter className="pt-2">
-            <Button variant="outline" size="sm" onClick={() => setShowFundedNextModal(false)} className="text-xs">
-              Cancelar
-            </Button>
-            <Button size="sm" onClick={handleCustomRestoreFundedNext} className="text-xs font-semibold gap-1.5">
-              <RotateCcw className="size-3.5" />
-              Restaurar cuenta ahora
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </AppShell>
   );
 }

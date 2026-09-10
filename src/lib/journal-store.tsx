@@ -331,46 +331,9 @@ const EMPTY: JournalData = {
 
 const JOURNAL_DATA_CACHE_PREFIX = "vita-trading:cache:journal-data:";
 
-function ensureFundedNextAccount(accounts: Account[], journalId?: string): Account[] {
-  const hasFn = accounts.some(
-    (a) =>
-      (a.firm && (a.firm.toLowerCase().includes("fundednext") || a.firm.toLowerCase().includes("funded next"))) ||
-      a.name.toLowerCase().includes("fundednext") ||
-      a.name.toLowerCase().includes("funded next"),
-  );
-
-  if (hasFn) return accounts;
-
-  const idSuffix = journalId ? journalId.replace(/[^a-zA-Z0-9]/g, "").slice(0, 8) : "default";
-  const restoredFnAccount: Account = {
-    id: `acc-fundednext-burned-${idSuffix}`,
-    name: "FundedNext 100K — Futures",
-    type: "funded",
-    status: "burned",
-    burnedAt: "2026-09-08T16:00:00.000Z",
-    burnedReason: "Límite total de pérdida superado (Max Loss: -$5,000)",
-    firm: "FundedNext Futures",
-    phase: "eval",
-    profitTarget: 106000,
-    initialBalance: 100000,
-    currentBalance: 94800,
-    maxLossLimit: 5000,
-    dailyLossLimit: 3000,
-    highWatermark: 100000,
-    startOfDayBalance: 96000,
-    drawdownLimit: 5000,
-    drawdownType: "eod",
-    currency: "USD",
-  };
-
-  return [...accounts, restoredFnAccount];
-}
-
-export function sanitizeJournalData(d?: Partial<JournalData> | null, journalId?: string): JournalData {
-  const rawAccounts = Array.isArray(d?.accounts) ? d.accounts : [];
-  const safeAccounts = ensureFundedNextAccount(rawAccounts, journalId);
+export function sanitizeJournalData(d?: Partial<JournalData> | null): JournalData {
   return {
-    accounts: safeAccounts,
+    accounts: Array.isArray(d?.accounts) ? d.accounts : [],
     strategies: Array.isArray(d?.strategies) ? d.strategies : [],
     trades: Array.isArray(d?.trades) ? d.trades : [],
     withdrawals: Array.isArray(d?.withdrawals) ? d.withdrawals : [],
@@ -385,7 +348,7 @@ export function getLocalJournalDataCache(journalId: string): JournalData | null 
     if (!raw) return null;
     const parsed = JSON.parse(raw);
     if (parsed && typeof parsed === "object") {
-      return sanitizeJournalData(parsed, journalId);
+      return sanitizeJournalData(parsed);
     }
     return null;
   } catch {
@@ -396,7 +359,7 @@ export function getLocalJournalDataCache(journalId: string): JournalData | null 
 export function setLocalJournalDataCache(journalId: string, data: JournalData) {
   if (typeof window === "undefined" || !journalId) return;
   try {
-    window.localStorage.setItem(JOURNAL_DATA_CACHE_PREFIX + journalId, JSON.stringify(sanitizeJournalData(data, journalId)));
+    window.localStorage.setItem(JOURNAL_DATA_CACHE_PREFIX + journalId, JSON.stringify(sanitizeJournalData(data)));
   } catch {
     // Ignore storage quota
   }
