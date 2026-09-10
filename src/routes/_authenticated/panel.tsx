@@ -9,6 +9,7 @@ import {
   Check,
   CheckCheck,
   Filter,
+  Flame,
   Layers,
   ShieldAlert,
   ShieldCheck,
@@ -936,7 +937,7 @@ function Overview() {
                       ? strategyAccounts.find((a) => a.id === activeStrategyAccountIds[0])?.type === "funded"
                         ? "Cuenta de Fondeo"
                         : "Cuenta Personal"
-                      : `${activeStrategyAccountIds.length}/${strategyAccounts.length} cuentas activas`
+                      : `${activeStrategyAccountIds.length}/${strategyAccounts.length} cuentas vinculadas`
                     : accounts.find((a) => a.id === accountFilter)?.type === "funded"
                       ? "Fondeo"
                       : "Personal"}
@@ -998,27 +999,64 @@ function Overview() {
                 <div className="grid gap-2.5 grid-cols-[repeat(auto-fill,minmax(250px,1fr))]">
                   {strategyAccounts.map((acc) => {
                     const isSelected = activeStrategyAccountIds.includes(acc.id);
+                    const isBurned = acc.status === "burned";
+                    const burnedDateText = acc.burnedAt
+                      ? (() => {
+                          try {
+                            const d = new Date(acc.burnedAt);
+                            return !isNaN(d.getTime())
+                              ? `Quemada día ${d.toLocaleDateString("es-ES", { day: "2-digit", month: "2-digit" })}`
+                              : "Quemada";
+                          } catch {
+                            return "Quemada";
+                          }
+                        })()
+                      : "Quemada";
+
                     return (
                       <button
                         key={acc.id}
                         type="button"
                         onClick={() => handleToggleStrategyAccount(acc.id)}
                         className={cn(
-                          "group relative flex items-center justify-between px-4 py-2.5 rounded-xl text-xs transition-all duration-200 border cursor-pointer select-none w-full min-h-[44px]",
-                          isSelected
-                            ? "bg-brand/15 border-brand text-foreground font-bold shadow-xs ring-2 ring-brand/30"
-                            : "bg-muted/30 hover:bg-muted/70 text-foreground/85 hover:text-foreground border-border/80 hover:border-border font-semibold hover:shadow-2xs",
+                          "group relative flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs transition-all duration-200 border cursor-pointer select-none w-full min-h-[44px] gap-2 text-left",
+                          isBurned
+                            ? isSelected
+                              ? "bg-rose-500/10 border-rose-500/60 text-foreground font-bold shadow-xs ring-2 ring-rose-500/30 dark:bg-rose-950/30 dark:border-rose-500/50"
+                              : "bg-rose-500/5 hover:bg-rose-500/10 text-muted-foreground hover:text-foreground border-rose-500/25 hover:border-rose-500/40 font-medium"
+                            : isSelected
+                              ? "bg-brand/15 border-brand text-foreground font-bold shadow-xs ring-2 ring-brand/30"
+                              : "bg-muted/30 hover:bg-muted/70 text-foreground/85 hover:text-foreground border-border/80 hover:border-border font-semibold hover:shadow-2xs",
                         )}
                       >
-                        <span className="font-semibold tracking-tight whitespace-nowrap text-foreground">
-                          {acc.name}
-                        </span>
+                        <div className="flex items-center gap-1.5 min-w-0 flex-1 flex-wrap">
+                          {isBurned && (
+                            <Flame className="size-3.5 text-rose-500 shrink-0" />
+                          )}
+                          <span
+                            className={cn(
+                              "font-semibold tracking-tight truncate",
+                              isBurned && !isSelected ? "text-muted-foreground" : "text-foreground",
+                            )}
+                          >
+                            {acc.name}
+                          </span>
+                          {isBurned && (
+                            <span className="inline-flex items-center rounded-md bg-rose-500/15 px-1.5 py-0.5 text-[10px] font-bold text-rose-600 dark:text-rose-400 shrink-0 border border-rose-500/30">
+                              {burnedDateText}
+                            </span>
+                          )}
+                        </div>
                         <div
                           className={cn(
-                            "size-4 rounded-full flex items-center justify-center transition-all shrink-0 ml-2 border",
-                            isSelected
-                              ? "bg-brand border-brand text-brand-foreground shadow-xs"
-                              : "border-border/80 bg-background/80 group-hover:border-foreground/40",
+                            "size-4 rounded-full flex items-center justify-center transition-all shrink-0 ml-1.5 border",
+                            isBurned
+                              ? isSelected
+                                ? "bg-rose-500 border-rose-500 text-white shadow-xs"
+                                : "border-rose-500/40 bg-background/80 group-hover:border-rose-500/70"
+                              : isSelected
+                                ? "bg-brand border-brand text-brand-foreground shadow-xs"
+                                : "border-border/80 bg-background/80 group-hover:border-foreground/40",
                           )}
                         >
                           {isSelected && <Check className="size-2.5 stroke-[3]" />}
