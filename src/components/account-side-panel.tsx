@@ -83,8 +83,8 @@ export function AccountSidePanel() {
         onClick={() => toggleAccount(acc.id)}
         className={cn(
           "w-full rounded-lg border p-2.5 text-left transition-colors",
-          isBurned && "border-rose-500/25 bg-rose-500/5",
-          isLowDrawdown && "border-rose-500/40 bg-rose-500/5",
+          isBurned && "border-loss/25 bg-loss/5",
+          isLowDrawdown && "border-loss/40 bg-loss/5",
           active
             ? "border-brand/50 bg-sidebar-accent"
             : "border-transparent opacity-65 hover:opacity-95 hover:bg-muted/30",
@@ -93,7 +93,7 @@ export function AccountSidePanel() {
         <div className="flex items-center justify-between gap-1.5 min-w-0">
           <div className="flex items-center gap-1.5 min-w-0 flex-1">
             {isBurned ? (
-              <Flame className="size-3.5 shrink-0 text-rose-500" />
+              <Flame className="size-3.5 shrink-0 text-loss" />
             ) : acc.type === "funded" ? (
               <Building2 className="size-3.5 shrink-0 text-brand-soft" />
             ) : (
@@ -103,7 +103,7 @@ export function AccountSidePanel() {
               {acc.name}
             </span>
             {isBurned ? (
-              <span className="rounded bg-rose-500/15 px-1 py-0.2 text-[9px] font-bold text-rose-500 shrink-0">
+              <span className="rounded bg-loss/15 px-1 py-0.2 text-[9px] font-bold text-loss shrink-0">
                 Quemada
               </span>
             ) : (
@@ -158,7 +158,7 @@ export function AccountSidePanel() {
             <button
               type="button"
               onClick={() => setShowBurned((prev) => !prev)}
-              className="flex items-center justify-between w-full px-2 py-1.5 text-xs font-semibold text-rose-500/80 hover:text-rose-500 hover:bg-rose-500/10 rounded-lg transition-colors"
+              className="flex items-center justify-between w-full px-2 py-1.5 text-xs font-semibold text-loss/80 hover:text-loss hover:bg-loss/10 rounded-lg transition-colors"
             >
               <span className="flex items-center gap-1.5">
                 <Flame className="size-3.5" />

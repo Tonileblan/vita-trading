@@ -227,7 +227,7 @@ function AccountsPage() {
         className={cn(
           "group relative overflow-hidden rounded-2xl border border-border/80 bg-card p-4 sm:p-5 transition-all duration-200 hover:border-brand/40 hover:shadow-md space-y-3.5",
           isLowDrawdown && "border-loss/40",
-          isBurned && "border-rose-500/35 bg-rose-500/[0.02] hover:border-rose-500/50",
+          isBurned && "border-loss/35 bg-loss/[0.02] hover:border-loss/50",
         )}
       >
         {/* FRANJA DIAGONAL DE ALERTA DD O QUEMADA */}
@@ -241,7 +241,7 @@ function AccountsPage() {
 
         {isBurned && (
           <div className="absolute top-0 left-0 size-36 overflow-hidden pointer-events-none z-0">
-            <div className="absolute top-[26px] -left-[42px] w-[180px] -rotate-45 bg-rose-500/15 text-rose-500/70 text-[9px] font-black uppercase tracking-wider text-center py-2.5 border-y border-rose-500/25 select-none">
+            <div className="absolute top-[26px] -left-[42px] w-[180px] -rotate-45 bg-loss/15 text-loss/70 text-[9px] font-black uppercase tracking-wider text-center py-2.5 border-y border-loss/25 select-none">
               QUEMADA
             </div>
           </div>
@@ -259,7 +259,7 @@ function AccountsPage() {
                     className={cn(
                       "flex size-10 shrink-0 items-center justify-center rounded-xl font-bold text-sm shadow-xs bg-card transition-all duration-200 hover:scale-105 hover:shadow-md cursor-pointer",
                       isBurned
-                        ? "text-rose-500 border border-rose-500/35 hover:bg-rose-500/15 hover:border-rose-500"
+                        ? "text-loss border border-loss/35 hover:bg-loss/15 hover:border-loss"
                         : acc.type === "funded"
                           ? "text-brand border border-brand/35 hover:bg-brand/15 hover:border-brand"
                           : "text-purple-500 border border-purple-500/35 hover:bg-purple-500/15 hover:border-purple-500",
@@ -277,7 +277,7 @@ function AccountsPage() {
                   </Link>
                 </TooltipTrigger>
                 <TooltipContent side="top" className="font-semibold text-xs py-1.5 px-3">
-                  Métricas
+                  Ver Métricas
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
@@ -290,14 +290,18 @@ function AccountsPage() {
                       <Link
                         to="/cuenta/$accountId"
                         params={{ accountId: acc.id }}
-                        className={cn(
-                          "font-extrabold text-base sm:text-lg text-foreground hover:text-brand transition-colors truncate",
-                          isBurned && "line-through opacity-85",
-                        )}
-                        title="Ver cuenta"
+                        className="group/title inline-flex items-center gap-1.5"
+                        title="Ver detalles de la cuenta"
                         aria-label={`Ver cuenta ${acc.name}`}
                       >
-                        {acc.name}
+                        <span
+                          className={cn(
+                            "text-base font-bold text-foreground group-hover/title:text-brand transition-colors",
+                            isBurned && "line-through opacity-85",
+                          )}
+                        >
+                          {acc.name}
+                        </span>
                       </Link>
                     </TooltipTrigger>
                     <TooltipContent side="top" className="font-semibold text-xs py-1.5 px-3">
@@ -307,7 +311,7 @@ function AccountsPage() {
                 </TooltipProvider>
 
                 {isBurned ? (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-rose-500/15 border border-rose-500/30 px-2 py-0.5 text-[11px] font-bold text-rose-600 dark:text-rose-400">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-loss/10 border border-loss/30 px-2 py-0.5 text-[11px] font-bold text-loss">
                     <Flame className="size-3" /> Quemada / Perdida
                   </span>
                 ) : (
@@ -351,7 +355,7 @@ function AccountsPage() {
                 {isBurned && acc.burnedReason && (
                   <>
                     <span>•</span>
-                    <span className="text-rose-500 font-medium text-[11px]">
+                    <span className="text-loss font-medium text-[11px]">
                       Causa: {acc.burnedReason}
                     </span>
                   </>
@@ -630,7 +634,7 @@ function AccountsPage() {
         className={cn(
           "panel flex flex-col justify-between p-5 transition-all hover:border-foreground/20 rounded-2xl relative overflow-hidden",
           isLowDrawdown && "border-loss/40",
-          isBurned && "border-rose-500/35 bg-rose-500/[0.02]",
+          isBurned && "border-loss/35 bg-loss/[0.02]",
         )}
       >
         {isLowDrawdown && (
@@ -643,7 +647,7 @@ function AccountsPage() {
 
         {isBurned && (
           <div className="absolute top-0 left-0 size-32 overflow-hidden pointer-events-none z-0">
-            <div className="absolute top-[22px] -left-[38px] w-[160px] -rotate-45 bg-rose-500/15 text-rose-500/70 text-[8px] font-black uppercase tracking-wider text-center py-2 border-y border-rose-500/25 select-none">
+            <div className="absolute top-[22px] -left-[38px] w-[160px] -rotate-45 bg-loss/15 text-loss/70 text-[8px] font-black uppercase tracking-wider text-center py-2 border-y border-loss/25 select-none">
               QUEMADA
             </div>
           </div>
@@ -661,7 +665,7 @@ function AccountsPage() {
                       className={cn(
                         "flex size-9 shrink-0 items-center justify-center rounded-xl font-bold text-xs shadow-xs bg-card transition-all duration-200 hover:scale-105 hover:shadow-md cursor-pointer mt-0.5",
                         isBurned
-                          ? "text-rose-500 border border-rose-500/35 hover:bg-rose-500/15 hover:border-rose-500"
+                          ? "text-loss border border-loss/35 hover:bg-loss/15 hover:border-loss"
                           : acc.type === "funded"
                             ? "text-brand border border-brand/35 hover:bg-brand/15 hover:border-brand"
                             : "text-purple-500 border border-purple-500/35 hover:bg-purple-500/15 hover:border-purple-500",
@@ -705,7 +709,7 @@ function AccountsPage() {
                             {acc.name}
                           </h3>
                           {isBurned ? (
-                            <span className="inline-flex items-center gap-1 rounded-full bg-rose-500/15 border border-rose-500/30 px-2 py-0.5 text-[10px] font-bold text-rose-600 dark:text-rose-400">
+                            <span className="inline-flex items-center gap-1 rounded-full bg-loss/10 border border-loss/30 px-2 py-0.5 text-[10px] font-bold text-loss">
                               <Flame className="size-2.5" /> Quemada
                             </span>
                           ) : (
@@ -804,8 +808,8 @@ function AccountsPage() {
           </div>
 
           {isBurned && (
-            <div className="rounded-xl border border-rose-500/20 bg-rose-500/5 p-2.5 text-xs space-y-1">
-              <p className="text-[11px] font-bold text-rose-600 dark:text-rose-400 flex items-center gap-1">
+            <div className="rounded-xl border border-loss/20 bg-loss/5 p-2.5 text-xs space-y-1">
+              <p className="text-[11px] font-bold text-loss flex items-center gap-1">
                 <Flame className="size-3 shrink-0" />
                 <span>Motivo: {acc.burnedReason || "Pérdida de cuenta"}</span>
               </p>
@@ -915,18 +919,18 @@ function AccountsPage() {
           <div
             onClick={() => setFilterType("burned")}
             className={cn(
-              "panel flex items-center gap-3 p-4 rounded-2xl transition-all cursor-pointer hover:border-rose-500/40",
-              filterType === "burned" && "border-rose-500/50 bg-rose-500/5 ring-1 ring-rose-500/30",
+              "panel flex items-center gap-3 p-4 rounded-2xl transition-all cursor-pointer hover:border-loss/40",
+              filterType === "burned" && "border-loss/50 bg-loss/5 ring-1 ring-loss/30",
             )}
           >
-            <div className="flex size-10 items-center justify-center rounded-xl bg-rose-500/10 text-rose-500">
+            <div className="flex size-10 items-center justify-center rounded-xl bg-loss/10 text-loss">
               <Flame className="size-5" />
             </div>
             <div>
               <p className="text-xs text-muted-foreground flex items-center gap-1">
                 <span>Cuentas Quemadas / Perdidas</span>
               </p>
-              <p className="text-lg font-bold text-rose-600 dark:text-rose-400">
+              <p className="text-lg font-bold text-loss">
                 {burnedAccounts.length} {burnedAccounts.length === 1 ? "cuenta" : "cuentas"}
               </p>
               <p className="num text-[11px] text-muted-foreground">
@@ -981,8 +985,8 @@ function AccountsPage() {
               className={cn(
                 "rounded-full px-3.5 py-1.5 text-xs font-semibold transition-colors flex items-center gap-1.5",
                 filterType === "burned"
-                  ? "bg-rose-500 text-white shadow-xs font-bold"
-                  : "border border-rose-500/30 text-rose-600 dark:text-rose-400 hover:bg-rose-500/10",
+                  ? "bg-loss text-white shadow-xs font-bold"
+                  : "border border-loss/30 text-loss hover:bg-loss/10",
               )}
             >
               <Flame className="size-3.5" />
@@ -1046,8 +1050,8 @@ function AccountsPage() {
 
         {/* MENSAJE EXPLICATIVO SI SE ESTÁ EN LA PESTAÑA DE CUENTAS QUEMADAS */}
         {filterType === "burned" && (
-          <div className="rounded-2xl border border-rose-500/25 bg-rose-500/[0.04] p-4 flex items-start gap-3">
-            <Flame className="size-5 text-rose-500 shrink-0 mt-0.5" />
+          <div className="rounded-2xl border border-loss/25 bg-loss/[0.04] p-4 flex items-start gap-3">
+            <Flame className="size-5 text-loss shrink-0 mt-0.5" />
             <div className="space-y-1 text-xs">
               <p className="font-bold text-foreground">Historial y Archivo de Cuentas Quemadas</p>
               <p className="text-muted-foreground">
@@ -1061,7 +1065,7 @@ function AccountsPage() {
         {displayedAccounts.length === 0 ? (
           <div className="panel p-10 text-center space-y-4 rounded-2xl">
             <div className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-brand/10 text-brand">
-              {filterType === "burned" ? <Flame className="size-6 text-rose-500" /> : <Wallet className="size-6" />}
+              {filterType === "burned" ? <Flame className="size-6 text-loss" /> : <Wallet className="size-6" />}
             </div>
             <div className="space-y-1">
               <h3 className="text-lg font-bold">

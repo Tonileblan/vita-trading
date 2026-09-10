@@ -341,7 +341,7 @@ export function AccountFormDialog({
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
                 {[
                   { key: "active", label: "Activa", icon: ShieldCheck, color: "text-emerald-500" },
-                  { key: "burned", label: "🔥 Quemada", icon: Flame, color: "text-rose-500" },
+                  { key: "burned", label: "🔥 Quemada", icon: Flame, color: "text-loss" },
                   { key: "passed", label: "Superada", icon: CheckCircle2, color: "text-sky-500" },
                   { key: "archived", label: "Archivada", icon: Archive, color: "text-muted-foreground" },
                 ].map((s) => (
@@ -365,8 +365,8 @@ export function AccountFormDialog({
 
             {/* SECCIÓN ESPECÍFICA SI ESTÁ QUEMADA */}
             {status === "burned" && (
-              <div className="rounded-xl border border-rose-500/30 bg-rose-500/5 p-3 space-y-2.5">
-                <div className="flex items-center gap-2 text-rose-600 dark:text-rose-400 font-bold text-xs">
+              <div className="rounded-xl border border-loss/30 bg-loss/5 p-3 space-y-2.5">
+                <div className="flex items-center gap-2 text-loss font-bold text-xs">
                   <Flame className="size-4 shrink-0" />
                   <span>Información de la Cuenta Quemada / Perdida</span>
                 </div>

@@ -183,7 +183,7 @@ function AccountDetail() {
         <div className="flex items-center gap-2.5 flex-wrap">
           <span className={cn(isBurned && "line-through opacity-85")}>{account.name}</span>
           {isBurned ? (
-            <span className="inline-flex items-center gap-1 rounded-full bg-rose-500/15 border border-rose-500/30 px-2.5 py-0.5 text-xs font-bold text-rose-600 dark:text-rose-400">
+            <span className="inline-flex items-center gap-1 rounded-full bg-loss/10 border border-loss/30 px-2.5 py-0.5 text-xs font-bold text-loss">
               <Flame className="size-3.5" /> Quemada / Perdida
             </span>
           ) : (
@@ -282,17 +282,17 @@ function AccountDetail() {
       <div className="space-y-5">
         {/* BANNER INFORMATIVO SI ESTÁ MARCADA COMO QUEMADA */}
         {isBurned && (
-          <div className="rounded-2xl border border-rose-500/30 bg-rose-500/10 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xs">
+          <div className="rounded-2xl border border-loss/30 bg-loss/8 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xs">
             <div className="flex items-start gap-3">
-              <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-rose-500/20 text-rose-500">
+              <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-loss/15 text-loss">
                 <Flame className="size-5" />
               </div>
               <div className="space-y-1 text-xs">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <h4 className="text-sm font-bold text-rose-600 dark:text-rose-400">
+                  <h4 className="text-sm font-bold text-loss">
                     Esta cuenta se encuentra en el historial de Cuentas Quemadas / Perdidas
                   </h4>
-                  <span className="rounded-full bg-rose-500/20 px-2 py-0.5 text-[10px] font-bold text-rose-600 dark:text-rose-300">
+                  <span className="rounded-full bg-loss/15 px-2 py-0.5 text-[10px] font-bold text-loss">
                     Archivada
                   </span>
                 </div>

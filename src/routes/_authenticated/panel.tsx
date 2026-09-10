@@ -1022,8 +1022,8 @@ function Overview() {
                           "group relative flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs transition-all duration-200 border cursor-pointer select-none w-full min-h-[44px] gap-2 text-left",
                           isBurned
                             ? isSelected
-                              ? "bg-rose-500/10 border-rose-500/60 text-foreground font-bold shadow-xs ring-2 ring-rose-500/30 dark:bg-rose-950/30 dark:border-rose-500/50"
-                              : "bg-rose-500/5 hover:bg-rose-500/10 text-muted-foreground hover:text-foreground border-rose-500/25 hover:border-rose-500/40 font-medium"
+                              ? "bg-loss/10 border-loss text-foreground font-bold shadow-xs ring-2 ring-loss/30 dark:bg-loss/15 dark:border-loss/80"
+                              : "bg-loss/[0.04] hover:bg-loss/[0.08] text-muted-foreground hover:text-foreground border-loss/30 hover:border-loss/50 font-medium"
                             : isSelected
                               ? "bg-brand/15 border-brand text-foreground font-bold shadow-xs ring-2 ring-brand/30"
                               : "bg-muted/30 hover:bg-muted/70 text-foreground/85 hover:text-foreground border-border/80 hover:border-border font-semibold hover:shadow-2xs",
@@ -1031,7 +1031,7 @@ function Overview() {
                       >
                         <div className="flex items-center gap-1.5 min-w-0 flex-1 flex-wrap">
                           {isBurned && (
-                            <Flame className="size-3.5 text-rose-500 shrink-0" />
+                            <Flame className="size-3.5 text-loss shrink-0" />
                           )}
                           <span
                             className={cn(
@@ -1042,7 +1042,7 @@ function Overview() {
                             {acc.name}
                           </span>
                           {isBurned && (
-                            <span className="inline-flex items-center rounded-md bg-rose-500/15 px-1.5 py-0.5 text-[10px] font-bold text-rose-600 dark:text-rose-400 shrink-0 border border-rose-500/30">
+                            <span className="inline-flex items-center rounded-md bg-loss/10 px-1.5 py-0.5 text-[10px] font-bold text-loss shrink-0 border border-loss/25">
                               {burnedDateText}
                             </span>
                           )}
@@ -1052,8 +1052,8 @@ function Overview() {
                             "size-4 rounded-full flex items-center justify-center transition-all shrink-0 ml-1.5 border",
                             isBurned
                               ? isSelected
-                                ? "bg-rose-500 border-rose-500 text-white shadow-xs"
-                                : "border-rose-500/40 bg-background/80 group-hover:border-rose-500/70"
+                                ? "bg-loss border-loss text-white shadow-xs"
+                                : "border-loss/40 bg-background/80 group-hover:border-loss/70"
                               : isSelected
                                 ? "bg-brand border-brand text-brand-foreground shadow-xs"
                                 : "border-border/80 bg-background/80 group-hover:border-foreground/40",
