@@ -320,7 +320,7 @@ function RulesForm({ journalId }: { journalId: string }) {
                   <Label htmlFor="loss" className="font-bold text-foreground">
                     Pérdida máxima diaria permitida ($)
                   </Label>
-                  <span className="num font-bold text-red-500">
+                  <span className="num font-bold text-loss">
                     {rules.max_daily_loss ? `-$${rules.max_daily_loss}` : "Sin límite"}
                   </span>
                 </div>

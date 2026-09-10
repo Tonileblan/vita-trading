@@ -494,7 +494,7 @@ function AccountsPage() {
               className={cn(
                 "col-span-2 md:col-span-2 lg:col-span-1 rounded-xl p-3 flex flex-col justify-between min-h-[84px] space-y-1.5 transition-all duration-300",
                 isBurned
-                  ? "bg-rose-500/10 border border-rose-500/30"
+                  ? "border border-loss/50 bg-loss/8"
                   : isLowDrawdown
                     ? "border border-loss/50 bg-loss/8 animate-drawdown-border shadow-xs"
                     : "bg-muted/30 border border-border/70",
@@ -540,7 +540,7 @@ function AccountsPage() {
                   <div
                     className={cn(
                       "h-full rounded-full transition-all duration-300",
-                      isBurned ? "bg-rose-500" : isLowDrawdown ? "bg-loss" : "bg-profit",
+                      isBurned || isLowDrawdown ? "bg-loss" : "bg-profit",
                     )}
                     style={{
                       width: isBurned ? "0%" : `${Math.min(100, Math.max(0, dd.healthPct))}%`,

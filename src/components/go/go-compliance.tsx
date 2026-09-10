@@ -111,7 +111,7 @@ export function GoCompliance({ plan, slots }: GoComplianceProps) {
                     ? "text-emerald-600 dark:text-emerald-400"
                     : adherencePct >= 50
                       ? "text-amber-600 dark:text-amber-400"
-                      : "text-rose-600 dark:text-rose-400",
+                      : "text-loss",
                 )}
               >
                 {adherencePct}%
@@ -122,7 +122,7 @@ export function GoCompliance({ plan, slots }: GoComplianceProps) {
               value={adherencePct}
               className={cn(
                 "h-2 mt-2",
-                adherencePct >= 80 ? "[&>div]:bg-emerald-500" : adherencePct >= 50 ? "[&>div]:bg-amber-500" : "[&>div]:bg-rose-500",
+                adherencePct >= 80 ? "[&>div]:bg-emerald-500" : adherencePct >= 50 ? "[&>div]:bg-amber-500" : "[&>div]:bg-loss",
               )}
             />
           </CardHeader>
@@ -162,7 +162,7 @@ export function GoCompliance({ plan, slots }: GoComplianceProps) {
                   <span
                     className={cn(
                       "font-mono text-xl font-bold",
-                      compliance.onPlanPnl >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-destructive",
+                      compliance.onPlanPnl >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-loss",
                     )}
                   >
                     {compliance.onPlanPnl >= 0 ? "+" : ""}
@@ -172,9 +172,9 @@ export function GoCompliance({ plan, slots }: GoComplianceProps) {
               </div>
 
               {/* FUERA DE PLAN */}
-              <div className="rounded-xl border border-rose-500/20 bg-rose-500/5 p-4 space-y-2">
+              <div className="rounded-xl border border-loss/20 bg-loss/5 p-4 space-y-2">
                 <div className="flex items-center justify-between">
-                  <Badge variant="outline" className="border-rose-500/30 text-rose-600 dark:text-rose-400 gap-1 text-xs">
+                  <Badge variant="outline" className="border-loss/30 text-loss gap-1 text-xs">
                     <ShieldAlert className="size-3" /> Fuera de Planing
                   </Badge>
                   <span className="font-mono text-xs font-semibold text-muted-foreground">
@@ -186,7 +186,7 @@ export function GoCompliance({ plan, slots }: GoComplianceProps) {
                   <span
                     className={cn(
                       "font-mono text-xl font-bold",
-                      compliance.offPlanPnl >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400",
+                      compliance.offPlanPnl >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-loss",
                     )}
                   >
                     {compliance.offPlanPnl >= 0 ? "+" : ""}
@@ -266,7 +266,7 @@ export function GoCompliance({ plan, slots }: GoComplianceProps) {
                       <span
                         className={cn(
                           "font-mono text-xs font-bold block",
-                          trade.pnl > 0 ? "text-emerald-600 dark:text-emerald-400" : trade.pnl < 0 ? "text-rose-600 dark:text-rose-400" : "text-muted-foreground",
+                          trade.pnl > 0 ? "text-emerald-600 dark:text-emerald-400" : trade.pnl < 0 ? "text-loss" : "text-muted-foreground",
                         )}
                       >
                         {trade.pnl > 0 ? "+" : ""}

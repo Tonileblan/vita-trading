@@ -380,7 +380,7 @@ export function MoodCalendar({ checkins, trades }: MoodCalendarProps) {
                             ? "bg-blue-500/10 border-blue-500/30 text-blue-600 dark:text-blue-400"
                             : selectedDayData.readiness.level === "caution"
                               ? "bg-amber-500/10 border-amber-500/30 text-amber-600 dark:text-amber-400"
-                              : "bg-red-500/10 border-red-500/30 text-red-600 dark:text-red-400",
+                              : "bg-loss/10 border-loss/30 text-loss",
                       )}
                     >
                       <div className="flex items-center gap-2.5">

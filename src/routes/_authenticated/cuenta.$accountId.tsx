@@ -351,7 +351,7 @@ function AccountDetail() {
           className={cn(
             "panel grid grid-cols-2 gap-4 p-4 md:grid-cols-4 rounded-2xl",
             isLowDrawdown && "border-loss/40",
-            isBurned && "border-rose-500/30 bg-rose-500/[0.02]",
+            isBurned && "border-loss/30 bg-loss/[0.02]",
           )}
         >
           <div>

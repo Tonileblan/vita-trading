@@ -571,7 +571,7 @@ export function GoAccountPlanManager({
                                   className={cn(
                                     "font-bold font-mono text-xs",
                                     isBreached || isCritical
-                                      ? "text-rose-600 dark:text-rose-400"
+                                      ? "text-loss"
                                       : isWarning
                                         ? "text-amber-500"
                                         : "text-emerald-600 dark:text-emerald-400",
@@ -583,7 +583,7 @@ export function GoAccountPlanManager({
                                   className={cn(
                                     "text-[10px] font-mono",
                                     isBreached || isCritical
-                                      ? "text-rose-600 dark:text-rose-400"
+                                      ? "text-loss"
                                       : isWarning
                                         ? "text-amber-500"
                                         : "text-emerald-600 dark:text-emerald-400",
@@ -597,7 +597,7 @@ export function GoAccountPlanManager({
                                   className={cn(
                                     "h-full transition-all duration-300 rounded-full",
                                     isBreached || isCritical
-                                      ? "bg-rose-500"
+                                      ? "bg-loss"
                                       : isWarning
                                         ? "bg-amber-500"
                                         : "bg-emerald-500",

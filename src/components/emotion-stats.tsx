@@ -157,9 +157,9 @@ export function EmotionStats({ trades, checkins }: EmotionStatsProps) {
         <div className="panel p-4 flex flex-col justify-between space-y-2">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-              <Flame className="size-3.5 text-red-500" /> Disparador de Tilt
+              <Flame className="size-3.5 text-loss" /> Disparador de Tilt
             </span>
-            <span className="rounded bg-red-500/10 text-red-500 px-1.5 py-0.5 text-[10px] font-bold">
+            <span className="rounded bg-loss/10 text-loss px-1.5 py-0.5 text-[10px] font-bold">
               Peligro
             </span>
           </div>
@@ -181,7 +181,7 @@ export function EmotionStats({ trades, checkins }: EmotionStatsProps) {
         <div className="panel p-4 flex flex-col justify-between space-y-2">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-              <TrendingDown className="size-3.5 text-red-500" /> Coste de Indisciplina
+              <TrendingDown className="size-3.5 text-loss" /> Coste de Indisciplina
             </span>
             <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-bold text-muted-foreground">
               Fugas
@@ -356,9 +356,9 @@ export function EmotionStats({ trades, checkins }: EmotionStatsProps) {
             </div>
 
             {/* Card 3: No siguió el plan */}
-            <div className="rounded-xl border border-red-500/30 bg-red-500/[0.04] p-3.5 space-y-2">
+            <div className="rounded-xl border border-loss/30 bg-loss/[0.04] p-3.5 space-y-2">
               <div className="flex items-center justify-between">
-                <span className="font-bold text-red-600 dark:text-red-400 flex items-center gap-1.5 text-xs uppercase tracking-wider">
+                <span className="font-bold text-loss flex items-center gap-1.5 text-xs uppercase tracking-wider">
                   <XCircle className="size-4" /> Sin Seguir el Plan (Indisciplina)
                 </span>
                 <span
@@ -389,7 +389,7 @@ export function EmotionStats({ trades, checkins }: EmotionStatsProps) {
           <div className="flex items-center justify-between border-b border-border/60 pb-3">
             <div>
               <h3 className="text-base font-bold font-display uppercase tracking-wide flex items-center gap-2">
-                <ShieldAlert className="size-4 text-red-500" /> Detector de Errores & Fugas de Capital
+                <ShieldAlert className="size-4 text-loss" /> Detector de Errores & Fugas de Capital
               </h3>
               <p className="text-xs text-muted-foreground mt-0.5">
                 Cuánto dinero te ha costado cada fallo de ejecución marcado
@@ -413,7 +413,7 @@ export function EmotionStats({ trades, checkins }: EmotionStatsProps) {
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <span className="size-2 rounded-full bg-red-500" />
+                        <span className="size-2 rounded-full bg-loss" />
                         <span className="font-bold text-foreground">{row.label}</span>
                         <span className="text-[10px] text-muted-foreground">({row.trades} ops)</span>
                       </div>
@@ -452,7 +452,7 @@ export function EmotionStats({ trades, checkins }: EmotionStatsProps) {
             <div className="rounded-xl border border-border bg-card p-3.5 space-y-2">
               <div className="flex items-center justify-between">
                 <span className="font-bold text-foreground flex items-center gap-1.5 text-xs">
-                  <span className="size-2 rounded-full bg-red-500" /> Poco Descanso (&lt; 6.5h)
+                  <span className="size-2 rounded-full bg-loss" /> Poco Descanso (&lt; 6.5h)
                 </span>
                 <span
                   className={cn(

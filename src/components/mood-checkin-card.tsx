@@ -180,7 +180,7 @@ export function MoodCheckinCard({
                     ? "bg-blue-500/10 border-blue-500/30 text-blue-600 dark:text-blue-400"
                     : readiness.level === "caution"
                       ? "bg-amber-500/10 border-amber-500/30 text-amber-600 dark:text-amber-400"
-                      : "bg-red-500/10 border-red-500/30 text-red-600 dark:text-red-400",
+                      : "bg-loss/10 border-loss/30 text-loss",
               )}
             >
               <div className="flex items-center gap-3">
@@ -278,7 +278,7 @@ export function MoodCheckinCard({
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between text-xs">
                   <Label className="font-bold text-foreground flex items-center gap-1.5">
-                    <ShieldAlert className="size-3.5 text-red-500" /> Tensión / Estrés
+                    <ShieldAlert className="size-3.5 text-loss" /> Tensión / Estrés
                   </Label>
                   <span className="text-[11px] text-muted-foreground">
                     {SCALE_DESCRIPTIONS.stress[stress - 1]?.label}
@@ -293,7 +293,7 @@ export function MoodCheckinCard({
                       className={cn(
                         "flex-1 py-1.5 rounded-lg border text-xs font-bold transition-all cursor-pointer text-center",
                         stress === s.level
-                          ? "border-red-500 bg-red-500/20 text-foreground ring-1 ring-red-500/50"
+                          ? "border-loss bg-loss/20 text-foreground ring-1 ring-loss/50"
                           : "border-border/70 bg-card text-muted-foreground hover:text-foreground hover:bg-muted/30",
                       )}
                     >

@@ -167,8 +167,8 @@ export function CsvRepairDialog({
         {activeStep === "initial" ? (
           <div className="space-y-4 py-3 flex-1 overflow-y-auto">
             {/* Banner de error detectado */}
-            <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-4 space-y-2">
-              <div className="flex items-center gap-2 text-rose-600 dark:text-rose-400 font-semibold text-xs">
+            <div className="rounded-xl border border-loss/30 bg-loss/8 p-4 space-y-2">
+              <div className="flex items-center gap-2 text-loss font-semibold text-xs">
                 <FileWarning className="size-4 shrink-0" />
                 <span>Error durante la lectura del archivo: {fileName}</span>
               </div>
@@ -264,7 +264,7 @@ export function CsvRepairDialog({
                                 "rounded px-1.5 py-0.5 text-[10px] font-bold uppercase",
                                 t.direction === "long"
                                   ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
-                                  : "bg-rose-500/15 text-rose-600 dark:text-rose-400",
+                                  : "bg-loss/15 text-loss",
                               )}
                             >
                               {t.direction}
