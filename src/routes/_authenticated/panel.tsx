@@ -931,6 +931,11 @@ function Overview() {
 
               <div className="flex items-center gap-2 flex-wrap">
                 {fundedTarget && <PhaseChip phase={fundedTarget.phase} />}
+                {!isStrategy && accounts.find((a) => a.id === accountFilter)?.status === "burned" && (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-loss/10 border border-loss/30 px-2.5 py-0.5 text-xs font-bold text-loss">
+                    <Flame className="size-3.5" /> Quemada / Perdida
+                  </span>
+                )}
                 <span className="rounded-full bg-muted/80 border border-border px-3 py-1 text-xs font-semibold text-muted-foreground">
                   {isStrategy
                     ? activeStrategyAccountIds.length === 1

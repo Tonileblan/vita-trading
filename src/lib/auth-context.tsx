@@ -2,6 +2,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
+import { hydrateAccountStatusesFromUser } from "./journal-store";
 
 export interface Profile {
   id: string;
@@ -53,9 +54,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       }
       try {
-        import("./journal-store").then(({ hydrateAccountStatusesFromUser }) => {
-          hydrateAccountStatusesFromUser(sess.user);
-        });
+        hydrateAccountStatusesFromUser(sess.user);
       } catch {
         // ignore
       }

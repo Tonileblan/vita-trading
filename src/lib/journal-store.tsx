@@ -43,10 +43,19 @@ export function hydrateAccountStatusesFromUser(user: any) {
     const cloudStatuses = user.user_metadata?.account_statuses;
     if (cloudStatuses && typeof cloudStatuses === "object") {
       const local = getStoredAccountStatuses();
-      const merged: Record<string, StoredAccountStatus> = { ...cloudStatuses, ...local };
+      const merged: Record<string, StoredAccountStatus> = { ...local, ...cloudStatuses };
       for (const [k, v] of Object.entries(cloudStatuses as Record<string, StoredAccountStatus>)) {
-        if (!local[k] || (v?.updatedAt && local[k]?.updatedAt && v.updatedAt >= local[k]!.updatedAt!)) {
+        const localVal = local[k];
+        if (!localVal) {
           merged[k] = v;
+        } else {
+          const cloudTime = v?.updatedAt ?? 0;
+          const localTime = localVal?.updatedAt ?? 0;
+          if (cloudTime >= localTime) {
+            merged[k] = v;
+          } else {
+            merged[k] = localVal;
+          }
         }
       }
       window.localStorage.setItem(ACCOUNT_STATUS_STORAGE_KEY, JSON.stringify(merged));
@@ -179,36 +188,56 @@ export function toAccount(r: Row): Account {
   const stored = storedStatuses[id];
 
   const dbStatus = r["status"] != null ? String(r["status"]).toLowerCase().trim() : undefined;
+  const dbBurnedAt = (r["burned_at"] as string | null) || undefined;
+  const dbBurnedReason = (r["burned_reason"] as string | null) || undefined;
 
-  // Prioridad de estado:
-  // 1. Si existe estado en almacenamiento sincronizado (cloud/local)
-  // 2. Si existe estado en columna de BD
-  // 3. 'active' por defecto
+  // 1. Reconciliación: la base de datos Supabase es la fuente de verdad primaria y autoritaria entre dispositivos.
+  // 2. Si la DB no tiene estado válido, recurrir al almacenamiento persistente sincronizado.
   let finalStatus: Account["status"] = "active";
-  if (stored?.status && ["active", "burned", "passed", "archived"].includes(stored.status)) {
-    finalStatus = stored.status;
-  } else if (dbStatus && ["active", "burned", "passed", "archived"].includes(dbStatus)) {
+  if (dbStatus && ["active", "burned", "passed", "archived"].includes(dbStatus)) {
     finalStatus = dbStatus as Account["status"];
+  } else if (stored?.status && ["active", "burned", "passed", "archived"].includes(stored.status)) {
+    finalStatus = stored.status;
+  }
+
+  // Si en la base de datos o en local está registrada como quemada, garantizar el estado quemada
+  if (dbStatus === "burned" || stored?.status === "burned") {
+    finalStatus = "burned";
   }
 
   const burnedAt =
     finalStatus === "burned"
-      ? (stored?.burnedAt || (r["burned_at"] as string | null) || new Date().toISOString())
+      ? (dbBurnedAt || stored?.burnedAt || new Date().toISOString())
       : undefined;
 
   const burnedReason =
     finalStatus === "burned"
-      ? (stored?.burnedReason ||
-          (r["burned_reason"] as string | null) ||
+      ? (dbBurnedReason ||
+          stored?.burnedReason ||
           "Límite total de pérdida superado (Max Loss)")
       : undefined;
 
-  // Si está quemada y no estaba en almacenamiento sincronizado, guardarlo
-  if (finalStatus === "burned" && (!stored || stored.status !== "burned")) {
+  // Mantener sincronizado el almacenamiento local del dispositivo con el estado real
+  if (finalStatus === "burned") {
+    if (
+      !stored ||
+      stored.status !== "burned" ||
+      (burnedAt && stored.burnedAt !== burnedAt) ||
+      (burnedReason && stored.burnedReason !== burnedReason)
+    ) {
+      saveStoredAccountStatus(id, {
+        status: "burned",
+        burnedAt,
+        burnedReason,
+        updatedAt: Date.now(),
+      });
+    }
+  } else if (stored && stored.status === "burned" && dbStatus && dbStatus !== "burned") {
+    // Si en la BD se reactivó o cambió de estado en otro dispositivo, sincronizar localmente
     saveStoredAccountStatus(id, {
-      status: "burned",
-      burnedAt,
-      burnedReason,
+      status: finalStatus,
+      burnedAt: undefined,
+      burnedReason: undefined,
       updatedAt: Date.now(),
     });
   }
@@ -1115,11 +1144,23 @@ export function JournalProvider({ children }: { children: ReactNode }) {
         }
       },
       updateAccount: async (id, patch) => {
-        if (patch.status) {
+        const existingAcc = safeData.accounts.find((a) => a.id === id);
+        const nextStatus = patch.status ?? existingAcc?.status;
+
+        if (nextStatus) {
+          const finalBurnedAt =
+            nextStatus === "burned"
+              ? (patch.burnedAt ?? existingAcc?.burnedAt ?? new Date().toISOString())
+              : undefined;
+          const finalBurnedReason =
+            nextStatus === "burned"
+              ? (patch.burnedReason ?? existingAcc?.burnedReason ?? "Límite total de pérdida superado (Max Loss)")
+              : undefined;
+
           saveStoredAccountStatus(id, {
-            status: patch.status,
-            burnedAt: patch.status === "burned" ? (patch.burnedAt || new Date().toISOString()) : undefined,
-            burnedReason: patch.status === "burned" ? patch.burnedReason : undefined,
+            status: nextStatus,
+            burnedAt: finalBurnedAt,
+            burnedReason: finalBurnedReason,
             updatedAt: Date.now(),
           });
         }
