@@ -1,0 +1,21 @@
+{
+	"folders": [
+		{
+			"name": "Vita-Trading",
+			"path": "."
+		},
+		{
+			"name": "IA-Trading",
+			"path": "../IA-Trading"
+		},
+		{
+			"name": "Flowmind",
+			"path": "../Flowmind"
+		},
+		{
+			"name": "Control61-Web",
+			"path": "../Control61-Web"
+		}
+	],
+	"settings": {}
+}
