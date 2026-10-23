@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Building2, User, Plus, Flame, CheckCircle2, Archive, AlertTriangle, ShieldCheck } from "lucide-react";
+import { Building2, User, Plus, Flame, CheckCircle2, Archive, AlertTriangle, ShieldCheck, ShieldAlert, SlidersHorizontal } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -32,7 +32,7 @@ import {
 } from "@/components/ui/select";
 import { useJournal } from "@/lib/journal-store";
 import { parseMoneyInput } from "@/lib/money";
-import { isTradeOfAccount, accountBalance } from "@/lib/metrics";
+import { isTradeOfAccount, accountBalance, accountDrawdown, formatCurrency } from "@/lib/metrics";
 import {
   ACCOUNT_PHASES,
   ACCOUNT_STATUSES,
@@ -119,9 +119,112 @@ export function AccountFormDialog({
   const [startOfDay, setStartOfDay] = useState(
     String(account?.startOfDayBalance ?? account?.initialBalance ?? 50000),
   );
+  const [customFloor, setCustomFloor] = useState(
+    String(
+      (account?.highWatermark ?? account?.initialBalance ?? 50000) -
+        (account?.maxLossLimit ?? account?.drawdownLimit ?? 2500),
+    ),
+  );
+  const [customRemaining, setCustomRemaining] = useState(
+    String(
+      Math.max(
+        0,
+        (account?.currentBalance ?? 50000) -
+          ((account?.highWatermark ?? account?.initialBalance ?? 50000) -
+            (account?.maxLossLimit ?? account?.drawdownLimit ?? 2500)),
+      ),
+    ),
+  );
   const [ddType, setDdType] = useState<DrawdownType>(account?.drawdownType ?? "eod");
   const [phase, setPhase] = useState<AccountPhase>(account?.phase ?? "eval");
   const [target, setTarget] = useState(account?.profitTarget ? String(account.profitTarget) : "");
+  const [enablePersonalDrawdown, setEnablePersonalDrawdown] = useState(
+    Boolean(account?.maxLossLimit ?? account?.drawdownLimit),
+  );
+
+  // Funciones de sincronización interactiva de Drawdown
+  const handleMaxLossChange = (val: string) => {
+    setMaxLoss(val);
+    const pLimit = parseMoneyInput(val);
+    const pHwm = parseMoneyInput(highWatermark);
+    const pCurr = parseMoneyInput(current);
+    const pInit = parseMoneyInput(initial);
+    if (Number.isFinite(pLimit)) {
+      const f = ddType === "static" ? pInit - pLimit : pHwm - pLimit;
+      const r = pCurr - f;
+      if (Number.isFinite(f)) setCustomFloor(f.toFixed(2));
+      if (Number.isFinite(r)) setCustomRemaining(Math.max(0, r).toFixed(2));
+    }
+  };
+
+  const handleHwmChange = (val: string) => {
+    setHighWatermark(val);
+    const pHwm = parseMoneyInput(val);
+    const pLimit = parseMoneyInput(maxLoss);
+    const pCurr = parseMoneyInput(current);
+    if (Number.isFinite(pHwm) && Number.isFinite(pLimit)) {
+      const f = pHwm - pLimit;
+      const r = pCurr - f;
+      if (Number.isFinite(f)) setCustomFloor(f.toFixed(2));
+      if (Number.isFinite(r)) setCustomRemaining(Math.max(0, r).toFixed(2));
+    }
+  };
+
+  const handleFloorChange = (val: string) => {
+    setCustomFloor(val);
+    const pFloor = parseMoneyInput(val);
+    const pLimit = parseMoneyInput(maxLoss);
+    const pCurr = parseMoneyInput(current);
+    if (Number.isFinite(pFloor)) {
+      if (Number.isFinite(pLimit) && ddType !== "static") {
+        const h = pFloor + pLimit;
+        setHighWatermark(h.toFixed(2));
+      }
+      if (Number.isFinite(pCurr)) {
+        const r = pCurr - pFloor;
+        setCustomRemaining(Math.max(0, r).toFixed(2));
+      }
+    }
+  };
+
+  const handleRemainingChange = (val: string) => {
+    setCustomRemaining(val);
+    const pRem = parseMoneyInput(val);
+    const pCurr = parseMoneyInput(current);
+    const pLimit = parseMoneyInput(maxLoss);
+    if (Number.isFinite(pRem) && Number.isFinite(pCurr)) {
+      const f = pCurr - pRem;
+      setCustomFloor(f.toFixed(2));
+      if (Number.isFinite(pLimit) && ddType !== "static") {
+        const h = f + pLimit;
+        setHighWatermark(h.toFixed(2));
+      }
+    }
+  };
+
+  const handleCurrentChange = (val: string) => {
+    setCurrent(val);
+    const pCurr = parseMoneyInput(val);
+    const pFloor = parseMoneyInput(customFloor);
+    if (Number.isFinite(pCurr) && Number.isFinite(pFloor)) {
+      const r = pCurr - pFloor;
+      setCustomRemaining(Math.max(0, r).toFixed(2));
+    }
+  };
+
+  const handleDdTypeChange = (v: DrawdownType) => {
+    setDdType(v);
+    const pLimit = parseMoneyInput(maxLoss);
+    const pHwm = parseMoneyInput(highWatermark);
+    const pInit = parseMoneyInput(initial);
+    const pCurr = parseMoneyInput(current);
+    if (Number.isFinite(pLimit)) {
+      const f = v === "static" ? pInit - pLimit : pHwm - pLimit;
+      const r = pCurr - f;
+      if (Number.isFinite(f)) setCustomFloor(f.toFixed(2));
+      if (Number.isFinite(r)) setCustomRemaining(Math.max(0, r).toFixed(2));
+    }
+  };
 
   // Sincronizar todos los campos del formulario cada vez que se abre el modal o cambia la cuenta
   useEffect(() => {
@@ -134,13 +237,27 @@ export function AccountFormDialog({
         setBroker(account.broker ?? BROKERS[0]!);
         setInitial(String(account.initialBalance));
         setCurrent(String(account.currentBalance));
-        setMaxLoss(String(account.maxLossLimit ?? account.drawdownLimit ?? 2500));
+
+        const initBal = account.initialBalance || 0;
+        const currBal = account.currentBalance || 0;
+        const existingDd = accountDrawdown(account, trades, withdrawals);
+        const limitVal = account.maxLossLimit ?? account.drawdownLimit ?? 2500;
+        const dType = account.drawdownType ?? "eod";
+        const hwmVal = account.highWatermark ?? existingDd?.highWatermark ?? Math.max(initBal, currBal);
+        const floorVal = existingDd?.floor ?? (dType === "static" ? initBal - limitVal : hwmVal - limitVal);
+        const remVal = existingDd?.remaining ?? Math.max(0, currBal - floorVal);
+
+        setMaxLoss(String(limitVal));
         setDailyLoss(account.dailyLossLimit != null ? String(account.dailyLossLimit) : "");
-        setHighWatermark(String(account.highWatermark ?? account.initialBalance));
+        setHighWatermark(String(hwmVal));
+        setCustomFloor(String(floorVal.toFixed(2)));
+        setCustomRemaining(String(remVal.toFixed(2)));
         setStartOfDay(String(account.startOfDayBalance ?? account.initialBalance));
-        setDdType(account.drawdownType ?? "eod");
+        setDdType(dType);
         setPhase(account.phase ?? "eval");
         setTarget(account.profitTarget ? String(account.profitTarget) : "");
+        setEnablePersonalDrawdown(Boolean(account.maxLossLimit ?? account.drawdownLimit));
+
         if (account.burnedReason) {
           if (BURNED_REASONS.includes(account.burnedReason as any)) {
             setBurnedReason(account.burnedReason);
@@ -167,16 +284,19 @@ export function AccountFormDialog({
         setMaxLoss("2500");
         setDailyLoss("");
         setHighWatermark("50000");
+        setCustomFloor("47500");
+        setCustomRemaining("2500");
         setStartOfDay("50000");
         setDdType("eod");
         setPhase("eval");
         setTarget("");
+        setEnablePersonalDrawdown(false);
         setBurnedReason(BURNED_REASONS[0]);
         setCustomBurnedReason("");
         setBurnedAt(new Date().toISOString().slice(0, 10));
       }
     }
-  }, [open, account]);
+  }, [open, account, trades, withdrawals]);
 
   const handleOpenChange = (v: boolean) => {
     setOpen(v);
@@ -244,6 +364,11 @@ export function AccountFormDialog({
           : new Date().toISOString()
         : undefined;
 
+    const hasDrawdown =
+      type === "funded" ||
+      enablePersonalDrawdown ||
+      (Number.isFinite(parsedMaxLoss) && parsedMaxLoss > 0);
+
     const payload = {
       name: name.trim(),
       type,
@@ -254,21 +379,22 @@ export function AccountFormDialog({
       broker: type === "personal" ? broker : undefined,
       initialBalance: finalInitialBalance,
       currentBalance: finalCurrentBalance,
-      maxLossLimit: type === "funded" ? parsedMaxLoss : undefined,
-      drawdownLimit: type === "funded" ? parsedMaxLoss : undefined,
+      maxLossLimit: hasDrawdown ? parsedMaxLoss : undefined,
+      drawdownLimit: hasDrawdown ? parsedMaxLoss : undefined,
       dailyLossLimit:
-        type === "funded" &&
+        hasDrawdown &&
         parsedDailyLoss !== undefined &&
         Number.isFinite(parsedDailyLoss) &&
         parsedDailyLoss > 0
           ? parsedDailyLoss
           : undefined,
       highWatermark:
-        Number.isFinite(parsedHwm) && parsedHwm > 0
+        hasDrawdown && Number.isFinite(parsedHwm) && parsedHwm > 0
           ? parsedHwm
           : Math.max(finalInitialBalance, finalCurrentBalance),
-      startOfDayBalance: Number.isFinite(parsedSod) && parsedSod > 0 ? parsedSod : finalInitialBalance,
-      drawdownType: type === "funded" ? ddType : undefined,
+      startOfDayBalance:
+        hasDrawdown && Number.isFinite(parsedSod) && parsedSod > 0 ? parsedSod : finalInitialBalance,
+      drawdownType: hasDrawdown ? ddType : undefined,
       phase: type === "funded" ? phase : undefined,
       profitTarget:
         type === "funded" && Number.isFinite(parseMoneyInput(target)) && parseMoneyInput(target) > 0
@@ -562,57 +688,97 @@ export function AccountFormDialog({
                 <Input
                   id="acc-curr"
                   value={current}
-                  onChange={(e) => setCurrent(e.target.value)}
+                  onChange={(e) => handleCurrentChange(e.target.value)}
                   inputMode="decimal"
-                  className="text-xs"
+                  className="text-xs font-mono font-medium"
                 />
               </div>
             </div>
 
             {type === "funded" && (
-              <>
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Fase de la cuenta</Label>
-                  <div className="grid grid-cols-2 gap-2">
-                    {ACCOUNT_PHASES.map((p) => (
-                      <button
-                        key={p.key}
-                        type="button"
-                        onClick={() => setPhase(p.key)}
-                        className={cn(
-                          "rounded-xl border p-2.5 text-xs font-semibold transition-all",
-                          phase === p.key
-                            ? "border-brand bg-brand/10 text-brand shadow-xs"
-                            : "border-border text-muted-foreground hover:text-foreground",
-                        )}
-                      >
-                        {p.label}
-                      </button>
-                    ))}
+              <div className="space-y-1.5">
+                <Label className="text-xs">Fase de la cuenta</Label>
+                <div className="grid grid-cols-2 gap-2">
+                  {ACCOUNT_PHASES.map((p) => (
+                    <button
+                      key={p.key}
+                      type="button"
+                      onClick={() => setPhase(p.key)}
+                      className={cn(
+                        "rounded-xl border p-2.5 text-xs font-semibold transition-all cursor-pointer",
+                        phase === p.key
+                          ? "border-brand bg-brand/10 text-brand shadow-xs"
+                          : "border-border text-muted-foreground hover:text-foreground",
+                      )}
+                    >
+                      {p.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {type === "funded" && (
+              <div className="space-y-1.5">
+                <Label htmlFor="acc-target" className="text-xs">
+                  {phase === "live" ? "Objetivo para retiro ($)" : "Objetivo de evaluación ($)"}
+                </Label>
+                <Input
+                  id="acc-target"
+                  value={target}
+                  onChange={(e) => setTarget(e.target.value)}
+                  inputMode="decimal"
+                  placeholder="Ej. 53000"
+                  className="text-xs font-mono"
+                />
+                <p className="text-[11px] text-muted-foreground">
+                  {ACCOUNT_PHASES.find((p) => p.key === phase)?.help}
+                </p>
+              </div>
+            )}
+
+            {type === "personal" && (
+              <div className="flex items-center gap-2 pt-1">
+                <input
+                  type="checkbox"
+                  id="acc-enable-dd"
+                  checked={enablePersonalDrawdown}
+                  onChange={(e) => setEnablePersonalDrawdown(e.target.checked)}
+                  className="size-3.5 rounded border-border text-brand focus:ring-brand/40 cursor-pointer"
+                />
+                <Label
+                  htmlFor="acc-enable-dd"
+                  className="text-xs cursor-pointer text-muted-foreground hover:text-foreground"
+                >
+                  Configurar y supervisar límites de Drawdown en esta cuenta personal
+                </Label>
+              </div>
+            )}
+
+            {/* SECCIÓN AVANZADA: CONTROL Y AJUSTE MANUAL DE DRAWDOWN */}
+            {(type === "funded" || enablePersonalDrawdown) && (
+              <div className="rounded-xl border border-brand/30 bg-brand/[0.03] dark:bg-brand/[0.06] p-3.5 space-y-3.5 shadow-xs">
+                <div className="flex items-center justify-between border-b border-border/50 pb-2 flex-wrap gap-2">
+                  <div className="flex items-center gap-2">
+                    <ShieldAlert className="size-4 text-brand shrink-0" />
+                    <div>
+                      <h4 className="text-xs font-bold text-foreground">
+                        Control y Ajuste Manual de Drawdown
+                      </h4>
+                      <p className="text-[10px] text-muted-foreground">
+                        Modifica cualquier parámetro; el suelo y el margen se sincronizan al instante.
+                      </p>
+                    </div>
                   </div>
+                  <span className="rounded bg-brand/10 border border-brand/25 px-2 py-0.5 text-[10px] font-bold text-brand uppercase font-mono">
+                    {DRAWDOWN_TYPES.find((d) => d.key === ddType)?.label}
+                  </span>
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label htmlFor="acc-target" className="text-xs">
-                    {phase === "live" ? "Objetivo para retiro ($)" : "Objetivo de evaluación ($)"}
-                  </Label>
-                  <Input
-                    id="acc-target"
-                    value={target}
-                    onChange={(e) => setTarget(e.target.value)}
-                    inputMode="decimal"
-                    placeholder="Ej. 53000"
-                    className="text-xs"
-                  />
-                  <p className="text-[11px] text-muted-foreground">
-                    {ACCOUNT_PHASES.find((p) => p.key === phase)?.help}
-                  </p>
-                </div>
-
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Tipo de Drawdown</Label>
-                  <Select value={ddType} onValueChange={(v) => setDdType(v as DrawdownType)}>
-                    <SelectTrigger className="text-xs">
+                  <Label className="text-xs font-semibold">Tipo de Drawdown</Label>
+                  <Select value={ddType} onValueChange={(v) => handleDdTypeChange(v as DrawdownType)}>
+                    <SelectTrigger className="text-xs h-8">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -623,29 +789,120 @@ export function AccountFormDialog({
                       ))}
                     </SelectContent>
                   </Select>
-                  <p className="text-[11px] text-muted-foreground">
+                  <p className="text-[10px] text-muted-foreground">
                     {DRAWDOWN_TYPES.find((d) => d.key === ddType)?.help}
                   </p>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
-                    <Label htmlFor="acc-max-loss" className="text-xs">
-                      Límite Total de Pérdida ($) *
+                {/* FILA 1: LÍMITE TOTAL DE DRAWDOWN & MARGEN RESTANTE MANUAL */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label
+                      htmlFor="acc-max-loss"
+                      className="text-xs font-bold text-foreground flex items-center justify-between"
+                    >
+                      <span>Límite Total de Drawdown ($) *</span>
                     </Label>
                     <Input
                       id="acc-max-loss"
                       value={maxLoss}
-                      onChange={(e) => setMaxLoss(e.target.value)}
+                      onChange={(e) => handleMaxLossChange(e.target.value)}
                       inputMode="decimal"
                       placeholder="2500"
-                      className="text-xs"
+                      className="text-xs font-mono font-semibold"
                     />
-                    <p className="text-[10px] text-muted-foreground">Max Loss total permitido</p>
+                    <p className="text-[10px] text-muted-foreground">
+                      Pérdida máxima total permitida antes de quema
+                    </p>
                   </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="acc-daily-loss" className="text-xs">
-                      Límite Diario ($)
+
+                  <div className="space-y-1">
+                    <Label
+                      htmlFor="acc-rem-dd"
+                      className="text-xs font-bold text-profit flex items-center justify-between"
+                    >
+                      <span>Margen Restante de Drawdown ($)</span>
+                      <span className="text-[9px] font-normal uppercase text-muted-foreground font-mono">
+                        Colchón
+                      </span>
+                    </Label>
+                    <Input
+                      id="acc-rem-dd"
+                      value={customRemaining}
+                      onChange={(e) => handleRemainingChange(e.target.value)}
+                      inputMode="decimal"
+                      placeholder="1850"
+                      className="text-xs font-mono font-bold text-profit bg-profit/[0.04] border-profit/35 focus-visible:ring-profit/40"
+                    />
+                    <p className="text-[10px] text-muted-foreground">
+                      Modifica directamente tu colchón restante
+                    </p>
+                  </div>
+                </div>
+
+                {/* FILA 2: SUELO DE LIQUIDACIÓN Y HIGH WATERMARK MANUAL */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1 border-t border-border/40">
+                  <div className="space-y-1">
+                    <Label
+                      htmlFor="acc-floor"
+                      className="text-xs font-semibold text-foreground/90 flex items-center justify-between"
+                    >
+                      <span>Suelo de Liquidación ($)</span>
+                      <span className="text-[9px] font-normal text-loss font-mono">Rotura</span>
+                    </Label>
+                    <Input
+                      id="acc-floor"
+                      value={customFloor}
+                      onChange={(e) => handleFloorChange(e.target.value)}
+                      inputMode="decimal"
+                      placeholder="48500"
+                      className="text-xs font-mono font-semibold border-loss/35 focus-visible:ring-loss/40"
+                    />
+                    <p className="text-[10px] text-muted-foreground">
+                      Nivel de balance donde la cuenta se quemaría
+                    </p>
+                  </div>
+
+                  {ddType !== "static" ? (
+                    <div className="space-y-1">
+                      <Label
+                        htmlFor="acc-hwm"
+                        className="text-xs font-semibold text-foreground/90 flex items-center justify-between"
+                      >
+                        <span>Pico Máximo (High Watermark) ($)</span>
+                        <span className="text-[9px] font-normal text-muted-foreground font-mono">
+                          Trailing
+                        </span>
+                      </Label>
+                      <Input
+                        id="acc-hwm"
+                        value={highWatermark}
+                        onChange={(e) => handleHwmChange(e.target.value)}
+                        inputMode="decimal"
+                        className="text-xs font-mono"
+                      />
+                      <p className="text-[10px] text-muted-foreground">
+                        Pico que arrastra dinámicamente el suelo
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-1">
+                      <Label className="text-xs font-medium text-muted-foreground">
+                        Modo Estático
+                      </Label>
+                      <div className="rounded-md border border-border/60 bg-muted/20 px-2.5 py-1.5 text-[11px] font-mono text-muted-foreground">
+                        Suelo fijo sobre capital inicial ({initial}$)
+                      </div>
+                      <p className="text-[10px] text-muted-foreground">El suelo nunca sube con las ganancias</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* FILA 3: LÍMITE DIARIO Y BALANCE INICIO DÍA */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1 border-t border-border/40">
+                  <div className="space-y-1">
+                    <Label htmlFor="acc-daily-loss" className="text-xs font-medium text-muted-foreground">
+                      Límite de Pérdida Diaria ($)
                     </Label>
                     <Input
                       id="acc-daily-loss"
@@ -653,41 +910,26 @@ export function AccountFormDialog({
                       onChange={(e) => setDailyLoss(e.target.value)}
                       inputMode="decimal"
                       placeholder="1000 (opcional)"
-                      className="text-xs"
+                      className="text-xs font-mono"
                     />
-                    <p className="text-[10px] text-muted-foreground">Pérdida máx. por día</p>
+                    <p className="text-[10px] text-muted-foreground">Pérdida máxima por sesión de trading</p>
+                  </div>
+
+                  <div className="space-y-1">
+                    <Label htmlFor="acc-sod" className="text-xs font-medium text-muted-foreground">
+                      Balance Inicio Día ($)
+                    </Label>
+                    <Input
+                      id="acc-sod"
+                      value={startOfDay}
+                      onChange={(e) => setStartOfDay(e.target.value)}
+                      inputMode="decimal"
+                      className="text-xs font-mono"
+                    />
+                    <p className="text-[10px] text-muted-foreground">Referencia para la pérdida diaria de hoy</p>
                   </div>
                 </div>
-
-                {editing && (
-                  <div className="grid grid-cols-2 gap-3 pt-1 border-t border-border/40">
-                    <div className="space-y-1">
-                      <Label htmlFor="acc-hwm" className="text-xs text-muted-foreground">
-                        High Watermark ($)
-                      </Label>
-                      <Input
-                        id="acc-hwm"
-                        value={highWatermark}
-                        onChange={(e) => setHighWatermark(e.target.value)}
-                        inputMode="decimal"
-                        className="h-8 text-xs font-mono"
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <Label htmlFor="acc-sod" className="text-xs text-muted-foreground">
-                        Balance Inicio Día ($)
-                      </Label>
-                      <Input
-                        id="acc-sod"
-                        value={startOfDay}
-                        onChange={(e) => setStartOfDay(e.target.value)}
-                        inputMode="decimal"
-                        className="h-8 text-xs font-mono"
-                      />
-                    </div>
-                  </div>
-                )}
-              </>
+              </div>
             )}
           </div>
 

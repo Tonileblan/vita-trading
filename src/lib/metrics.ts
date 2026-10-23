@@ -230,8 +230,8 @@ export function buildEquityCurve(
   const initial = fundedAccount?.initialBalance ?? startBalance;
 
   let computedStartBalance = startBalance;
-  let runningIntradayPeak = Math.max(initial, startBalance);
-  let runningEodPeak = initial;
+  let runningIntradayPeak = Math.max(initial, startBalance, fundedAccount?.highWatermark ?? 0);
+  let runningEodPeak = Math.max(initial, fundedAccount?.highWatermark ?? 0);
 
   // Si se dispone del historial completo de la cuenta, calculamos la posición real y picos acumulados hasta justo antes de este periodo
   if (allTrades && allTrades.length > 0 && sorted.length > 0) {
@@ -623,11 +623,14 @@ export function accountDrawdown(
     }
   }
 
-  // 2. High Watermark real (pico histórico máximo alcanzado por la cuenta según sus operaciones)
+  // 2. High Watermark real (pico histórico máximo alcanzado por la cuenta o ajustado manualmente)
+  const manualHwm = account.highWatermark != null && account.highWatermark > 0 ? account.highWatermark : null;
   const truePeak =
-    type === "eod"
-      ? (accTrades.length > 0 ? runningEodPeak : Math.max(initial, account.highWatermark ?? initial))
-      : (accTrades.length > 0 ? runningIntradayPeak : Math.max(initial, balance, account.highWatermark ?? initial));
+    manualHwm !== null
+      ? Math.max(manualHwm, balance)
+      : type === "eod"
+        ? (accTrades.length > 0 ? runningEodPeak : Math.max(initial, initial))
+        : (accTrades.length > 0 ? runningIntradayPeak : Math.max(initial, balance));
 
   const highWatermark = truePeak;
 

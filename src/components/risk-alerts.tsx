@@ -71,10 +71,11 @@ export function useActiveRiskAlerts() {
     }
   };
 
-  // 1. Alertas de objetivos / payouts
+  // 1. Alertas de objetivos / payouts (excluye cuentas quemadas)
   const targetAlerts: RiskAlert[] = useMemo(
     () =>
       accounts
+        .filter((a) => a.status !== "burned")
         .map((a) => ({ account: a, status: accountTarget(a, trades, withdrawals) }))
         .filter((x) => x.status?.reached)
         .map((x) => ({
@@ -93,11 +94,16 @@ export function useActiveRiskAlerts() {
     [accounts, trades, withdrawals],
   );
 
-  // 2. Alertas de drawdown crítico o cuenta rota
+  // 2. Alertas de drawdown crítico o cuenta rota (excluye cuentas quemadas)
   const drawdownAlerts: RiskAlert[] = useMemo(
     () =>
       accounts
-        .filter((a) => a.type === "funded" && Boolean(a.maxLossLimit ?? a.drawdownLimit ?? a.dailyLossLimit))
+        .filter(
+          (a) =>
+            a.status !== "burned" &&
+            a.type === "funded" &&
+            Boolean(a.maxLossLimit ?? a.drawdownLimit ?? a.dailyLossLimit),
+        )
         .map((a) => ({ account: a, dd: accountDrawdown(a, trades, withdrawals) }))
         .filter(
           (x) =>

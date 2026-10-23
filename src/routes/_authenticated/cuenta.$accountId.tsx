@@ -1,8 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { AlertTriangle, ArrowLeft, Building2, ExternalLink, Flame, LayoutDashboard, RotateCcw, Trash2, User } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Building2, ExternalLink, Flame, LayoutDashboard, Pencil, RotateCcw, Trash2, User } from "lucide-react";
 import { toast } from "sonner";
 import { AccountCostCard } from "@/components/account-cost-card";
+import { AccountFormDialog } from "@/components/account-form-dialog";
 import { AppShell } from "@/components/app-shell";
 import { EquityChart } from "@/components/equity-chart";
 import { KpiCards } from "@/components/kpi-cards";
@@ -256,12 +257,26 @@ function AccountDetail() {
             <Button
               size="sm"
               onClick={handleReactivateAccount}
-              className="gap-1.5 text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs"
+              className="gap-1.5 text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs cursor-pointer"
             >
               <RotateCcw className="size-3.5" />
               Reactivar cuenta
             </Button>
           )}
+          <AccountFormDialog
+            account={account}
+            trigger={
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5 text-xs font-semibold h-8 cursor-pointer border-border hover:border-brand/40 hover:text-brand"
+                aria-label={`Editar ${account.name}`}
+              >
+                <Pencil className="size-3.5" />
+                <span>Editar cuenta</span>
+              </Button>
+            }
+          />
           <Link
             to="/panel"
             search={{ account: account.id }}

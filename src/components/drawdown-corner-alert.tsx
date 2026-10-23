@@ -7,6 +7,7 @@ interface DrawdownAlertButtonProps {
   isFunded?: boolean;
   threshold?: number;
   breached?: boolean;
+  isBurned?: boolean;
   size?: "sm" | "md";
   className?: string;
   onClick?: () => void;
@@ -21,12 +22,13 @@ export function DrawdownAlertButton({
   isFunded = true,
   threshold = 600,
   breached = false,
+  isBurned = false,
   size = "md",
   className,
   onClick,
 }: DrawdownAlertButtonProps) {
-  // Solo se muestra en cuentas de fondeo cuando el colchón cae por debajo del umbral o la cuenta se rompe
-  if (!isFunded || (!breached && remaining >= threshold)) {
+  // Solo se muestra en cuentas de fondeo activas cuando el colchón cae por debajo del umbral o la cuenta se rompe (nunca si está quemada)
+  if (isBurned || !isFunded || (!breached && remaining >= threshold)) {
     return null;
   }
 
