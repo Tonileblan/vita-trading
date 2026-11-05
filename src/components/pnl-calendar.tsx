@@ -73,26 +73,23 @@ export function PnlCalendar({
 
   const year = cursor.getFullYear();
   const month = cursor.getMonth();
-  const quarter = Math.floor(month / 3); // 0 = Q1, 1 = Q2, 2 = Q3, 3 = Q4
 
-  // Navegación adaptable según el modo de vista
+  // Navegación adaptable según el modo de vista (en "quarter" se desplaza de uno en uno)
   const handlePrev = () => {
-    if (viewMode === "month") {
-      setCursor(new Date(year, month - 1, 1));
-    } else if (viewMode === "quarter") {
-      setCursor(new Date(year, (quarter - 1) * 3, 1));
-    } else {
+    if (viewMode === "year") {
       setCursor(new Date(year - 1, month, 1));
+    } else {
+      // Tanto en "month" como en "quarter", desplaza de mes en mes (de uno en uno)
+      setCursor(new Date(year, month - 1, 1));
     }
   };
 
   const handleNext = () => {
-    if (viewMode === "month") {
-      setCursor(new Date(year, month + 1, 1));
-    } else if (viewMode === "quarter") {
-      setCursor(new Date(year, (quarter + 1) * 3, 1));
-    } else {
+    if (viewMode === "year") {
       setCursor(new Date(year + 1, month, 1));
+    } else {
+      // Tanto en "month" como en "quarter", desplaza de mes en mes (de uno en uno)
+      setCursor(new Date(year, month + 1, 1));
     }
   };
 
@@ -124,11 +121,21 @@ export function PnlCalendar({
     return { net, ops, winDays, lossDays, best, worst };
   }, [byDay, year, month, daysInMonth]);
 
-  // Resumen Trimestral (Vista Trimestre)
+  // Resumen Trimestral (Vista Trimestre: mes base seleccionado y los dos posteriores)
   const quarterMonths = useMemo(() => {
-    const startM = quarter * 3;
-    return [startM, startM + 1, startM + 2];
-  }, [quarter]);
+    return [0, 1, 2].map((offsetIdx) => {
+      const d = new Date(year, month + offsetIdx, 1);
+      const mYear = d.getFullYear();
+      const mMonth = d.getMonth();
+      return {
+        year: mYear,
+        month: mMonth,
+        name: MONTH_NAMES[mMonth]!,
+        short: MONTH_SHORT[mMonth]!,
+        key: `${mYear}-${mMonth}`,
+      };
+    });
+  }, [year, month]);
 
   const quarterSummary = useMemo(() => {
     let net = 0;
@@ -138,10 +145,10 @@ export function PnlCalendar({
     let best = 0;
     let worst = 0;
 
-    quarterMonths.forEach((m) => {
-      const daysCount = new Date(year, m + 1, 0).getDate();
+    quarterMonths.forEach(({ year: mYear, month: mMonth }) => {
+      const daysCount = new Date(mYear, mMonth + 1, 0).getDate();
       for (let d = 1; d <= daysCount; d++) {
-        const entry = byDay.get(todayKey(new Date(year, m, d)));
+        const entry = byDay.get(todayKey(new Date(mYear, mMonth, d)));
         if (!entry) continue;
         net += entry.pnl;
         ops += entry.trades;
@@ -154,7 +161,7 @@ export function PnlCalendar({
 
     const winRate = winDays + lossDays > 0 ? (winDays / (winDays + lossDays)) * 100 : 0;
     return { net, ops, winDays, lossDays, best, worst, winRate };
-  }, [byDay, year, quarterMonths]);
+  }, [byDay, quarterMonths]);
 
   // Resumen Anual (Vista Año)
   const yearSummary = useMemo(() => {
@@ -370,13 +377,15 @@ export function PnlCalendar({
       return cursor.toLocaleDateString("es-ES", { month: "long", year: "numeric" });
     }
     if (viewMode === "quarter") {
-      const qNum = quarter + 1;
-      const startM = MONTH_SHORT[quarter * 3];
-      const endM = MONTH_SHORT[quarter * 3 + 2];
-      return `T${qNum} ${year} · (${startM} - ${endM})`;
+      const first = quarterMonths[0]!;
+      const last = quarterMonths[2]!;
+      if (first.year === last.year) {
+        return `${first.name} - ${last.name} ${first.year}`;
+      }
+      return `${first.name} ${first.year} - ${last.name} ${last.year}`;
     }
     return `Año ${year}`;
-  }, [viewMode, cursor, quarter, year]);
+  }, [viewMode, cursor, quarterMonths, year]);
 
   // Badge de neto según la vista activa
   const activeNet =
@@ -556,18 +565,18 @@ export function PnlCalendar({
       )}
 
       {/* ========================================================================= */}
-      {/* MODO 2: VISTA TRIMESTRAL (3 MESES)                                        */}
+      {/* MODO 2: VISTA TRIMESTRAL (3 MESES: DESDE EL ELEGIDO Y LOS DOS POSTERIORES) */}
       {/* ========================================================================= */}
       {viewMode === "quarter" && (
         <div className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {quarterMonths.map((m) => {
-              const mName = MONTH_NAMES[m]!;
-              const daysCount = new Date(year, m + 1, 0).getDate();
+            {quarterMonths.map((qm) => {
+              const { year: mYear, month: mMonth, name: mName, key: mKey } = qm;
+              const daysCount = new Date(mYear, mMonth + 1, 0).getDate();
               let mNet = 0;
               let mOps = 0;
               for (let d = 1; d <= daysCount; d++) {
-                const entry = byDay.get(todayKey(new Date(year, m, d)));
+                const entry = byDay.get(todayKey(new Date(mYear, mMonth, d)));
                 if (!entry) continue;
                 mNet += entry.pnl;
                 mOps += entry.trades;
@@ -575,20 +584,27 @@ export function PnlCalendar({
 
               return (
                 <div
-                  key={m}
+                  key={mKey}
                   className="rounded-xl border border-border/80 bg-muted/15 p-3 space-y-2.5"
                 >
                   <div className="flex items-center justify-between border-b border-border/40 pb-1.5">
                     <button
                       type="button"
                       onClick={() => {
-                        setCursor(new Date(year, m, 1));
+                        setCursor(new Date(mYear, mMonth, 1));
                         setViewMode("month");
                       }}
                       className="font-bold text-sm hover:text-brand transition-colors text-left flex items-center gap-1 group"
-                      title={`Ver detalle completo de ${mName}`}
+                      title={`Ver detalle completo de ${mName} ${mYear}`}
                     >
-                      <span>{mName}</span>
+                      <span>
+                        {mName}
+                        {mYear !== year && (
+                          <span className="text-[10px] text-muted-foreground ml-1 font-mono">
+                            {mYear}
+                          </span>
+                        )}
+                      </span>
                       <span className="text-[10px] text-muted-foreground group-hover:text-brand font-normal">
                         ({mOps} ops)
                       </span>
@@ -608,7 +624,7 @@ export function PnlCalendar({
                     </span>
                   </div>
 
-                  {renderMonthGrid(year, m, true)}
+                  {renderMonthGrid(mYear, mMonth, true)}
                 </div>
               );
             })}
