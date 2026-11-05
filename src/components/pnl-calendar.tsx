@@ -121,9 +121,9 @@ export function PnlCalendar({
     return { net, ops, winDays, lossDays, best, worst };
   }, [byDay, year, month, daysInMonth]);
 
-  // Resumen Trimestral (Vista Trimestre: mes base seleccionado y los dos posteriores)
+  // Resumen Trimestral (Vista Trimestre: mes base seleccionado y los dos anteriores)
   const quarterMonths = useMemo(() => {
-    return [0, 1, 2].map((offsetIdx) => {
+    return [-2, -1, 0].map((offsetIdx) => {
       const d = new Date(year, month + offsetIdx, 1);
       const mYear = d.getFullYear();
       const mMonth = d.getMonth();
@@ -429,7 +429,11 @@ export function PnlCalendar({
           <div className="inline-flex rounded-lg border border-border/80 bg-muted/40 p-0.5 text-xs font-semibold">
             <button
               type="button"
-              onClick={() => setViewMode("month")}
+              onClick={() => {
+                const now = new Date();
+                setCursor(new Date(now.getFullYear(), now.getMonth(), 1));
+                setViewMode("month");
+              }}
               className={cn(
                 "px-2.5 py-1 rounded-md transition-all",
                 viewMode === "month"
@@ -441,7 +445,11 @@ export function PnlCalendar({
             </button>
             <button
               type="button"
-              onClick={() => setViewMode("quarter")}
+              onClick={() => {
+                const now = new Date();
+                setCursor(new Date(now.getFullYear(), now.getMonth(), 1));
+                setViewMode("quarter");
+              }}
               className={cn(
                 "px-2.5 py-1 rounded-md transition-all",
                 viewMode === "quarter"
@@ -565,7 +573,7 @@ export function PnlCalendar({
       )}
 
       {/* ========================================================================= */}
-      {/* MODO 2: VISTA TRIMESTRAL (3 MESES: DESDE EL ELEGIDO Y LOS DOS POSTERIORES) */}
+      {/* MODO 2: VISTA TRIMESTRAL (3 MESES: MES BASE Y LOS DOS ANTERIORES)         */}
       {/* ========================================================================= */}
       {viewMode === "quarter" && (
         <div className="space-y-4">
