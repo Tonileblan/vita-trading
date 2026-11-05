@@ -45,6 +45,7 @@ import {
   type AccountStatus,
   type AccountType,
   type DrawdownType,
+  type Trade,
 } from "@/lib/types";
 import { usePropFirms } from "@/lib/prop-firms";
 import { useBrokers } from "@/lib/brokers";
@@ -63,7 +64,7 @@ export function AccountFormDialog({
   open: controlledOpen,
   onOpenChange: setControlledOpen,
 }: AccountDialogProps) {
-  const { addAccount, updateAccount, removeAccount, markAccountBurned, trades, withdrawals } = useJournal();
+  const { addAccount, updateAccount, removeAccount, markAccountBurned, addTrade, trades, withdrawals } = useJournal();
   const editing = Boolean(account);
 
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
@@ -354,6 +355,7 @@ export function AccountFormDialog({
 
     let finalInitialBalance = initialBalance;
     let finalCurrentBalance = currentBalance;
+    let balanceAdjustmentTrade: Omit<Trade, "id"> | null = null;
 
     if (account) {
       const accTrades = (trades || []).filter((t) => isTradeOfAccount(t, account));
@@ -361,7 +363,7 @@ export function AccountFormDialog({
       const withdrawn = (withdrawals || [])
         .filter((w) => String(w.accountId || "").toLowerCase() === account.id.toLowerCase())
         .reduce((s, w) => s + Math.abs(w.amount), 0);
-      const calculatedCurrent = Number(((account.initialBalance || 0) + tradePnl - withdrawn).toFixed(2));
+      const prevCurrentBalance = accountBalance(account, trades, withdrawals);
 
       // DIRECTIVA DE MÁXIMA PRIORIDAD:
       // El balance inicial permanece FIJO desde la creación de la cuenta.
@@ -370,17 +372,44 @@ export function AccountFormDialog({
 
       if (userEditedInitialBalance) {
         finalInitialBalance = initialBalance;
-        // Si el usuario modificó el balance inicial y no alteró manualmente el balance actual,
-        // ajustamos el balance actual con el mismo offset de operaciones y retiros
-        if (currentBalance === calculatedCurrent || currentBalance === account.currentBalance) {
-          finalCurrentBalance = Number((initialBalance + tradePnl - withdrawn).toFixed(2));
-        } else {
-          finalCurrentBalance = currentBalance;
-        }
       } else {
-        // El usuario NO modificó el balance inicial: DEBE PERMANECER FIJO e inmutable.
         finalInitialBalance = account.initialBalance;
-        finalCurrentBalance = currentBalance;
+      }
+
+      // Balance base esperado antes de cualquier ajuste manual al balance actual:
+      const baselineCurrent = userEditedInitialBalance
+        ? Number((initialBalance + tradePnl - withdrawn).toFixed(2))
+        : prevCurrentBalance;
+
+      // DIRECTIVA: cuando se quiera ajustar el balance actual de una cuenta desde editar cuenta,
+      // se añadirá una operación a esa cuenta por el valor de ese ajuste tanto si es positivo como negativo con el concepto de comisiones.
+      const adjustmentDelta = Number((currentBalance - baselineCurrent).toFixed(2));
+
+      if (Math.abs(adjustmentDelta) >= 0.01) {
+        const now = new Date().toISOString();
+        const isPositive = adjustmentDelta > 0;
+        balanceAdjustmentTrade = {
+          accountId: account.id,
+          strategyId: account.strategyId || undefined,
+          symbol: "COMISIONES",
+          direction: isPositive ? "long" : "short",
+          openedAt: now,
+          closedAt: now,
+          entryPrice: 0,
+          exitPrice: 0,
+          size: 1,
+          pnl: adjustmentDelta,
+          tags: ["comisiones", "ajuste-balance"],
+          notes: isPositive
+            ? `Ajuste manual de balance (Abono / Comisiones): +${formatCurrency(adjustmentDelta)}`
+            : `Ajuste manual de balance (Cargo / Comisiones): ${formatCurrency(adjustmentDelta)}`,
+          screenshots: [],
+          mistakes: [],
+          source: "manual",
+        };
+        finalCurrentBalance = Number((baselineCurrent + adjustmentDelta).toFixed(2));
+      } else {
+        finalCurrentBalance = baselineCurrent;
       }
     }
 
@@ -439,8 +468,20 @@ export function AccountFormDialog({
 
     try {
       if (account) {
+        if (balanceAdjustmentTrade) {
+          await addTrade(balanceAdjustmentTrade);
+        }
         await updateAccount(account.id, payload);
-        toast.success("Cuenta actualizada");
+        if (balanceAdjustmentTrade) {
+          const adj = balanceAdjustmentTrade.pnl;
+          toast.success(
+            adj >= 0
+              ? `Cuenta actualizada y operación de comisiones registrada (+${formatCurrency(adj)})`
+              : `Cuenta actualizada y operación de comisiones registrada (${formatCurrency(adj)})`,
+          );
+        } else {
+          toast.success("Cuenta actualizada");
+        }
       } else {
         await addAccount(payload);
         toast.success("Cuenta creada");
@@ -720,9 +761,16 @@ export function AccountFormDialog({
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="acc-curr" className="text-xs">
-                  Balance actual ($)
-                </Label>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="acc-curr" className="text-xs">
+                    Balance actual ($)
+                  </Label>
+                  {editing && (
+                    <span className="text-[10px] text-muted-foreground font-normal">
+                      Ajuste vía comisiones
+                    </span>
+                  )}
+                </div>
                 <Input
                   id="acc-curr"
                   value={current}
@@ -730,6 +778,22 @@ export function AccountFormDialog({
                   inputMode="decimal"
                   className="text-xs font-mono font-medium"
                 />
+                {editing && (() => {
+                  const pCurr = parseMoneyInput(current);
+                  const realCurrent = accountBalance(account, trades, withdrawals);
+                  const pInit = parseMoneyInput(initial);
+                  const baseShift = Number.isFinite(pInit) && pInit !== account.initialBalance
+                    ? pInit - account.initialBalance
+                    : 0;
+                  const targetBase = realCurrent + baseShift;
+                  const diff = Number.isFinite(pCurr) ? Number((pCurr - targetBase).toFixed(2)) : 0;
+                  if (Math.abs(diff) < 0.01) return null;
+                  return (
+                    <p className="text-[10px] font-mono font-semibold text-amber-600 dark:text-amber-400">
+                      ⚡ Se creará una operación de {diff > 0 ? `+${formatCurrency(diff)}` : formatCurrency(diff)} por comisiones
+                    </p>
+                  );
+                })()}
               </div>
             </div>
 
