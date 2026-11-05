@@ -1178,38 +1178,41 @@ export function JournalProvider({ children }: { children: ReactNode }) {
             .eq("id", id);
           if (error) {
             console.warn("Reintentando actualización de cuenta con campos estándar:", error.message);
-            const fallbackRow: Row = {
-              name: patch.name,
-              type: patch.type,
-              status: patch.status ?? "active",
-              firm: patch.firm ?? null,
-              broker: patch.broker ?? null,
-              strategy_id: patch.strategyId || null,
-              phase: patch.phase ?? "eval",
-              profit_target: patch.profitTarget ?? null,
-              initial_balance: patch.initialBalance,
-              current_balance: patch.currentBalance,
-              drawdown_limit: patch.maxLossLimit ?? patch.drawdownLimit ?? null,
-              currency: patch.currency ?? "USD",
-            };
+            const fallbackRow: Row = {};
+            if (patch.name !== undefined) fallbackRow.name = patch.name;
+            if (patch.type !== undefined) fallbackRow.type = patch.type;
+            if (patch.status !== undefined) fallbackRow.status = patch.status ?? "active";
+            if (patch.firm !== undefined) fallbackRow.firm = patch.firm ?? null;
+            if (patch.broker !== undefined) fallbackRow.broker = patch.broker ?? null;
+            if (patch.strategyId !== undefined) fallbackRow.strategy_id = patch.strategyId || null;
+            if (patch.phase !== undefined) fallbackRow.phase = patch.phase ?? "eval";
+            if (patch.profitTarget !== undefined) fallbackRow.profit_target = patch.profitTarget ?? null;
+            if (patch.initialBalance !== undefined) fallbackRow.initial_balance = patch.initialBalance;
+            if (patch.currentBalance !== undefined) fallbackRow.current_balance = patch.currentBalance;
+            if (patch.maxLossLimit !== undefined || patch.drawdownLimit !== undefined) {
+              fallbackRow.drawdown_limit = patch.maxLossLimit ?? patch.drawdownLimit ?? null;
+            }
+            if (patch.currency !== undefined) fallbackRow.currency = patch.currency ?? "USD";
+
             const { error: fallbackErr } = await supabase
               .from("accounts")
               .update(fallbackRow as never)
               .eq("id", id);
             if (fallbackErr) {
-              const minimalRow: Row = {
-                name: patch.name,
-                type: patch.type,
-                firm: patch.firm ?? null,
-                broker: patch.broker ?? null,
-                strategy_id: patch.strategyId || null,
-                phase: patch.phase ?? "eval",
-                profit_target: patch.profitTarget ?? null,
-                initial_balance: patch.initialBalance,
-                current_balance: patch.currentBalance,
-                drawdown_limit: patch.maxLossLimit ?? patch.drawdownLimit ?? null,
-                currency: patch.currency ?? "USD",
-              };
+              const minimalRow: Row = {};
+              if (patch.name !== undefined) minimalRow.name = patch.name;
+              if (patch.type !== undefined) minimalRow.type = patch.type;
+              if (patch.firm !== undefined) minimalRow.firm = patch.firm ?? null;
+              if (patch.broker !== undefined) minimalRow.broker = patch.broker ?? null;
+              if (patch.strategyId !== undefined) minimalRow.strategy_id = patch.strategyId || null;
+              if (patch.phase !== undefined) minimalRow.phase = patch.phase ?? "eval";
+              if (patch.profitTarget !== undefined) minimalRow.profit_target = patch.profitTarget ?? null;
+              if (patch.initialBalance !== undefined) minimalRow.initial_balance = patch.initialBalance;
+              if (patch.currentBalance !== undefined) minimalRow.current_balance = patch.currentBalance;
+              if (patch.maxLossLimit !== undefined || patch.drawdownLimit !== undefined) {
+                minimalRow.drawdown_limit = patch.maxLossLimit ?? patch.drawdownLimit ?? null;
+              }
+              if (patch.currency !== undefined) minimalRow.currency = patch.currency ?? "USD";
               await supabase.from("accounts").update(minimalRow as never).eq("id", id);
             }
           }

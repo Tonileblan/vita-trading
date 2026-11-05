@@ -212,6 +212,31 @@ export function AccountFormDialog({
     }
   };
 
+  const handleInitChange = (val: string) => {
+    setInitial(val);
+    const pInit = parseMoneyInput(val);
+    const pLimit = parseMoneyInput(maxLoss);
+    const pCurr = parseMoneyInput(current);
+    if (!editing) {
+      setCurrent(val);
+      if (Number.isFinite(pInit) && Number.isFinite(pLimit)) {
+        const f = pInit - pLimit;
+        const r = pInit - f;
+        if (Number.isFinite(f)) setCustomFloor(f.toFixed(2));
+        if (Number.isFinite(r)) setCustomRemaining(Math.max(0, r).toFixed(2));
+        setHighWatermark(val);
+        setStartOfDay(val);
+      }
+    } else {
+      if (Number.isFinite(pInit) && Number.isFinite(pLimit) && ddType === "static") {
+        const f = pInit - pLimit;
+        const r = pCurr - f;
+        if (Number.isFinite(f)) setCustomFloor(f.toFixed(2));
+        if (Number.isFinite(r)) setCustomRemaining(Math.max(0, r).toFixed(2));
+      }
+    }
+  };
+
   const handleDdTypeChange = (v: DrawdownType) => {
     setDdType(v);
     const pLimit = parseMoneyInput(maxLoss);
@@ -235,11 +260,12 @@ export function AccountFormDialog({
         setName(account.name);
         setFirm(account.firm ?? PROP_FIRMS[0]!);
         setBroker(account.broker ?? BROKERS[0]!);
-        setInitial(String(account.initialBalance));
-        setCurrent(String(account.currentBalance));
-
         const initBal = account.initialBalance || 0;
-        const currBal = account.currentBalance || 0;
+        const realCurrentBal = accountBalance(account, trades, withdrawals);
+        setInitial(String(initBal));
+        setCurrent(String(realCurrentBal));
+
+        const currBal = realCurrentBal;
         const existingDd = accountDrawdown(account, trades, withdrawals);
         const limitVal = account.maxLossLimit ?? account.drawdownLimit ?? 2500;
         const dType = account.drawdownType ?? "eod";
@@ -335,18 +361,26 @@ export function AccountFormDialog({
       const withdrawn = (withdrawals || [])
         .filter((w) => String(w.accountId || "").toLowerCase() === account.id.toLowerCase())
         .reduce((s, w) => s + Math.abs(w.amount), 0);
+      const calculatedCurrent = Number(((account.initialBalance || 0) + tradePnl - withdrawn).toFixed(2));
 
-      if (accTrades.length > 0) {
-        const prevCalcBalance = Number(((account.initialBalance || 0) + tradePnl - withdrawn).toFixed(2));
-        if (currentBalance !== prevCalcBalance && initialBalance === account.initialBalance) {
-          // El usuario editó manualmente el balance actual
-          finalInitialBalance = Number((currentBalance - tradePnl + withdrawn).toFixed(2));
-          finalCurrentBalance = currentBalance;
-        } else if (initialBalance !== account.initialBalance) {
-          // El usuario editó el balance inicial
-          finalInitialBalance = initialBalance;
+      // DIRECTIVA DE MÁXIMA PRIORIDAD:
+      // El balance inicial permanece FIJO desde la creación de la cuenta.
+      // ÚNICAMENTE puede cambiarse si el usuario lo edita explícitamente en el formulario.
+      const userEditedInitialBalance = initialBalance !== account.initialBalance;
+
+      if (userEditedInitialBalance) {
+        finalInitialBalance = initialBalance;
+        // Si el usuario modificó el balance inicial y no alteró manualmente el balance actual,
+        // ajustamos el balance actual con el mismo offset de operaciones y retiros
+        if (currentBalance === calculatedCurrent || currentBalance === account.currentBalance) {
           finalCurrentBalance = Number((initialBalance + tradePnl - withdrawn).toFixed(2));
+        } else {
+          finalCurrentBalance = currentBalance;
         }
+      } else {
+        // El usuario NO modificó el balance inicial: DEBE PERMANECER FIJO e inmutable.
+        finalInitialBalance = account.initialBalance;
+        finalCurrentBalance = currentBalance;
       }
     }
 
@@ -667,18 +701,22 @@ export function AccountFormDialog({
 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label htmlFor="acc-init" className="text-xs">
-                  Balance inicial ($)
-                </Label>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="acc-init" className="text-xs">
+                    Balance inicial ($)
+                  </Label>
+                  {editing && (
+                    <span className="text-[10px] text-muted-foreground font-normal">
+                      Fijo (editable aquí)
+                    </span>
+                  )}
+                </div>
                 <Input
                   id="acc-init"
                   value={initial}
-                  onChange={(e) => {
-                    setInitial(e.target.value);
-                    if (!editing) setCurrent(e.target.value);
-                  }}
+                  onChange={(e) => handleInitChange(e.target.value)}
                   inputMode="decimal"
-                  className="text-xs"
+                  className="text-xs font-mono font-medium"
                 />
               </div>
               <div className="space-y-1.5">
