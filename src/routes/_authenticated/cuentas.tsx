@@ -47,6 +47,7 @@ import type { Account } from "@/lib/types";
 import { getFirmWebsite } from "@/lib/prop-firms";
 import { cn } from "@/lib/utils";
 import { AccountFormDialog as AccountDialog } from "@/components/account-form-dialog";
+import { PromoteToLiveDialog } from "@/components/promote-to-live-dialog";
 
 export const Route = createFileRoute("/_authenticated/cuentas")({
   head: () => ({
@@ -180,6 +181,14 @@ function AccountsPage() {
   const liveFundedCount = fundedActive.filter((a) => a.phase === "live").length;
   const evalFundedCount = fundedActive.filter((a) => a.phase === "eval").length;
 
+  const evalAccountsReadyForLive = useMemo(() => {
+    return activeAccounts.filter((a) => {
+      if (a.type !== "funded" || (a.phase ?? "eval") !== "eval") return false;
+      const target = accountTarget(a, safeTrades, safeWithdrawals);
+      return Boolean(target?.reached);
+    });
+  }, [activeAccounts, safeTrades, safeWithdrawals]);
+
   const handleReactivate = async (acc: Account, e?: React.MouseEvent) => {
     e?.stopPropagation();
     try {
@@ -210,6 +219,11 @@ function AccountsPage() {
     const pnlPct = acc.initialBalance > 0 ? (result / acc.initialBalance) * 100 : 0;
 
     const isBurned = acc.status === "burned";
+    const isEvalReadyForLive =
+      !isBurned &&
+      acc.type === "funded" &&
+      (acc.phase ?? "eval") === "eval" &&
+      Boolean(target?.reached);
 
     const isLowDrawdown =
       !isBurned &&
@@ -379,6 +393,22 @@ function AccountsPage() {
 
           {/* ACCIONES DE LA FILA */}
           <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
+            {isEvalReadyForLive && (
+              <PromoteToLiveDialog
+                account={acc}
+                trigger={
+                  <Button
+                    size="sm"
+                    className="h-8 px-2.5 text-xs bg-emerald-600 hover:bg-emerald-700 text-white font-bold gap-1.5 rounded-lg shadow-xs cursor-pointer animate-pulse hover:animate-none"
+                    title="Esta cuenta ha alcanzado el objetivo de evaluación. Pulsa para configurar y pasar a Live."
+                  >
+                    <Trophy className="size-3.5" />
+                    <span>Pasar a Live</span>
+                  </Button>
+                }
+              />
+            )}
+
             {isBurned ? (
               <Button
                 variant="outline"
@@ -621,6 +651,11 @@ function AccountsPage() {
     const target = accountTarget(acc, safeTrades, safeWithdrawals);
 
     const isBurned = acc.status === "burned";
+    const isEvalReadyForLive =
+      !isBurned &&
+      acc.type === "funded" &&
+      (acc.phase ?? "eval") === "eval" &&
+      Boolean(target?.reached);
 
     const isLowDrawdown =
       !isBurned &&
@@ -825,7 +860,25 @@ function AccountsPage() {
           )}
 
           {/* Target Progress */}
-          {!isBurned && target && <TargetProgress status={target} />}
+          {!isBurned && target && (
+            <div className="space-y-2">
+              <TargetProgress status={target} />
+              {isEvalReadyForLive && (
+                <PromoteToLiveDialog
+                  account={acc}
+                  trigger={
+                    <Button
+                      size="sm"
+                      className="w-full h-8 text-xs bg-emerald-600 hover:bg-emerald-700 text-white font-bold gap-1.5 rounded-xl shadow-xs cursor-pointer animate-pulse hover:animate-none"
+                    >
+                      <Trophy className="size-3.5" />
+                      <span>¡Evaluación Superada! Pasar a Live</span>
+                    </Button>
+                  }
+                />
+              )}
+            </div>
+          )}
 
           {/* Drawdown Progress */}
           {!isBurned && dd && <DrawdownProgress status={dd} threshold={600} />}
@@ -862,6 +915,47 @@ function AccountsPage() {
       }
     >
       <div className="space-y-6">
+        {/* Banner Celebratorio si hay cuentas de fondeo que han superado el objetivo de evaluación */}
+        {evalAccountsReadyForLive.length > 0 && (
+          <div className="rounded-2xl border border-emerald-500/40 bg-gradient-to-r from-emerald-500/15 via-emerald-500/5 to-card p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm">
+            <div className="flex items-start gap-3.5">
+              <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 shadow-2xs">
+                <Trophy className="size-6" />
+              </span>
+              <div>
+                <p className="text-sm sm:text-base font-bold text-foreground flex items-center gap-2 flex-wrap">
+                  <span>¡Objetivo de Evaluación Superado!</span>
+                  <span className="rounded-full bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 text-[10px] font-mono px-2 py-0.5 border border-emerald-500/30 font-semibold">
+                    {evalAccountsReadyForLive.length} {evalAccountsReadyForLive.length === 1 ? "cuenta lista" : "cuentas listas"}
+                  </span>
+                </p>
+                <p className="text-xs text-muted-foreground mt-0.5 max-w-2xl">
+                  {evalAccountsReadyForLive.length === 1
+                    ? `La cuenta "${evalAccountsReadyForLive[0].name}" ha alcanzado la meta establecida. El sistema espera tu confirmación para pasar a Live, donde el nuevo objetivo será alcanzar los retiros.`
+                    : `Tienes ${evalAccountsReadyForLive.length} cuentas de fondeo con la evaluación superada. Revisa y confirma el nombre, drawdown y balances para activarlas en Live.`}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 shrink-0 self-end sm:self-center flex-wrap">
+              {evalAccountsReadyForLive.map((acc) => (
+                <PromoteToLiveDialog
+                  key={acc.id}
+                  account={acc}
+                  trigger={
+                    <Button
+                      size="sm"
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold gap-1.5 shadow-xs text-xs cursor-pointer animate-pulse hover:animate-none"
+                    >
+                      <Sparkles className="size-3.5" />
+                      <span>Pasar {evalAccountsReadyForLive.length > 1 ? acc.name : "a Live"}</span>
+                    </Button>
+                  }
+                />
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* KPI Hero Counters */}
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <div className="panel flex items-center gap-3 p-4 rounded-2xl">

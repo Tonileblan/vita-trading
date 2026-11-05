@@ -1,9 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { AlertTriangle, ArrowLeft, Building2, ExternalLink, Flame, LayoutDashboard, Pencil, RotateCcw, Trash2, User } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Building2, ExternalLink, Flame, LayoutDashboard, Pencil, RotateCcw, Sparkles, Trash2, Trophy, User } from "lucide-react";
 import { toast } from "sonner";
 import { AccountCostCard } from "@/components/account-cost-card";
 import { AccountFormDialog } from "@/components/account-form-dialog";
+import { PromoteToLiveDialog } from "@/components/promote-to-live-dialog";
 import { AppShell } from "@/components/app-shell";
 import { EquityChart } from "@/components/equity-chart";
 import { KpiCards } from "@/components/kpi-cards";
@@ -160,6 +161,12 @@ function AccountDetail() {
   const balance = accountBalance(account, trades, withdrawals);
   const result = accountResult(account, trades, withdrawals);
   const dd = accountDrawdown(account, trades, withdrawals);
+  const target = accountTarget(account, trades, withdrawals);
+  const isEvalTargetReached =
+    !isBurned &&
+    account.type === "funded" &&
+    (account.phase ?? "eval") === "eval" &&
+    Boolean(target?.reached);
 
   const byStrategy = strategies
     .map((s) => {
@@ -253,6 +260,21 @@ function AccountDetail() {
       }
       actions={
         <div className="flex items-center gap-2">
+          {isEvalTargetReached && (
+            <PromoteToLiveDialog
+              account={account}
+              trigger={
+                <Button
+                  size="sm"
+                  className="gap-1.5 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs cursor-pointer animate-pulse hover:animate-none"
+                  title="Esta cuenta ha alcanzado el objetivo de evaluación. Pulsa para configurar y pasar a Live."
+                >
+                  <Trophy className="size-3.5" />
+                  <span>Pasar a Live</span>
+                </Button>
+              }
+            />
+          )}
           {isBurned && (
             <Button
               size="sm"
@@ -402,9 +424,41 @@ function AccountDetail() {
         </section>
 
         {(() => {
-          const target = accountTarget(account, trades, withdrawals);
           if (!target) return null;
-          return <TargetProgress status={target} />;
+          return (
+            <div className="space-y-3">
+              <TargetProgress status={target} />
+              {isEvalTargetReached && (
+                <div className="rounded-2xl border border-emerald-500/40 bg-gradient-to-r from-emerald-500/15 via-emerald-500/5 to-card p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs">
+                  <div className="flex items-center gap-3">
+                    <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
+                      <Trophy className="size-5" />
+                    </span>
+                    <div>
+                      <p className="text-sm font-bold text-foreground">
+                        ¡Evaluación superada con éxito!
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        Has alcanzado el balance objetivo. Revisa y confirma los parámetros para pasar a Fase Live (Retiros).
+                      </p>
+                    </div>
+                  </div>
+                  <PromoteToLiveDialog
+                    account={account}
+                    trigger={
+                      <Button
+                        size="sm"
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold gap-1.5 shadow-xs text-xs cursor-pointer shrink-0"
+                      >
+                        <Sparkles className="size-3.5" />
+                        <span>Pasar a Fase Live</span>
+                      </Button>
+                    }
+                  />
+                </div>
+              )}
+            </div>
+          );
         })()}
 
         <AccountCostCard accountId={account.id} pnl={pnl} />

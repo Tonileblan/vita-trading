@@ -120,7 +120,7 @@ export function TargetProgress({
             ) : (
               <span className="text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1">
                 <Trophy className="size-3" />
-                Evaluación superada con éxito
+                Evaluación superada (Confirmar paso a Live)
               </span>
             )
           ) : (

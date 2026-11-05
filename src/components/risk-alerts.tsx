@@ -81,15 +81,21 @@ export function useActiveRiskAlerts() {
         .map((x) => ({
           key: `target-${x.account.id}`,
           tone: "success",
-          tag: x.status!.phase === "live" ? "Payout Disponible" : "Objetivo Cumplido",
-          title: `¡${x.account.name} lista para cobro!`,
+          tag: x.status!.phase === "live" ? "Payout Disponible" : "Evaluación Superada",
+          title:
+            x.status!.phase === "live"
+              ? `¡${x.account.name} lista para cobro!`
+              : `¡${x.account.name} superó la evaluación!`,
           detail:
             x.status!.phase === "live"
               ? "Has alcanzado el umbral para solicitar tu retiro de fondos."
-              : "Fase de evaluación superada exitosamente.",
-          message: `${x.account.name} ha alcanzado el objetivo.`,
-          actionLabel: x.status!.phase === "live" ? "Ver retiro" : "Ver cuentas",
-          actionUrl: x.status!.phase === "live" ? "/conta" : "/cuentas",
+              : "Objetivo cumplido. Confirma los parámetros para activarla en Fase Live.",
+          message:
+            x.status!.phase === "live"
+              ? `${x.account.name} ha alcanzado el umbral de retiro.`
+              : `${x.account.name} ha alcanzado el objetivo de evaluación.`,
+          actionLabel: x.status!.phase === "live" ? "Ver retiro" : "Pasar a Live",
+          actionUrl: x.status!.phase === "live" ? "/conta" : `/cuenta/${x.account.id}`,
         })),
     [accounts, trades, withdrawals],
   );
